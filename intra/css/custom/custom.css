@@ -1,0 +1,90 @@
+/*================================================================================
+	Item Name: Materialize - Material Design Admin Template
+	Version: 3.1
+	Author: GeeksLabs
+	Author URL: http://www.themeforest.net/user/geekslabs
+================================================================================
+
+NOTE:
+------
+PLACE HERE YOUR OWN CSS CODES AND IF NEEDED, OVERRIDE THE STYLES FROM THE OTHER STYLESHEETS.
+WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BETTER LIKE THIS.  */
+.whitetile{	
+	background-image: url("../../images/whitetile.png");
+	background-repeat: repeat;
+}
+
+
+
+.blacktile{
+	background-image: url("../../images/blacktile.png");
+	background-repeat: repeat;
+}
+
+
+.page-footer{
+	position: fixed;
+    bottom: 0;
+    width: 100%;  
+    z-index: 100;  
+}
+
+.myTable{
+
+}
+
+table, td, th{
+	border: 1px solid black;
+	padding: 0px 0px;
+	text-align: center !important;
+}
+
+
+
+.old_ie_wrapper {
+  height: @table_body_height;
+  width: @table_width;
+  overflow-x: hidden;
+  overflow-y: auto;
+  tbody { height: auto; }
+}
+
+ .my-input-class {
+  padding: 3px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display:block!important;
+}
+
+.my-confirm-class {
+  padding: 3px 6px;
+  font-size: 12px;
+  color: white;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 4px;
+  background-color: #337ab7;
+  text-decoration: none;
+        }
+
+.my-cancel-class {
+  padding: 3px 6px;
+  font-size: 12px;
+  color: white;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 4px;
+  background-color: #a94442;
+  text-decoration: none;
+}
+
+.error {
+  border: solid 1px;
+  border-color: #a94442;
+}
+
+.destroy-button{
+  padding:5px 10px 5px 10px;
+  border: 1px blue solid;
+  background-color:lightgray;
+}

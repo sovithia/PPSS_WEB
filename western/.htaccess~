@@ -1,0 +1,5 @@
+#Protect Directory
+AuthName "Dialog prompt"
+AuthType Basic
+AuthUserFile /Users/so/Sites/PPSS/western
+Require valid-user

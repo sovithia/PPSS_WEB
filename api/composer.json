@@ -1,0 +1,9 @@
+{
+    "require": {
+        "picqer/php-barcode-generator": "^0.3.0",
+        "slim/slim": "^3.12",
+        "symfony/polyfill-iconv": "^1.11",
+        "symfony/polyfill-mbstring": "^1.11",
+        "nategood/httpful": "^0.2.20"
+    }
+}

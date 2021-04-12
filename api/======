@@ -1,0 +1,57 @@
+======
+Pending Item to another List 
+
+
+Stock Request From Store 
+
+
+
+Transfer Request (created from Vaul;t)
+	-> Check if Received (Check on HAND)
+
+
+
+=====
+APP 
+
+-> Send to Request Pool 
+
+
+== 
+APP
+
+-> create stock request from pool 
+
+
+
+ITEM REQUEST POOL (LOCAL)
+
+
+
+
+PURCHASE REQUEST POOL (LOCAL)
+ PURCHASE REQUEST ()
+
+
+TRANSFER ITEM POOL (LOCAL)
+ TRANSFER REQUEST (API)
+
+
+===
+
+ITEMREQUESTPOOL 
+ITEM_REQUEST (ITEMS WITH QTY IN JSON)
+(STORE CLERK + STORE ADVISOR PREPARE AND ORDER)
+[STR + WH]
+
+PURCHASEREQUESTPOOL
+PURCHASE_REQUEST (ITEMS WITH QTY IN JSON)
+(WAREHOUSE CLERK PREPARE AND ORDER)
+[WH + PCH]
+
+
+
+TRANSFERREQUESTPOOL 
+TRANSFER_REQUEST (ITEMS WITH QTY IN JSON)
+(WAREHOUSE CLERK PREPARE AND TRANSFER)
+[WH + STR]
