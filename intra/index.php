@@ -269,16 +269,20 @@ function getData($display,$entity,$param)
     || $display == "schedule" || $display == "restday" || $display == "podetail" ||
     $display == "receivedpodetail" || $display == "supplieritems" || $display == "supplierpurchaseorders"
     || $display == "receptionRecordDetail" || $display == "receptionRecordDetailNOPO" || $display == "vaultdetail" ||
-    $display == "supplyrecorddetail")
-  {                                                  
+    $display == "supplyrecorddetails")
+  {                                                   
     return Service::ListEntity($entity,$param["ID"]);
   }    
   else if ($display == "mywaitingpo" || $display == "mycompletedpo" || $display == "myreceivedpo"){
       return Service::ListEntity($entity,$_SESSION["USER"]["login"]);          
   }
-  else if ($display == "supplyrecordlist" ||  $display == "itemrequestactionlist" )
+  else if ($display == "supplyrecordlist")
   {
-      return Service::ListEntity($entity,$param["type"]);          
+      return Service::ListEntity($entity,$param["status"]);          
+  }
+  else if ($display == "itemrequestactionlist")
+  {
+    return Service::ListEntity($entity,$param["type"]);          
   }
   else if ($display == "scheduleAll" || $display == "trombi" || $display == "supplierlist" || 
            $display == "salarylist" || $display == "restdaylist" || $display == "lowprofit" || 
@@ -480,11 +484,11 @@ function renderBody()
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
   else if ($display == "supplyrecordlist")
-    return renderSupplyRecordList($data);
+    return renderSupplyRecordList($data,$_GET["action"]);
   else if ($display == "supplyrecordsearch")
     return renderSupplyRecordSearch($data);
-  else if ($display == "supplurecorddetail")
-    return renderSupplyRecordDetail($data);
+  else if ($display == "supplyrecorddetails")
+    return renderSupplyRecordDetail($data,$_GET["action"]);
   
 
   // DEPRECATION

@@ -4211,30 +4211,30 @@ function renderSupplyRecordList($data,$action){
    $body .=   "PO Total : ".count($itemsPO);              
    $body .=   "<table border='1' id='resultTable1'>
                <thead><tr>
-                  <th>DETAILS</th>
-                  <th>VAL</th>
-                  <th>PCH</th>
-                  <th>WH</th>
-                  <th>RCV</th>
-                  <th>ACC</th>                  
+                  <th>DETAILS</th>                                
                   <th>PO NUMBER</th>
                   <th>VENDOR</th> 
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>   
                   <th>CANCEL</th>
                </tr></thead>
 
                <tfoot><tr>
-                  <th>DETAILS</th>
-                  <th>VAL</th>
-                  <th>PCH</th>
-                  <th>WH</th>
-                  <th>RCV</th>
-                  <th>ACC</th>                  
+                  <th>DETAILS</th>                                
                   <th>PO NUMBER</th>
                   <th>VENDOR</th> 
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>   
                   <th>CANCEL</th>
                </tr></tfoot>
                </table>
@@ -4246,28 +4246,29 @@ function renderSupplyRecordList($data,$action){
 
     foreach($itemsPO as $item)
     {   
-            
-        $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
-        $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
-        $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
-        $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
-        $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
-        $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+    
+        $base = "../api/img/supplyrecords_signatures/";
+        $ID = $item["ID"];
+
+        $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["VALIDATOR_USER"];
+        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["PURCHASER_USER"];
+        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["WAREHOUSE_USER"];
+        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["RECEIVER_USER"];
+        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["ACCOUNTANT_USER"];
 
          $dataSet1 .= 
          "[ 
 
-          '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
-          ".$VAL.",
-          ".$PCH.",
-          ".$WH.",
-          ".$RCV.",
-          ".$ACC.",
+          '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',                
           '".$item["PONUMBER"]."',
           \"".$item["VENDNAME"]."\",
           '<span id=\"status_".$item["ID"]."\">".$item["STATUS"]."</span>',
-          '".$item["LAST_UPDATED"]."',
-          '".$item["LAST_UPDATED"]."'
+          '".$item["LAST_UPDATED"]."',    
+          '".$VAL."',
+          '".$PCH."',
+          '".$WH."',
+          '".$RCV."',
+          '".$ACC."',      
           '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>',
           
 
@@ -4295,58 +4296,59 @@ function renderSupplyRecordList($data,$action){
     $body .=   "<table border='1' id='resultTable2'>
                <thead><tr>
                   <th>DETAILS</th>
-                  <th>VAL</th>
-                  <th>PCH</th>
-                  <th>WH</th>
-                  <th>RCV</th>
-                  <th>ACC</th>                  
                   <th>NOPONOTE</th>
                   <th>LINKEDPO</th>
                   <th>VENDOR</th> 
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>                  
+                  
                   <th>CANCEL</th>
                </tr></thead>
 
                <tfoot><tr>
                   <th>DETAILS</th>
-                  <th>VAL</th>
-                  <th>PCH</th>
-                  <th>WH</th>
-                  <th>RCV</th>
-                  <th>ACC</th>                  
                   <th>NOPONOTE</th>
                   <th>LINKEDPO</th>
                   <th>VENDOR</th> 
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
-                  <th>CANCEL</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>   
                </tr></tfoot>
                </table>
                ";                  
     $dataSet2 = "";             
     foreach($itemsNOPO as $item)
     {           
-          $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
-          $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
-          $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
-          $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
-          $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
-          $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+          
+          $base = "../api/img/supplyrecords_signatures/";
+          $ID = $item["ID"];
+          $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["VALIDATOR_USER"];
+        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["PURCHASER_USER"];
+        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["WAREHOUSE_USER"];
+        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["RECEIVER_USER"];
+        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["ACCOUNTANT_USER"];
 
           $dataSet .= "[    
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
-          ".$VAL.",
-          ".$PCH.",
-          ".$WH.",
-          ".$RCV.",
-          ".$ACC.",
           \"".$item["NOPONOTE"]."\",
           \"".$item["LINKEDPO"]."\",
           \"".$item["VENDOR"]."\",
-          \"".$item["ID"]."\",
           \"".$item["STATUS"]."\",
           \"".$item["LAST_UPDATED"]."\",
+          '".$VAL."',
+          '".$PCH."',
+          '".$WH."',
+          '".$RCV."',
+          '".$ACC."',                                      
           '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>'
           ],";
     }
@@ -4369,15 +4371,19 @@ function renderSupplyRecordList($data,$action){
 }
 
 function renderSupplyRecordDetail($data,$action){
-  $supplyrecord = $data["supplyrecord"];
-  $items = $data["items"];
+  $supplyrecord = $data;
+  if(isset($supplyrecord["items"]))
+    $items = $supplyrecord["items"];
+  else 
+    $items = null;
 
-  $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
-  $VAL = "<img src='".$base."VAL_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["VALIDATORUSER"] ;
-  $PCH = "<img src='".$base."PCH_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["PURCHASERUSER"] ;
-  $WH = "<img src='".$base."WH_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["WAREHOUSEUSER"] ;
-  $RCV = "<img src='".$base."RCV_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["RECEIVERUSER"] ;
-  $ACC = "<img src='".$base."ACC_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["ACCOUNTANTUSER"] ;
+  $base = "../api/img/supplyrecords_signatures/";
+  $ID = $supplyrecord["ID"]; 
+  $VAL = "<img style=\"background-color:#009183\" width=\"200px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["VALIDATOR_USER"];
+        $PCH = "<img style=\"background-color:#009183\" width=\"200px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["PURCHASER_USER"];
+        $WH  = "<img style=\"background-color:#009183\" width=\"200px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["WAREHOUSE_USER"];
+        $RCV = "<img style=\"background-color:#009183\" width=\"200px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["RECEIVER_USER"];
+        $ACC = "<img style=\"background-color:#009183\" width=\"200px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["ACCOUNTANT_USER"];
 
   $body = "<table>
                 <tr>
@@ -4395,18 +4401,23 @@ function renderSupplyRecordDetail($data,$action){
               <td>".$ACC."</td>
             </tr>
             </table><br>";
-    $go = true;
-    
-    
 
+
+    $go = true;
     $count = 1;
     do{
-        $filename = "./img/supplyrecords_invoices/INV_".$supplyrecord["ID"]."_".$count.".png";
-        $body .= "<center><img height='300px' onclick=enlargeimage('".$filename."') src='".$filename."'><center<br>";
-        $go = file_exists($filename);
+
+        $filename = "../api/img/supplyrecords_invoices/INV_".$supplyrecord["ID"]."_".$count.".png";
+        if (file_exists($filename))
+          $body .= "<center><img height='300px' onclick=enlargeimage('".$filename."') src='".$filename."'><center<br>";          
+        else 
+          $body .= "<center><img height='300px' src='../api/img/na.jpg'><center<br>";        
+        
+        $count++;        
+        $go = file_exists("../api/img/supplyrecords_invoices/INV_".$supplyrecord["ID"]."_".$count.".png");
     }    
     while($go);
-
+    
 
     if ($supplyrecord["TYPE"] == "PO")
     {
@@ -4418,7 +4429,7 @@ function renderSupplyRecordDetail($data,$action){
     }
     
 
-    if (count($items) > 0){
+    if ($items != null){
 
       $body .= "<table border='1' id='resultTable'>
         <thead><tr>
@@ -4447,27 +4458,28 @@ function renderSupplyRecordDetail($data,$action){
       $total = 0;
       foreach($items as $item)
       {           
-        $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["RECEPTION_QTY"]);
+        $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);
         $item["AMT"] = truncatePrice($item["AMT"],4);        
         $total += $item["AMT"];
-        $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
-        $item["VALIDATION_QTY"] = truncatePrice($item["VALIDATION_QTY"],2);
+        $item["PPSS_ORDER_QTY"] = truncatePrice($item["PPSS_ORDER_QTY"],2);
+        $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
 
-        if (floatval($item["ORDER_QTY"]) != floatval($item["VALIDATION_QTY"]))
-          $validation = "<span style='color:red'>".$item["VALIDATION_QTY"]."</span>";
+        if (floatval($item["PPSS_ORDER_QTY"]) != floatval($item["PPSS_VALIDATION_QTY"]))
+          $validation = "<span style='color:red'>".$item["PPSS_VALIDATION_QTY"]."</span>";
         else 
-          $validation = $item["VALIDATION_QTY"];
+          $validation = $item["PPSS_VALIDATION_QTY"];
 
         $dataSet .= "[
               '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
               '".$item["PRODUCTID"]."',          
               \"".$item["PRODUCTNAME"]."\",
               \"".$item["TRANCOST"]."\",
-              \"".$item["ORDER_QTY"]."\",
+              \"".$item["PPSS_ORDER_QTY"]."\",
               \"".$validation."\",
-              \"".$item["RECEPTION_QTY"]."\",
+              \"".$item["PPSS_RECEPTION_QTY"]."\",
               \"".$item["AMT"]."\"               
               ],";
+        $total++;              
       }
       $dataSet = rtrim($dataSet,",");        
       $body .= "  
@@ -4495,7 +4507,7 @@ function renderSupplyRecordDetail($data,$action){
         if($action == "RCV") 
         {
           if ($supplyrecord["LINKEDPO"] != null)
-            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text' value='".$rr["LINKEDPO"]."'><br>";
+            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text' value='".$supplyrecord["LINKEDPO"]."'><br>";
           else 
             $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text'><br>";
         }
@@ -4507,7 +4519,7 @@ function renderSupplyRecordDetail($data,$action){
 
         $body .=  "<center>
                 <input type='hidden' id='detailtype' name='detailtype' value='".$action."'>
-                <input type='hidden' id='identifier' name='identifier' value='".$data["receptionrecord"]["ID"]."'>
+                <input type='hidden' id='identifier' name='identifier' value='".$supplyrecord["ID"]."'>
                 <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
                 (Sign with your trackpad or mouse)<br>";
     
@@ -4527,7 +4539,8 @@ function renderSupplyRecordDetail($data,$action){
                <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
-    }        
+    }  
+    return $body;      
 }
 
 function renderSupplyRecordSearch($data){
@@ -4646,11 +4659,11 @@ function renderSupplyRecordSearch($data){
               '<a href=\"?display=receptionRecordDetail&entity=receptionRecordDetail&action=no&ID=".$item["ID"]."\">DETAILS</a>',
               '".$item["TYPE"]."',
               '".$item["STATUS"]."',
-              ".$VAL.",
-              ".$PCH.",
-              ".$WH.",
-              ".$RCV.",
-              ".$ACC.",              
+              '".$VAL."',
+              '".$PCH."',
+              '".$WH."',
+              '".$RCV."',
+              '".$ACC."',              
               \"".$item["PONUMBER"]."\",
               \"".$item["VENDNAME"]."\",                    
               \"".$item["LAST_UPDATED"]."\"],";

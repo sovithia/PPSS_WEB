@@ -43,7 +43,8 @@ class MODELS
 class Service
 {
 	
-	const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
+	//const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
+	const BaseURL = "http://phnompenhsuperstore.com/api/api_dev.php";	
 	const BaseURLIntra = "http://phnompenhsuperstore.com/api/intrapi.php";
 	const BaseURLEcommerce = "http://phnompenhsuperstore.com/api/api_ecommerce.php";	
 
@@ -154,6 +155,7 @@ class Service
 
  	// NEW
  	const ResourceSupplyRecord = Service::BaseURL."/supplyrecord";
+ 	const ResourceSupplyRecordDetails = Service::BaseURL."/supplyrecorddetails";
  	const ResourceItemRequestAction = Service::BaseURL."/itemrequestaction";
 
 	const modelRoute = array( 		
@@ -240,6 +242,8 @@ class Service
 
 
 						 	  "supplyrecord" => Service::ResourceSupplyRecord,
+						 	  "supplyrecorddetails" => Service::ResourceSupplyRecordDetails,
+
 						 	  "itemrequestaction" => Service::ResourceItemRequestAction,
 
 

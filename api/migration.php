@@ -1,5 +1,6 @@
 <?php
-
+ini_set('max_execution_time', 0);
+ini_set('memory_limit', '-1');
 
 function getDatabase()
 { 
@@ -37,7 +38,8 @@ function goRR()
 
 	$sql = "SELECT * FROM RECEPTION_RECORD";
 
-	$req=$conn->prepare($sql);	
+	$req=$indb->prepare($sql);	
+
 	$req->execute(array()); 
 	$items=$req->fetchAll(PDO::FETCH_ASSOC);
 	foreach($items as $rr){
@@ -46,29 +48,35 @@ function goRR()
 		VALIDATOR_USER,PURCHASER_USER,WAREHOUSE_USER,RECEIVER_USER,ACCOUNTANT_USER,
 		PODATE,LINKEDPO,NOPONOTE,CANCELER,LAST_UPDATED) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-		$req1=$conn->prepare($iSQL);	
+		$req1=$indb->prepare($iSQL);	
 		$req1->execute(array($rr["PONUMBER"],$rr["STATUS"],$rr["TYPE"],$rr["VENDID"],$rr["VENDNAME"],
 							$rr["XWAREHOUSE_USER"],$rr["PURCHASER_USER"],$rr["WAREHOUSE_USER"],$rr["RECEIVER_USER"],$rr["ACCOUNTANT_USER"],
 							$rr["PODATE"],$rr["LINKEDPO"],$rr["NOPONOTE"],$rr["CANCELER"],$rr["LAST_UPDATED"])); 
 
 		$lastID = $indb->lastInsertId();
+
+		echo "INSERTED SUPPLY_RECORD WITH ID".$lastID."\n";	
 		$xwhsig = $rr["XWAREHOUSESIGNATUREIMAGE"];
 		$pchsig = $rr["PURCHASERSIGNATUREIMAGE"];
 		$whsig = $rr["WAREHOUSESIGNATUREIMAGE"];
 		$rcvsig = $rr["RECEIVERSIGNATUREIMAGE"];
 		$accsig = $rr["ACCOUNTANTSIGNATUREIMAGE"];
-		file_put_contents("./img/supplyrecords_signatures/VAL_".$lastID.".png", $xwhsig)
-		file_put_contents("./img/supplyrecords_signatures/PCH_".$lastID.".png", $pchsig)
-		file_put_contents("./img/supplyrecords_signatures/WH_".$lastID.".png", $whsig)
-		file_put_contents("./img/supplyrecords_signatures/RCV_".$lastID.".png", $rcvsig)
-		file_put_contents("./img/supplyrecords_signatures/ACC_".$lastID.".png", $accsig)
+		file_put_contents("./img/supplyrecords_signatures/VAL_".$lastID.".png", $xwhsig);
+		file_put_contents("./img/supplyrecords_signatures/PCH_".$lastID.".png", $pchsig);
+		file_put_contents("./img/supplyrecords_signatures/WH_".$lastID.".png", $whsig);
+		file_put_contents("./img/supplyrecords_signatures/RCV_".$lastID.".png", $rcvsig);
+		file_put_contents("./img/supplyrecords_signatures/ACC_".$lastID.".png", $accsig);
 
 		$invoices = json_decode($rr["INVOICEJSONDATA"],true);
-		$count = 1;
-		foreach($invoices as $invoice){
-			file_put_contents("./img/supplyrecords_invoices/INV_".$lastID."_".$count.".png", base64_decode($invoice));
+		if (count($invoices) > 0)
+		{
+			$count = 1;		
+			foreach($invoices as $invoice){
+				file_put_contents("./img/supplyrecords_invoices/INV_".$lastID."_".$count.".png", base64_decode($invoice));
+			}
 		}
-		break;
+		sleep(1);
+		//break;
 	}
 }	
 
@@ -79,9 +87,10 @@ function goIRR()
 	$db = getDatabase();
 
 	$sql = "SELECT * FROM ITEMRECEPTIONNED";
-	$req=$conn->prepare($sql);
-	$req->execute(array($)); 
+	$req=$indb->prepare($sql);
+	$req->execute(array()); 
 	$items=$req->fetchAll(PDO::FETCH_ASSOC);
+	$count = 1;
 
 	foreach($items as $item){
 		$uSQL = "UPDATE PODETAIL SET PPSS_ORDER_QTY = ?,
@@ -89,12 +98,14 @@ function goIRR()
 									 PPSS_RECEPTION_QTY = ?
 									 WHERE PRODUCTID = ? 
 									 AND PONUMBER = ?";
-		$req1=$conn->prepare($uSQL);
-		$req1->execute($item["ORDER_QTY"],$item["VALIDATION_QTY"],$item["RECEPTION_QTY"],$item["PRODUCTID"],$item["PONUMBER"]);
-		break;
+		$req1=$db->prepare($uSQL);
+		$req1->execute(array($item["ORDER_QTY"],$item["VALIDATION_QTY"],$item["RECEPTION_QTY"],$item["PRODUCTID"],$item["PONUMBER"]));
+		echo "UPDATING PODETAIL WITH ID ".$item["PONUMBER"]." ".$count."\n";	
+
+		$count++;		
 	}
 }
 
-goRR();
+goIRR();
 
 ?>

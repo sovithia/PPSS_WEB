@@ -3715,7 +3715,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 	$status = $request->getAttribute('status');
 	if ($status == "WAITING")
-		createReceptionRecordForPO();
+		createSupplyRecordForPO();
 
 	if ($status == "ALL"){
 		$sql = "SELECT *
@@ -3728,7 +3728,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	else {
 		$sql = "SELECT *
-			FROM RECEPTION_RECORD 
+			FROM SUPPLY_RECORD 
 			WHERE STATUS = ?
 			AND TYPE = 'PO' 
 			ORDER BY LAST_UPDATED DESC";	
@@ -3780,7 +3780,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
-	if (isset($json["INVOICEJSONDATA"]) // PO 
+	if (isset($json["INVOICEJSONDATA"])) // PO 
 	{
 
 		$sql = "INSERT INTO SUPPLY_RECORD (,WAREHOUSE_USER,PURCHASER_USER,PONUMBER,STATUS,TYPE) 
@@ -3953,6 +3953,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
+	$db2 = getDatabase();
+
 	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -3965,7 +3967,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	{
 		if ($rr["LINKEDPO"] != null)
 		{
-			$db2 = getDatabase();
+			
 			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 			$req = $db2->prepare($sql);
 			$req->execute(array($rr["LINKEDPO"]));
@@ -3975,7 +3977,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	else 
 	{
 		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
-		$req = $db->prepare($sql);
+		$req = $db2->prepare($sql);
 		$req->execute(array($rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
 		$rr["items"] = $poitems;
