@@ -1,5 +1,8 @@
 *.sqlite
 public/*
-*.DS_Store
+.DS_Store
 intra/.DS_Store
 intra/images/.DS_Store
+intra/images/products/*
+api/.DS_Store
+api/img/.DS_Store
