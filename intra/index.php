@@ -103,7 +103,17 @@ function getData($display,$entity,$param)
     $params .= (strlen($param["status"]) > 0)  ? "&status=".$param["status"] : "";
     $params .= (strlen($param["potype"]) > 0)  ? "&potype=".$param["potype"] : "";   
     return Service::ListEntity($entity,$params);
-  }
+  } 
+  else if ($display == "supplyrecordsearch" && isset($param["potype"]))
+  {
+    $params = "?a=1";
+    $params .= (strlen($param["ponumber"]) > 0)  ? "&ponumber=".$param["ponumber"] : "";
+    $params .= (strlen($param["start"]) > 0)  ? "&start=".$param["start"] : "";
+    $params .= (strlen($param["end"]) > 0)  ? "&end=".$param["end"] : "";
+    $params .= (strlen($param["status"]) > 0)  ? "&status=".$param["status"] : "";
+    $params .= (strlen($param["potype"]) > 0)  ? "&potype=".$param["potype"] : "";   
+    return Service::ListEntity($entity,$params);
+  }  
   else if ( $display == "itemsearch" && isset($param["keyword"]) ) // 
   {   
     $params = "?a=1";
@@ -258,12 +268,17 @@ function getData($display,$entity,$param)
   else if ($display == "trombidetail" 
     || $display == "schedule" || $display == "restday" || $display == "podetail" ||
     $display == "receivedpodetail" || $display == "supplieritems" || $display == "supplierpurchaseorders"
-    || $display == "receptionRecordDetail" || $display == "receptionRecordDetailNOPO" || $display == "vaultdetail")
+    || $display == "receptionRecordDetail" || $display == "receptionRecordDetailNOPO" || $display == "vaultdetail" ||
+    $display == "supplyrecorddetail")
   {                                                  
     return Service::ListEntity($entity,$param["ID"]);
   }    
   else if ($display == "mywaitingpo" || $display == "mycompletedpo" || $display == "myreceivedpo"){
       return Service::ListEntity($entity,$_SESSION["USER"]["login"]);          
+  }
+  else if ($display == "supplyrecordlist" ||  $display == "itemrequestactionlist" )
+  {
+      return Service::ListEntity($entity,$param["type"]);          
   }
   else if ($display == "scheduleAll" || $display == "trombi" || $display == "supplierlist" || 
            $display == "salarylist" || $display == "restdaylist" || $display == "lowprofit" || 
@@ -457,11 +472,22 @@ function renderBody()
       return renderBarcodeGenerator($data);  
   else if ($display == "custombarcode")  
       return renderCustomBarcodeList($data);
-
   // FINANCE
   else if ($display == "bank")
     return renderBank($data);  
 
+
+  else if ($display == "itemrequestactionlist")
+    return renderItemRequestActionList($data);
+  else if ($display == "supplyrecordlist")
+    return renderSupplyRecordList($data);
+  else if ($display == "supplyrecordsearch")
+    return renderSupplyRecordSearch($data);
+  else if ($display == "supplurecorddetail")
+    return renderSupplyRecordDetail($data);
+  
+
+  // DEPRECATION
   else if ($display == "whdone")
     return renderWHDone($data);
   else if ($display == "whdone2")
@@ -474,37 +500,38 @@ function renderBody()
     return renderACCDone($data);
   else if ($display == "acctodo")
     return renderACCTodo($data);
-
   else if ($display == "xwhtodo")
     return renderXWHTodo($data);
   else if ($display == "pchtodo")
     return renderPCHTodo($data);  
   else if ($display == "pchdone")
     return renderPCHDone($data);
-
-
-  // regarder comment bien utiliser les deux parametres display et entity
   else if ($display == "whdone")
-    renderWHDone($data);
+    return renderWHDone($data);
   else if ($display == "receivetodo")  
-    renderRCVTodo($data);
+    return renderRCVTodo($data);
   else if ($display == "receivedone")
-    renderRCVDone($data);
+    return renderRCVDone($data);
   else if ($display == "acctodo")
-    renderACCTodo($data);
+    return renderACCTodo($data);
   else if ($display == "accdone")
-    renderACCDone($data);
+    return renderACCDone($data);
 
- else if ($display == "receptionrecordsearch")
+
+  // DEPRECATION
+  else if ($display == "receptionrecordsearch")
     return renderReceptionRecordSearch($data);
-
   else if ($display == "receptionRecordDetail")
     return renderReceptionRecordDetail($data);
   else if ($display == "receptionRecordDetailNOPO")
     return renderReceptionRecordDetailNOPO($data);
+
+
   else if ($display == "vault")
     return renderVault($data);  
   else if ($display == "vaultdetail")
+
+
     return renderVaultDetail($data);
   else if ($display == "lowseller")
     return renderLowSeller($data);
@@ -513,7 +540,7 @@ function renderBody()
   else if ($display == "receptioncancel")
     return renderReceptionCancel($data);
 
-  
+
   return renderProfile();
 }
 

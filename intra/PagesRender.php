@@ -4150,9 +4150,529 @@ function renderBank($data)
 }
 
 
+/**********************/
+/**** ItemRequest ****/
 
-function renderWHDone($data,$cancel = true)
+function renderItemRequestActionList($data)
 {
+
+}
+/**********************/
+
+/**********************/
+/**** SupplyRecord ****/
+/**********************/
+
+
+function renderSupplyRecordList($data,$action){
+   $itemsPO = $data["PO"];
+   $itemsNOPO = $data["NOPO"];
+
+   $body = "<script>
+              function showPO(){
+                document.getElementById('nopo').style.display = 'none';
+                document.getElementById('po').style.display = 'block';
+              }
+              function showNOPO(){
+                 document.getElementById('po').style.display = 'none';
+                 document.getElementById('nopo').style.display = 'block';
+              }
+
+              function cancelReception(author,identifier,ponumber){
+                var result = confirm('Are you sure you want to cancel?');
+                if (result) 
+                {
+                  var ItemJSON = '';                  
+                  ItemJSON = {'IDENTIFIER' : identifier,
+                              'AUTHOR'     : author, 
+                              'PONUMBER'   : ponumber,                                                      
+                              'ACTIONTYPE' : 'WHCANCEL' };   
+                  var URL = 'http://phnompenhsuperstore.com/api/api.php/receptionrecord'; 
+                  var xmlhttp = new XMLHttpRequest();
+                  xmlhttp.onreadystatechange = function () 
+                  {
+                      document.getElementById('status_' + identifier).innerHTML = 'ORDERED';
+                  }
+                  xmlhttp.open('PUT', URL,false);
+                  xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+                  xmlhttp.send(JSON.stringify(ItemJSON)); 
+                }                                                                                            
+                else
+                {
+                  alert('canceled');
+                }
+              }                           
+            </script>
+            <center><button onclick='showPO()'>PO</button> 
+            <button onclick='showNOPO()' >NO PO</button><center>";
+
+   // PO // 
+   $body .= "<div id='po'>";
+   $body .=   "PO Total : ".count($itemsPO);              
+   $body .=   "<table border='1' id='resultTable1'>
+               <thead><tr>
+                  <th>DETAILS</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>                  
+                  <th>PO NUMBER</th>
+                  <th>VENDOR</th> 
+                  <th>STATUS</th>
+                  <th>LAST UPDATED</th>
+                  <th>CANCEL</th>
+               </tr></thead>
+
+               <tfoot><tr>
+                  <th>DETAILS</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>                  
+                  <th>PO NUMBER</th>
+                  <th>VENDOR</th> 
+                  <th>STATUS</th>
+                  <th>LAST UPDATED</th>
+                  <th>CANCEL</th>
+               </tr></tfoot>
+               </table>
+               ";  
+    $dataSet1 = "";
+    $show = "";  
+    if ($cancel == false)
+      $show = "style=\"display:none\"";
+
+    foreach($itemsPO as $item)
+    {   
+            
+        $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
+        $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
+        $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
+        $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
+        $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
+        $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+
+         $dataSet1 .= 
+         "[ 
+
+          '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
+          ".$VAL.",
+          ".$PCH.",
+          ".$WH.",
+          ".$RCV.",
+          ".$ACC.",
+          '".$item["PONUMBER"]."',
+          \"".$item["VENDNAME"]."\",
+          '<span id=\"status_".$item["ID"]."\">".$item["STATUS"]."</span>',
+          '".$item["LAST_UPDATED"]."',
+          '".$item["LAST_UPDATED"]."'
+          '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>',
+          
+
+          ],";
+    }
+     $dataSet1 = rtrim($dataSet1,",");        
+        $body .= "  
+        <script>      
+        var dataSet1 = [".$dataSet1."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#resultTable1').DataTable({                
+         data:dataSet1, 
+         'lengthMenu':[-1],          
+           });
+        });
+      </script>
+    ";   
+    $body .=  "</div>"; 
+
+
+    // NOPO
+    $body .= "<div id='nopo' style='display:none'>";
+    $body .= "NO PO Total : ".count($itemsNOPO);              
+    $body .=   "<table border='1' id='resultTable2'>
+               <thead><tr>
+                  <th>DETAILS</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>                  
+                  <th>NOPONOTE</th>
+                  <th>LINKEDPO</th>
+                  <th>VENDOR</th> 
+                  <th>STATUS</th>
+                  <th>LAST UPDATED</th>
+                  <th>CANCEL</th>
+               </tr></thead>
+
+               <tfoot><tr>
+                  <th>DETAILS</th>
+                  <th>VAL</th>
+                  <th>PCH</th>
+                  <th>WH</th>
+                  <th>RCV</th>
+                  <th>ACC</th>                  
+                  <th>NOPONOTE</th>
+                  <th>LINKEDPO</th>
+                  <th>VENDOR</th> 
+                  <th>STATUS</th>
+                  <th>LAST UPDATED</th>
+                  <th>CANCEL</th>
+               </tr></tfoot>
+               </table>
+               ";                  
+    $dataSet2 = "";             
+    foreach($itemsNOPO as $item)
+    {           
+          $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
+          $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
+          $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
+          $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
+          $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
+          $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+
+          $dataSet .= "[    
+          '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
+          ".$VAL.",
+          ".$PCH.",
+          ".$WH.",
+          ".$RCV.",
+          ".$ACC.",
+          \"".$item["NOPONOTE"]."\",
+          \"".$item["LINKEDPO"]."\",
+          \"".$item["VENDOR"]."\",
+          \"".$item["ID"]."\",
+          \"".$item["STATUS"]."\",
+          \"".$item["LAST_UPDATED"]."\",
+          '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>'
+          ],";
+    }
+    $dataSet2 = rtrim($dataSet,",");        
+        $body .= "  
+        <script>  
+        var dataSet2 = [".$dataSet2."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#resultTable2').DataTable({                
+        data:
+        dataSet2,         
+        'lengthMenu':[-1]
+        });
+      });
+      </script>
+    ";   
+    $body .= "</div>"; 
+    return $body;  
+}
+
+function renderSupplyRecordDetail($data,$action){
+  $supplyrecord = $data["supplyrecord"];
+  $items = $data["items"];
+
+  $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
+  $VAL = "<img src='".$base."VAL_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["VALIDATORUSER"] ;
+  $PCH = "<img src='".$base."PCH_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["PURCHASERUSER"] ;
+  $WH = "<img src='".$base."WH_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["WAREHOUSEUSER"] ;
+  $RCV = "<img src='".$base."RCV_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["RECEIVERUSER"] ;
+  $ACC = "<img src='".$base."ACC_".$supplyrecord["ID"].".png' alt='N/A'><br>".$supplyrecord["ACCOUNTANTUSER"] ;
+
+  $body = "<table>
+                <tr>
+                    <th width='20%'>Validator</th>
+                    <th width='20%'>Purchaser</th>                  
+                    <th width='20%'>Warehouse</th>
+                    <th width='20%'>Receiver</th>
+                    <th width='20%'>Accountant</th>
+                </tr>
+            <tr>
+              <td>".$VAL."</td>
+              <td>".$PCH."</td>
+              <td>".$WH."</td>
+              <td>".$RCV."</td>
+              <td>".$ACC."</td>
+            </tr>
+            </table><br>";
+    $go = true;
+    
+    
+
+    $count = 1;
+    do{
+        $filename = "./img/supplyrecords_invoices/INV_".$supplyrecord["ID"]."_".$count.".png";
+        $body .= "<center><img height='300px' onclick=enlargeimage('".$filename."') src='".$filename."'><center<br>";
+        $go = file_exists($filename);
+    }    
+    while($go);
+
+
+    if ($supplyrecord["TYPE"] == "PO")
+    {
+      $body .= "<center><b>".$supplyrecord["PONUMBER"]."</b></center><br>";  
+    }
+    else if ($supplyrecord["TYPE"] == "NOPO")
+    {
+      $body .= "<center><b>".$supplyrecord["LINKEDPO"]."</b></center><br>";   
+    }
+    
+
+    if (count($items) > 0){
+
+      $body .= "<table border='1' id='resultTable'>
+        <thead><tr>
+          <th>IMAGE</th>
+          <th>BARCODE</th>
+          <th>NAME</th>
+          <th>COST</th>
+          <th>ORDER QTY</th>
+          <th>VALIDATION QTY</th>
+          <th>RECEPTION QTY</th>
+          <th>AMT</th>
+        </tr></thead>        
+        <tfoot><tr>
+          <th>IMAGE</th>
+          <th>BARCODE</th>
+          <th>NAME</th>
+          <th>COST</th>
+          <th>ORDER QTY</th>
+          <th>VALIDATION QTY</th>
+          <th>RECEPTION QTY</th>
+          <th>AMT</th>
+        </tr></tfoot>
+        </table><br><br>";  
+
+      $dataSet = "";
+      $total = 0;
+      foreach($items as $item)
+      {           
+        $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["RECEPTION_QTY"]);
+        $item["AMT"] = truncatePrice($item["AMT"],4);        
+        $total += $item["AMT"];
+        $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
+        $item["VALIDATION_QTY"] = truncatePrice($item["VALIDATION_QTY"],2);
+
+        if (floatval($item["ORDER_QTY"]) != floatval($item["VALIDATION_QTY"]))
+          $validation = "<span style='color:red'>".$item["VALIDATION_QTY"]."</span>";
+        else 
+          $validation = $item["VALIDATION_QTY"];
+
+        $dataSet .= "[
+              '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
+              '".$item["PRODUCTID"]."',          
+              \"".$item["PRODUCTNAME"]."\",
+              \"".$item["TRANCOST"]."\",
+              \"".$item["ORDER_QTY"]."\",
+              \"".$validation."\",
+              \"".$item["RECEPTION_QTY"]."\",
+              \"".$item["AMT"]."\"               
+              ],";
+      }
+      $dataSet = rtrim($dataSet,",");        
+      $body .= "  
+            <script>  
+            var dataSet = [".$dataSet."];
+            var table;        
+            table =  $(document).ready( function () {
+             $('#resultTable').DataTable({                
+            data:
+            dataSet, 
+            'lengthMenu':[-1]
+            });
+          });
+          </script>
+      ";   
+      $body .= "<b>Total : ". $total."</b><br><br>";
+     }
+     else
+     {
+        $body .= "<b>NO ITEMS</b><br><br>";
+     }
+    
+    if ($action != "NO")
+    {
+        if($action == "RCV") 
+        {
+          if ($supplyrecord["LINKEDPO"] != null)
+            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text' value='".$rr["LINKEDPO"]."'><br>";
+          else 
+            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text'><br>";
+        }
+        else 
+        {
+           $body .= "<br>LINKED PONUMBER : ".$supplyrecord["LINKEDPO"]."<br>";
+        }
+
+
+        $body .=  "<center>
+                <input type='hidden' id='detailtype' name='detailtype' value='".$action."'>
+                <input type='hidden' id='identifier' name='identifier' value='".$data["receptionrecord"]["ID"]."'>
+                <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
+                (Sign with your trackpad or mouse)<br>";
+    
+        $body .= "
+            <button type='button' onclick='zkSignature.clear()'>
+                Clear Signature
+               </button>
+          
+               <div id='canvas' style='width:466px;border:1px solid black;!important'>
+                Canvas is not supported.
+               </div>
+
+               <script>
+                zkSignature.capture();
+               </script>
+        
+               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+                SEND
+               </button><center><br><br><br>";
+    }        
+}
+
+function renderSupplyRecordSearch($data){
+   $statuses = array("ALL","WAITING","VALIDATED","ORDERED","DELIVERED","RECEIVED","PAID");
+   $potypes = array("ALL","PO","NOPO");
+
+   $ponumber = isset($_GET["ponumber"]) ? $_GET["ponumber"] : "";
+   $start = isset($_GET["start"]) ? $_GET["start"] : "2000-1-1";
+   $end = isset($_GET["end"]) ? $_GET["end"] : "2050-1-1";
+   $status = isset($_GET["start"]) ? $_GET["start"] : "";
+   $potype = isset($_GET["end"]) ? $_GET["end"] : "";
+
+
+   $body = "";  
+   $body .= "<div class='col s12 m8 l9'>
+              <div class='row margin'>
+                <form class='col s12' method='GET'>
+        
+                <div class='row'>
+                    <div class='input-field col s12'>
+                      ".dateSelect("start",$start)."
+                    </div>
+                </div>
+
+                <div class='row'>
+                    <div class='input-field col s12'>                        
+                        ".dateSelect("end",$end)."
+                    </div>
+                </div>
+
+
+              <div class='row'>
+                  <div class='input-field col s12'>
+                    ".elemSelect($statuses,"status",12,$status)."
+                  </div>
+              </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>
+                    ".elemSelect($potypes,"potype",12,$potype)."
+                  </div>
+              </div>
+
+                <div class='row'>
+                   <div class='input-field col s12'>                   
+                      <input id='ponumber' name='ponumber' type='text' value='".$ponumber."' >
+                      <label for='ponumber' class='center-align'>PO Number</label>               
+                   </div>
+                </div>
+
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                      <input type='hidden' name='display' value='receptionrecordsearch'>
+                      <input type='hidden' name='entity' value='receptionrecordsearch'>
+                      <input type='hidden' name='action' value='receptionrecordsearch'>
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
+                     </div>
+                  </div>
+            </form>
+              </div>
+             </div> 
+              ";    
+
+    $items = $data;
+
+  
+    if ($items != null)
+    {
+       $body .=   "<table id='resultTable1'>
+                 <thead><tr>
+                    <th>DETAILS</th> 
+                    <th>TYPE</th>
+                    <th>STATUS</th>
+                    <th>VAL</th>
+                    <th>PCH</th>
+                    <th>WH</th>
+                    <th>RCV</th>
+                    <th>ACC</th>
+                    <th>PONUMBER</th>
+                    <th>VENDOR/NOTE</th> 
+                    <th>LAST UPDATED</th>
+                 </tr></thead>
+
+                 <tfoot><tr>
+                    <th>DETAILS</th> 
+                    <th>TYPE</th>
+                    <th>STATUS</th>
+                    <th>VAL</th>
+                    <th>PCH</th>
+                    <th>WH</th>
+                    <th>RCV</th>
+                    <th>ACC</th>
+                    <th>PONUMBER</th>
+                    <th>VENDOR/NOTE</th> 
+                    <th>LAST UPDATED</th>
+                 </tr></tfoot>
+               </table>
+               ";  
+                $dataSet1 = "";            
+        foreach($items as $item)
+        {   
+          if ($item["TYPE"] == 'NOPO'){
+            $item["PONUMBER"] = $item["LINKEDPO"];
+            $item["VENDOR"] = $item["PONOTE"];
+          }
+
+            $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
+            $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
+            $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
+            $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
+            $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
+            $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+
+
+             $dataSet1 .= "[    
+              '<a href=\"?display=receptionRecordDetail&entity=receptionRecordDetail&action=no&ID=".$item["ID"]."\">DETAILS</a>',
+              '".$item["TYPE"]."',
+              '".$item["STATUS"]."',
+              ".$VAL.",
+              ".$PCH.",
+              ".$WH.",
+              ".$RCV.",
+              ".$ACC.",              
+              \"".$item["PONUMBER"]."\",
+              \"".$item["VENDNAME"]."\",                    
+              \"".$item["LAST_UPDATED"]."\"],";
+        }
+         $dataSet1 = rtrim($dataSet1,",");        
+            $body .= "  
+            <script>      
+            var dataSet1 = [".$dataSet1."];
+            var table;        
+            table =  $(document).ready( function () {
+             $('#resultTable1').DataTable({                
+             data:dataSet1, 
+             'lengthMenu':[-1],          
+               });
+            });
+          </script>
+        ";
+    }
+    return $body;
+}
+
+function renderWHDone($data,$cancel = true){
 
    $itemsPO = $data["PO"];
    $itemsNOPO = $data["NOPO"];
@@ -4244,13 +4764,14 @@ function renderWHDone($data,$cancel = true)
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
                <thead><tr>
-                  <th>DETAILS</th> <th>SIGNATURE</th><th>WH USER</th>
-                  <th>ID</th><th>STATUS</th><th>LAST UPDATED</th>
+                  <th>DETAILS</th> 
+                  <th>WH</th>
+                  <th>NOPONOTE</th><th>VENDOR</th> <th>STATUS</th><th>LAST UPDATED</th><th>CANCEL</th>
                </tr></thead>
 
                <tfoot><tr>
@@ -4288,12 +4809,9 @@ function renderWHDone($data,$cancel = true)
     return $body;  
 }
 
-
-function renderRCVTodo($data)
-{
-      $itemsPO = $data["PO"];
+function renderRCVTodo($data){
+   $itemsPO = $data["PO"];
    $itemsNOPO = $data["NOPO"];
-  
    $body = "<script>
               function showPO(){
                 document.getElementById('nopo').style.display = 'none';
@@ -4347,7 +4865,7 @@ function renderRCVTodo($data)
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
@@ -4392,10 +4910,8 @@ function renderRCVTodo($data)
     return $body;  
 }
 
-
-function renderRCVDone($data)
-{
-     $itemsPO = $data["PO"];
+function renderRCVDone($data){
+   $itemsPO = $data["PO"];
    $itemsNOPO = $data["NOPO"];
   
    $body = "<script>
@@ -4457,7 +4973,7 @@ function renderRCVDone($data)
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
@@ -4512,8 +5028,7 @@ function renderRCVDone($data)
     return $body; 
 }
 
-function renderACCTodo($data)
-{
+function renderACCTodo($data){
    $itemsPO = $data["PO"];
    $itemsNOPO = $data["NOPO"];
   
@@ -4576,7 +5091,7 @@ function renderACCTodo($data)
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
@@ -4624,12 +5139,9 @@ function renderACCTodo($data)
     ";   
     $body .= "</div>"; 
     return $body;   
-
 }
 
-
-function renderACCDone($data)
-{
+function renderACCDone($data){
    $itemsPO = $data["PO"];
    $itemsNOPO = $data["NOPO"];
   
@@ -4700,7 +5212,7 @@ function renderACCDone($data)
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
@@ -4989,9 +5501,7 @@ function renderPCHTodo($data){
     return $body; 
 }
 
-          
 function renderReceptionRecordSearch($data){
-
 
   //
    $statuses = array("ALL","WAITING","VALIDATED","ORDERED","DELIVERED","RECEIVED","PAID");
@@ -5214,7 +5724,7 @@ function renderReceptionRecordAll2($data){
       </script>
     ";   
     $body .=  "</div>"; 
-  // NOPO
+    // NOPO
     $body .= "<div id='nopo' style='display:none'>";
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
@@ -5281,9 +5791,7 @@ function renderReceptionRecordAll2($data){
     return $body; 
 }
 
-
-function renderReceptionRecordDetail($data)
-{
+function renderReceptionRecordDetail($data){
     $action = $_GET["action"];
     $rr = $data["receptionrecord"];
   
@@ -5401,11 +5909,7 @@ function renderReceptionRecordDetail($data)
     return $body;
 }
 
-
-
-
-function renderReceptionRecordDetailNOPO($data)
-{
+function renderReceptionRecordDetailNOPO($data){
  
    $action = $_GET["action"];
     $rr = $data["receptionrecord"];

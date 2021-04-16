@@ -3920,7 +3920,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$count = 1;
 		$res = true;
 		do{
-			$res = unlink("./img/supplyrecords_invoices/".$json["IDENTIFIER"]."_".$count);
+			$res = unlink("./img/supplyrecords_invoices/INV_".$json["IDENTIFIER"]."_".$count.".png");
 			$count++;		
 		}while($res);
 		// Delete the signature		

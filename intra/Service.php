@@ -133,10 +133,7 @@ class Service
 	const ResourceReceptionRecordValidated = Service::BaseURL."/receptionrecordmix/VALIDATED";
 	const ResourceReceptionRecordDelivered = Service::BaseURL."/receptionrecordmix/DELIVERED";
 	const ResourceReceptionRecordReceived = Service::BaseURL."/receptionrecordmix/RECEIVED";
-
 	const ResourceReceptionRecordPaid = Service::BaseURL."/receptionrecordmix/PAID";
-
-
 	const ResourceReceptionRecordDetails = Service::BaseURL."/receptionrecorddetails";
 
 
@@ -154,6 +151,10 @@ class Service
  	const ResourcePriceProgression = Service::BaseURL."/priceprogression";
 
  	const ResourceItemUpdate = Service::BaseURLEcommerce."/items";
+
+ 	// NEW
+ 	const ResourceSupplyRecord = Service::BaseURL."/supplyrecord";
+ 	const ResourceItemRequestAction = Service::BaseURL."/itemrequestaction";
 
 	const modelRoute = array( 		
 							  "sales" => Service::ResourceSales,
@@ -232,20 +233,14 @@ class Service
 						 	  "receptionrecorddelivered" => Service::ResourceReceptionRecordDelivered,
 						 	  "receptionrecordreceived" => Service::ResourceReceptionRecordReceived,
 						 	  "receptionrecordordered" => Service::ResourceReceptionRecordOrdered,
-
 						 	  "receptionrecordpaid" => Service::ResourceReceptionRecordPaid,
 						 	  "receptionrecordsearch" => Service::ResourceReceptionRecordSearch,
-
 						 	  "receptionRecordDetail" => Service::ResourceReceptionRecordDetails,
 						 	  "receptionRecordDetailNOPO" => Service::ResourceReceptionRecordDetails,
 
 
-						 	  "vaultstrtodo" => Service::ResourceVaults."/vaultstrtodo",
-						 	  "vaultstrdone" => Service::ResourceVaults."/vaultstrdone",
-						 	  "vaultwhtodo" => Service::ResourceVaults."/vaultwhtodo",
-						 	  "vaultwhdone" => Service::ResourceVaults."/vaultwhdone",
-						 	  "vaultpchtodo" => Service::ResourceVaults."/vaultpchtodo",
-						 	  "vaultpchdone" => Service::ResourceVaults."/vaultpchdone",
+						 	  "supplyrecord" => Service::ResourceSupplyRecord,
+						 	  "itemrequestaction" => Service::ResourceItemRequestAction,
 
 
 						 	  "vaultdetail" => Service::ResourceVault,

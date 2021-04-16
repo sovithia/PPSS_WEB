@@ -326,53 +326,188 @@ function renderLeftSidebar()
                   <li '.hoverColor("sales").'><a href="?display=sales&action=no&entity=sales"><img src="images/sale.png" width="30px" height="30px">Sales</a></li>
                   <li '.hoverColor("adjusteditems").'><a href="?display=adjusteditems&action=no&entity=adjusteditems"><img src="images/adjust.png" width="30px" height="30px">Adjusted Items</a></li>';
 
-            
-  $sectionPURCHASING = '<li class="li-hover"><div class="divider"></div></li>
-            <li  class="li-hover"><p class="ultra-small margin more-text">PURCHASING</p></li>
-            <li '.hoverColor("pchtodo").'><a href="?display=pchtodo&entity=receptionrecordvalidated"><img src="images/purchaser.png" width="30px" height="30px">PO (TODO)</a></li>
-            <li '.hoverColor("pchdone").'><a href="?display=pchdone&entity=receptionrecordordered"><img src="images/purchaser.png" width="30px" height="30px">PO (DONE)</a></li>            
-            <li '.hoverColor("vault","vaultpchdone").'><a href="?display=whdone2&entity=receptionrecorddelivered"><img src="images/warehouse.png" width="30px" height="30px">Items Received(DONE)</a></li>'
-            ;
+  // (itemrequestaction) TYPE                
+  // DEMAND
+  // RESTOCK
+  // TRANSFER
+  // PURCHASE
 
-            /*
-             <li><a href="?display=posearch&entity=posearch"><img src="images/loupe.png" width="30px" height="30px">PO Search</a></li>
-            <li ><a href="?display=mywaitingpo&action=no&entity=mywaitingpo"s><img src="images/postatus.png" width="30px" height="30px">My Waiting PO</a></li>
-            <li ><a href="?display=mycompletedpo&action=no&entity=mycompletedpo"s><img src="images/postatus.png" width="30px" height="30px">My Completed PO</a></li> */;
+  // vDEMAND
+  // vRESTOCK
+  // vTRANSFER
+  // vPURCHASE
+
+  // (supplyrecord) STATUS
+  // WAITING
+  // VALIDATED
+  // ORDERED
+  // DELIVERED                
+  // RECEIVED
+  // PAID            
 
 
+  $sectionSTORECLERK =      '<li  class="li-hover"><div class="divider"></div></li>
+                             <li class="li-hover"><p class="ultra-small margin more-text">STORE CLERK</p></li>
+                            
+                            <li '.hoverColor("ItemRequestDemandCreate").' >
+                            <a href="?display=itemrequestcreate&entity=itemrequestaction" >
+                            <img src="images/icons/STRCLRK/ItemRequestDemandCreatePage.png" width="30px" height="30px">ItemDemand Create CREATE</a></li>
+                          
+                            <li '.hoverColor("ItemRequestDemandSubmittedList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=DEMAND" >
+                            <img src="images/icons/STRCLRK/ItemRequestDemandSubmittedListPage.png" width="30px" height="30px">Item Request(TODO)</a></li>
+                    ';            
 
-  $sectionWAREHOUSE = '<li class="li-hover"><div class="divider"></div></li>
-              <li class="li-hover"><p class="ultra-small margin more-text">WAREHOUSE</p></li>
-              <li '.hoverColor("vault","vaultwhdone").'><a href="?display=whdone&entity=receptionrecorddelivered"><img src="images/warehouse.png" width="30px" height="30px">Items Received(DONE)</a></li>
-  ';
+  $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
+                            <li class="li-hover"><p class="ultra-small margin more-text">STORE</p></li>
+                      
+                            <li '.hoverColor("ItemRequestDemandTodoList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=DEMAND" >
+                            <img src="images/icons/STRSPVR/ItemRequestDemandTodoListPage.png" width="30px" height="30px">ItemDemand(!)</a></li>
+                            
+                            <li '.hoverColor("ItemRequestDemandValidatedList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=vDEMAND" >
+                            <img src="images/icons/STRSPVR/ItemRequestDemandValidatedListPage.png" width="30px" height="30px">ItemDemand(@)</a></li>
+                            
 
+                            <li '.hoverColor("ItemRequestRestockCreate").' >
+                            <a href="?display=itemrequestcreate&entity=itemrequestitemspool&type=RESTOCK" >
+                            <img src="images/icons/STRSPVR/ItemRequestRestockCreatePage.png" width="30px" height="30px">ItemRestock(+)</a></li>
+                            
 
-  $sectionRECEIVING =  '<li class="li-hover"><div class="divider"></div></li>
-            <li  class="li-hover"><p class="ultra-small margin more-text">RECEIVING</p></li>        
+                            <li '.hoverColor("ItemRequestRestockSubmittedList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=RESTOCK" >
+                            <img src="images/icons/STRSPVR/ItemRequestRestockSubmittedListPage.png" width="30px" height="30px">ItemRestock(?)</a></li>
+                            
 
-            <li '.hoverColor("rcvtodo").'><a href="?display=rcvtodo&entity=receptionrecorddelivered"><img src="images/receive_todo.png" width="30px" height="30px">Items(TODO)</a></li>
-            <li '.hoverColor("rcvdone").'><a href="?display=rcvdone&entity=receptionrecordreceived"><img src="images/receive_done.png" width="30px" height="30px">Items(DONE)</a></li>
+                            <li '.hoverColor("ItemRequestTransferTodoList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=TRANSFER" >
+                            <img src="images/icons/STRSPVR/ItemRequestTransferTodoListPage.png" width="30px" height="30px">ItemTransfer(!)</a></li>
+                            
 
-            
-            <li '.hoverColor("custombarcode").'><a href="?display=custombarcode&action=no&entity=custombarcode"><img src="images/barcode.png" width="30px" height="30px">Custom Barcodes List</a></li>
-            <li '.hoverColor("barcodegenerator").'><a href="?display=barcodegenerator&action=no&entity=barcodegenerator"><img src="images/barcodesgenerator.png" width="30px" height="30px">Barcode generator</a></li>
-            <li '.hoverColor("pricecalculator").'><a href="?display=pricecalculator&action=no&entity=pricecalculator"><img src="images/calculator.png" width="30px" height="30px">Price Calculator</a></li>';           
-
-            //<li><a href="?display=receivedposearch&entity=receivedposearch"><img src="images/loupe.png" width="30px" height="30px">ReceivedPO Search</a></li>
-            //<li ><a href="?display=myreceivedpo&entity=myreceivedpo"><img src="images/poreceived.png" width="30px" height="30px">My ReceivedPO</a></li>
-
-  $sectionACCOUNTING = '<li class="li-hover"><div class="divider"></div></li>
-            <li '.hoverColor("").' class="li-hover"><p class="ultra-small margin more-text">ACCOUNTING</p></li>
-
-            <li '.hoverColor("acctodo").'><a href="?display=acctodo&entity=receptionrecordreceived"><img src="images/acc_todo.png" width="30px" height="30px">Items(Todo)</a></li>
-            <li '.hoverColor("accdone").'><a href="?display=accdone&entity=receptionrecordpaid"><img src="images/acc_done.png" width="30px" height="30px">Items(Done)</a></li>
-            ';
-
-  $sectionSTORE = '<li  class="li-hover"><div class="divider"></div></li>
-                      <li '.hoverColor("").' class="li-hover"><p class="ultra-small margin more-text">STORE</p></li>
-                      <li '.hoverColor("vault","vaultstrtodo").' ><a href="?display=vault&entity=vaultstrtodo" ><img src="images/vault.png" width="30px" height="30px">Item Request(TODO)</a></li>
-                      <li '.hoverColor("vault","vaultstrdone").' ><a href="?display=vault&entity=vaultstrdone" ><img src="images/vault.png" width="30px" height="30px">Item Request(DONE)</a></li>
+                            <li '.hoverColor("ItemRequestTransferValidatedList").' >
+                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=vTRANSFER" >
+                            <img src="images/icons/STRSPVR/ItemRequestTransferValidatedListPage.png" width="30px" height="30px">ItemTransfer(@)</a></li>
+                            
+                            
                      ';
+
+ $sectionVALIDATOR =     '<li class="li-hover"><div class="divider"></div></li>
+                           <li class="li-hover"><p class="ultra-small margin more-text">VALIDATOR</p></li>
+                          
+                           <li '.hoverColor("SupplyRecordListVALTodo").' >
+                           <a href="?display=supplyrecordlist&supplyrecord&status=WAITING" >
+                           <img src="images/icons/VAL/SupplyRecordListVALTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
+
+                           <li '.hoverColor("SupplyRecordListVALDone").' >
+                           <a href="?display=supplyrecordlist&supplyrecord&status=VALIDATED" >
+                           <img src="images/icons/VAL/SupplyRecordListVALDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>                        
+                          ';
+
+
+  $sectionWAREHOUSECLERK =     '<li class="li-hover"><div class="divider"></div></li>
+                           <li class="li-hover"><p class="ultra-small margin more-text">WAREHOUSE</p></li>
+                          
+                           <li '.hoverColor("SupplyRecordListWHTodo").' >
+                           <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED" >
+                           <img src="images/icons/WH/SupplyRecordListWHTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
+
+                           <li '.hoverColor("SupplyRecordListWHDone").' >
+                           <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED" >
+                           <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+
+                           <li '.hoverColor("ItemRequestRestockTodoList").' >
+                           <a href="?display=itemrequestlist&entity=itemrequestaction&type=RESTOCK" >
+                           <img src="images/icons/WH/ItemRequestRestockTodoListPage.png" width="30px" height="30px">ItemRestock(!)</a></li>
+
+                           <li '.hoverColor("ItemRequestRestockValidatedList").' >
+                           <a href="?display=itemrequestlist&entity=itemrequestaction&type=vRESTOCK" >
+                           <img src="images/icons/WH/ItemRequestRestockValidatedListPage.png" width="30px" height="30px">ItemRestock(@)</a></li>
+
+
+                           <li '.hoverColor("ItemRequestPurchaseCreate").' >
+                           <a href="?display=itemrequestcreate&entity=itemrequestitemspool&type=PURCHASE" >
+                           <img src="images/icons/WH/ItemRequestPurchaseCreatePage.png" width="30px" height="30px">ItemPurchase(+)</a></li>
+                           
+                           <li '.hoverColor("ItemRequestPurchaseSubmittedList").' >
+                           <a href="?display=itemrequestlist&entity=itemrequestaction&type=PURCHASE" >
+                           <img src="images/icons/WH/ItemRequestPurchaseSubmittedListPage.png.png" width="30px" height="30px">ItemPurchase(!)</a></li>
+                           
+                           <li '.hoverColor("ItemRequestTransferCreate").' >
+                           <a href="?display=itemrequestlist&entity=itemrequestitemspool&type=TRANSFER" >
+                           <img src="images/icons/WH/ItemRequestTransferCreatePage.png" width="30px" height="30px">ItemTransfer(+)</a></li>
+
+                           <li '.hoverColor("ItemRequestTransferSubmittedList").' >
+                           <a href="?display=itemrequestlist&entity=itemrequestaction&type=TRANSFER" >
+                           <img src="images/icons/WH/ItemRequestTransferSubmittedListPage.png" width="30px" height="30px">ItemTransfer(?)</a></li>
+                           ';
+
+                        
+
+  $sectionPURCHASER = '<li class="li-hover"><div class="divider"></div></li>
+                        <li  class="li-hover"><p class="ultra-small margin more-text">PURCHASER</p></li>
+                                                
+                        <li '.hoverColor("SupplyRecordListPCHTodo").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED" >
+                        <img src="images/icons/PCH/SupplyRecordListPCHTodoPage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                        <li '.hoverColor("SupplyRecordListPCHDone").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED" >
+                        <img src="images/icons/PCH/SupplyRecordListPCHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                        <li '.hoverColor("ItemRequestPurchaseTodoList").' >
+                        <a href="?display=itemrequestlist&entity=itemrequestaction&type=PURCHASE" >
+                        <img src="images/icons/PCH/ItemRequestPurchaseTodoListPage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                        <li '.hoverColor("ItemRequestPurchaseValidatedList").' >
+                        <a href="?display=itemrequestlist&entity=itemrequestaction&type=vPURCHASE" >
+                        <img src="images/icons/PCH/ItemRequestPurchaseValidatedListPage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                      
+                        <li '.hoverColor("pchtodo").'><a href="?display=pchtodo&entity=receptionrecordvalidated"><img src="images/purchaser.png" width="30px" height="30px">PO (TODO)</a></li>
+                        <li '.hoverColor("pchdone").'><a href="?display=pchdone&entity=receptionrecordordered"><img src="images/purchaser.png" width="30px" height="30px">PO (DONE)</a></li>            
+
+                        ';
+            
+
+
+  $sectionRECEIVER =  '<li class="li-hover"><div class="divider"></div></li>
+                        <li  class="li-hover"><p class="ultra-small margin more-text">RECEIVING</p></li>        
+
+                        <li '.hoverColor("SupplyRecordListRCVTodo").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED" >
+                        <img src="images/icons/RCV/SupplyRecordListRCVTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
+
+                        <li '.hoverColor("SupplyRecordListRCVDone").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED" >
+                        <img src="images/icons/RCV/SupplyRecordListRCVDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                        
+                        <li '.hoverColor("rcvtodo").'><a href="?display=rcvtodo&entity=receptionrecorddelivered"><img src="images/receive_todo.png" width="30px" height="30px">Items(TODO)</a></li>
+                        <li '.hoverColor("rcvdone").'><a href="?display=rcvdone&entity=receptionrecordreceived"><img src="images/receive_done.png" width="30px" height="30px">Items(DONE)</a></li>          
+                        <li '.hoverColor("custombarcode").'><a href="?display=custombarcode&action=no&entity=custombarcode"><img src="images/barcode.png" width="30px" height="30px">Custom Barcodes List</a></li>
+                        <li '.hoverColor("barcodegenerator").'><a href="?display=barcodegenerator&action=no&entity=barcodegenerator"><img src="images/barcodesgenerator.png" width="30px" height="30px">Barcode generator</a></li>
+                        <li '.hoverColor("pricecalculator").'><a href="?display=pricecalculator&action=no&entity=pricecalculator"><img src="images/calculator.png" width="30px" height="30px">Price Calculator</a></li>';           
+
+
+
+
+  $sectionACCOUNTANT = '<li class="li-hover"><div class="divider"></div></li>
+                        <li '.hoverColor("").' class="li-hover"><p class="ultra-small margin more-text">ACCOUNTING</p></li>
+
+                        
+                        <li '.hoverColor("SupplyRecordListACCTodo").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=PAID" >
+                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
+
+                        <li '.hoverColor("SupplyRecordListACCDone").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED" >
+                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
+
+                        <li '.hoverColor("acctodo").'><a href="?display=acctodo&entity=receptionrecordreceived"><img src="images/acc_todo.png" width="30px" height="30px">Items(Todo)</a></li>
+                        <li '.hoverColor("accdone").'><a href="?display=accdone&entity=receptionrecordpaid"><img src="images/acc_done.png" width="30px" height="30px">Items(Done)</a></li>
+            ';
 
 
   $sectionCOMMON = '
@@ -447,11 +582,17 @@ function renderLeftSidebar()
 
 
   // SPECIFIC
-  $modulesList["PURCHASING"] = $sectionPURCHASING;
-  $modulesList["RECEIVING"] = $sectionRECEIVING;
-  $modulesList["ACCOUNTING"] = $sectionACCOUNTING;
-  $modulesList["WAREHOUSE"] =  $sectionWAREHOUSE;
-  $modulesList["STORE"] = $sectionSTORE;
+  $modulesList["STORECLERK"] = $sectionSTORECLERK;
+  $modulesList["STORESUPERVISOR"] = $sectionSTORESUPERVISOR;
+
+  $modulesList["VALIDATOR"] =  $sectionVALIDATOR;
+  $modulesList["WAREHOUSECLERK"] =  $sectionWAREHOUSE;
+  $modulesList["PURCHASER"] = $sectionPURCHASING;
+
+  $modulesList["RECEIVER"] = $sectionRECEIVING;
+  $modulesList["ACCOUNTANT"] = $sectionACCOUNTING;
+  
+  
 
   // FOR ALL 
   $modulesList["COMMON"] = $sectionCOMMON;
