@@ -249,7 +249,7 @@ $sql="
 
 
 	CATEGORYID,CATEGORYNEWID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,STORE,SIZE,COLOR,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
-	CAST('' AS XML).value('xs:base64Binary(sql:variable(\"@img\"))','VARCHAR(MAX)') AS PICTURE 
+	CAST('' AS XML).value('xs:base64Binary(sql:vap-riable(\"@img\"))','VARCHAR(MAX)') AS PICTURE 
 	FROM dbo.ICPRODUCT,dbo.APVENDOR  
 	WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID 
 	AND BARCODE = ?";
@@ -3586,159 +3586,55 @@ $app->get('/itemreceived', function(Request $request,Response $response) {
 	return $response;
 });
 
+// ********************* //
+// *** SUPPLY RECORD *** //
+// ********************* //
 
+function pictureRecord($base64Str,$type,$id)
+{
+	
 
-// FOR WEB
-$app->get('/receptionrecorddetails/{id}', function(Request $request,Response $response) {
-	$id = $request->getAttribute('id');
-	$db = getInternalDatabase();
-	$sql = "SELECT * FROM RECEPTION_RECORD WHERE ID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($id));
-	$rr = $req->fetch(PDO::FETCH_ASSOC);
-
-	$rr["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($rr["XWAREHOUSESIGNATUREIMAGE"]);
-	$rr["PURCHASERSIGNATUREIMAGE"] = base64_encode($rr["PURCHASERSIGNATUREIMAGE"]);
-
-	$rr["WAREHOUSESIGNATUREIMAGE"] = base64_encode($rr["WAREHOUSESIGNATUREIMAGE"]);	
-	$rr["RECEIVERSIGNATUREIMAGE"] = base64_encode($rr["RECEIVERSIGNATUREIMAGE"]);
-	$rr["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($rr["ACCOUNTANTSIGNATUREIMAGE"]);
-
-	$data["receptionrecord"] = $rr;
-	$data["items"] = null;
-	if ($rr["TYPE"] == "NOPO")
+	if ($type == "INVOICES")
 	{
-		if ($rr["LINKEDPO"] != null)
+		$filename = "./img/supplyrecords_invoices/";	
+		$invoices = json_decode($base64Str,true);	
+		$count = 1;
+		foreach($invoices as $invoice)
 		{
-			$db2 = getDatabase();
-			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
-			$req = $db2->prepare($sql);
-			$req->execute(array($rr["LINKEDPO"]));
-			$data["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
-		}
+			file_put_contents($filename."INV_".$id."_".$count.".png", $imageData);	
+			$count++;
+		}	
 	}
 	else 
 	{
-		$sql = "SELECT * FROM ITEMRECEPTIONNED WHERE PONUMBER = ?";	
-		$req = $db->prepare($sql);
-		$req->execute(array($rr["PONUMBER"]));
-		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
-		$data["items"] = $poitems;
-	}
-	$response = $response->withJson($data);
-	return $response;
-});
-
-
-
-
-// WAITING
-// VALIDATED
-// SENT
-//
-
-// List PoOnOrder list (For warehouse)
-$app->get('/poonorder', function(Request $request,Response $response) {
-
-	$indb = getInternalDatabase();
-	
-	$db = getDatabase();		
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = ''";	
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$POResponse = array(); 
-	foreach($data as $onePO){ // We list only the one without itemreceptionned
-		$sql = "SELECT count(*) as CNT FROM ITEMRECEPTIONNED WHERE PONUMBER = ?";
-		$req = $indb->prepare($sql);
-		$req->execute(array($onePO["PONUMBER"]));
-		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		if($cnt == 0){
-			array_push($POResponse,$onePO);
-		}
-	} 
-	$response = $response->withJson($POResponse);
-	return $response;
-});
-// PoOnOrder itemlist (For warehouse)
-$app->get('/poonorder/{id}', function(Request $request,Response $response) {
-	$json = json_decode($request->getBody(),true);	
-	$id = $request->getAttribute('id');
-
-	$inDB = getInternalDatabase();
-
-	$sql = "SELECT * FROM ITEMRECEPTIONNED WHERE PONUMBER = ?";
-	$req = $inDB->prepare($sql);
-	$req->execute(array($id));
-	$olddata =  $req->fetchAll(PDO::FETCH_ASSOC);
-
-	if (count($olddata) == 0){
-		$db = getDatabase();	
-		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
-		$req = $db->prepare($sql);
-		$req->execute(array($id));
-		$data = $req->fetchAll(PDO::FETCH_ASSOC);
-	}else{
-		$data = $olddata;
-	}
-	
-	$response = $response->withJson($data);
-	return $response;
-
-});
-
-
-
-/*
-$app->get('/receptionrecordrefresh/{ponumber}', function(Request $request,Response $response) {
-	$db = getDatabase();
-	$indb = getInternalDatabase();
-	$ponumber = $request->getAttribute('ponumber');
-
-	$sql = "SELECT * FROM ITEMRECEPTIONNED WHERE PONUMBER =?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($ponumber));
-	$savedItems = $req->fetchAll(PDO::FETCH_ASSOC);
-	$savedQuantities =  array();
-	foreach($savedItems as $savedItem){
-		$savedQuantities[$savedItem["PRODUCTID"]] = $savedItem["VALIDATION_QTY"];
-	}
-
-	$sql = "DELETE FROM ITEMRECEPTIONNED WHERE PONUMBER =?"	;
-	$req = $indb->prepare($sql);
-	$req->execute(array($ponumber));
-
-	$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
-	$req = $db->prepare($sql);
-	$req->execute(array($ponumber));
-	$onePOItems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	foreach($onePOItems  as $onePOItem)
-	{
-		$qty = 0;
-		if (isset($savedQuantities[$onePOItem["PRODUCTID"]]))
-			$qty = $savedQuantities[$onePOItem["PRODUCTID"]];
-
-		$sql = "INSERT INTO ITEMRECEPTIONNED (PRODUCTID, PRODUCTNAME, ORDER_QTY, TRANCOST,PONUMBER, VALIDATION_QTY) VALUES (?,?,?,?,?,?)";
-		$req = $indb->prepare($sql);
-		$req->execute(array($onePOItem["PRODUCTID"], $onePOItem["PRODUCTNAME"] ,$onePOItem["ORDER_QTY"] ,$onePOItem["TRANCOST"],$onePOItem["PONUMBER"],$qty));    	
+		$imageData = base64_decode($base64Str);
+		if ($type == "VAL")
+			$filename = "./img/supplyrecords_signatures/VAL_".$id.".png";
+		else if ($type == "PCH")
+			$filename = "./img/supplyrecords_signatures/PCH_".$id.".png";
+		else if ($type == "WH")
+			$filename = "./img/supplyrecords_signatures/WH_".$id.".png";
+		else if ($type == "RCV")
+			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";
+		else if ($type == "ACC")
+			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
+		file_put_contents($filename, $imageData);
 	}	
-});
-*/
+}
 
-function createReceptionRecordForPO()
+function createSupplyRecordForPO()
 {
 	$db = getDatabase();		
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = ''";	
+	$indb = getInternalDatabase();
+
+	// NORMAL
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES <> 'AUTOVALIDATED' ";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$indb = getInternalDatabase();
 	foreach($data as $onePO)
 	{
-		$sql = "SELECT count(*) as CNT FROM RECEPTION_RECORD WHERE PONUMBER = ?"; 
+		$sql = "SELECT count(*) as CNT FROM SUPPLY_RECORD WHERE PONUMBER = ?"; 
 		$req = $indb->prepare($sql);
 		$req->execute(array($onePO["PONUMBER"]));
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
@@ -3747,27 +3643,6 @@ function createReceptionRecordForPO()
 			$sql = "INSERT INTO RECEPTION_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
 			$req = $indb->prepare($sql);
 			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-
-
-			$db = getDatabase();	
-			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
-			$req = $db->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"]));
-			$onePOItems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-			foreach($onePOItems  as $onePOItem){
-				$sqlCheck = "SELECT count(*) as CNT FROM ITEMRECEPTIONNED WHERE PRODUCTID = ? AND PONUMBER = ?";
-				$req = $indb->prepare($sqlCheck);
-				$req->execute(array($onePOItem["PRODUCTID"],$onePOItem["PONUMBER"]));
-				$existCNT = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-				if ($existCNT == 0)	
-				{
-					$sql = "INSERT INTO ITEMRECEPTIONNED (PRODUCTID, PRODUCTNAME, ORDER_QTY, TRANCOST,PONUMBER) 
-				    	VALUES (?,?,?,?,?)";
-					$req = $indb->prepare($sql);
-					$req->execute(array($onePOItem["PRODUCTID"], $onePOItem["PRODUCTNAME"] ,$onePOItem["ORDER_QTY"] ,$onePOItem["TRANCOST"],$onePOItem["PONUMBER"])); 
-				}    	
-			}				
 		}		
 	}
 
@@ -3776,11 +3651,9 @@ function createReceptionRecordForPO()
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$indb = getInternalDatabase();
 	foreach($data as $onePO)
 	{
-		$sql = "SELECT count(*) as CNT FROM RECEPTION_RECORD WHERE PONUMBER = ?"; 
+		$sql = "SELECT count(*) as CNT FROM SUPPLY_RECORD WHERE PONUMBER = ?"; 
 		$req = $indb->prepare($sql);
 		$req->execute(array($onePO["PONUMBER"]));
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
@@ -3789,33 +3662,12 @@ function createReceptionRecordForPO()
 			$sql = "INSERT INTO RECEPTION_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'ORDERED','PO')";
 			$req = $indb->prepare($sql);
 			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-		}
-
-		$sql = "SELECT count(*) as CNT FROM ITEMRECEPTIONNED WHERE PONUMBER = ?";
-		$req = $indb->prepare($sql);
-		$req->execute(array($onePO["PONUMBER"]));
-		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		if($cnt == 0)
-		{
-			$db = getDatabase();	
-			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
-			$req = $db->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"]));
-			$onePOItems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-			foreach($onePOItems  as $onePOItem){
-
-				$sql = "INSERT INTO ITEMRECEPTIONNED (PRODUCTID, PRODUCTNAME, ORDER_QTY, TRANCOST,PONUMBER) 
-				    	VALUES (?,?,?,?,?)";
-				$req = $indb->prepare($sql);
-				$req->execute(array($onePOItem["PRODUCTID"], $onePOItem["PRODUCTNAME"] ,$onePOItem["ORDER_QTY"] ,$onePOItem["TRANCOST"],$onePOItem["PONUMBER"]));    	
-			}				
-		}
+		}		
 	}
+}	
 
-}
 
-$app->get('/receptionrecordsearch', function(Request $request,Response $response) {
+$app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 
 	$today = date("Y-m-d");
 		
@@ -3826,7 +3678,7 @@ $app->get('/receptionrecordsearch', function(Request $request,Response $response
 	$potype =  $request->getParam('potype','ALL');
 
 	$db = getInternalDatabase();
-	$sql = "SELECT *FROM RECEPTION_RECORD 
+	$sql = "SELECT * FROM SUPPLY_RECORD 
 		    WHERE 1 = 1";
 	$params = array();
 	if ($ponumber != ''){
@@ -3853,46 +3705,26 @@ $app->get('/receptionrecordsearch', function(Request $request,Response $response
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$returnedData = array();
-	foreach($data as $oneData){
-
-		if ($oneData["XWAREHOUSESIGNATUREIMAGE"] != null)
-			$oneData["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["XWAREHOUSESIGNATUREIMAGE"]);
-		if ($oneData["PURCHASERSIGNATUREIMAGE"] != null)
-			$oneData["PURCHASERSIGNATUREIMAGE"] = base64_encode($oneData["PURCHASERSIGNATUREIMAGE"]);
-		if ($oneData["WAREHOUSESIGNATUREIMAGE"] != null)
-			$oneData["WAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["WAREHOUSESIGNATUREIMAGE"]);
-		if ($oneData["RECEIVERSIGNATUREIMAGE"] != null)
-			$oneData["RECEIVERSIGNATUREIMAGE"] = base64_encode($oneData["RECEIVERSIGNATUREIMAGE"]);
-		if ($oneData["ACCOUNTANTSIGNATUREIMAGE"] != null)
-			$oneData["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($oneData["ACCOUNTANTSIGNATUREIMAGE"]);
-		array_push($returnedData, $oneData);
-	}
-
-	$response = $response->withJson($returnedData);
+	$response = $response->withJson($data);
 	return $response;
-
 });
 
-
-
-// MIX PO AND NOPO
-$app->get('/receptionrecordmix/{status}', function(Request $request,Response $response) {
+$app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$db2 = getDatabase();
 
 	$status = $request->getAttribute('status');
-
 	if ($status == "WAITING")
 		createReceptionRecordForPO();
 
 	if ($status == "ALL"){
 		$sql = "SELECT *
-			FROM RECEPTION_RECORD 
+			FROM SUPPLY_RECORD 
 			WHERE TYPE = 'PO'
 			ORDER BY LAST_UPDATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array());
-		$data = $req->fetchAll(PDO::FETCH_ASSOC);
+		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
 	else {
 		$sql = "SELECT *
@@ -3902,29 +3734,9 @@ $app->get('/receptionrecordmix/{status}', function(Request $request,Response $re
 			ORDER BY LAST_UPDATED DESC";	
 		$req = $db->prepare($sql);
 		$req->execute(array($status));
-		$data = $req->fetchAll(PDO::FETCH_ASSOC);
+		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
-		
-	$db2 = getDatabase();
-
-	$POData = array();
-	foreach($data as $oneData){
-
-	if ($oneData["XWAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["XWAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["PURCHASERSIGNATUREIMAGE"] != null)
-		$oneData["PURCHASERSIGNATUREIMAGE"] = base64_encode($oneData["PURCHASERSIGNATUREIMAGE"]);
-	if ($oneData["WAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["WAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["WAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["RECEIVERSIGNATUREIMAGE"] != null)
-		$oneData["RECEIVERSIGNATUREIMAGE"] = base64_encode($oneData["RECEIVERSIGNATUREIMAGE"]);
-	if ($oneData["ACCOUNTANTSIGNATUREIMAGE"] != null)
-		$oneData["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($oneData["ACCOUNTANTSIGNATUREIMAGE"]);
-	array_push($POData, $oneData);
-
-	}
-
-
+	// ADD VENDNAME	
 	$newPOData = array();
 	foreach($POData as $onePOData){
 		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
@@ -3936,40 +3748,26 @@ $app->get('/receptionrecordmix/{status}', function(Request $request,Response $re
 	}
 	$POData = $newPOData;
 
+	// NO PO
 	if ($status == "ALL"){
 		$sql = "SELECT *
-			FROM RECEPTION_RECORD 
+			FROM SUPPLY_RECORD 
 			WHERE TYPE = 'NOPO'
 			ORDER BY LAST_UPDATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array());
-		$data = $req->fetchAll(PDO::FETCH_ASSOC);
+		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
 	else {
 		$sql = "SELECT *
-			FROM RECEPTION_RECORD 
+			FROM SUPPLY_RECORD 
 			WHERE STATUS = ?
 			AND TYPE = 'NOPO' 
 			ORDER BY LAST_UPDATED DESC";	
 		$req = $db->prepare($sql);
 		$req->execute(array($status));
-		$data = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
-	
-	$NOPOData = array();
-	foreach($data as $oneData){
-	if ($oneData["XWAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["XWAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["PURCHASERSIGNATUREIMAGE"] != null)
-		$oneData["PURCHASERSIGNATUREIMAGE"] = base64_encode($oneData["PURCHASERSIGNATUREIMAGE"]);
-	if ($oneData["WAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["WAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["WAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["RECEIVERSIGNATUREIMAGE"] != null)
-		$oneData["RECEIVERSIGNATUREIMAGE"] = base64_encode($oneData["RECEIVERSIGNATUREIMAGE"]);
-	if ($oneData["ACCOUNTANTSIGNATUREIMAGE"] != null)
-		$oneData["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($oneData["ACCOUNTANTSIGNATUREIMAGE"]);
-		array_push($NOPOData, $oneData);
-	}
+		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
+	}	
 
 	$mixData["PO"] = $POData;
 	$mixData["NOPO"] = $NOPOData;
@@ -3978,208 +3776,136 @@ $app->get('/receptionrecordmix/{status}', function(Request $request,Response $re
 	return $response;
 });
 
-
-$app->get('/receptionrecordbyPO/{PO}', function(Request $request,Response $response) {
-	$PO = $request->getAttribute('PO');
-	$db = getInternalDatabase();
-	$sql = "SELECT * FROM RECEPTION_RECORD WHERE PONUMBER = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($PO));
-	$rr = $req->fetch(PDO::FETCH_ASSOC);
-	$data = array();
-
-	if ($rr != null){
-		$rr["WAREHOUSESIGNATUREIMAGE"] = base64_encode($rr["WAREHOUSESIGNATUREIMAGE"]);
-		$rr["RECEIVERSIGNATUREIMAGE"] = base64_encode($rr["RECEIVERSIGNATUREIMAGE"]);
-		$rr["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($rr["ACCOUNTANTSIGNATUREIMAGE"]);
-		$rr["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($rr["XWAREHOUSESIGNATUREIMAGE"]);
-
-		$rr["PURCHASERSIGNATUREIMAGE"] = base64_encode($rr["PURCHASERSIGNATUREIMAGE"]);
-		$data = $rr;
-	}
-	else{	
-		$data = null;
-	}
-
-	$response = $response->withJson($data);
-	return $response;
-});
-
-
-// List reception record
-$app->get('/receptionrecord/{status}', function(Request $request,Response $response) {
-	$db = getInternalDatabase();
-	$status = $request->getAttribute('status');
-
-	if ($status == "WAITING")
-		createReceptionRecordForPO();
-
-	$sql = "SELECT *
-			FROM RECEPTION_RECORD 
-			WHERE STATUS = ?
-			AND TYPE = 'PO' 
-			ORDER BY LAST_UPDATED DESC";	
-	$req = $db->prepare($sql);
-	$req->execute(array($status));
-	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$newData = array();
-	foreach($data as $oneData){
-
-	if ($oneData["XWAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["XWAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["XWAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["PURCHASERSIGNATUREIMAGE"] != null)
-		$oneData["PURCHASERSIGNATUREIMAGE"] = base64_encode($oneData["PURCHASERSIGNATUREIMAGE"]);
-
-	if ($oneData["WAREHOUSESIGNATUREIMAGE"] != null)
-		$oneData["WAREHOUSESIGNATUREIMAGE"] = base64_encode($oneData["WAREHOUSESIGNATUREIMAGE"]);
-	if ($oneData["RECEIVERSIGNATUREIMAGE"] != null)
-		$oneData["RECEIVERSIGNATUREIMAGE"] = base64_encode($oneData["RECEIVERSIGNATUREIMAGE"]);
-	if ($oneData["ACCOUNTANTSIGNATUREIMAGE"] != null)
-		$oneData["ACCOUNTANTSIGNATUREIMAGE"] = base64_encode($oneData["ACCOUNTANTSIGNATUREIMAGE"]);
-		array_push($newData, $oneData);
-	}
-	$response = $response->withJson($newData);
-	return $response;
-});
-
-// Create Reception without PO (For warehouse)
-$app->post('/receptionrecord', function(Request $request,Response $response) {
+$app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-	
 
-	$sql = "INSERT INTO RECEPTION_RECORD (WAREHOUSESIGNATUREIMAGE,WAREHOUSE_USER,PURCHASER_USER,PONUMBER,STATUS,TYPE, INVOICEJSONDATA) 
-		     					  VALUES (:signature,:author,:purchaser,:ponumber, 'DELIVERED','PO',:invoicejsondata)";
-	$req = $db->prepare($sql);	
-
-	$req->bindParam(':invoicejsondata',$json["INVOICEJSONDATA"],PDO::PARAM_STR);
-	$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
-	$req->bindParam(':purchaser',$json["PURCHASER_USER"],PDO::PARAM_STR);			
-	$req->bindParam(':ponumber',$json["PONUMBER"],PDO::PARAM_STR);	
-	$data2 = base64_decode($json["WAREHOUSESIGNATUREIMAGE"]);
-	$req->bindParam(':signature',$data2,PDO::PARAM_LOB);	
-	$req->execute();
-
-	// no more insertion just update
-	foreach($json["RECEPTION_PO"] as $key => $value)
+	if (isset($json["INVOICEJSONDATA"]) // PO 
 	{
-		$sql = "UPDATE ITEMRECEPTIONNED SET RECEPTION_QTY = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
 
-		//$sql = "INSERT INTO ITEMRECEPTIONNED (PRODUCTID, PRODUCTNAME, ORDER_QTY, RECEPTION_QTY, TRANCOST,PONUMBER) 
-		//		    VALUES (?,?,?,?,?,?)";
-		$req = $db->prepare($sql);
-		$req->execute(array($value["RECEPTION_QTY"],$key,$poID) );	
-								
+		$sql = "INSERT INTO SUPPLY_RECORD (,WAREHOUSE_USER,PURCHASER_USER,PONUMBER,STATUS,TYPE) 
+			     					  VALUES (:author,:purchaser,:ponumber, 'DELIVERED','PO')";
+		$req = $db->prepare($sql);	
+		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
+		$req->bindParam(':purchaser',$json["PURCHASER_USER"],PDO::PARAM_STR);			
+		$req->bindParam(':ponumber',$json["PONUMBER"],PDO::PARAM_STR);
+		$req->execute();		
+		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
+		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);
 	}
+	else
+	{
+		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
+			VALUES (:author,:noponote,'DELIVERED','NOPO')";
+		$req = $db->prepare($sql);	
+	
+		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
+		$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
+		$req->execute();
+		$lastID = $db->lastInsertId();
+		
+		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
+		pictureRecord($json["INVOICEJSONDATA"],"INVOICE",$lastID);	
+	}
+	
 	$result["RESULT"] = "OK";
 	$response = $response->withJson($result);
 	return $response;
 });
 
-// Update reception record (For receive/accounting)
-function updateReceptionRecord($json)
-{
+$app->put('/supplyrecord', function(Request $request,Response $response) {
+	$json = json_decode($request->getBody(),true);	
+	
 	$db = getInternalDatabase();
+	$dbBLUE = getDatabase();
 
 	if ($json["ACTIONTYPE"] == "VAL"){
-		$sql = "UPDATE SUPPLY_RECORD SET XWAREHOUSESIGNATUREIMAGE = :signature, XWAREHOUSE_USER = :author ,STATUS = 'VALIDATED'  WHERE ID = :identifier" ;
+		$sql = "UPDATE SUPPLY_RECORD SET VALIDATOR_USER = :author ,STATUS = 'VALIDATED'  WHERE ID = :identifier" ;
 		$req = $db->prepare($sql);
-
 		$image = base64_decode($json["SIGNATURE"]);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':signature',$image,PDO::PARAM_LOB);
 		$req->execute();
+		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"VAL",$json["IDENTIFIER"]);
 
 		if (isset($json["VALIDATION_PO"]))
 		{
 			foreach($json["VALIDATION_PO"] as $key => $value)
 			{
-				$sql = "UPDATE ITEMRECEPTIONNED SET VALIDATION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
-				$req = $db->prepare($sql);
+				$sql = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($value["VALIDATION_QTY"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
-
 		$data["RESULT"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "PCH"){
 
-		$sql = "UPDATE RECEPTION_RECORD SET PURCHASERSIGNATUREIMAGE = :signature, PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
-		$req = $db->prepare($sql);
-		$image = base64_decode($json["SIGNATURE"]);
+		$sql = "UPDATE RECEPTION_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
+		$req = $db->prepare($sql);			
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':signature',$image,PDO::PARAM_LOB);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
 		$req->execute();
-
+		pictureRecord($json["SIGNATURE"],"PCH",$json["IDENTIFIER"]);
 		$data["RESULT"] = "OK";	
+
+
 	}
 	else if ($json["ACTIONTYPE"] == "WH"){
 
-			$sql = "UPDATE RECEPTION_RECORD SET WAREHOUSESIGNATUREIMAGE = :signature, 
-							WAREHOUSE_USER = :author,";
-			if(isset($json["INVOICEJSONDATA"]))
-				$sql .= "INVOICEJSONDATA = :invoices,";
-			$sql .=			"STATUS = 'DELIVERED' WHERE ID = :identifier";
-			$req = $db->prepare($sql);
-
-			$image = base64_decode($json["SIGNATURE"]);
+			$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
+			$req = $db->prepare($sql);							
 			$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-			if(isset($json["INVOICEJSONDATA"]))
-				$req->bindParam(':invoices',$json["INVOICEJSONDATA"],PDO::PARAM_STR);
-			$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-			$req->bindParam(':signature',$image,PDO::PARAM_LOB);
+			$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);			
 			$req->execute();
+
+			if(isset($json["INVOICEJSONDATA"]))
+				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
+			pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
 
 		if (isset($json["RECEPTION_PO"]))
 		{
 			foreach($json["RECEPTION_PO"] as $key => $value)
 			{
-				$sql = "UPDATE ITEMRECEPTIONNED SET RECEPTION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
-				$req = $db->prepare($sql);
+				$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($value["RECEPTION_QTY"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
-		$sql = "UPDATE RECEPTION_RECORD SET RECEIVERSIGNATUREIMAGE = :signature, 
+		$sql = "UPDATE SUPPLY_RECORD 
+				SET RECEIVERSIGNATUREIMAGE = :signature, 
 				RECEIVER_USER = :author,
 				STATUS = 'RECEIVED',
-				LINKEDPO = :linkedpo"; 
-				
-		if(isset($json["INVOICEJSONDATA"]))
-				$sql .= ",INVOICEJSONDATA = :invoices";
-			$sql .=	" WHERE ID = :identifier";	
-		
+				LINKEDPO = :linkedpo					
+			 	WHERE ID = :identifier";			
 		$req = $db->prepare($sql);
 
-		$image = base64_decode($json["SIGNATURE"]);
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-		if(isset($json["INVOICEJSONDATA"]))
-				$req->bindParam(':invoices',$json["INVOICEJSONDATA"],PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':signature',$image,PDO::PARAM_LOB);
 		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
-
 		$req->execute();
+		if(isset($json["INVOICEJSONDATA"]))
+			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
+		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
 		$data["RESULT"] = "OK";
 
 	}else if ($json["ACTIONTYPE"] == "ACC"){
-		$sql = "UPDATE RECEPTION_RECORD SET ACCOUNTANTSIGNATUREIMAGE = :signature, 
-				ACCOUNTANT_USER = :author,
-				STATUS = 'PAID' WHERE ID = :identifier";	
+		$sql = "UPDATE RECEPTION_RECORD SET 
+					   ACCOUNTANT_USER = :author,
+					   STATUS = 'PAID' 
+					   WHERE ID = :identifier";	
 		$req = $db->prepare($sql);
 		$image = base64_decode($json["SIGNATURE"]);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':signature',$image,PDO::PARAM_LOB);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
 		$req->execute();
+		pictureRecord($json["SIGNATURE"],"ACC",$json["IDENTIFIER"]);
 		$data["RESULT"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "WHCANCEL"){
-		$sql = "UPDATE RECEPTION_RECORD SET WAREHOUSESIGNATUREIMAGE = null, 
+		$sql = "UPDATE RECEPTION_RECORD  
 				WAREHOUSE_USER = null, 
 				INVOICEJSONDATA = null, 
 				STATUS = 'ORDERED', 
@@ -4190,92 +3916,93 @@ function updateReceptionRecord($json)
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 
-		$sql = "UPDATE ITEMRECEPTIONNED SET RECEPTION_QTY = 0 WHERE  PONUMBER = ? ";
+		// Delete all invoices 
+		$count = 1;
+		$res = true;
+		do{
+			$res = unlink("./img/supplyrecords_invoices/".$json["IDENTIFIER"]."_".$count);
+			$count++;		
+		}while($res);
+		// Delete the signature		
+		unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
+
+		// Cancel all validation
+		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = 0 WHERE  PONUMBER = ? ";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PONUMBER"]) );	 			
 	}
 	else if ($json["ACTIONTYPE"] == "PCHCANCEL")
 	{
-			$sql = "UPDATE RECEPTION_RECORD SET PURCHASERSIGNATUREIMAGE = null, 
-					PURCHASER_USER = null ,
-					STATUS = 'VALIDATED'  
+			$sql = "UPDATE SUPPLY_RECORD SET, PURCHASER_USER = null ,STATUS = 'VALIDATED'  
 					WHERE ID = :identifier";
 		$req = $db->prepare($sql);		
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);				
 		$req->execute();
+		unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
 		$data["RESULT"] = "OK";	
 	}
 	else
 	{
 		$data["RESULT"] = "KO";
-	}
-	return $data;
-}
+	}	
 
-$app->put('/supplyrecord', function(Request $request,Response $response) {
-	
-	$json = json_decode($request->getBody(),true);
-	$data = updateReceptionRecord($json);	
 	$response = $response->withJson($data);
 	return $response;
 });
 
-// *********** RECEPTIONRECORD_NOPO **//
-$app->get('/supplyrecordnopo/{status}', function(Request $request,Response $response) {
+$app->get('/supplyrecorddetails/{id}', function(Request $request,Response $response) {
+	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
-	$status = $request->getAttribute('status');
-
-	$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE STATUS = ?
-			AND TYPE = 'NOPO'
-			ORDER BY LAST_UPDATED DESC";	
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($status));
-	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-		
-	$response = $response->withJson($data);
-	return $response;	
-});
+	$req->execute(array($id));
+	$rr = $req->fetch(PDO::FETCH_ASSOC);
 
+	//$data["receptionrecord"] = ;
+	$rr["items"] = null;
 
-$app->put('/supplyrecordnopo', function(Request $request,Response $response) {
-	$json = json_decode($request->getBody(),true);	
-	$data = updateReceptionRecord($json);	
-	$response = $response->withJson($data);
-	return $response;
-});
-
-$app->post('/supplyrecordnopo', function(Request $request,Response $response) {
-	$db = getInternalDatabase();
-	$json = json_decode($request->getBody(),true);
-
-	$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
-			VALUES (:author,:noponote,'DELIVERED','NOPO')";
-	$req = $db->prepare($sql);	
-	
-	$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
-	$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
-	$req->execute();
-
-	$lastID = $db->lastInsertId();
-	
-
-	$data = base64_decode($json["WAREHOUSESIGNATUREIMAGE"]);
-	file_put_contents("./img/supplyrequest/WH" .$lastID.".png" , $data);
-
-	$invoices = base64_decode($json["INVOICEJSONDATA"]);
-	$i = 1;
-	foreach($invoice as $invoice){
-		file_put_contents("./img/invoices/" .$lastID."_".$i."png" , $invoice);		
-		$i++;
+	if ($rr["TYPE"] == "NOPO")
+	{
+		if ($rr["LINKEDPO"] != null)
+		{
+			$db2 = getDatabase();
+			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+			$req = $db2->prepare($sql);
+			$req->execute(array($rr["LINKEDPO"]));
+			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
+		}
 	}
-
-	$response = $response->withJson($result);
+	else 
+	{
+		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
+		$req = $db->prepare($sql);
+		$req->execute(array($rr["PONUMBER"]));
+		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
+		$rr["items"] = $poitems;
+	}
+	$response = $response->withJson($rr);
 	return $response;
 });
 
+// /poonorder SUPPLY_RECORD WHERE STATUS = 'WAITING'
+// /poonorder/{id} supplyrecorddetails 
 
+// IS IT USEFUL ?
+$app->get('/receptionrecordbyPO/{PO}', function(Request $request,Response $response) {
+	$PO = $request->getAttribute('PO');
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($PO));
+	$rr = $req->fetch(PDO::FETCH_ASSOC);
+	$data = array();
+
+	if ($rr == null)
+		$data = null;
+
+	$response = $response->withJson($data);
+	return $response;
+});
 
 
 
