@@ -290,12 +290,14 @@ function hoverColor($identifier){
    $two = isset($_GET["entity"]) ? $_GET["entity"] : "";
   if(isset($_GET["type"]))
         $three = $_GET["type"];
-    else if (isset($_GET["status"]))
+  else if (isset($_GET["status"]))
         $three = $_GET["status"];
+  else
+        $three = "";
   $four = isset($_GET["action"]) ? $_GET["action"] : "";
 
   $compare = $one.$two.$three.$four;
-  
+
   if ($identifier == $compare)
     return 'style="background-color:gray"';
   else
@@ -323,7 +325,11 @@ function renderLeftSidebar()
                   <li '.hoverColor("adjusteditems").'><a href="?display=adjusteditems&action=no&entity=adjusteditems"><img src="images/adjust.png" width="30px" height="30px">Adjusted Items</a></li>';
 
   
-  $hide = 'style="display:none"';                  
+  $hide = 'style="display:none"';        
+  if ($_SESSION["USER"]["firstname"] == "demo2")
+    $nodemohide = '';    
+  else 
+    $nodemohide = 'style="display:none"';        
 
   $sectionSTORECLERK =      '<li class="li-hover"><div class="divider"></div></li>
                              <li class="li-hover"><p class="ultra-small margin more-text">STORE CLERK</p></li>
@@ -374,11 +380,11 @@ function renderLeftSidebar()
  $sectionVALIDATOR =     '<li class="li-hover"><div class="divider"></div></li>
                            <li class="li-hover"><p class="ultra-small margin more-text">VALIDATOR</p></li>
                           
-                           <li '.hoverColor("supplyrecordlist"."supplyrecord"."WAITING"."VAL").' >
+                           <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."WAITING"."VAL").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=WAITING&action=VAL" >
                            <img src="images/icons/VAL/SupplyRecordListVALTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
 
-                           <li '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."VAL").' >
+                           <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."VAL").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED&action=VAL" >
                            <img src="images/icons/VAL/SupplyRecordListVALDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>                        
                           ';
@@ -387,11 +393,11 @@ function renderLeftSidebar()
   $sectionWAREHOUSECLERK =     '<li class="li-hover"><div class="divider"></div></li>
                            <li class="li-hover"><p class="ultra-small margin more-text">WAREHOUSE</p></li>
                           
-                           <li '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."WH").' >
+                           <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."WH").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED&action=WH" >
                            <img src="images/icons/WH/SupplyRecordListWHTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
 
-                           <li '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."WH").' >
+                           <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."WH").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=WH" >
                            <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
@@ -427,11 +433,11 @@ function renderLeftSidebar()
   $sectionPURCHASER = '<li class="li-hover"><div class="divider"></div></li>
                         <li  class="li-hover"><p class="ultra-small margin more-text">PURCHASER</p></li>
                                                 
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."PCH").' >
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."PCH").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED&action=PCH" >
-                        <img src="images/icons/PCH/SupplyRecordListPCHTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
+                        <img src="images/icons/PCH/SupplyRecordListPCHTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
 
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."PCH").' >
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."PCH").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED&action=PCH" >
                         <img src="images/icons/PCH/SupplyRecordListPCHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
@@ -454,11 +460,11 @@ function renderLeftSidebar()
   $sectionRECEIVER =  '<li class="li-hover"><div class="divider"></div></li>
                         <li  class="li-hover"><p class="ultra-small margin more-text">RECEIVING</p></li>        
 
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."RCV").' >
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."RCV").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=RCV" >
                         <img src="images/icons/RCV/SupplyRecordListRCVTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
 
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."RCV").' >
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."RCV").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED&action=RCV" >
                         <img src="images/icons/RCV/SupplyRecordListRCVDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
@@ -476,13 +482,13 @@ function renderLeftSidebar()
                         <li class="li-hover"><p class="ultra-small margin more-text">ACCOUNTING</p></li>
 
                         
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."PAID"."ACC").' >
-                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=PAID&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
-
-                        <li '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."ACC").' >
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."PAID"."ACC").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+
+                        <li '.$nodemohide.' '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."ACC").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=PAID&action=ACC" >
+                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
                         <li '.hoverColor("acctodo").'><a href="?display=acctodo&entity=receptionrecordreceived"><img src="images/acc_todo.png" width="30px" height="30px">(OLD)Items(Todo)</a></li>
                         <li '.hoverColor("accdone").'><a href="?display=accdone&entity=receptionrecordpaid"><img src="images/acc_done.png" width="30px" height="30px">(OLD)Items(Done)</a></li>

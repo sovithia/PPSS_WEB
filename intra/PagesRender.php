@@ -4178,20 +4178,33 @@ function renderSupplyRecordList($data,$action){
                  document.getElementById('nopo').style.display = 'block';
               }
 
-              function cancelReception(author,identifier,ponumber){
+              function cancelSupplyRecord(author,identifier,ponumber,type){
                 var result = confirm('Are you sure you want to cancel?');
                 if (result) 
                 {
+                  var actiontype  = '';
+                  if (type == 'WH')
+                    actiontype = 'WHCANCEL';
+                  else
+                    actiontype = 'PCHCANCEL';
+
                   var ItemJSON = '';                  
                   ItemJSON = {'IDENTIFIER' : identifier,
                               'AUTHOR'     : author, 
                               'PONUMBER'   : ponumber,                                                      
-                              'ACTIONTYPE' : 'WHCANCEL' };   
-                  var URL = 'http://phnompenhsuperstore.com/api/api.php/receptionrecord'; 
+                              'ACTIONTYPE' : actiontype };   
+                  var URL = 'http://phnompenhsuperstore.com/api/api_dev.php/supplyrecord'; 
                   var xmlhttp = new XMLHttpRequest();
                   xmlhttp.onreadystatechange = function () 
                   {
-                      document.getElementById('status_' + identifier).innerHTML = 'ORDERED';
+                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) 
+                     {
+                       if (type == 'WH')
+                        document.getElementById('status_' + identifier).innerHTML = 'ORDERED';
+                       else if (type == 'PCH')
+                        document.getElementById('status_' + identifier).innerHTML = 'VALIDATED';
+                        alert('Supply Record status changed')
+                      }
                   }
                   xmlhttp.open('PUT', URL,false);
                   xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
@@ -4240,8 +4253,10 @@ function renderSupplyRecordList($data,$action){
                </table>
                ";  
     $dataSet1 = "";
-    $show = "";  
-    if ($cancel == false)
+    if (($action == "WH" && $_GET["status"] == "DELIVERED") ||
+        ($action == "PCH" && $_GET["status"] == "ORDERED"))
+      $show = "";  
+    else
       $show = "style=\"display:none\"";
 
     foreach($itemsPO as $item)
@@ -4250,11 +4265,11 @@ function renderSupplyRecordList($data,$action){
         $base = "../api/img/supplyrecords_signatures/";
         $ID = $item["ID"];
 
-        $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["VALIDATOR_USER"];
-        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["PURCHASER_USER"];
-        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["WAREHOUSE_USER"];
-        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["RECEIVER_USER"];
-        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["ACCOUNTANT_USER"];
+        $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["VALIDATOR_USER"];
+        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["PURCHASER_USER"];
+        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["WAREHOUSE_USER"];
+        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
+        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
          $dataSet1 .= 
          "[ 
@@ -4269,7 +4284,7 @@ function renderSupplyRecordList($data,$action){
           '".$WH."',
           '".$RCV."',
           '".$ACC."',      
-          '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>',
+          '<button ".$show." onclick=cancelSupplyRecord(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\",\"".$action."\") >Cancel</button>',
           
 
           ],";
@@ -4331,11 +4346,11 @@ function renderSupplyRecordList($data,$action){
           
           $base = "../api/img/supplyrecords_signatures/";
           $ID = $item["ID"];
-          $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["VALIDATOR_USER"];
-        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["PURCHASER_USER"];
-        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["WAREHOUSE_USER"];
-        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["RECEIVER_USER"];
-        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$supplyrecord["ACCOUNTANT_USER"];
+          $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["VALIDATOR_USER"];
+        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["PURCHASER_USER"];
+        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["WAREHOUSE_USER"];
+        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
+        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
           $dataSet .= "[    
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
@@ -4352,7 +4367,7 @@ function renderSupplyRecordList($data,$action){
           '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>'
           ],";
     }
-    $dataSet2 = rtrim($dataSet,",");        
+    $dataSet2 = rtrim($dataSet2,",");        
         $body .= "  
         <script>  
         var dataSet2 = [".$dataSet2."];
@@ -4421,17 +4436,22 @@ function renderSupplyRecordDetail($data,$action){
 
     if ($supplyrecord["TYPE"] == "PO")
     {
-      $body .= "<center><b>".$supplyrecord["PONUMBER"]."</b></center><br>";  
+      $body .= "<center>(WITH PO)<b>".$supplyrecord["PONUMBER"].":".$supplyrecord["VENDNAME"]."</b></center><br>
+                <input type='hidden' id='ponumber'  value='".$supplyrecord["PONUMBER"]."'>
+              ";  
     }
     else if ($supplyrecord["TYPE"] == "NOPO")
     {
-      $body .= "<center><b>".$supplyrecord["LINKEDPO"]."</b></center><br>";   
+      $body .= "<center>(NO PO)<b>".$supplyrecord["LINKEDPO"]."</b></center><br>
+               <input type='hidden' id='ponumber'  value='".$supplyrecord["LINKEDPO"]."'>
+              ";   
     }
     
 
     if ($items != null){
 
-      $body .= "<table border='1' id='resultTable'>
+      $body .= "<form id='myform'>
+        <table border='1' id='resultTable'>
         <thead><tr>
           <th>IMAGE</th>
           <th>BARCODE</th>
@@ -4440,6 +4460,7 @@ function renderSupplyRecordDetail($data,$action){
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
           <th>RECEPTION QTY</th>
+          <th>NOTE</th>
           <th>AMT</th>
         </tr></thead>        
         <tfoot><tr>
@@ -4450,33 +4471,43 @@ function renderSupplyRecordDetail($data,$action){
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
           <th>RECEPTION QTY</th>
+          <th>NOTE</th>
           <th>AMT</th>
         </tr></tfoot>
-        </table><br><br>";  
+        </table></form><br>";  
 
       $dataSet = "";
       $total = 0;
+      
+
+      
+      $valdisable = ($action == "VAL") ? '' : 'disabled';    
+      $whdisable = ($action == "WH") ? '' : 'disabled';
+    
       foreach($items as $item)
       {           
         $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);
         $item["AMT"] = truncatePrice($item["AMT"],4);        
-        $total += $item["AMT"];
-        $item["PPSS_ORDER_QTY"] = truncatePrice($item["PPSS_ORDER_QTY"],2);
-        $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
 
-        if (floatval($item["PPSS_ORDER_QTY"]) != floatval($item["PPSS_VALIDATION_QTY"]))
-          $validation = "<span style='color:red'>".$item["PPSS_VALIDATION_QTY"]."</span>";
+        $total += $item["AMT"];
+        $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
+        $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
+        $item["TRANCOST"] = truncatePrice($item["TRANCOST"],4);
+
+        if (floatval($item["ORDER_QTY"]) != floatval($item["PPSS_VALIDATION_QTY"]))
+          $order = "<span style='color:red'>".$item["ORDER_QTY"]."</span>";
         else 
-          $validation = $item["PPSS_VALIDATION_QTY"];
+          $order = $item["ORDER_QTY"];
 
         $dataSet .= "[
               '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
-              '".$item["PRODUCTID"]."',          
+              '".$item["PRODUCTID"]." <input type=\"hidden\"  value=\"".$item["PRODUCTID"]."\">',                         
               \"".$item["PRODUCTNAME"]."\",
-              \"".$item["TRANCOST"]."\",
-              \"".$item["PPSS_ORDER_QTY"]."\",
-              \"".$validation."\",
-              \"".$item["PPSS_RECEPTION_QTY"]."\",
+              \"".$item["TRANCOST"]."\",      
+             \"".$order."\",
+              '<input ".$valdisable." style=\"text-align:center\" type=\"text\" id=\"validationqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_VALIDATION_QTY"]."\">',                            
+              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"receptionqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_RECEPTION_QTY"]."\">',              
+              '<input  style=\"text-align:center\" type=\"text\" id=\"note_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_NOTE"]."\">',              
               \"".$item["AMT"]."\"               
               ],";
         $total++;              
@@ -4492,35 +4523,35 @@ function renderSupplyRecordDetail($data,$action){
             dataSet, 
             'lengthMenu':[-1]
             });
-          });
+           });
+
+            function serializeArray() {              
+                                          
+            }
+            
+          
           </script>
       ";   
-      $body .= "<b>Total : ". $total."</b><br><br>";
+      $body .= "<b>Total : ". $total."</b><br>";
      }
      else
      {
-        $body .= "<b>NO ITEMS</b><br><br>";
+        $body .= "<b>NO ITEMS</b><br>";
      }
     
+
+
+    if ($supplyrecord["TYPE"] == "NOPO" && $action == "RCV")    
+       $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text' value='".$supplyrecord["LINKEDPO"]."'><br>";              
+
     if ($action != "NO")
     {
-        if($action == "RCV") 
-        {
-          if ($supplyrecord["LINKEDPO"] != null)
-            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text' value='".$supplyrecord["LINKEDPO"]."'><br>";
-          else 
-            $body .= "<br>LINKED PONUMBER<br><input id='linkedponumber' style='width:300px' name='linkedpo' type='text'><br>";
-        }
-        else 
-        {
-           $body .= "<br>LINKED PONUMBER : ".$supplyrecord["LINKEDPO"]."<br>";
-        }
-
-
+        $body .= "(".$action.")<br>";
         $body .=  "<center>
                 <input type='hidden' id='detailtype' name='detailtype' value='".$action."'>
                 <input type='hidden' id='identifier' name='identifier' value='".$supplyrecord["ID"]."'>
                 <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
+
                 (Sign with your trackpad or mouse)<br>";
     
         $body .= "
@@ -4699,16 +4730,16 @@ function renderWHDone($data,$cancel = true){
                  document.getElementById('nopo').style.display = 'block';
               }
 
-              function cancelReception(author,identifier,ponumber){
+              function cancelSupplyRecord(author,identifier,ponumber,actiontype){
                 var result = confirm('Are you sure you want to cancel?');
                 if (result) 
-                {
+                {                  
                   var ItemJSON = '';                  
                   ItemJSON = {'IDENTIFIER' : identifier,
                               'AUTHOR'     : author, 
                               'PONUMBER'   : ponumber,                                                      
-                              'ACTIONTYPE' : 'WHCANCEL' };   
-                  var URL = 'http://phnompenhsuperstore.com/api/api.php/receptionrecord'; 
+                              'ACTIONTYPE' : actiontype };   
+                  var URL = 'http://phnompenhsuperstore.com/api/api_dev.php/supplyrecord'; 
                   var xmlhttp = new XMLHttpRequest();
                   xmlhttp.onreadystatechange = function () 
                   {

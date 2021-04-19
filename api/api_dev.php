@@ -3601,7 +3601,7 @@ function pictureRecord($base64Str,$type,$id)
 		$count = 1;
 		foreach($invoices as $invoice)
 		{
-			file_put_contents($filename."INV_".$id."_".$count.".png", $imageData);	
+			file_put_contents($filename."INV_".$id."_".$count.".png", base64_decode($invoice));	
 			$count++;
 		}	
 	}
@@ -3640,7 +3640,7 @@ function createSupplyRecordForPO()
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		if ($cnt == 0)
 		{
-			$sql = "INSERT INTO RECEPTION_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
 			$req = $indb->prepare($sql);
 			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 		}		
@@ -3659,7 +3659,7 @@ function createSupplyRecordForPO()
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		if ($cnt == 0)
 		{
-			$sql = "INSERT INTO RECEPTION_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'ORDERED','PO')";
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'ORDERED','PO')";
 			$req = $indb->prepare($sql);
 			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 		}		
@@ -3744,9 +3744,22 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req->execute(array($onePOData["PONUMBER"]));
 		$oneRes = $req->fetch();
 		$onePOData["VENDNAME"] = $oneRes["VENDNAME"];
+		
+		// COUNT INVOICES
+		$count = 1;
+		$nbinvoices = 0;
+		do
+		{       
+
+	        if (file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png"))
+	          $nbinvoices++;                
+	        $count++;        
+	        $go = file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png");
+    	}while($go);		
+		$onePOData["NBINVOICES"] = $nbinvoices;
 		array_push($newPOData,$onePOData);
 	}
-	$POData = $newPOData;
+	$mixData["PO"] = $newPOData;
 
 	// NO PO
 	if ($status == "ALL"){
@@ -3769,8 +3782,22 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}	
 
-	$mixData["PO"] = $POData;
-	$mixData["NOPO"] = $NOPOData;
+	$newNOPOData = array();
+	foreach($NOPOData as $oneNOPOData){		
+		// COUNT INVOICES
+		$count = 1;
+		$nbinvoices = 0;
+		do
+		{        
+	        if (file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png"))
+	          $nbinvoices++;                
+	        $count++;        
+	        $go = file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png");
+    	}while($go);		
+		$oneNOPOData["NBINVOICES"] = $nbinvoices;
+		array_push($newNOPOData,$oneNOPOData);
+	}
+	$mixData["NOPO"] = $newNOPOData;
 
 	$response = $response->withJson($mixData);
 	return $response;
@@ -3820,28 +3847,28 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	$dbBLUE = getDatabase();
 
 	if ($json["ACTIONTYPE"] == "VAL"){
+
 		$sql = "UPDATE SUPPLY_RECORD SET VALIDATOR_USER = :author ,STATUS = 'VALIDATED'  WHERE ID = :identifier" ;
 		$req = $db->prepare($sql);
-		$image = base64_decode($json["SIGNATURE"]);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
-		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"VAL",$json["IDENTIFIER"]);
+		pictureRecord($json["SIGNATURE"],"VAL",$json["IDENTIFIER"]);
 
-		if (isset($json["VALIDATION_PO"]))
+		if (isset($json["ITEMS"]))
 		{
-			foreach($json["VALIDATION_PO"] as $key => $value)
+			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["VALIDATION_QTY"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "PCH"){
-
-		$sql = "UPDATE RECEPTION_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
+		error_log($json["IDENTIFIER"]);
+		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
 		$req = $db->prepare($sql);			
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
@@ -3863,23 +3890,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
 			pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
 
-		if (isset($json["RECEPTION_PO"]))
+		if (isset($json["ITEMS"]))
 		{
-			foreach($json["RECEPTION_PO"] as $key => $value)
+			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["RECEPTION_QTY"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
-		$sql = "UPDATE SUPPLY_RECORD 
-				SET RECEIVERSIGNATUREIMAGE = :signature, 
-				RECEIVER_USER = :author,
-				STATUS = 'RECEIVED',
-				LINKEDPO = :linkedpo					
-			 	WHERE ID = :identifier";			
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
+				LINKEDPO = :linkedpo WHERE ID = :identifier";			
 		$req = $db->prepare($sql);
 
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
@@ -3888,11 +3911,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();
 		if(isset($json["INVOICEJSONDATA"]))
 			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
-		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
+		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
 		$data["RESULT"] = "OK";
 
 	}else if ($json["ACTIONTYPE"] == "ACC"){
-		$sql = "UPDATE RECEPTION_RECORD SET 
+		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
 					   STATUS = 'PAID' 
 					   WHERE ID = :identifier";	
@@ -3905,9 +3928,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["RESULT"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "WHCANCEL"){
-		$sql = "UPDATE RECEPTION_RECORD  
-				WAREHOUSE_USER = null, 
-				INVOICEJSONDATA = null, 
+		$sql = "UPDATE SUPPLY_RECORD  
+				SET WAREHOUSE_USER = null, 
 				STATUS = 'ORDERED', 
 				CANCELER = :author
 			   WHERE ID = :identifier";
@@ -3920,25 +3942,34 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$count = 1;
 		$res = true;
 		do{
-			$res = unlink("./img/supplyrecords_invoices/INV_".$json["IDENTIFIER"]."_".$count.".png");
+			if(file_exists("./img/supplyrecords_invoices/INV_".$json["IDENTIFIER"]."_".$count.".png"))
+				$res = unlink("./img/supplyrecords_invoices/INV_".$json["IDENTIFIER"]."_".$count.".png");
+			else
+				$res = false; 
 			$count++;		
 		}while($res);
-		// Delete the signature		
-		unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
+		if (file_exists("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png"))	
+			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
-		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = 0 WHERE  PONUMBER = ? ";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PONUMBER"]) );	 			
+		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0', PPSS_NOTE = null WHERE  PONUMBER = ? ";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($json["PONUMBER"]) );	
+
+		$data["RESULT"] = "OK";	 			
 	}
 	else if ($json["ACTIONTYPE"] == "PCHCANCEL")
 	{
-			$sql = "UPDATE SUPPLY_RECORD SET, PURCHASER_USER = null ,STATUS = 'VALIDATED'  
+			$sql = "UPDATE SUPPLY_RECORD 
+					SET PURCHASER_USER = null ,
+					STATUS = 'VALIDATED',
+					CANCELER = :author  
 					WHERE ID = :identifier";
 		$req = $db->prepare($sql);		
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);				
 		$req->execute();
-		unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
+		if(file_exists("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png"))
+			unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
 		$data["RESULT"] = "OK";	
 	}
 	else
@@ -3960,7 +3991,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$req->execute(array($id));
 	$rr = $req->fetch(PDO::FETCH_ASSOC);
 
-	//$data["receptionrecord"] = ;
 	$rr["items"] = null;
 
 	if ($rr["TYPE"] == "NOPO")

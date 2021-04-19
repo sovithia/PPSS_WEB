@@ -180,9 +180,7 @@ var zkSignature = (function () {
 		         let opt = { scale : 1,
 		         			 };
 		         html2canvas(document.getElementById('canvas'),opt).then(function(canvas) {	
-				
-
-
+						                      			
 						var identifier = document.getElementById('identifier').value;
 						var type = document.getElementById('detailtype').value;
 						var author = document.getElementById('author').value;												
@@ -195,7 +193,7 @@ var zkSignature = (function () {
 							var ItemJSON = {
 											 "STATUS" : 'REVIEWED',
 											 "AUTHOR" : author,
-											 "SIGNATURE" : b64
+											 "SIGNATURE" : b64											 
 											};
 							var	URL = 'http://phnompenhsuperstore.com/api/api.php/vault/' + identifier; 
 	   						var xmlhttp = new XMLHttpRequest();
@@ -206,9 +204,8 @@ var zkSignature = (function () {
 						}
 						else 
 						{
-							if (type == 'rcv')
-							{																					
-								actiontype = "RCV";	
+							if (type == 'RCV')
+							{																													
 								linkedponumber = "";
 								if (document.getElementById('linkedponumber') != null){
 									var linkedponumber = document.getElementById('linkedponumber').value;
@@ -219,34 +216,51 @@ var zkSignature = (function () {
 									}	
 								}						
 								
-							}else if (type == 'acc'){							
-								actiontype = "ACC";
-							}else if (type == 'wh'){							
-								actiontype = "WH";
-							}else if (type == 'xwh'){					
-								actiontype = "XWH";
-							}else if (type == 'pch'){
-								actiontype = "PCH"; 
 							}
 
 
 							var b64 = canvas.toDataURL("image/png").split("data:image/png;base64,")[1];
 							var ItemJSON = "";
 
-	   					 	if (type == 'rcv'){
+	   					 	if (type == 'RCV'){
 	   					 		ItemJSON = {"IDENTIFIER" :  identifier,
 	   					 					 "AUTHOR" : author,
 	   					 					  "SIGNATURE" :  b64,
 	   					 					  "LINKEDPO" :  linkedponumber,
-	   					 					 "ACTIONTYPE" : actiontype };
+	   					 					 "ACTIONTYPE" : type };
 	   					 	}
-	   					 	else {
+	   					 	else if (type == "VAL" || type == "WH")
+	   					 	{
+	   					 		var ponumber = document.getElementById('ponumber').value;
+	   					 		var fields = document.getElementById('myform').getElementsByTagName('input');  
+              					var allItems = {};
+			            		for(var i=0;i<fields.length;i++)
+			              		{  
+					                if (fields[i].type == 'hidden')
+					                {
+					                  var oneItem = {};
+					                  oneItem['ID'] = fields[i].value;                  
+					                  oneItem['PPSS_VALIDATION_QTY'] = document.getElementById('validationqty_' + fields[i].value).value;
+					                  oneItem['PPSS_RECEPTION_QTY'] = document.getElementById('receptionqty_' + fields[i].value).value;
+					                  oneItem['PPSS_NOTE'] = document.getElementById('note_' + fields[i].value).value;
+					                  allItems[fields[i].value] = oneItem; 
+					                }
+			             		}  
+			             		ItemJSON = {"IDENTIFIER" :  identifier,
+	   					 					 "AUTHOR" : author,
+	   					 					  "SIGNATURE" :  b64,
+	   					 					  "PONUMBER" : ponumber,
+	   					 					  "ITEMS" : allItems,
+	   					 					 "ACTIONTYPE" : type }; 	    
+	   					 	}
+	   					 	else 
+	   					 	{
 	   					 		ItemJSON = {"IDENTIFIER" :  identifier,
 	   					 					 "AUTHOR" : author,
-	   					 					  "SIGNATURE" :  b64, 
-	   					 					 "ACTIONTYPE" : actiontype }; 	
+	   					 					  "SIGNATURE" :  b64,	   					 					  
+	   					 					 "ACTIONTYPE" : type }; 	
 	   					 	}   					 	    				      				    
-	   						var	URL = 'http://phnompenhsuperstore.com/api/api.php/receptionrecord'; 
+	   						var	URL = 'http://phnompenhsuperstore.com/api/api_dev.php/supplyrecord'; 
 	   						var xmlhttp = new XMLHttpRequest();
 	    					xmlhttp.onreadystatechange = callbackFunction(xmlhttp);
 	    					xmlhttp.open("PUT", URL,false);
