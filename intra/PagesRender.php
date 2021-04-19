@@ -4352,7 +4352,7 @@ function renderSupplyRecordList($data,$action){
         $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
         $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
-          $dataSet .= "[    
+          $dataSet2 .= "[    
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
           \"".$item["NOPONOTE"]."\",
           \"".$item["LINKEDPO"]."\",

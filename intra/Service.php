@@ -43,8 +43,8 @@ class MODELS
 class Service
 {
 	
-	//const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
-	const BaseURL = "http://phnompenhsuperstore.com/api/api_dev.php";	
+	const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
+	//const BaseURL = "http://phnompenhsuperstore.com/api/api_dev.php";	
 	const BaseURLIntra = "http://phnompenhsuperstore.com/api/intrapi.php";
 	const BaseURLEcommerce = "http://phnompenhsuperstore.com/api/api_ecommerce.php";	
 
