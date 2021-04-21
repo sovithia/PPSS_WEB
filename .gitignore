@@ -8,4 +8,5 @@ api/.DS_Store
 api/img/.DS_Store
 api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
+api/img/requestaction/*
 intra/data.xlsx
