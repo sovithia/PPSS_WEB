@@ -3132,7 +3132,7 @@ function createSupplyRecordForPO(){
 	}
 
 	// AUTOVALIDATED
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES = 'AUTOVALIDATED' ";	
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES LIKE '%AUTOVALIDATED%' ";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3144,7 +3144,7 @@ function createSupplyRecordForPO(){
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		if ($cnt == 0)
 		{
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'ORDERED','PO')";
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 			$req = $indb->prepare($sql);
 			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 		}		
@@ -3507,9 +3507,9 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$type = substr($type,1);
 	}	
 	if ($validated == false)
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ?";
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? ORDER BY REQUEST_TIME DESC";
 	else
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ?";
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
 
 	$req = $db->prepare($sql);
 	$req->execute(array($type));
@@ -3519,13 +3519,15 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 });
 
 
+
+
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);	
 	$type = $request->getAttribute('type');
 
-	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUEST_TIME) 
-			VALUES(:type,:requester,datetime(CURRENT_TIMESTAMP,'localtime'))";
+	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) 
+			VALUES(:type,:requester)";
 	$req = $db->prepare($sql);
 
 	$req->bindParam(':type',$json["TYPE"],PDO::PARAM_STR);
@@ -3540,23 +3542,48 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
 	$items =  json_decode($json["ITEMS"],true);
-	foreach($items as $item){
-		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"],$item["LOCATION"],$lastID));
 	}  
 
 	// NO ADDITIONNAL ACTION FOR DEMAND
+	$tableName = "ITEMREQUESTRESTOCKPOOL";
 	if ($json["TYPE"] == "RESTOCK") // ADD TO DEBT POOL
 	{
-		foreach($items as $item){
-			$sql = "SELECT QUANTITY FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
+		foreach($items as $item)
+		{
+
+			// UPDATE POOL
+			$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?";			
+			$req = $db->prepare($sql);
+			$req->execute(array());
+			$req->execute(array($item["REQUEST_QUANTITY"]));
+			$qty = $req->fetch()["REQUEST_QUANTITY"];
+			if ($qty == $item["REQUEST_QUANTITY"]) // DELETE FROM POOL
+			{
+				$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));				
+			}
+			else // SUBSTRACT POOL
+			{
+				$newQty = $qty - $item["REQUEST_QUANTITY"];
+				$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($newQty,$item["PRODUCTID"]));								
+			}
+			
+			// UPDATE DEBT
+			$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["REQUEST_QUANTITY"]));
-			$qty = $req->fetch()["QUANTITY"];
+			$qty = $req->fetch()["REQUEST_QUANTITY"];
 			if ($qty == null) // Make Sure null is different from zero
 			{
-				$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,QUANTITY,) VALUES (?,?,?)";
+				$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
 			}
@@ -3566,13 +3593,39 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				$sql = "UPDATE ITEMREQUESTDEBT SET QUANTITY = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($totalQty));					
-			}
+			}			
+
 		}		
 	}
 	else if ($json["TYPE"] == "TRANSFER") // ADD TO TRANSFERPOOL MOVE DATA ON BLUE
 	{		
-		foreach($items as $item){
-			$sql = "SELECT QUANTITY FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
+
+		foreach($items as $item)
+		{
+			
+
+
+			// UPDATE POOL
+			$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?";			
+			$req = $db->prepare($sql);			
+			$req->execute(array($item["REQUEST_QUANTITY"]));
+			$qty = $req->fetch()["REQUEST_QUANTITY"];
+			if ($qty == $item["REQUEST_QUANTITY"]) // DELETE FROM POOL
+			{
+				$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));				
+			}
+			else // SUBSTRACT POOL
+			{
+				$newQty = $qty - $item["REQUEST_QUANTITY"];
+				$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($newQty,$item["PRODUCTID"]));								
+			}
+
+
+			$sql = "SELECT QUANTITY FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute();
 			$qty = $req->fetch()["QUANTITY"];
@@ -3836,7 +3889,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	else if ($type == "TRANSFER")
 		$sql = "SELECT * FROM ITEMREQUESTRANSFERPOOL";	
 	else if ($type == "DEBT")
-		$sql = "SELECT * FROM ITEMREQUESDEBT";	
+		$sql = "SELECT * FROM ITEMREQUESTDEBT";	
 
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -3859,7 +3912,7 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTRANSFERPOOL";
 
-	$items = $json["ITEMS"];
+	$items = $json["ITEMS"];	
 	foreach($items as $item)
 	{
 		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
