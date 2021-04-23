@@ -183,6 +183,8 @@ function includeScripts()
        ';
 }
 
+
+
 //-- LOGIN --//
 function renderLogin($warning = false)
 {
@@ -334,11 +336,11 @@ function renderLeftSidebar()
   $sectionSTORECLERK =      '<li class="li-hover"><div class="divider"></div></li>
                              <li class="li-hover"><p class="ultra-small margin more-text">STORE CLERK</p></li>
                             
-                            <li '.$hide.' '.hoverColor("itemrequestcreate"."itemrequestaction").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestcreate"."itemrequestaction").' >
                             <a href="?display=itemrequestcreate&entity=itemrequestaction">
                             <img src="images/icons/STRCLRK/ItemRequestDemandCreatePage.png" width="30px" height="30px">(NO USE)ItemDemand(+)</a></li>
                           
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."DEMAND").'>
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."DEMAND").'>
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=DEMAND">
                             <img src="images/icons/STRCLRK/ItemRequestDemandSubmittedListPage.png" width="30px" height="30px">(NO USE)ItemDemand(?)</a></li>
                             ';            
@@ -346,31 +348,31 @@ function renderLeftSidebar()
   $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
                             <li class="li-hover"><p class="ultra-small margin more-text">STORE SUPERVISOR</p></li>
                       
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."DEMAND").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."DEMAND").' >
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=DEMAND" >
                             <img src="images/icons/STRSPVR/ItemRequestDemandTodoListPage.png" width="30px" height="30px">(NO USE)ItemDemand(!)</a></li>
                             
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vDEMAND").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vDEMAND").' >
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=vDEMAND" >
                             <img src="images/icons/STRSPVR/ItemRequestDemandValidatedListPage.png" width="30px" height="30px">(NO USE)ItemDemand(@)</a></li>
                             
 
-                            <li '.$hide.' '.hoverColor("itemrequestcreate"."itemrequestitemspool"."RESTOCK").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestcreate"."itemrequestitemspool"."RESTOCK").' >
                             <a href="?display=itemrequestcreate&entity=itemrequestitemspool&type=RESTOCK" >
                             <img src="images/icons/STRSPVR/ItemRequestRestockCreatePage.png" width="30px" height="30px">(NO USE)ItemRestock(+)</a></li>
                             
 
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."RESTOCK").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."RESTOCK").' >
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=RESTOCK" >
                             <img src="images/icons/STRSPVR/ItemRequestRestockSubmittedListPage.png" width="30px" height="30px">(NO USE)ItemRestock(?)</a></li>
                             
 
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."TRANSFER").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."TRANSFER").' >
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=TRANSFER" >
                             <img src="images/icons/STRSPVR/ItemRequestTransferTodoListPage.png" width="30px" height="30px">(NO USE)ItemTransfer(!)</a></li>
                             
 
-                            <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vTRANSFER").' >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vTRANSFER").' >
                             <a href="?display=itemrequestlist&entity=itemrequestaction&type=vTRANSFER" >
                             <img src="images/icons/STRSPVR/ItemRequestTransferValidatedListPage.png" width="30px" height="30px">(NO USE)ItemTransfer(@)</a></li>
                             
@@ -402,28 +404,28 @@ function renderLeftSidebar()
                            <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
 
-                           <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."RESTOCK").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."RESTOCK").' >
                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=RESTOCK" >
                            <img src="images/icons/WH/ItemRequestRestockTodoListPage.png" width="30px" height="30px">(NO USE)ItemRestock(!)</a></li>
 
-                           <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vRESTOCK").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vRESTOCK").' >
                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=vRESTOCK" >
                            <img src="images/icons/WH/ItemRequestRestockValidatedListPage.png" width="30px" height="30px">(NO USE)ItemRestock(@)</a></li>
 
 
-                           <li '.$hide.' '.hoverColor("itemrequestcreate"."itemrequestitemspool"."PURCHASE").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestcreate"."itemrequestitemspool"."PURCHASE").' >
                            <a href="?display=itemrequestcreate&entity=itemrequestitemspool&type=PURCHASE" >
                            <img src="images/icons/WH/ItemRequestPurchaseCreatePage.png" width="30px" height="30px">(NO USE)ItemPurchase(+)</a></li>
                            
-                           <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."PURCHASE").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."PURCHASE").' >
                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=PURCHASE" >
                            <img src="images/icons/WH/ItemRequestPurchaseSubmittedListPage.png" width="30px" height="30px">(NO USE)ItemPurchase(!)</a></li>
                            
-                           <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestitemspool"."TRANSFER").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestitemspool"."TRANSFER").' >
                            <a href="?display=itemrequestlist&entity=itemrequestitemspool&type=TRANSFER" >
                            <img src="images/icons/WH/ItemRequestTransferCreatePage.png" width="30px" height="30px">(NO USE)ItemTransfer(+)</a></li>
 
-                           <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."TRANSFER").' >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."TRANSFER").' >
                            <a href="?display=itemrequestlist&entity=itemrequestaction&type=TRANSFER" >
                            <img src="images/icons/WH/ItemRequestTransferSubmittedListPage.png" width="30px" height="30px">(NO USE)ItemTransfer(?)</a></li>
                            ';
@@ -441,11 +443,11 @@ function renderLeftSidebar()
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED&action=PCH" >
                         <img src="images/icons/PCH/SupplyRecordListPCHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
 
-                        <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."PURCHASE").' >
+                        <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."PURCHASE").' >
                         <a href="?display=itemrequestlist&entity=itemrequestaction&type=PURCHASE" >
                         <img src="images/icons/PCH/ItemRequestPurchaseTodoListPage.png" width="30px" height="30px">(NO USE)ItemPurchase(!)</a></li>
 
-                        <li '.$hide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vPURCHASE").' >
+                        <li '.$nodemohide.' '.hoverColor("itemrequestlist"."itemrequestaction"."vPURCHASE").' >
                         <a href="?display=itemrequestlist&entity=itemrequestaction&type=vPURCHASE" >
                         <img src="images/icons/PCH/ItemRequestPurchaseValidatedListPage.png" width="30px" height="30px">(NO USE)ItemPurchase(@)</a></li>
 
