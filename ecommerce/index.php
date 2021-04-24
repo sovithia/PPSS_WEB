@@ -55,23 +55,23 @@ function renderItemSearch($items)
    {	
 
        $body .= "Total : ".count($items);
-
     	 $body .= "
        <center>                 
-       <form target=_blank action='export.php' method='POST'>    	        
-        <input type='submit' name='type' value='EXPORT'>
+       <form target=_blank action='../intra/export.php' method='POST'>    
+            <input type='hidden' name='type' value='ecommerce'>              
+            <input type='submit' value='EXPORT'>
+
     	  <table border='1' id='resultTable'>
         <thead><tr>
   		  	<th>Picture</th><th>BARCODE</th><th>Name</th><th>Name-KH</th>
             <th>Packing</th><th>Stock</th><th>Category</th> <th>COUNTRY</th>
-            <th>COST</th><th>PRICE</th><th>MARGIN</th   
-  		  	<th>PRICE</th>
+            <th>COST</th><th>PRICE</th><th>MARGIN</th><th></th>
   		  </tr></thead>
         
         <tfoot><tr>
          	<th>Picture</th><th>BARCODE</th><th>Name</th><th>Name-KH</th>
             <th>Packing</th><th>Stock</th><th>Category</th> <th>COUNTRY</th>
-  		  	  <th>COST</th><th>PRICE</th><th>MARGIN</th   
+  		  	  <th>COST</th><th>PRICE</th><th>MARGIN</th><th></th>  
         </tr></tfoot>
         </table>              
        </form>
@@ -82,7 +82,8 @@ function renderItemSearch($items)
         $item["PRODUCTID"] = $item["BARCODE"];
         $item["ONHAND"] = truncatePrice($item["ONHAND"]);
         $item["PRICE"] = truncatePrice($item["PRICE"] * 1.1);
-        $margin = $item["PRICE"] - $item["COST"];
+        $item["COST"] = floatval($item["COST"]);
+        $item["MARGIN"] = $item["PRICE"] - $item["COST"];
 
          $dataSet .= "[
           '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
@@ -95,7 +96,7 @@ function renderItemSearch($items)
           '".$item["COLOR"]."',
           '".$item["COST"]."',          
           '".$item["PRICE"]."',
-          '".$margin."',
+          '".$item["MARGIN"]."',
           \"<input type='hidden' name='".$item["PRODUCTID"]."' value='".escapeJS(json_encode($item))."')>\"],";
         }
         $dataSet = rtrim($dataSet,",");    		

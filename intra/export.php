@@ -60,6 +60,8 @@ function fieldsPresets($type)
         return ["IMAGE","ID","PRODUCTNAME","ONHAND","LOCATION","ORDERQUANTITY"];
     else if ($type == "progression")
         return ["IMAGE","BARCODE","PRODUCTNAME","last1","last2","last3","last4","last4"];    
+    else if ($type == "ecommerce")
+        return ["IMAGE","PRODUCTNAME","PRODUCTNAME1","PACKING","ONHAND","CATEGORYID","COUNTRY","COST","PRICE","MARGIN"];  
 }
 
 
@@ -148,8 +150,7 @@ function generateExcel($items,$type = 1,$setQuantity = false)
     foreach($items as $item)    
     {  
         if ($item["PRODUCTID"] == "153020") // MYSTERY
-            continue;
-        error_log($count);                    
+            continue;              
         $sheet->getRowDimension($count)->setRowHeight(100); 
          
         if ($setQuantity == true)
@@ -354,9 +355,9 @@ else if ($type == "EXPORTSELECT")
     downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
-{         
+{             
     $items = purifyData($_POST);      
-
+    //var_dump($_POST);
     generateExcel($items,$type);        
     downloadFile("data.xlsx");
 } 

@@ -1634,7 +1634,9 @@ $app->post('/itemget',function(Request $request,Response $response) {
 	$sql =  "SELECT PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
-			PACKING,COST,PRICE,VENDNAME,
+			PACKING,
+			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
+			,PRICE,VENDNAME,
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',			
@@ -3334,7 +3336,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORSER_QTY = ?,PPSS_VALIDATION_QTY = ?,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
