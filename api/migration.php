@@ -32,14 +32,31 @@ function getInternalDatabase()
 	return $db;
 }
 
+function deleteFiles($folder)
+{
+	$files = glob($folder.'/*'); 
+	foreach($files as $file)
+	{ 
+  		if(is_file($file))   
+    		unlink($file); 
+  	}
+}
+
+function resetAll()
+{
+	deleteFiles("img/supplyrecords_invoices");
+	deleteFiles("img/supplyrecords_signatures");
+	$indb = getInternalDatabase();
+	$sql = "DELETE FROM SUPPLY_RECORD";
+	$req=$indb->prepare($sql);
+	$req->execute(array()); 	
+}
+
 function goRR()
 {
 	$indb = getInternalDatabase();
-
 	$sql = "SELECT * FROM RECEPTION_RECORD";
-
 	$req=$indb->prepare($sql);	
-
 	$req->execute(array()); 
 	$items=$req->fetchAll(PDO::FETCH_ASSOC);
 	foreach($items as $rr){
@@ -61,11 +78,17 @@ function goRR()
 		$whsig = $rr["WAREHOUSESIGNATUREIMAGE"];
 		$rcvsig = $rr["RECEIVERSIGNATUREIMAGE"];
 		$accsig = $rr["ACCOUNTANTSIGNATUREIMAGE"];
-		file_put_contents("./img/supplyrecords_signatures/VAL_".$lastID.".png", $xwhsig);
-		file_put_contents("./img/supplyrecords_signatures/PCH_".$lastID.".png", $pchsig);
-		file_put_contents("./img/supplyrecords_signatures/WH_".$lastID.".png", $whsig);
-		file_put_contents("./img/supplyrecords_signatures/RCV_".$lastID.".png", $rcvsig);
-		file_put_contents("./img/supplyrecords_signatures/ACC_".$lastID.".png", $accsig);
+
+		if ($xwhsig != null)
+			file_put_contents("./img/supplyrecords_signatures/VAL_".$lastID.".png", $xwhsig);
+		if ($pchsig != null)
+			file_put_contents("./img/supplyrecords_signatures/PCH_".$lastID.".png", $pchsig);
+		if ($whsig != null)
+			file_put_contents("./img/supplyrecords_signatures/WH_".$lastID.".png", $whsig);
+		if ($rcvsig != null)
+			file_put_contents("./img/supplyrecords_signatures/RCV_".$lastID.".png", $rcvsig);
+		if ($accsig)
+			file_put_contents("./img/supplyrecords_signatures/ACC_".$lastID.".png", $accsig);
 
 		$invoices = json_decode($rr["INVOICEJSONDATA"],true);
 		if (count($invoices) > 0)
@@ -81,6 +104,7 @@ function goRR()
 }	
 
 
+
 function goIRR()
 {
 	$indb = getInternalDatabase();
@@ -93,19 +117,19 @@ function goIRR()
 	$count = 1;
 
 	foreach($items as $item){
-		$uSQL = "UPDATE PODETAIL SET PPSS_ORDER_QTY = ?,
-									 PPSS_VALIDATION_QTY = ?,
+		$uSQL = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ?,
 									 PPSS_RECEPTION_QTY = ?
 									 WHERE PRODUCTID = ? 
 									 AND PONUMBER = ?";
 		$req1=$db->prepare($uSQL);
-		$req1->execute(array($item["ORDER_QTY"],$item["VALIDATION_QTY"],$item["RECEPTION_QTY"],$item["PRODUCTID"],$item["PONUMBER"]));
+		$req1->execute(array($item["VALIDATION_QTY"],$item["RECEPTION_QTY"],$item["PRODUCTID"],$item["PONUMBER"]));
 		echo "UPDATING PODETAIL WITH ID ".$item["PONUMBER"]." ".$count."\n";	
 
 		$count++;		
 	}
 }
-
+//resetAll();
+//goRR();
 goIRR();
 
 ?>

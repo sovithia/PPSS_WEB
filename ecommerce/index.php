@@ -64,13 +64,14 @@ function renderItemSearch($items)
         <thead><tr>
   		  	<th>Picture</th><th>BARCODE</th><th>Name</th><th>Name-KH</th>
             <th>Packing</th><th>Stock</th><th>Category</th> <th>COUNTRY</th>
+            <th>COST</th><th>PRICE</th><th>MARGIN</th   
   		  	<th>PRICE</th>
   		  </tr></thead>
         
         <tfoot><tr>
          	<th>Picture</th><th>BARCODE</th><th>Name</th><th>Name-KH</th>
             <th>Packing</th><th>Stock</th><th>Category</th> <th>COUNTRY</th>
-  		  	<th>PRICE</th>         
+  		  	  <th>COST</th><th>PRICE</th><th>MARGIN</th   
         </tr></tfoot>
         </table>              
        </form>
@@ -81,7 +82,8 @@ function renderItemSearch($items)
         $item["PRODUCTID"] = $item["BARCODE"];
         $item["ONHAND"] = truncatePrice($item["ONHAND"]);
         $item["PRICE"] = truncatePrice($item["PRICE"] * 1.1);
-      
+        $margin = $item["PRICE"] - $item["COST"];
+
          $dataSet .= "[
           '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
           '".$item["BARCODE"]."',         
@@ -91,7 +93,9 @@ function renderItemSearch($items)
           '".$item["ONHAND"]."',
           '".$item["CATEGORYID"]."',
           '".$item["COLOR"]."',
+          '".$item["COST"]."',          
           '".$item["PRICE"]."',
+          '".$margin."',
           \"<input type='hidden' name='".$item["PRODUCTID"]."' value='".escapeJS(json_encode($item))."')>\"],";
         }
         $dataSet = rtrim($dataSet,",");    		

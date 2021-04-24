@@ -283,6 +283,14 @@ function getData($display,$entity,$param)
   else if ($display == "itemrequestactionlist")
   {
     return Service::ListEntity($entity,$param["type"]);          
+  }  
+  else if ($display == "itemrequestactiondetails")
+  {
+    return Service::ListEntity($entity,$param["ID"]);          
+  }
+  else if ($display == "itemrequestactioncreate")
+  {
+    return Service::ListEntity($entity,$param["type"]);          
   }
   else if ($display == "scheduleAll" || $display == "trombi" || $display == "supplierlist" || 
            $display == "salarylist" || $display == "restdaylist" || $display == "lowprofit" || 
@@ -434,9 +442,9 @@ function renderBody()
     return renderSupplierList($data);
   else if ($display == "supplieritems")
     return renderSupplierItems($data);
-  else if ($display == "supplierpurchaseorders"){    
+  else if ($display == "supplierpurchaseorders")    
     return renderSupplierPurchaseOrders($data);
-  }
+  
 
 
   else if ($display == "trombi") 
@@ -480,7 +488,7 @@ function renderBody()
   else if ($display == "bank")
     return renderBank($data);  
 
-
+  // SUPPLY RECORD
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
   else if ($display == "supplyrecordlist")
@@ -490,7 +498,13 @@ function renderBody()
   else if ($display == "supplyrecorddetails")
     return renderSupplyRecordDetail($data,$_GET["action"]);
   
-
+  // ITEM REQUEST
+  else if ($display == "itemrequestactionlist")
+    return renderItemRequestActionList($data);
+  else if ($display == "itemrequestactiondetails")
+    return renderItemRequestActionDetails($data);
+  else if ($display == "itemrequestactiondcreate")
+    return renderItemRequestActionCreate($data);
   // DEPRECATION
   else if ($display == "whdone")
     return renderWHDone($data);
@@ -529,7 +543,6 @@ function renderBody()
     return renderReceptionRecordDetail($data);
   else if ($display == "receptionRecordDetailNOPO")
     return renderReceptionRecordDetailNOPO($data);
-
 
   else if ($display == "vault")
     return renderVault($data);  

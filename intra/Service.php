@@ -44,7 +44,7 @@ class Service
 {
 	
 	const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
-	//const BaseURL = "http://phnompenhsuperstore.com/api/api_dev.php";	
+	const BaseURL2 = "http://phnompenhsuperstore.com/api/api_dev.php";	
 	const BaseURLIntra = "http://phnompenhsuperstore.com/api/intrapi.php";
 	const BaseURLEcommerce = "http://phnompenhsuperstore.com/api/api_ecommerce.php";	
 
@@ -156,8 +156,14 @@ class Service
  	// NEW
  	const ResourceSupplyRecord = Service::BaseURL."/supplyrecord";
  	const ResourceSupplyRecordDetails = Service::BaseURL."/supplyrecorddetails";
- 	const ResourceItemRequestAction = Service::BaseURL."/itemrequestaction";
 
+ 	// ITEMREQUEST
+ 	const ResourceItemRequestAction = Service::BaseURL2."/itemrequestaction";
+ 	const ResourceItemRequestDetails = Service::BaseURL2."/itemrequestactionitems";
+ 	const ResourceItemRequestPool = Service::BaseURL2."/itemrequestitemspool";
+
+						 	  
+						 	  
 	const modelRoute = array( 		
 							  "sales" => Service::ResourceSales,
 							  "restday" => Service::ResourceRestDay,
@@ -245,7 +251,8 @@ class Service
 						 	  "supplyrecorddetails" => Service::ResourceSupplyRecordDetails,
 
 						 	  "itemrequestaction" => Service::ResourceItemRequestAction,
-
+						 	  "itemrequestactiondetails" => Service::ResourceItemRequestDetails,
+						 	  "itemrequestactionpool" => Service::ResourceItemRequestPool,
 
 						 	  "vaultdetail" => Service::ResourceVault,
 						 	  "tinyitemsearch" => Service::ResourceTinyItemSearch,
@@ -287,7 +294,7 @@ class Service
 		if ($option != "" && (substr($option,0,1) != "?"))
 			$option = "/".$option;				
 				
-		//echo Service::modelRoute[$model] . $option;
+		error_log(Service::modelRoute[$model] . $option);
 		//exit;
 		return RestEngine::GET(Service::modelRoute[$model] . $option,$header);				
 	}

@@ -3334,9 +3334,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORSER_QTY = ?,PPSS_VALIDATION_QTY = ?,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
@@ -3499,8 +3499,6 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	
 	$type = $request->getAttribute('type');
 
-	
-
 	if (substr($type,0,1) == "v")
 	{
 		$filter = "VALIDATED";
@@ -3511,6 +3509,11 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$filter = "SUBMITED";
 		$type = substr($type,1);
 	}
+	else if (substr($type,0,1) == "a")
+	{
+		$filter = "ALL";
+		$type = substr($type,1);
+	}
 	else
 		$filter = "UNVALIDATED";
 
@@ -3519,7 +3522,11 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	else if ($filter == "VALIDATED")
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
 	else if ($filter == "SUBMITED")
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
+	else if ($filter == "ALL")
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = ? ORDER BY REQUEST_UPDATED DESC";
+		
+	error_log($sql);
 
 	$req = $db->prepare($sql);
 	$req->execute(array($type));
@@ -3527,9 +3534,6 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	$response = $response->withJson($actions);
 	return $response;
 });
-
-
-
 
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -3622,26 +3626,26 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		$req->execute();
 		$imageData = base64_decode($json["REQUESTEESIGNATURE"]);
 		file_put_contents("./img/requestaction/E" .$id.".png" , $imageData);
-
-		if ($ira["TYPE"] == "DEMAND"){ // STORE SUPERVISOR VALIDATE DEMAND AND ADD TO RESTOCK POOL		
+		
+		if ($ira["TYPE"] == "DEMAND"){ // STORE SUPERVISOR VALIDATE DEMAND AND ADD TO RESTOCK POOL					
 			foreach($items as $item){
-				$sql = "SELECT REQUEST_QUANTITY as CNT FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
+				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute();			
+				$req->execute(array($item["PRODUCTID"]));			
 				$cnt = $req->fetch();
 
 				if ($cnt == false){ // CREATE NEW ENTRY
 					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
 					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["POOL_WITHDRAW"]));	
+					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));	
 				}
 				else 
 				{
 
-					$newQty = $item["RESTOCK_POOL"] + $cnt["CNT"];					
+					$newQty = $item["REQUEST_QUANTITY"] + $cnt["CNT"];					
 					$sql1 = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
 					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["RESTOCK_POOL"],$item["PRODUCTID"]));		
+					$req1->execute(array($newQty,$item["PRODUCTID"]));		
 				}
 			}
 		}
@@ -3649,37 +3653,41 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		
 			foreach($items as $item)
 			{
-
+				// TRANSFER POOL
 				$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute();
-				$cnt = $req->fetch();
+				$cnt = $req->fetch(array($item["PRODUCTID"]));
 
+				error_log($cnt);
 				if ($cnt == false){
+					error_log("FALSE");
 					$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
 					$req1 = $db->prepare($sql1);
 					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
 				}
 				else{
+					error_log("TRUE");
 					$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL"];
 					$sql1 = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
 					$req1 = $db->prepare($sql1);
 					$req1->execute(array($newQty,$item["PRODUCTID"]));
 				}
 		
-				$sql = "SELECT count(*) as CNT FROM ITEMREQUESPURCHASEPOOL WHERE PRODUCTID = ?";
+				// PURCHASE POOL
+				$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTPURCHASEPOOL WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute();
-				$cnt = $req->fetch();
+				$cnt = $req->fetch(array($item["PRODUCTID"]));
 
-				if ($cnt == 0){
-					$sql2 = "INSERT INTO ITEMREQUESPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+				if ($cnt == false){
+					$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
 					$req2 = $db->prepare($sql2);
 					$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
 				}
 				else{
 					$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL"];
-					$sql2 = "UPDATE ITEMREQUESPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+					$sql2 = "UPDATE ITEMREQUESTPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
 					$req2 = $db->prepare($sql2);
 					$req2->execute(array($newQty,$item["PRODUCTID"]));
 				}
@@ -3740,7 +3748,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 	}
 	else if ($json["STATUS"] == "SUBMITTED")
 	{
-		if ($ira["TYPE"] == "DEMAND")
+		if ($ira["TYPE"] == "DEMAND" && $ira["REQUESTEE"] == null)
 		{
 
 			$imageData = base64_decode($json["REQUESTERSIGNATURE"]);
@@ -3763,14 +3771,12 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 	$response = $response->withJson($data);
 	return $response;
 });
-
 			
 $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
 	$id = $request->getAttribute('id');
-
 	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -3864,16 +3870,12 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req->execute(array($itemID));				
 		$item["SUPPLIERREQUESTED_QTY"] = floatval($req->fetch()["SUPPLIERREQUESTED_QTY"]);
 		//
-		
 		array_push($newData,$item);
-
-
 	}	
 
 	$response = $response->withJson($newData);
 	return $response;
 });
-
 
 $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -3886,7 +3888,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	else if ($type == "PURCHASE")
 		$sql = "SELECT * FROM ITEMREQUESTPURCHASEPOOL";
 	else if ($type == "TRANSFER")
-		$sql = "SELECT * FROM ITEMREQUESTRANSFERPOOL";	
+		$sql = "SELECT * FROM ITEMREQUESTTRANSFERPOOL";	
 	else if ($type == "DEBT")
 		$sql = "SELECT * FROM ITEMREQUESTDEBT";	
 
@@ -3894,8 +3896,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$req->execute(array());
 	$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
 	$items = $response->withJson($actions);
-	return $items;
-	
+	return $items;	
 });
 
 $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
@@ -3909,7 +3910,7 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	else if($type == "PURCHASE")
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
-		$tableName = "ITEMREQUESTRANSFERPOOL";
+		$tableName = "ITEMREQUESTTRANSFERPOOL";
 
 	$items = $json["ITEMS"];	
 	foreach($items as $item)
@@ -3921,14 +3922,8 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	}
 	$result["RESULT"] = "OK";
 	$response = $response->withJson($result);
-	return $response;
-	
+	return $response;	
 });
-
-
-
-
-
 
 
 // ***********// PROMOTION ***********// 

@@ -4153,10 +4153,218 @@ function renderBank($data)
 /**********************/
 /**** ItemRequest ****/
 
-function renderItemRequestActionList($data)
-{
+function renderItemRequestActionList($data){
+  $items = $data;
+  $status = $_GET["status"];
 
+   $body = "<div >";   
+   $body .=   "<table border='1' id='result'>
+               <thead><tr>
+                  <th>DETAILS</th>                                
+                  <th>ID</th>
+                  <th>TYPE</th> 
+                  <th>REQUEST_TIME</th>
+                  <th>REQUESTER</th>
+                  <th>REQUESTEE</th>                  
+               </tr></thead>
+
+               <tfoot><tr>
+                  <th>DETAILS</th>                                
+                  <th>ID</th>
+                  <th>TYPE</th> 
+                  <th>REQUEST_TIME</th>
+                  <th>REQUESTER</th>
+                  <th>REQUESTEE</th> 
+               </tr></tfoot>
+               </table>
+               ";  
+    $dataSet1 = "";
+    
+
+    foreach($items as $item)
+    {   
+       $base = "../api/img/requestaction/";
+
+        
+        $ID = $item["ID"];
+
+        $REQUESTER = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."R".$ID.".png")) ? $base."R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTER"];
+        $REQUESTEE = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."E".$ID.".png")) ? $base."E".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTEE"];
+
+         $dataSet1 .= 
+         "[ 
+          '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=".$status."&ID=".$item["ID"]."\">DETAILS</a>',                
+          '".$item["ID"]."',          
+          '".$item["TYPE"]."',
+          '".$item["REQUEST_TIME"]."',    
+          '".$REQUESTER."',
+          '".$REQUESTEE."'                  
+          ],";
+    }
+     $dataSet1 = rtrim($dataSet1,",");        
+        $body .= "  
+        <script>      
+        var dataSet1 = [".$dataSet1."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#result').DataTable({                
+         data:dataSet1, 
+         'lengthMenu':[-1],          
+           });
+        });
+      </script>
+    ";   
+    $body .=  "</div>"; 
+
+
+    return $body; 
 }
+
+function renderItemRequestActionDetails($data){
+    $items = $data;
+   //$items = $data["items"];   
+   //$itemrequest = $data;
+   $status = $_GET["status"];
+
+   $body = "<div >";   
+   $body .=   "<form id='myform'><table border='1' id='result'>
+               <thead><tr>
+                  <th>IMAGE</th>
+                  <th>NAME</th>
+                  <th>DEM</th>                                
+                  <th>RES</th>
+                  <th>TRAN</th> 
+                  <th>PURC</th>
+                  <th>WH</th>
+                  <th>(BLUE)</th>                  
+                  <th>Trans_P</th>
+                  <th>Purch_P</th>                  
+                  <th>Req_Qty</th>
+                  <th>Debt</th>    
+
+                  <th>TRANS</th>
+                  <th>PURCH</th>              
+                  <th>ACTION</th>
+               </tr></thead>
+
+               <tfoot><tr>
+                  <th>IMAGE</th>
+                  <th>NAME</th>
+                  <th>DEM</th>                                
+                  <th>RES</th>
+                  <th>TRAN</th> 
+                  <th>PURC</th>
+                  <th>WH</th>
+                  <th>(BLUE)</th>                  
+                  <th>Trans_P</th>
+                  <th>Purch_P</th>                  
+                  <th>Req_Qty</th>
+                  <th>Debt</th> 
+
+                  <th>TRANS</th>
+                  <th>PURCH</th>              
+                  <th>ACTION</th>
+               </tr></tfoot>
+               </table></form>
+               ";  
+    $dataSet1 = "";
+    
+
+    foreach($items as $item)
+    {   
+         $dataSet1 .= 
+         "[ 
+         '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',          
+          \"".$item["PRODUCTNAME"]."\",          
+          '".$item["DEMAND_QTY"]."',
+          '".$item["RESTOCK_QTY"]."',    
+          '".$item["TRANSFER_QTY"]."',    
+          '".$item["PURCHASE_QTY"]."',    
+          '".$item["WAREHOUSE_QTY"]."',    
+          '".$item["SUPPLIERREQUESTED_QTY"]."',    
+          '".$item["TRANSFER_POOL"]."',    
+          '".$item["PURCHASE_POOL"]."',    
+          '".$item["REQUEST_QUANTITY"]."',    
+          '".$item["DEBT_QTY"]."',    
+          '<input value=\"".$item["ID"]."\" type=\"hidden\"><input style=\"text-align:center\" id=\"transfer_".$item["ID"]."\" value=\"".$item["REQUEST_QUANTITY"]."\" type=\"text\"  >',
+          '<input style=\"text-align:center\" id=\"purchase_".$item["ID"]."\" value=\"0\" type=\"text\"  >',
+          '<button onclick=\"All(".$item["ID"].")\">ALL</button><br><button onclick=\"Add(".$item["ID"].")\">-</button><button onclick=\"Substract(".$item["ID"].")\">+</button>',             
+          ],";
+    }
+     $dataSet1 = rtrim($dataSet1,",");        
+        $body .= "  
+        <script> 
+        function Add(id)
+        {
+          if (document.getElementById('transfer_' + id).value == ".$item["REQUEST_QUANTITY"].")
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) + 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) - 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+
+        function Substract(id)
+        {
+          if (document.getElementById('transfer_' + id).value == 0)
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) - 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) + 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+
+        function All(id)
+        {
+          document.getElementById('transfer_' + id).value = 0;
+          document.getElementById('purchase_' + id).value = ".$item["REQUEST_QUANTITY"]."; 
+        }
+
+        var dataSet1 = [".$dataSet1."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#result').DataTable({                
+         data:dataSet1, 
+         'lengthMenu':[-1],          
+           });
+        });
+      </script>
+    ";   
+    $body .=  "</div>"; 
+    
+    $body .=  "<center>
+                <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
+                <input type='hidden' id='status'  value='".$status."'>                
+                <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
+
+                (Sign with your trackpad or mouse)<br>";
+    
+    $body .= "
+            <button type='button' onclick='zkSignature.clear()'>
+                Clear Signature
+               </button>
+          
+               <div id='canvas' style='width:466px;border:1px solid black;!important'>
+                Canvas is not supported.
+               </div>
+
+               <script>
+                zkSignature.capture();
+               </script>
+        
+               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+                SEND
+               </button><center><br><br><br>";
+
+    return $body; 
+}
+
+function renderItemRequestActionCreate($data){
+}
+
+function renderItemRequestDebtList($data){  
+}
+
 /**********************/
 
 /**********************/

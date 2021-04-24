@@ -181,29 +181,45 @@ var zkSignature = (function () {
 		         			 };
 		         html2canvas(document.getElementById('canvas'),opt).then(function(canvas) {	
 						                      			
-						var identifier = document.getElementById('identifier').value;
-						var type = document.getElementById('detailtype').value;
+						
+						var type = document.getElementById('detailtype').value;					
 						var author = document.getElementById('author').value;												
 						var name = '';						
-
-
-						if (type == 'vault')
-						{
-							var b64 = canvas.toDataURL("image/png").split("data:image/png;base64,")[1];
-							var ItemJSON = {
-											 "STATUS" : 'REVIEWED',
-											 "AUTHOR" : author,
-											 "SIGNATURE" : b64											 
-											};
-							var	URL = 'http://phnompenhsuperstore.com/api/api.php/vault/' + identifier; 
-	   						var xmlhttp = new XMLHttpRequest();
-	    					xmlhttp.onreadystatechange = callbackFunction2(xmlhttp);	    					
+						
+						if (type == "ITEMREQUEST")
+						{							
+							var status = document.getElementById('status').value;
+	   					 	var fields = document.getElementById('myform').getElementsByTagName('input');  
+              				var allItems = {};
+		            		for(var i=0;i<fields.length;i++)
+		              		{  
+				                if (fields[i].type == 'hidden')
+				                {
+				                  var oneItem = {};
+				                  oneItem['ID'] = fields[i].value;                  
+				                  oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
+				                  oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
+				                  allItems[fields[i].value] = oneItem; 
+				                }
+		             		}  
+			             	ItemJSON = {  "REQUESTEE" : author,
+	   					 				  "REQUESTEESIGNATURE" :  b64,	   					 					  
+	   					 				  "ITEMS" : allItems,
+	   					 	  			  "STATUS" : status }; 
+							var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction/' + identifier; 
+	   						var xmlhttp = new XMLHttpRequest();	    						    					
+	    					xmlhttp.onreadystatechange = function () {
+			                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
+			                        alert('ItemRequest updated changed')
+			                      }
+			                 }
 	    					xmlhttp.open("PUT", URL,false);
 	    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 	    					xmlhttp.send(JSON.stringify(ItemJSON)); 				
 						}
 						else 
 						{
+							var identifier = document.getElementById('identifier').value;
 							if (type == 'RCV')
 							{																													
 								linkedponumber = "";
