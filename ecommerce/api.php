@@ -57,15 +57,16 @@ $app->post('/login',function(Request $request,Response $response) {
 	}
 	else{
 
-
 		$token = bin2hex(random_bytes(64));
 		$sql = "UPDATE USER set ACCESS_TOKEN = ? WHERE username = ?, password = ?,expiration = ?";
 
 		$req = $db->prepare($sql);
 		$expiration = date("Y-m-d H:i:s", strtotime('+72 hours')).
-		$result["result"] = "OK";
-		$result["access_token"] = $res["access_token"];
+		
 		$req->execute(array($token,$json["username"],$json["password"],$expiration));
+
+		$result["result"] = "OK";
+		$result["access_token"] = $token;
 	}
 	
 	$response = $response->withJson($result);
