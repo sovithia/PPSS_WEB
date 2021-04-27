@@ -2519,7 +2519,8 @@ $app->get('/allwaitingpo', function(Request $request,Response $response) {
 	$login = $request->getAttribute('login');
 	$cvUser = CVUserByLogin($login);	
 	$conn=getDatabase();	
-	$sql = "SELECT PONUMBER,POHEADER.VENDID,POSTATUS,POHEADER.VENDNAME,POHEADER.DATEADD,POHEADER.USERADD,PHONE1,PHONE2 FROM POHEADER,APVENDOR WHERE POHEADER.VENDID = APVENDOR.VENDID  AND POSTATUS != 'C' AND POSTATUS != 'V' AND POSTATUS != 'R' ORDER BY DATEADD DESC";
+
+	$sql = "SELECT PONUMBER,POHEADER.VENDID,POSTATUS,POHEADER.VENDNAME,POHEADER.DATEADD,POHEADER.USERADD,PHONE1,PHONE2 FROM POHEADER,APVENDOR WHERE POHEADER.VENDID = APVENDOR.VENDID  AND POSTATUS = ''ORDER BY DATEADD DESC";
 	$req = $conn->prepare($sql);
 	$req->execute(array($cvUser));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -3114,8 +3115,8 @@ function createSupplyRecordForPO(){
 	$db = getDatabase();		
 	$indb = getInternalDatabase();
 
-	// NORMAL
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES <> 'AUTOVALIDATED' ";	
+	// ALL
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = ''";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3127,30 +3128,32 @@ function createSupplyRecordForPO(){
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		if ($cnt == 0)
 		{
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
-			$req = $indb->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			if($onePO["NOTES"] == "AUTOVALIDATED")
+			{
+				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+				$req = $indb->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			}
+			else 
+			{
+				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
+				$req = $indb->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			}
 		}		
 	}
-
-	// AUTOVALIDATED
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES LIKE '%AUTOVALIDATED%' ";	
+	// CLEAN
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = 'V'";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
 	foreach($data as $onePO)
 	{
-		$sql = "SELECT count(*) as CNT FROM SUPPLY_RECORD WHERE PONUMBER = ?"; 
+		$sql = "DELETE FROM SUPPLY_RECORD WHERE PONUMBER = ?";
 		$req = $indb->prepare($sql);
 		$req->execute(array($onePO["PONUMBER"]));
-		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		if ($cnt == 0)
-		{
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
-			$req = $indb->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-		}		
 	}
+	// RETROACTIVE DELETE THE ONE VOIDED 
 }	
 
 $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
@@ -3539,15 +3542,13 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);	
 
-	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) 
-			VALUES(:type,:requester)";
+	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
 	$req = $db->prepare($sql);
 
-	$req->bindParam(':type',$json["TYPE"],PDO::PARAM_STR);
-	$req->bindParam(':requester',$json["REQUESTER"],PDO::PARAM_STR);	
-	//$now = date('Y-m-d H:i:s');
-	//$req->bindParam(':requesttime',$now,PDO::PARAM_STR);
-	$req->execute();
+	if (substr($json["TYPE"],0,6) == "DEMAND")
+		$req->execute(array("DEMAND",$json["REQUESTER"]));
+	else 
+		$req->execute(array($json["TYPE"],$json["REQUESTER"]));
 
 	$lastID = $db->lastInsertId();
 
@@ -3570,7 +3571,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$userid = substr($json["TYPE"],7);
 		$suffix = " AND USERID = ".$userid;
 	}
-	error_log($suffix);
+
 	foreach($items as $item)
 	{		
 		if ($item["POOL_WITHDRAW"] == 0 && $suffix == "")
@@ -3799,7 +3800,10 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$dbBlue = getDatabase();
 	
 	$id = $request->getAttribute('id');
-	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	if ($id == "DEBT")
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	else 
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -3827,6 +3831,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as DEMAND_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'DEMAND'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($itemID));
@@ -3836,6 +3841,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as RESTOCK_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'RESTOCK'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3846,6 +3852,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as TRANSFER_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'TRANSFER'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3856,6 +3863,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as PURCHASE_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'PURCHASE'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3900,7 +3908,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$item["SUPPLIERREQUESTED_QTY"] = floatval($req->fetch()["SUPPLIERREQUESTED_QTY"]);
 
 		// VENDNAME
-		$sql = "SELECT VENDNAME
+		$sql = "SELECT PRODUCTNAME,VENDNAME,PACKINGNOTE
 				FROM dbo.ICPRODUCT,APVENDOR
 				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
 				AND PRODUCTID = ?";
@@ -3908,8 +3916,9 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req=$dbBlue->prepare($sql);
 		$req->execute(array($itemID));
 		$res = $req->fetch(); 				
-		$item["VENDNAME"] = $res["VENDNAME"];		
-		
+		$item["VENDNAME"] = $res["VENDNAME"];	
+		$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		//
 		array_push($newData,$item);
 	}	
