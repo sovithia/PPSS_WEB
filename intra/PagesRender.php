@@ -1716,7 +1716,7 @@ function renderItemSearch($items)
         $item["COST"] = truncatePrice($item["COST"]);
         $item["PRICE"] = truncatePrice($item["PRICE"]);
 
-        $item["THROWN"] = truncatePrice($item["THROWN"]);
+        $item["TOTALTHROWN"] = truncatePrice($item["TOTALTHROWN"]);
         $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
         $item["LASTCOST"] = truncatePrice($item["LASTCOST"]);
         $item["PERCENTSALE"] = (floatval($item["TOTALSALE"]) * 100) 
