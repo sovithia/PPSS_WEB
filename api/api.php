@@ -3641,60 +3641,70 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			foreach($items as $item)
 			{
 				// TRANSFER POOL
-				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"]));
-				$cnt = $req->fetch();
+				if (intval($item["TRANSFER_POOL_NEW"]) > 0)
+				{
 
-					
-				if ($cnt["OCU"] == 0){
-					$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
-					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
+
+						
+					if ($cnt["OCU"] == 0){
+						$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$req1 = $db->prepare($sql1);
+						$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
+					}
+					else{			
+						$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL_NEW"];
+						$sql1 = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req1 = $db->prepare($sql1);
+						$req1->execute(array($newQty,$item["PRODUCTID"]));
+					}
 				}
-				else{			
-					$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL_NEW"];
-					$sql1 = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
-					$req1 = $db->prepare($sql1);
-					$req1->execute(array($newQty,$item["PRODUCTID"]));
-				}
+
 		
 				// PURCHASE POOL
-				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTPURCHASEPOOL WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"]));
-				$cnt = $req->fetch();
+				if (intval($item["PURCHASE_POOL_NEW"]) > 0)
+				{	
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTPURCHASEPOOL WHERE PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
 
-				if ($cnt["OCU"] == 0){
-					$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
-					$req2 = $db->prepare($sql2);
-					$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
+					if ($cnt["OCU"] == 0){
+						$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$req2 = $db->prepare($sql2);
+						$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
+					}
+					else{
+						$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL_NEW"];
+						$sql2 = "UPDATE ITEMREQUESTPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req2 = $db->prepare($sql2);
+						$req2->execute(array($newQty,$item["PRODUCTID"]));
+					}
+					
+					// WE PUT ALL QUANTITY BECAUSE AT THAT MOMENT NO TRANSFER IS CREATED YET
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
+					if ($cnt["OCU"] == 0) 
+					{
+						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
+					}
+					else
+					{
+						$totalQty = $cnt["REQUEST_QUANTITY"] + $item["REQUEST_QUANTITY"];
+						$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req = $db->prepare($sql);
+						$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));					
+					}
 				}
-				else{
-					$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL_NEW"];
-					$sql2 = "UPDATE ITEMREQUESTPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
-					$req2 = $db->prepare($sql2);
-					$req2->execute(array($newQty,$item["PRODUCTID"]));
-				}
+
 				
-				// WE PUT ALL QUANTITY BECAUSE AT THAT MOMENT NO TRANSFER IS CREATED YET
-				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"]));
-				$cnt = $req->fetch();
-				if ($cnt["OCU"] == 0) 
-				{
-					$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
-					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
-				}
-				else
-				{
-					$totalQty = $cnt["REQUEST_QUANTITY"] + $item["REQUEST_QUANTITY"];
-					$sql = "UPDATE ITEMREQUESTDEBT SET QUANTITY = ? WHERE PRODUCTID = ?";
-					$req = $db->prepare($sql);
-					$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));					
-				}
 			}
 		}
 		else if ($ira["TYPE"] == "TRANSFER")
@@ -3703,7 +3713,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			{
 				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"]));
+				$req->execute(array($item["PRODUCTID"]));
 				$cnt = $req->fetch();
 
 
@@ -3724,7 +3734,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 						}
 						else // REDUCE DEBT
 						{
-							$sql = "UPDATE ITEMREQUESTDEBT SET QUANTITY = ? WHERE PRODUCTID = ?";
+							$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
 							$req = $db->prepare($sql);
 							$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
 						}

@@ -81,7 +81,7 @@ function renderItemSearch($items)
        {
         $item["PRODUCTID"] = $item["BARCODE"];
         $item["ONHAND"] = truncatePrice($item["ONHAND"]);
-        $item["PRICE"] = truncatePrice($item["PRICE"] * 1.1);
+        $item["PRICE"] = truncatePrice($item["PRICE"]);
         $item["COST"] = floatval($item["COST"]);
         $item["MARGIN"] = $item["PRICE"] - $item["COST"];
 
