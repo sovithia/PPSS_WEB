@@ -99,6 +99,7 @@ function getUserSession($login,$password)
         $session["token"] = $token;
         $session["role"] = $user["name"];	// name of the module
         $session["modules"] = getModules($user["name"]);  
+        $session["ID"] = $user["ID"];
         return $session;  	
     }
     else // TMP
@@ -123,14 +124,10 @@ sql="
 	DECLARE @img varbinary(max)
 	SELECT @img = PICTURE from  dbo.ICPRODUCT where BARCODE = ?;
 	SELECT PRODUCTID,
-
 	(SELECT TOP(1) DISCOUNT_VALUE FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATETO DESC) as 'DISCPERCENT', 
-
 	(SELECT TOP(1) DATEFROM FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 	
 	(SELECT TOP(1) DATETO FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTEND',
-
-
 	CATEGORYID,CATEGORYNEWID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,STORE,SIZE,COLOR,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
 	CAST('' AS XML).value('xs:base64Binary(sql:variable(\"@img\"))','VARCHAR(MAX)') AS PICTURE 
 	FROM dbo.ICPRODUCT,dbo.APVENDOR  
@@ -196,6 +193,7 @@ $app->post('/login',function(Request $request,Response $response) {
 			$result["role"] = $session["role"];
 			$result["modules"] = $session["modules"];
 			$result["token"] = $session["token"];
+			$result["ID"] = $session["ID"];
 	}
     else
     	$result["result"] = "KO";
@@ -240,14 +238,10 @@ $sql="
 	DECLARE @img varbinary(max)
 	SELECT @img = PICTURE from  dbo.ICPRODUCT where BARCODE = ?;
 	SELECT PRODUCTID,
-
 	(SELECT TOP(1) DISCOUNT_VALUE FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATETO DESC) as 'DISCPERCENT', 
-
 	(SELECT TOP(1) DATEFROM FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 	
 	(SELECT TOP(1) DATETO FROM [SuperStore2_Data].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTEND',
-
-
 	CATEGORYID,CATEGORYNEWID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,STORE,SIZE,COLOR,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
 	CAST('' AS XML).value('xs:base64Binary(sql:vap-riable(\"@img\"))','VARCHAR(MAX)') AS PICTURE 
 	FROM dbo.ICPRODUCT,dbo.APVENDOR  
@@ -308,8 +302,6 @@ function itemLookup($barcode)
 	(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
 	,STORE,SIZE,COLOR,PRICE,VENDNAME,
 	
-
-
 	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
 	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 	OTHER_ITEMCODE
@@ -369,12 +361,10 @@ $app->get('/supplieritems/{id}',function(Request $request,Response $response) {
 
 	//$sql = "SELECT * FROM ICPRODUCT WHERE VENDID = ?";
 	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
-
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
-
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
@@ -382,7 +372,6 @@ $app->get('/supplieritems/{id}',function(Request $request,Response $response) {
 			(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID 
 			 AND POSDATE BETWEEN  '$day30before 00:00:00.000' AND '$today 23:59:59.999'
 	  		 GROUP BY PRODUCTID) as 'SALELAST30',
-
 			PRICE,LASTRECEIVEDATE, LASTSALEDATE,dbo.ICPRODUCT.DATEADD
 			FROM dbo.ICPRODUCT,dbo.APVENDOR  
 			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID
@@ -690,7 +679,6 @@ function itemLookupLabel($barcode)
 		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 
 					
 		  (SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
-
 		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', 
 					
 		   BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
@@ -857,9 +845,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	}
 
 	$params = array($barcode,$barcode);
-	$sql="	
-	SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,
-	(SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'LOCATION'
+	$sql="	SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE,(SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'LOCATION'
 	FROM dbo.ICPRODUCT  
 	WHERE BARCODE = ?";
 	$getItems=$conn->prepare($sql);
@@ -1580,7 +1566,6 @@ $sql =  "SELECT PRODUCTID,BARCODE,
 	
 			(SELECT TOP(1) TRANDISC FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY DATEADD DESC)  as 'COSTPROMO',
 			(SELECT TOP(1) DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND DATEFROM <= '$today 00:00:00.000' AND DATETO >= '$today 23:59:59.999' ORDER BY DATEFROM DESC) as 'PRICEPROMO', 
-
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOSTX',
 			LASTCOST,
@@ -1593,9 +1578,7 @@ $sql =  "SELECT PRODUCTID,BARCODE,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',			
 			(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  ? AND ? GROUP BY PRODUCTID) as 'SALEINPERIOD',
 			PRICE,LASTRECEIVEDATE, 
-
 			(SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTRECEIVEQTY',
-
 			LASTSALEDATE,dbo.ICPRODUCT.DATEADD
 			FROM dbo.ICPRODUCT,dbo.APVENDOR  
 			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID		
@@ -1634,7 +1617,9 @@ $app->post('/itemget',function(Request $request,Response $response) {
 	$sql =  "SELECT PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
-			PACKING,COST,PRICE,VENDNAME,
+			PACKING,
+			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
+			,PRICE,VENDNAME,
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',			
@@ -1791,7 +1776,6 @@ $app->get('/freshsales',function(Request $request,Response $response) {
 		
 
 	$sql =  "SELECT  PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
-
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
 			
@@ -1802,7 +1786,6 @@ $app->get('/freshsales',function(Request $request,Response $response) {
 			(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID 
 			 AND POSDATE BETWEEN  '$day 00:00:00.000' AND '$day 23:59:59.999'
 	  		 GROUP BY PRODUCTID) as 'SALELAST30',
-
 			PRICE,LASTRECEIVEDATE,dbo.ICPRODUCT.DATEADD
 			FROM dbo.ICPRODUCT,dbo.APVENDOR  
 			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID
@@ -1825,7 +1808,6 @@ $app->get('/costzero',function(Request $request,Response $response) {
 	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,replace(replace(PRODUCTNAME1,'\n',' '),'\"','') as 'PRODUCTNAME1',LASTCOST,PRICE,VENDNAME,
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',				
-
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',		
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
@@ -1858,7 +1840,6 @@ $app->get('/zerosale',function(Request $request,Response $response) {
 				   COLOR,CATEGORYID,ONHAND,WH1,WH2,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
-
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
 						
@@ -1906,10 +1887,8 @@ $app->get('/itemzerostock',function(Request $request,Response $response) {
 				   COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
-
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
-
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',		
@@ -1957,10 +1936,8 @@ $app->get('/itemnegative',function(Request $request,Response $response) {
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 			PRICE,VENDNAME,
-
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
-
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',		
@@ -2130,13 +2107,10 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	(SELECT TOP(1) (PRICE_ORI - PRICE) FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATESTART <= '$begin 00:00:00.000' AND DATEEND >= '$begin 23:59:59.999' ORDER BY DATESTART DESC) as 'DISCAMOUNT' ,
 	(SELECT TOP(1) DATESTART FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATESTART <= '$begin 00:00:00.000' AND DATEEND >= '$begin 23:59:59.999' ORDER BY DATESTART DESC) as 'DISCAMOUNTSTART' ,
 	(SELECT TOP(1) DATEEND FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATESTART <= '$begin 00:00:00.000' AND DATEEND >= '$begin 23:59:59.999' ORDER BY DATESTART DESC) as 'DISCAMOUNTEND' ,
-
 	(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 
-
 	(SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 	
 	(SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND',
-
 	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
 	(SELECT VENDNAME FROM dbo.APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME',
@@ -2214,7 +2188,6 @@ $app->get('/selection',function($request,Response $response) {
 		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
 		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
 		,VENDNAME		
-
 		FROM dbo.POSDETAIL,dbo.ICPRODUCT,dbo.APVENDOR
 		WHERE dbo.POSDETAIL.PRODUCTID = dbo.ICPRODUCT.PRODUCTID
 		AND dbo.APVENDOR.VENDID = dbo.ICPRODUCT.VENDID		
@@ -2249,10 +2222,8 @@ $app->get('/bestseller',function($request,Response $response) {
 		,dbo.ICPRODUCT.COST
 		,dbo.POSDETAIL.CATEGORYID
 		,dbo.ICPRODUCT.COLOR
-
 		,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID),0) as 'TOTALRECEIVE'
 		,ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE'
-
 		,(SELECT TOP(1) (PRICE_ORI - PRICE) FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID AND DATESTART <= '$begin 00:00:00.000' 
 		AND DATEEND >= '$end 23:59:59.999' ORDER BY DATESTART DESC) as 'DISCAMOUNT' 
 		,(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' 
@@ -2286,7 +2257,6 @@ $app->get('/itemall',function(Request $request,Response $response) {
 	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,
 				   COST,PRICE,COLOR,CATEGORYID,CATEGORYNEWID,
 				   ONHAND,ACTIVE	
-
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY CATEGORYID) as SEQ ,
 				    PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYNEWID,
@@ -2461,10 +2431,8 @@ $app->post('/itemupdate/{barcode}',function(Request $request,Response $response)
 		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set PICTURE = ? WHERE BARCODE = ?");		
 		$stmt->bindParam(1,base64_decode($value) ,PDO::PARAM_LOB,0,PDO::SQLSRV_ENCODING_BINARY);
 		$stmt->bindParam(2,$barcode ,PDO::PARAM_STR);		
-
 		if (file_exists("img/products/".$barcode.".jpg"))
 			unlink("img/products/".$barcode.".jpg");
-
 		if (file_exists("img/products/".$barcode.".png"))
 			unlink("img/products/".$barcode.".png"); 
 		*/
@@ -2517,7 +2485,8 @@ $app->get('/allwaitingpo', function(Request $request,Response $response) {
 	$login = $request->getAttribute('login');
 	$cvUser = CVUserByLogin($login);	
 	$conn=getDatabase();	
-	$sql = "SELECT PONUMBER,POHEADER.VENDID,POSTATUS,POHEADER.VENDNAME,POHEADER.DATEADD,POHEADER.USERADD,PHONE1,PHONE2 FROM POHEADER,APVENDOR WHERE POHEADER.VENDID = APVENDOR.VENDID  AND POSTATUS != 'C' AND POSTATUS != 'V' AND POSTATUS != 'R' ORDER BY DATEADD DESC";
+
+	$sql = "SELECT PONUMBER,POHEADER.VENDID,POSTATUS,POHEADER.VENDNAME,POHEADER.DATEADD,POHEADER.USERADD,PHONE1,PHONE2 FROM POHEADER,APVENDOR WHERE POHEADER.VENDID = APVENDOR.VENDID  AND POSTATUS = ''ORDER BY DATEADD DESC";
 	$req = $conn->prepare($sql);
 	$req->execute(array($cvUser));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -3112,8 +3081,8 @@ function createSupplyRecordForPO(){
 	$db = getDatabase();		
 	$indb = getInternalDatabase();
 
-	// NORMAL
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES <> 'AUTOVALIDATED' ";	
+	// ALL
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = ''";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3125,30 +3094,32 @@ function createSupplyRecordForPO(){
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		if ($cnt == 0)
 		{
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
-			$req = $indb->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			if($onePO["NOTES"] == "AUTOVALIDATED")
+			{
+				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+				$req = $indb->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			}
+			else 
+			{
+				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
+				$req = $indb->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+			}
 		}		
 	}
-
-	// AUTOVALIDATED
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND NOTES LIKE '%AUTOVALIDATED%' ";	
+	// CLEAN
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = 'V'";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
 	foreach($data as $onePO)
 	{
-		$sql = "SELECT count(*) as CNT FROM SUPPLY_RECORD WHERE PONUMBER = ?"; 
+		$sql = "DELETE FROM SUPPLY_RECORD WHERE PONUMBER = ?";
 		$req = $indb->prepare($sql);
 		$req->execute(array($onePO["PONUMBER"]));
-		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		if ($cnt == 0)
-		{
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
-			$req = $indb->prepare($sql);
-			$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-		}		
 	}
+	// RETROACTIVE DELETE THE ONE VOIDED 
 }	
 
 $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
@@ -3524,9 +3495,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	else if ($filter == "SUBMITED")
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
 	else if ($filter == "ALL")
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = ? ORDER BY REQUEST_UPDATED DESC";
-		
-	error_log($sql);
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = ? ORDER BY REQUEST_UPDATED DESC";		
 
 	$req = $db->prepare($sql);
 	$req->execute(array($type));
@@ -3538,17 +3507,14 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);	
-	$type = $request->getAttribute('type');
 
-	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) 
-			VALUES(:type,:requester)";
+	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
 	$req = $db->prepare($sql);
 
-	$req->bindParam(':type',$json["TYPE"],PDO::PARAM_STR);
-	$req->bindParam(':requester',$json["REQUESTER"],PDO::PARAM_STR);	
-	//$now = date('Y-m-d H:i:s');
-	//$req->bindParam(':requesttime',$now,PDO::PARAM_STR);
-	$req->execute();
+	if (substr($json["TYPE"],0,6) == "DEMAND")
+		$req->execute(array("DEMAND",$json["REQUESTER"]));
+	else 
+		$req->execute(array($json["TYPE"],$json["REQUESTER"]));
 
 	$lastID = $db->lastInsertId();
 
@@ -3558,6 +3524,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$items =  json_decode($json["ITEMS"],true);
 
 	// NO ADDITIONNAL ACTION FOR DEMAND
+	$suffix = "";
 	$tableName = "";
 	if ($json["TYPE"] == "RESTOCK") // STORE SUPERVISOR CREATE RESTOCK REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
@@ -3565,47 +3532,63 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
 	else if($json["TYPE"] == "PURCHASE") // WAREHOUSE CREATE PURCHASE REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
-	// NO POOL FOR DEMAND
+	else if (substr($json["TYPE"],0,6) == "DEMAND"){
+		$tableName = "ITEMREQUESTDEMANDPOOL";		
+		$userid = substr($json["TYPE"],7);
+		$suffix = " AND USERID = ".$userid;
+	}
 
 	foreach($items as $item)
-	{
-		if ($item["POOL_WITHDRAW"] == 0)
+	{		
+		if ($item["POOL_WITHDRAW"] == 0 && $suffix == "")
 			continue;
-		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?)";
+		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["POOL_WITHDRAW"],$item["LOCATION"],$lastID));
+		$req->execute(array($item["PRODUCTID"],$item["POOL_WITHDRAW"],$item["LOCATION"],$lastID));
 
-
+		if ($suffix == "")
+			$targetQty =$item["POOL_WITHDRAW"];
+		else
+			$targetQty =$item["REQUEST_QUANTITY"];	
+	
 		// UPDATE POOL
-		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?";			
+		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
+		error_log($sql);			
 		$req = $db->prepare($sql);
-		$req->execute(array());
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch();
 				
-
-		if ($res != false && $res["REQUEST_QUANTITY"] == $item["POOL_WITHDRAW"]) // DELETE FROM POOL
+		if (($res != false && $res["REQUEST_QUANTITY"] >= $item["REQUEST_QUANTITY"])) // DELETE FROM POOL
 		{
-			$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?";
+			$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));				
 		}
-		else if ($res != false && $res["REQUEST_QUANTITY"] != $item["POOL_WITHDRAW"])// SUBSTRACT POOL
+		else if ($res != false && $res["REQUEST_QUANTITY"] != $targetQty)// SUBSTRACT POOL
 		{
-			$newQty = $res["REQUEST_QUANTITY"] - $item["POOL_WITHDRAW"];		
-
-			$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+			$newQty = $item["REQUEST_QUANTITY"] - $targetQty;
+			$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;;
 			$req = $db->prepare($sql);
 			$req->execute(array($newQty,$item["PRODUCTID"]));								
-		}	
+		}									
 	}		
-	
-	
 	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
 
+     // TODO DEMAND (NO(AUTO on REQUEST))
+            // SUBMITTED DEMAND (NO)
+            // VALIDATED DEMAND (NO) 
+            // TODO RESTOCK (NO)
+            // SUBMITTED RESTOCK (NO)
+            // VALIDATED RESTOCK (NO)
+            // TODO PURCHASE (OK)
+            // SUBMITTED PURCHASE (OK) (NON-VALIDATED)
+            // VALIDATED (PURCHASE) (OK)
+            // TODO TRANSFER (OK)
+            // SUBMITTED TRANSFER (OK) (NON-VALIDATED)
+            // VALIDATED TRANSFER (NO)
 $app->put('/itemrequestaction/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -3628,13 +3611,17 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		file_put_contents("./img/requestaction/E" .$id.".png" , $imageData);
 		
 		if ($ira["TYPE"] == "DEMAND"){ // STORE SUPERVISOR VALIDATE DEMAND AND ADD TO RESTOCK POOL					
+			
 			foreach($items as $item){
-				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
+				
+				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT,count(*) as OCU FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));			
 				$cnt = $req->fetch();
 
-				if ($cnt == false){ // CREATE NEW ENTRY
+				
+
+				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY
 					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
 					$req1 = $db->prepare($sql1);
 					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));	
@@ -3654,94 +3641,106 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			foreach($items as $item)
 			{
 				// TRANSFER POOL
-				$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute();
-				$cnt = $req->fetch(array($item["PRODUCTID"]));
+				if (intval($item["TRANSFER_POOL_NEW"]) > 0)
+				{
 
-				error_log($cnt);
-				if ($cnt == false){
-					error_log("FALSE");
-					$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
-					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
+
+						
+					if ($cnt["OCU"] == 0){
+						$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$req1 = $db->prepare($sql1);
+						$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
+					}
+					else{			
+						$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL_NEW"];
+						$sql1 = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req1 = $db->prepare($sql1);
+						$req1->execute(array($newQty,$item["PRODUCTID"]));
+					}
 				}
-				else{
-					error_log("TRUE");
-					$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL"];
-					$sql1 = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
-					$req1 = $db->prepare($sql1);
-					$req1->execute(array($newQty,$item["PRODUCTID"]));
-				}
+
 		
 				// PURCHASE POOL
-				$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTPURCHASEPOOL WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute();
-				$cnt = $req->fetch(array($item["PRODUCTID"]));
-
-				if ($cnt == false){
-					$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
-					$req2 = $db->prepare($sql2);
-					$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
-				}
-				else{
-					$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL"];
-					$sql2 = "UPDATE ITEMREQUESTPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
-					$req2 = $db->prepare($sql2);
-					$req2->execute(array($newQty,$item["PRODUCTID"]));
-				}
-				
-				// WE PUT ALL QUANTITY BECAUSE AT THAT MOMENT NO TRANSFER IS CREATED YET
-				$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"]));
-				$cnt = $req->fetch();
-				if ($cnt == false) 
-				{
-					$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+				if (intval($item["PURCHASE_POOL_NEW"]) > 0)
+				{	
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTPURCHASEPOOL WHERE PRODUCTID = ?";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
+
+					if ($cnt["OCU"] == 0){
+						$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$req2 = $db->prepare($sql2);
+						$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
+					}
+					else{
+						$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL_NEW"];
+						$sql2 = "UPDATE ITEMREQUESTPURCHASEPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req2 = $db->prepare($sql2);
+						$req2->execute(array($newQty,$item["PRODUCTID"]));
+					}
+					
+					// WE PUT ALL QUANTITY BECAUSE AT THAT MOMENT NO TRANSFER IS CREATED YET
+					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$cnt = $req->fetch();
+					if ($cnt["OCU"] == 0) 
+					{
+						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
+					}
+					else
+					{
+						$totalQty = $cnt["REQUEST_QUANTITY"] + $item["REQUEST_QUANTITY"];
+						$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+						$req = $db->prepare($sql);
+						$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));					
+					}
+				}
+
+				
+			}
+		}
+		else if ($ira["TYPE"] == "TRANSFER")
+		{ // STORE SUPERVISOR VALIDATE TRANSFER AND UPDATE DEBT POOL
+			foreach($items as $item)
+			{
+				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$cnt = $req->fetch();
+
+
+				if ($cnt["OCU"] == 0) // INSERT NEGATIVE QUANTITY : NOT NORMAL 
+				{
+						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
 				}
 				else
 				{
-					$totalQty = $cnt["REQUEST_QUANTITY"] + $item["REQUEST_QUANTITY"];
-					$sql = "UPDATE ITEMREQUESTDEBT SET QUANTITY = ? WHERE PRODUCTID = ?";
-					$req = $db->prepare($sql);
-					$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));					
-				}
+						$totalQty = $cnt["REQUEST_QUANTITY"] - $item["REQUEST_QUANTITY"];
+						if ($totalQty == 0) // DEBT FALL TO ZERO
+						{
+							$sql = "DELETE FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
+							$req = $db->prepare($sql);
+							$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
+						}
+						else // REDUCE DEBT
+						{
+							$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+							$req = $db->prepare($sql);
+							$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
+						}
+						
+				}			
 			}
-		}
-		else if ($ira["TYPE"] == "TRANSFER"){ // STORE SUPERVISOR VALIDATE TRANSFER AND UPDATE DEBT POOL
-			$sql = "SELECT REQUEST_QUANTITY FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["REQUEST_QUANTITY"]));
-			$cnt = $req->fetch();
-
-
-			if ($cnt == false) // INSERT NEGATIVE QUANTITY : NOT NORMAL 
-			{
-					$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
-					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
-			}
-			else
-			{
-					$totalQty = $cnt["REQUEST_QUANTITY"] - $item["REQUEST_QUANTITY"];
-					if ($totalQty == 0) // DEBT FALL TO ZERO
-					{
-						$sql = "DELETE FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
-						$req = $db->prepare($sql);
-						$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
-					}
-					else // REDUCE DEBT
-					{
-						$sql = "UPDATE ITEMREQUESTDEBT SET QUANTITY = ? WHERE PRODUCTID = ?";
-						$req = $db->prepare($sql);
-						$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
-					}
-					
-			}			
 		}
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
 		}			
@@ -3777,7 +3776,10 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$dbBlue = getDatabase();
 	
 	$id = $request->getAttribute('id');
-	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	if ($id == "DEBT")
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	else 
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -3805,6 +3807,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as DEMAND_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'DEMAND'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($itemID));
@@ -3814,6 +3817,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as RESTOCK_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'RESTOCK'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3824,6 +3828,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as TRANSFER_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'TRANSFER'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3834,6 +3839,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as PURCHASE_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
 				AND TYPE = 'PURCHASE'
+				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
 		$req = $db->prepare($sql);
@@ -3860,15 +3866,35 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req=$dbBlue->prepare($sql);
 		$req->execute(array($itemID));		
 		$item["WAREHOUSE_QTY"] = floatval($req->fetch()["LOCONHAND"]);		
+
+		// Store Stock
+		$sql = "SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
+		$req=$dbBlue->prepare($sql);
+		$req->execute(array($itemID));		
+		$item["STORE_QTY"] = floatval($req->fetch()["LOCONHAND"]);		
 				
 		// On ORDER		
 		$sql = "SELECT ISNULL(SUM(ORDER_QTY),0) as SUPPLIERREQUESTED_QTY 
-				FROM dbo.PODETAIL
-				WHERE POSTATUS = ''
-				AND PRODUCTID = ?";		
+				FROM dbo.PODETAIL, dbo.POHEADER
+				WHERE dbo.PODETAIL.PONUMBER = dbo.POHEADER.PONUMBER	
+				AND dbo.POHEADER.POSTATUS = ''
+				AND PRODUCTID = ?				";		
 		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));				
+		$req->execute(array($itemID));		
 		$item["SUPPLIERREQUESTED_QTY"] = floatval($req->fetch()["SUPPLIERREQUESTED_QTY"]);
+
+		// VENDNAME
+		$sql = "SELECT PRODUCTNAME,VENDNAME,PACKINGNOTE
+				FROM dbo.ICPRODUCT,APVENDOR
+				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+				AND PRODUCTID = ?";
+
+		$req=$dbBlue->prepare($sql);
+		$req->execute(array($itemID));
+		$res = $req->fetch(); 				
+		$item["VENDNAME"] = $res["VENDNAME"];	
+		$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		//
 		array_push($newData,$item);
 	}	
@@ -3879,10 +3905,10 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 
 $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$db2 = getDatabase();
 	
 	$type = $request->getAttribute('type');
 	
-
 	if ($type == "RESTOCK")
 		$sql = "SELECT * FROM ITEMREQUESTRESTOCKPOOL";
 	else if ($type == "PURCHASE")
@@ -3891,39 +3917,147 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$sql = "SELECT * FROM ITEMREQUESTTRANSFERPOOL";	
 	else if ($type == "DEBT")
 		$sql = "SELECT * FROM ITEMREQUESTDEBT";	
+	else if (substr($type,0,6) == "DEMAND"){		
+		$userid = substr($type,7);
+		$sql = "SELECT * FROM ITEMREQUESTDEMANDPOOL WHERE USERID = ".$userid;
 
+	}
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
-	$items = $response->withJson($actions);
+
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$itemsNEW = array();
+	foreach($items as $item)
+	{
+		$sql = "SELECT PACKINGNOTE,VENDNAME,PRODUCTNAME 
+				FROM ICPRODUCT,APVENDOR 
+				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+				AND BARCODE = ?";
+		$req = $db2->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$oneItem = $req->fetch(PDO::FETCH_ASSOC);
+		$item["PACKINGNOTE"] = $oneItem["PACKINGNOTE"];
+		$item["VENDNAME"] = $oneItem["VENDNAME"];
+		$item["PRODUCTNAME"] = $oneItem["PRODUCTNAME"];
+		array_push($itemsNEW,$item);
+	}
+
+
+	
+
+	$items = $response->withJson($itemsNEW);
 	return $items;	
 });
 
-$app->put('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
+// ADD ITEM
+$app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
-	
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
-	
+	// PRODUCTID
+	// PRODUCTNAME
+	// REQUEST_QTY
+	$suffix = "";
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
 	else if($type == "PURCHASE")
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if (substr($type,0,6) == "DEMAND"){		
+		$userid = substr($type,7);
+		$tableName = "ITEMREQUESTDEMANDPOOL";
+		$suffix = " AND USERID = ".$userid;
 
-	$items = $json["ITEMS"];	
-	foreach($items as $item)
-	{
-			
-		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));	
 	}
-	$result["RESULT"] = "OK";
-	$response = $response->withJson($result);
-	return $response;	
+
+	$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ?".$suffix;
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$res = $req->fetch();		
+	if ($res["OCU"] == 0)
+	{
+		if ($suffix == "")
+		{
+			$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
+		}
+		else
+		{
+			$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));		
+		}		
+	}
+	else
+	{
+		$newQty = $res["REQUEST_QUANTITY"] + $json["REQUEST_QUANTITY"];
+		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
+		$req = $db->prepare($sql);
+		$req->execute(array($newQty,$json["PRODUCTID"]));
+		
+	}
+	
+	$data["RESULT"] = "OK";
+	$response = $response->withJson($data);
+	return $response;
 });
+
+// DELETE ITEM
+$app->delete('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$type = $request->getAttribute('type');
+	$json = json_decode($request->getBody(),true);	
+
+	$suffix = "";
+	if ($type == "RESTOCK")
+		$tableName = "ITEMREQUESTRESTOCKPOOL";
+	else if($type == "PURCHASE")
+		$tableName = "ITEMREQUESTPURCHASEPOOL";
+	else if($type == "TRANSFER")
+		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if (substr($type,0,6) == "DEMAND"){		
+		$userid = substr($type,7);
+		$tableName = "ITEMREQUESTDEMANDPOOL";	
+		$suffix = " AND USERID = ".$userid;
+	}
+
+	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;	
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$data["RESULT"] = "OK";
+	$response = $response->withJson($data);
+	return $response;
+});
+
+// UPDATE
+$app->put('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$type = $request->getAttribute('type');
+	$json = json_decode($request->getBody(),true);	
+
+	if ($type == "RESTOCK")
+		$tableName = "ITEMREQUESTRESTOCKPOOL";
+	else if($type == "PURCHASE")
+		$tableName = "ITEMREQUESTPURCHASEPOOL";
+	else if($type == "TRANSFER")
+		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if (substr($type,0,6) == "DEMAND"){		
+		$userid = substr($type,7);
+		$tableName = "ITEMREQUESTDEMANDPOOL";	
+		$suffix = " AND USERID = ".$userid;
+	}
+
+	$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
+	$req = $db->prepare($sql);
+	
+	$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"]));	
+	$data["RESULT"] = "OK";
+	$response = $response->withJson($data);
+	return $response;
+});
+
 
 
 // ***********// PROMOTION ***********// 

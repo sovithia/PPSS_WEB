@@ -169,9 +169,7 @@ $app->get('/items',function(Request $request,Response $response) {
 
 
 		$conn=getDatabase();
-		$json = json_decode($request->getBody(),true);
-		$barcodes = $json["barcodes"];
-
+		
 		$sql =  "SELECT PRODUCTID,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 				replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
