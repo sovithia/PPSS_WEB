@@ -3073,6 +3073,9 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";
 		else if ($type == "ACC")
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
+
+		else if ($type == "")
+			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";			
 		file_put_contents($filename, $imageData);
 	}	
 }
@@ -4082,7 +4085,6 @@ $app->get('/itempromotionned/{status}', function(Request $request, Response $res
 	return $response;
 });
 
-
 // create promotion
 $app->post('/itempromotionned', function(Request $request, Response $response){ 
 	$json = json_decode($request->getBody(),true);
@@ -4228,6 +4230,285 @@ $app->put('/itemdamaged/setrecorded', function(Request $request, Response $respo
 	}
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
+	return $response;
+});
+
+
+//******************************************//
+//**************** ITEM WASTE **************//
+//******************************************//
+//CREATED
+//VALIDATED
+//RECORDED
+$app->get('/itemwaste/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMWASTE WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$response = $response->withJson($records);
+	return $response;
+});
+$app->post('/itemwaste', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMWASTE (BARCODE,QUANTITY,REASON,NAME,CREATOR) 
+				VALUES (:barcode,:quantity,:reason,:name,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);	
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);				
+		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->execute();
+
+		if ($item["IMAGE"] != null)
+		{
+			$imageData = base64_decode($item["IMAGE"]);
+			$filename = "./img/itemwaste_pictures/".$item["ID"].".png";	
+			file_put_contents($filename, $imageData);
+		}				
+	}	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+$app->put('/itemwaste', function(Request $request, Response $response){ 
+	// VALIDATE
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+	foreach($items as $item){
+
+		if ($item["STATUS"] == "VALIDATED")
+			$fieldname = "VALIDATOR"; 
+		else if ($item["STATUS"] == "RECORDED")
+			$fieldname = "RECORDER";		
+
+		$sql = "UPDATE ITEMDAMAGED SET DISCOUNT_MODIFIED = ?, 
+									   COMMENT = ?,									   
+									   ".$fieldname." = ?,
+									   STATUS = '?' 									  
+									   WHERE ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["DISCOUNT_MODIFIED"],$item["COMMENT"],$now,$item["VERIFIER"],$item["ID"]));
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+
+//******************************************//
+//*****  ITEMPROMOTIONREQUESTINTERNAL ******//
+//******************************************//
+//CREATED
+//VALIDATED
+//LINKING
+//DESIGNING
+//FORSALE
+$app->get('/itempromotionrequestinternal/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMPROMOTIONREQUESTINTERNAL WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$response = $response->withJson($records);
+	return $response;
+});
+
+$app->post('/itempromotionrequestinternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+	
+	// Signature
+	$signatureData = base64_decode($item["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMPROMOTIONREQUESTINTERNAL (BARCODE,NAME,QUANTITY,DISCOUNT,REASON,SIGNATURE_CREATOR,CREATOR) 
+				VALUES (:barcode,:name,:quantity,:discount,:reason,:signature,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);	
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);		
+		$req->bindParam(':discount',$item["DISCOUNT"],PDO::PARAM_STR);		
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);	
+		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);
+		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->execute();
+
+		if ($item["IMAGE"] != null)
+		{
+			$imageData = base64_decode($item["IMAGE"]);
+			$filename = "./img/itempromotionrequestinternal/".$item["ID"].".png";	
+			file_put_contents($filename, $imageData);
+		}	
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->put('/itempromotionrequestinternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+
+	$signatureData = base64_decode($item["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	foreach($items as $item){
+		if ($item["STATUS"] == "VALIDATED"){
+			$fieldname = "VALIDATOR"; 
+			$signatureField = "SIGNATURE_VALIDATOR";
+		}
+		else if ($item["STATUS"] == "LINKING"){
+			$fieldname = "LINKER";
+			$signatureField = "SIGNATURE_LINKER";
+		}
+		else if ($item["STATUS"] == "DESIGNING"){
+			$fieldname = "DESIGNER";
+			$signatureField = "SIGNATURE_DESIGNER";
+		}						
+		else if ($item["STATUS"] == "DISPLAYED"){
+			$fieldname = "DISPLAYER";
+			$signatureField = "SIGNATURE_DISPLAYER";
+		}		
+
+		$sql = "UPDATE ITEMPROMOTIONREQUESTINTERNAL 
+										SET STATUS = ?,
+									   	".$fieldname." = ?,
+									   	".$signatureField." = ?									   									   	
+									   	WHERE ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["STATUS"],$item["AUTHOR"],$sigID,$item["ID"]));
+	}
+	$result["result"] = "OK";
+	return $response;
+});
+
+
+//******************************************//
+//*****  ITEMPROMOTIONREQUESTEXTERNAL ******//
+//******************************************//
+//CREATED
+//LINKING
+//DESIGNING
+//FORSALE
+$app->get('/itempromotionrequestexternal/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMPROMOTIONREQUESTEXTERNAL WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$response = $response->withJson($records);
+	return $response;
+});
+
+$app->post('/itempromotionrequestexternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+
+	$signatureData = base64_decode($item["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestexternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMPROMOTIONREQUESTEXTERNAL (BARCODE,NAME,QUANTITY,DISCOUNT,REASON,SIGNATURE_CREATOR,CREATOR) 
+				VALUES (:barcode,:name,:quantity,:discount,:reason,:signature,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);	
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);		
+		$req->bindParam(':discount',$item["DISCOUNT"],PDO::PARAM_STR);		
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);	
+		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);
+		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->execute();
+
+		if ($item["IMAGE"] != null)
+		{
+			$imageData = base64_decode($item["IMAGE"]);
+			$filename = "./img/itempromotionrequestexternal_pictures/".$item["ID"].".png";	
+			file_put_contents($filename, $imageData);
+		}	
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->put('/itempromotionrequestexternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+
+	$signatureData = base64_decode($item["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestexternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+
+	foreach($items as $item){
+		
+		if ($item["STATUS"] == "LINKING"){
+			$fieldname = "LINKER";
+			$signatureField = "SIGNATURE_LINKER";
+		}
+		else if ($item["STATUS"] == "DESIGNING"){
+			$fieldname = "DESIGNER";
+			$signatureField = "SIGNATURE_DESIGNER";
+		}
+		else if ($item["STATUS"] == "DISPLAYED"){
+			$fieldname = "DISPLAYER";
+			$signatureField = "SIGNATURE_DISPLAYER";
+		}
+
+		$sql = "UPDATE ITEMPROMOTIONREQUESTEXTERNAL 
+										SET STATUS = ?,
+									   	".$fieldname." = ?,
+										".$signatureField." = ?	   									   	
+									   	WHERE ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["STATUS"],$item["AUTHOR"],$sigID,$item["ID"]));
+	}
+	$result["result"] = "OK";
 	return $response;
 });
 
