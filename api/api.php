@@ -29,6 +29,37 @@ function getDatabase()
 }
 
 
+function getTrainingDatabase()
+{ 
+	$conn = null;      
+	try  
+	{  
+		$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue'); 
+		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
+	}  
+	catch(Exception $e)  
+	{   
+		die( print_r( $e->getMessage( )) );   
+	} 
+	return $conn;
+}
+
+function getTMPDatabase()
+{ 
+	$conn = null;      
+	try  
+	{  
+		$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue'); 
+		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
+	}  
+	catch(Exception $e)  
+	{   
+		die( print_r( $e->getMessage( )) );   
+	} 
+	return $conn;
+}
+
+
 function getInternalDatabase()
 {
 	try{
@@ -3433,6 +3464,10 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$db = getInternalDatabase();
 	$db2 = getDatabase();
 
+
+
+
+
 	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -3440,12 +3475,13 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$rr["items"] = null;
 
+
+	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,TRANCOST,ORDER_QTY,PPSS_VALIDATION_QTY,
+			PPSS_RECEPTION_QTY,PPSS_NOTE FROM PODETAIL WHERE PONUMBER = ?";
 	if ($rr["TYPE"] == "NOPO")
 	{
 		if ($rr["LINKEDPO"] != null)
 		{
-			
-			$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 			$req = $db2->prepare($sql);
 			$req->execute(array($rr["LINKEDPO"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
@@ -3453,7 +3489,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	}
 	else 
 	{
-		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";	
 		$req = $db2->prepare($sql);
 		$req->execute(array($rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -4258,17 +4293,24 @@ $app->post('/itemwaste', function(Request $request, Response $response){
 	$db=getInternalDatabase();
 	$now = time();
 
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itemwaste_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
 	$items = $json["ITEMS"];
 	foreach($items as $item)
 	{
-		$sql = "INSERT INTO ITEMWASTE (BARCODE,QUANTITY,REASON,NAME,CREATOR) 
-				VALUES (:barcode,:quantity,:reason,:name,:creator)";
+		$sql = "INSERT INTO ITEMWASTE (BARCODE,QUANTITY,REASON,NAME,SIGNATURE_CREATOR,CREATOR) 
+				VALUES (:barcode,:quantity,:reason,:name,:signature,:creator)";
 		$req = $db->prepare($sql);
 		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
 		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);	
 		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);
-		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);				
-		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);	
+		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);						
+		$req->bindParam(':creator',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 
 		if ($item["IMAGE"] != null)
@@ -4289,20 +4331,32 @@ $app->put('/itemwaste', function(Request $request, Response $response){
 	$db=getInternalDatabase();
 	$now = time();
 	$items = $json["ITEMS"]; 
+
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itemwaste_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
 	foreach($items as $item){
 
-		if ($item["STATUS"] == "VALIDATED")
+		if ($item["STATUS"] == "VALIDATED"){
 			$fieldname = "VALIDATOR"; 
-		else if ($item["STATUS"] == "RECORDED")
-			$fieldname = "RECORDER";		
+			$signatureField = "SIGNATURE_VALIDATOR";
+		}
+		else if ($item["STATUS"] == "RECORDED"){
+			$fieldname = "RECORDER";	
+			$signatureField = "SIGNATURE_RECORDER";	
+		}
 
-		$sql = "UPDATE ITEMDAMAGED SET DISCOUNT_MODIFIED = ?, 
-									   COMMENT = ?,									   
+		$sql = "UPDATE ITEMWASTE SET QUANTITY_MODIFIED = ?, 
+									   COMMENT = ?,			   
 									   ".$fieldname." = ?,
-									   STATUS = '?' 									  
+									   ".$signatureField." = ?,	
+									   STATUS = ? 									  
 									   WHERE ID = ?";
 		$req = $db->prepare($sql);	
-		$req->execute(array($item["DISCOUNT_MODIFIED"],$item["COMMENT"],$now,$item["VERIFIER"],$item["ID"]));
+		$req->execute(array($item["QUANTITY_MODIFIED"],$item["COMMENT"],$json["AUTHOR"],$sigID,$item["STATUS"],$item["ID"]));
 	}
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
@@ -4339,7 +4393,7 @@ $app->post('/itempromotionrequestinternal', function(Request $request, Response 
 	$items = $json["ITEMS"];
 	
 	// Signature
-	$signatureData = base64_decode($item["SIGNATURE"]);
+	$signatureData = base64_decode($json["SIGNATURE"]);
 	$sigID = time() ."_". rand(1,100);	
 	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
 	$signature = $json["SIGNATURE"];
@@ -4347,16 +4401,15 @@ $app->post('/itempromotionrequestinternal', function(Request $request, Response 
 
 	foreach($items as $item)
 	{
-		$sql = "INSERT INTO ITEMPROMOTIONREQUESTINTERNAL (BARCODE,NAME,QUANTITY,DISCOUNT,REASON,SIGNATURE_CREATOR,CREATOR) 
+		$sql = "INSERT INTO ITEMPROMOTIONREQUESTINTERNAL (BARCODE,QUANTITY,DISCOUNT,REASON,SIGNATURE_CREATOR,CREATOR) 
 				VALUES (:barcode,:name,:quantity,:discount,:reason,:signature,:creator)";
 		$req = $db->prepare($sql);
-		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
-		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);	
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);		
 		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);		
 		$req->bindParam(':discount',$item["DISCOUNT"],PDO::PARAM_STR);		
 		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);	
 		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);
-		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->bindParam(':creator',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 
 		if ($item["IMAGE"] != null)
@@ -4377,7 +4430,7 @@ $app->put('/itempromotionrequestinternal', function(Request $request, Response $
 	$now = time();
 	$items = $json["ITEMS"]; 
 
-	$signatureData = base64_decode($item["SIGNATURE"]);
+	$signatureData = base64_decode($json["SIGNATURE"]);
 	$sigID = time() ."_". rand(1,100);	
 	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
 	$signature = $json["SIGNATURE"];
@@ -4407,7 +4460,7 @@ $app->put('/itempromotionrequestinternal', function(Request $request, Response $
 									   	".$signatureField." = ?									   									   	
 									   	WHERE ID = ?";
 		$req = $db->prepare($sql);	
-		$req->execute(array($item["STATUS"],$item["AUTHOR"],$sigID,$item["ID"]));
+		$req->execute(array($item["STATUS"],$json["AUTHOR"],$sigID,$item["ID"]));
 	}
 	$result["result"] = "OK";
 	return $response;
@@ -4441,7 +4494,7 @@ $app->post('/itempromotionrequestexternal', function(Request $request, Response 
 
 	$items = $json["ITEMS"];
 
-	$signatureData = base64_decode($item["SIGNATURE"]);
+	$signatureData = base64_decode($json["SIGNATURE"]);
 	$sigID = time() ."_". rand(1,100);	
 	$signatureFilename = "./img/itempromotionrequestexternal_signatures/".$sigID.".png";
 	$signature = $json["SIGNATURE"];
@@ -4459,7 +4512,7 @@ $app->post('/itempromotionrequestexternal', function(Request $request, Response 
 		$req->bindParam(':discount',$item["DISCOUNT"],PDO::PARAM_STR);		
 		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);	
 		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);
-		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->bindParam(':creator',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 
 		if ($item["IMAGE"] != null)
@@ -4480,7 +4533,7 @@ $app->put('/itempromotionrequestexternal', function(Request $request, Response $
 	$now = time();
 	$items = $json["ITEMS"]; 
 
-	$signatureData = base64_decode($item["SIGNATURE"]);
+	$signatureData = base64_decode($json["SIGNATURE"]);
 	$sigID = time() ."_". rand(1,100);	
 	$signatureFilename = "./img/itempromotionrequestexternal_signatures/".$sigID.".png";
 	$signature = $json["SIGNATURE"];
@@ -4506,7 +4559,7 @@ $app->put('/itempromotionrequestexternal', function(Request $request, Response $
 										".$signatureField." = ?	   									   	
 									   	WHERE ID = ?";
 		$req = $db->prepare($sql);	
-		$req->execute(array($item["STATUS"],$item["AUTHOR"],$sigID,$item["ID"]));
+		$req->execute(array($item["STATUS"],$json["AUTHOR"],$sigID,$item["ID"]));
 	}
 	$result["result"] = "OK";
 	return $response;
