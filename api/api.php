@@ -12,13 +12,45 @@ $app = new \Slim\App;
 $URL = "http://192.168.72.62/api/api.php/picture/";
 
 /**************CORE ***************/
+function blueUser($username){
+	if($author == "thoeun_s") // TODO FUNCTION
+		return "THOEUN SOPHAL";	
+	else if ($author == "hay_s")
+		return "HAY SE";
+	else if ($author ==	"sen_s")
+		return "SOVI";
+	else if ($author == "em_c")
+		return "CHEN";
+	else if ($author == "prum_p")	
+		return "PONLEU";
+	else if ($author == "prom_r")
+		return "RETH";
+	else if ($author == "phorl_p")
+		return "PHARY";
+	else if ($author == "sin_p")
+		return "PHEAK";
 
-function getDatabase()
+}	
+
+
+
+function getDatabase($name = "MAIN")
 { 
 	$conn = null;      
 	try  
 	{  
-		$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue'); 
+		if ($name == "MAIN")
+		{
+			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+		}
+		else if ($name == "TRAINING")
+		{
+			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue');
+		}
+		else if ($name == "TMP" )
+		{
+			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,55008;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
+		}  		
 		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
 	}  
 	catch(Exception $e)  
@@ -977,6 +1009,21 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		else			
 			$item["result"] = "KO";
 	}
+
+	// IF NO LOT NULL
+	$qsql = "SELECT BATCHNO,QUANTITY,CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE LOCID = 'WH1' AND PRODUCTID = ? AND ACTIVE = 1";
+	$req=$conn->prepare($qsql);
+	$req->execute(array($barcode));
+	$item["LOTWH1LIST"] = $req->fetchAll();
+
+	$qsql = "SELECT BATCHNO,QUANTITY, CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE LOCID = 'WH2' AND PRODUCTID = ? AND ACTIVE = 1";
+	$req=$conn->prepare($qsql);
+	$req->execute(array($barcode));
+	$item["LOTWH2LIST"] = $req->fetchAll();
+
+		
+
+
 	$response = $response->withJson($item);
 	return $response;
 });
@@ -3580,9 +3627,11 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	{		
 		if ($item["POOL_WITHDRAW"] == 0 && $suffix == "")
 			continue;
-		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
+		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,LOTWH1,LOTWH2,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["POOL_WITHDRAW"],$item["LOCATION"],$lastID));
+		$req->execute(array($item["PRODUCTID"],$item["POOL_WITHDRAW"],$item["LOCATION"],
+					( isset($item["LOTWH1"]) ? $item["LOTWH1"] : null),
+					( isset($item["LOTWH2"]) ? $item["LOTWH2"] : null),$lastID));
 
 		if ($suffix == "")
 			$targetQty =$item["POOL_WITHDRAW"];
@@ -3614,6 +3663,192 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$response = $response->withJson($data);
 	return $response;
 });
+
+
+function transferItems($itemlist, $type = "TRANSFER")
+{
+	$db = getDatabase("TRAINING");
+	$now = date("Y-m-d H:i:s");
+
+	//************ TR ************ //
+
+		// GENERATE ID
+	$sql = "SELECT num3 FROM SYSDATA where sysid = 'IC'";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+	$num4 = $req->fetch(PDO::FETCH_ASSOC)["num3"];
+	$newID = intval($num4);	
+	$idenfitier = "TF" . sprintf("%13d",$newID);
+	$FLOCID = ($type == "TRANSFER") ?  "WH2" : "WH1";
+	$TLOCID = ($type == "TRANSFER") ?  "WH1" : "WH2"; 
+	$REFERENCE = $json["NOTE"];
+	$TRANDATE = $now;
+	$PCNAME = "APPLICATION";
+	$USERADD = blueUser($json["AUTHOR"]);
+	$APPLID = "IC";
+	$CURRENCY_AMOUNT = $TOTAL_AMT;
+
+	$TOTAL_AMT = 0;
+	foreach($items as $item){
+		$psql = "SELECT COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($psql);
+		$req->execute(array($item["PRODUCTID"]));	
+		$cost = $req->fetch()["COST"];
+		$TOTAL_AMT += $cost * $item["REQUEST_QTY"];
+	}
+	$headerSQL = "INSERT INTO ICTRANHEADER
+	(DOCNUM,FLOCID,TLOCID,REFERENCE,TRANDATE,
+	TRANTYPE,PCNAME,USERADD,APPLID,TOTAL_AMT,CURRENCY_AMOUNT) 
+	VALUES (?,?,?,?,?,?,?,?,?,?,?)"; 
+	$req = $db->prepare($headerSQL);
+
+	$req->execute(array($idenfitier,$FLOCID,$TLOCID,$REFERENCE,$TRANDATE,
+						"TR", $PCNAME, $USERADD, $APPLID,$TOTAL_AMT, $CURRENCY_AMOUNT));
+
+	$count = 1;
+	foreach($items as $item)
+	{
+		$psql = "SELECT CATEGORYID,CLASSID,PRODUCTNAME,PRODUCTNAME1,SALEFACTOR,BIG_UNIT_FACTOR,STKFACTOR,COST,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($psql);
+		$req->execute(array($item["PRODUCTID"]));	
+		$itemDetails = $req->fetch();
+
+		$osql = "SELECT LOCONHAND FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+		$req = $db->prepare($osql);
+		$req->execute(array($item["PRODUCTID"]),"WH1");
+		$ONHANDWH1 = $req->fetch()["LOCONHAND"];
+
+		$osql = "SELECT LOCONHAND FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+		$req = $db->prepare($osql);
+		$req->execute(array($item["PRODUCTID"]),"WH2");
+		$ONHANDWH2 = $req->fetch()["LOCONHAND"];
+
+		$DOCNAME = $identifier;
+		$PRODUCTID = $item["PRODUCTID"];
+		$LOCID = ($type == "TRANSFER") ? "WH1" : "WH2";
+		$CATEGORYID = $itemDetails["CATEGORYID"];
+		$CLASSID = $itemDetails["CLASSID"];
+		$TRANDATE = $now;
+		$TRANTYPE = "TR";
+		$LINENUM = $count;
+		$PRODUCTNAME = $itemDetails["PRODUCTNAME"];
+		$PRODUCTNAME1 = $itemDetails["PRODUCTNAME1"];
+		$REFERENCE = $json["NOTE"];
+		$TRANQTY = $item["REQUEST_QTY"]; 
+		$TRANUNIT = $itemDetails["SALEFACTOR"];
+		$TRANFACTOR = $itemDetails["BIG_UNIT_FACTOR"];
+		$STKFACTOR = $itemDetails["STKFACTOR"];
+ 		$TRANCOST = $itemDetails["COST"];
+ 		$TRANPRICE = $itemDetails["PRICE"];
+		$PRICE_ORI = $itemDetails["PRICE"];
+		$EXTPRICE = $itemDetails["PRICE"] * $item["REQUEST_QTY"];
+		$EXTCOST = $itemDetails["COST"] * $item["REQUEST_QTY"];
+		$CURRENTONHAND = ($type == "TRANSFER") ? $ONHANDWH1 : $ONHANDWH2;
+		$WEIGHT = "1.0";
+		$USERADD = blueUser($json["AUTHOR"]);
+		$DATEADD = $now;
+		$OLDWEIGHT = "1.0";
+		$CURRENTCOST = $TRANCOST;
+		$LASTCOST = $itemDetails["LASTCOST"];
+		$APPLID = "IC";
+		$LINKLINE = $LINENUM;
+		$ICCLEARING_ACC = "77000";
+		$INVENTORY_ACC = "17000";
+		$DIMENSION = "1";
+		$TRANQTY_NEW = $TRANQTY;
+		$TRANCOST_NEW = $TRANCOST;
+		$TRANEXTCOST_NEW = $EXTCOST;
+		$COST_METHOD = "AG";
+		$CURRENCY_COST = $TRANCOST;
+		$CURRENCY_AMOUNT = $EXTCOST; // NEGATIVE IF TI		
+		$CURRENCY_EXTPRICE = $EXTPRICE; // NEGATIVE IF TI
+		$CURRENCY_PRICE = $itemDetails["PRICE"];
+		$MAINPRODUCTID = $item["PRODUCTID"];
+	
+
+		$sql = "INSERT INTO ICTRANDETAILS(
+		DOCNAME,PRODUCTID,LOCID,CATEGORYID,CLASSID,
+		TRANDATE,TRANTYPE,LINENUM,PRODUCTNAME,PRODUCTNAME1,
+		REFERENCE,TRANQTY,TRANUNIT,TRANFACTOR,STKFACTOR,
+		TRANCOST,TRANPRICE,PRICE_ORI,EXTPRICE,EXTCOST,
+		CURRENTONHAND,WEIGHT,USERADD,DATEADD,OLDWEIGHT,
+		CURRENTCOST,LASTCOST,APPLID,LINK_LINE,ICCLEARING_ACC,
+		INVENTORY_ACC,DIMENSION,TRANQTY_NEW,TRANCOST_NEW,TRANEXTCOST_NEW,
+		COST_METHOD,CURRENCY_COST,CURRENCY_AMOUNT,CURRENCY_EXTPRICE,CURRENCY_PRICE,
+		MAINPRODUCTID) VALUES (
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?) 
+		";
+		$req = $db->prepare($sql);
+
+
+		// TR
+		$req->execute(array(
+		$DOCNAME,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
+		$TRANDATE,$TRANTYPE,$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,
+		$REFERENCE,$TRANQTY,$TRANUNIT,$TRANFACTOR,$STKFACTOR,
+		$TRANCOST,$TRANPRICE,$PRICE_ORI,$EXTPRICE,$EXTCOST,
+		$CURRENTONHAND,$WEIGHT,$USERADD,$DATEADD,$OLDWEIGHT,
+		$CURRENTCOST,$LASTCOST,$APPLID,$LINK_LINE,$ICCLEARING_ACC,
+		$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,
+		$COST_METHOD,$CURRENCY_COST,$CURRENCY_AMOUNT,$CURRENCY_EXTPRICE,$CURRENCY_PRICE,
+		$MAINPRODUCTID));
+
+
+		$locsql = "UPDATE dbo.ICLOCATION set LOCONHAND = LOCONHAND +  ? WHERE LOCID = ? AND PRODUCTID = ?";
+		$locreq  = $db->prepare($locsql);		
+		$locreq->execute(array($item["REQUEST_QTY"],$LOCID,$item["PRODUCTID"]));
+
+		
+
+		// TI
+		$LOCID = ($type == "TRANSFER") ? "WH2" : "WH1";
+		$TRANTYPE = "TI";
+		$CURRENCY_AMOUNT = $EXTCOST * -1;
+		$CURRENCY_EXTPRICE = $EXTPRICE * -1;
+		$CURRENTONHAND = ($type == "TRANSFER") ? $ONHANDWH1 : $ONHANDWH2;
+		
+		$req->execute(array(
+		$DOCNAME,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
+		$TRANDATE,$TRANTYPE,$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,
+		$REFERENCE,$TRANQTY,$TRANUNIT,$TRANFACTOR,$STKFACTOR,
+		$TRANCOST,$TRANPRICE,$PRICE_ORI,$EXTPRICE,$EXTCOST,
+		$CURRENTONHAND,$WEIGHT,$USERADD,$DATEADD,$OLDWEIGHT,
+		$CURRENTCOST,$LASTCOST,$APPLID,$LINK_LINE,$ICCLEARING_ACC,
+		$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,
+		$COST_METHOD,$CURRENCY_COST,$CURRENCY_AMOUNT,$CURRENCY_EXTPRICE,$CURRENCY_PRICE,
+		$MAINPRODUCTID));
+
+		$locreq->execute(array($item["REQUEST_QTY"],$LOCID,$item["PRODUCTID"]));
+
+		// LOT
+		if ($item["LOTWH1"] != null && $item["LOTWH2"] != null){
+			
+			$qsql = "UPDATE ICQUANTITY SET QUANTITY = QUANTITY + ?, USEREDIT = ?, DATEEDIT = ?
+					 WHERE PRODUCTID = ? AND LOCID = ? AND BATCHID = ?";
+			$qreq = $db->prepare($qsql);		
+			$qty1 = ($type == "TRANSFER")  ? $item["REQUEST_QTY"] : $item["REQUEST_QTY"] * -1;
+			$qty2 = ($type == "TRANSFER")  ? $item["REQUEST_QTY"] * -1 : $item["REQUEST_QTY"] ;			
+			$qreq->execute($qty1,$USERADD, $now, $item["PRODUCTID"],"WH1" ,$item["LOTWH1"]);
+			$qreq->execute($qty2,$USERADD, $now, $item["PRODUCTID"],"WH2" ,$item["LOTWH2"]);  		 
+		}
+		$count++;
+	}
+	// AFTER SUCCESS
+	// Increment gen ID for Next
+	$incremented = $newID + 1;
+	$sql = "UPDATE SYSDATA set num3 = ? where sysid = 'IC'"; 
+	$req = $db->prepare($sql);
+	$req->execute(array($incremented));
+}
+
 
      // TODO DEMAND (NO(AUTO on REQUEST))
             // SUBMITTED DEMAND (NO)
@@ -3660,9 +3895,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				
 
 				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY
-					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
 					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));	
+					$req1->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));	
 				}
 				else 
 				{
@@ -3689,9 +3924,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 
 						
 					if ($cnt["OCU"] == 0){
-						$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
 						$req1 = $db->prepare($sql1);
-						$req1->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["TRANSFER_POOL_NEW"]));
+						$req1->execute(array($item["PRODUCTID"],$item["TRANSFER_POOL_NEW"]));
 					}
 					else{			
 						$newQty = $cnt["REQUEST_QUANTITY"] + $item["TRANSFER_POOL_NEW"];
@@ -3711,9 +3946,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 					$cnt = $req->fetch();
 
 					if ($cnt["OCU"] == 0){
-						$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) values (?,?,?)";
+						$sql2 = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
 						$req2 = $db->prepare($sql2);
-						$req2->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["PURCHASE_POOL_NEW"]));	
+						$req2->execute(array($item["PRODUCTID"],$item["PURCHASE_POOL_NEW"]));	
 					}
 					else{
 						$newQty = $cnt["REQUEST_QUANTITY"] + $item["PURCHASE_POOL_NEW"];
@@ -3729,9 +3964,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 					$cnt = $req->fetch();
 					if ($cnt["OCU"] == 0) 
 					{
-						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
+						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));
 					}
 					else
 					{
@@ -3746,7 +3981,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			}
 		}
 		else if ($ira["TYPE"] == "TRANSFER")
-		{ // STORE SUPERVISOR VALIDATE TRANSFER AND UPDATE DEBT POOL
+		{ 
+			transferItems($items,$ira["TYPE"]);	
+			// STORE SUPERVISOR VALIDATE TRANSFER AND UPDATE DEBT POOL
 			foreach($items as $item)
 			{
 				$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
@@ -3757,28 +3994,36 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 
 				if ($cnt["OCU"] == 0) // INSERT NEGATIVE QUANTITY : NOT NORMAL 
 				{
-						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,PRODUCTNAME,REQUEST_QUANTITY) VALUES (?,?,?)";
+						$sql = "INSERT INTO ITEMREQUESTDEBT (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["REQUEST_QUANTITY"]));
+						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));
 				}
 				else
 				{
 						$totalQty = $cnt["REQUEST_QUANTITY"] - $item["REQUEST_QUANTITY"];
 						if ($totalQty == 0) // DEBT FALL TO ZERO
 						{
+							error_log("DELETE");
+							
 							$sql = "DELETE FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?";
 							$req = $db->prepare($sql);
-							$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
+							$req->execute(array($item["PRODUCTID"]));						
 						}
 						else // REDUCE DEBT
 						{
-							$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+							error_log("UPDATE");
+
+							$sql = "UPDATE ITEMREQUESTDEBT SET REQUEST_QUANTITY = REQUEST_QUANTITY -  ? WHERE PRODUCTID = ?";
 							$req = $db->prepare($sql);
-							$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));						
+							$req->execute(array($item["REQUEST_QUANTITY"], $item["PRODUCTID"]));						
 						}
 						
 				}			
 			}
+		}
+		else if ($ira["TYPE"] == "TRANSFERBACK")
+		{
+			transferItems($items,$ira["TYPE"]);
 		}
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
 		}			
@@ -3822,6 +4067,11 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
 
+
+	$asql = "SELECT * FROM ITEMREQUESTACTION WHERE ID = ?";
+	$req = $db->prepare($asql);
+	$req->execute(array($id));
+	$type = $req->fetch()["TYPE"];	
 	
 	// Debt (internal) OK
 	// demand (internal) OK
@@ -3834,6 +4084,25 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$newData = array();
 	foreach($items as $item){
 		$itemID = $item["PRODUCTID"];
+
+		// LOT
+		if ($item["LOTWH1"] != null && $item["LOTWH1"] != ""){
+			$lsql = "SELECT CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE BATCHNO = ? AND PRODUCTID = ? AND LOCID = 'WH1'";
+			$req = $dbBlue->prepare($lsql);
+			$req->execute(array($item["LOTWH1"],$item["PRODUCTID"]));
+			$item["LOTEXPIREWH1"] = $req->fetch()["TDATE"];	
+		}
+
+		// 
+		if ($item["LOTWH2"] != null && $item["LOTWH2"] != ""){
+			$lsql = "SELECT CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE BATCHNO = ? AND PRODUCTID = ? AND LOCID = 'WH2'";
+			$req = $dbBlue->prepare($lsql);
+			$req->execute(array($item["LOTWH2"],$item["PRODUCTID"]));
+			$item["LOTEXPIREWH2"] = $req->fetch()["TDATE"];
+		}
+
+		// TYPE
+		$item["TYPE"] = $type;
 
 		// DEBT
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as DEBT_QTY from ITEMREQUESTDEBT WHERE PRODUCTID = ?";
@@ -3934,6 +4203,22 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
 		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		//
+
+	
+
+		// IF NO LOT NULL
+		$qsql = "SELECT BATCHNO,QUANTITY,TDATE FROM ICQUANTITY WHERE LOCID = 'WH1' AND PRODUCTID = ? AND ACTIVE = 1";
+		$req=$dbBlue->prepare($qsql);
+		$req->execute(array($itemID));
+		$item["LOTWH1LIST"] = $req->fetchAll();
+
+		$qsql = "SELECT BATCHNO,QUANTITY,TDATE FROM ICQUANTITY WHERE LOCID = 'WH2' AND PRODUCTID = ? AND ACTIVE = 1";
+		$req=$dbBlue->prepare($qsql);
+		$req->execute(array($itemID));
+		$item["LOTWH2LIST"] = $req->fetchAll();
+
+		
+
 		array_push($newData,$item);
 	}	
 
@@ -4012,14 +4297,28 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ?".$suffix;
 	$req = $db->prepare($sql);
 	$req->execute(array($json["PRODUCTID"]));
-	$res = $req->fetch();		
+	$res = $req->fetch();	
+
+
 	if ($res["OCU"] == 0)
 	{
 		if ($suffix == "")
 		{
-			$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
-			$req = $db->prepare($sql);
-			$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
+			if ($type == "TRANSFER")
+			{	
+
+				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY,LOTWH1,LOTWH2) values(?,?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],
+				(isset($json["LOTWH1"]) ? $json["LOTWH1"]:  null),
+				(isset($json["LOTWH2"]) ? $json["LOTWH2"]:  null)));		
+			}
+			else 
+			{
+				$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
+			}
 		}
 		else
 		{
@@ -4030,10 +4329,26 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	}
 	else
 	{
-		$newQty = $res["REQUEST_QUANTITY"] + $json["REQUEST_QUANTITY"];
-		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
-		$req = $db->prepare($sql);
-		$req->execute(array($newQty,$json["PRODUCTID"]));
+		if ($type == "TRANSFER")
+		{	
+			//$newQty = $res["REQUEST_QUANTITY"] + $json["REQUEST_QUANTITY"];
+			$newQty = $json["REQUEST_QUANTITY"]; // NO MORE ADD 
+			$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = ?, LOTWH1 = ?, LOTWH2 = ? WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($newQty,
+				(isset($json["LOTWH1"]) ? $json["LOTWH1"]:  null),
+				(isset($json["LOTWH2"]) ? $json["LOTWH2"]:  null),
+				$json["PRODUCTID"]));		
+		}
+		else
+		{		
+			$newQty = $json["REQUEST_QUANTITY"]; // NO MORE ADD 
+			$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
+			$req = $db->prepare($sql);
+			$req->execute(array($newQty,$json["PRODUCTID"]));
+		}
+
+		
 		
 	}
 	
@@ -4074,6 +4389,7 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
+	$suffix = "";
 
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";

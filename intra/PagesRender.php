@@ -4537,7 +4537,6 @@ function renderSupplyRecordList($data,$action){
                   <th>DETAILS</th>
                   <th>NOPONOTE</th>
                   <th>LINKEDPO</th>
-                  <th>VENDOR</th> 
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
                   <th>VAL</th>
@@ -4564,7 +4563,6 @@ function renderSupplyRecordList($data,$action){
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
           \"".$item["NOPONOTE"]."\",
           \"".$item["LINKEDPO"]."\",
-          \"".$item["VENDOR"]."\",
           \"".$item["STATUS"]."\",
           \"".$item["LAST_UPDATED"]."\",
           '".$VAL."',
