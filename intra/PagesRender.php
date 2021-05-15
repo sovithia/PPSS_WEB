@@ -998,60 +998,7 @@ function renderZeroSale($items)
     );
   } );
   </script>
-  ";
-    /*
-    foreach($items as $item)
-    {
-      if ($item["TOTALRECEIVE"] ==  $item["TOTALSALE"] + $item["WH1"] + $item["WH2"])
-        $color = "#98FB98";
-      else
-        $color = "";
-
-      if (substr($item["WH1"],0,1) == '.')
-        $colorWH1 = "red";
-      else if (substr($item["WH1"],0,2) == '1.' || substr($item["WH1"],0,2) == '2.')
-        $colorWH1 = "yellow";
-      else 
-        $colorWH1 = "black";
-
-
-      if (substr($item["ONHAND"],0,1) == '.')
-        $colorOH = "red";
-      else if (substr($item["ONHAND"],0,2) == '1.' || substr($item["ONHAND"],0,2) == '2.')
-        $colorOH = "yellow";
-      else 
-        $colorOH = "black";
-
-      $item["TOTALRECEIVE"] = truncatePrice($item["TOTALRECEIVE"]);
-      $item["TOTALSALE"] = truncatePrice($item["TOTALSALE"]);
-      $item["ONHAND"] = truncatePrice($item["ONHAND"]);
-      $item["WH1"] = truncatePrice($item["WH1"]);
-      $item["WH2"] = truncatePrice($item["WH2"]);
-      $item["PRICE"] = truncatePrice($item["PRICE"]);
-
-      $body .=  "<tr bgcolor='$color'>
-
-            <td><img height='50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td> 
-            <td>".$item["BARCODE"]."</td>            
-            <td>".$item["PRODUCTNAME"]."</td>
-            <td>".$item["VENDNAME"]."</td>
-            <td>".$item["TOTALRECEIVE"]."</td>
-            <td>".$item["TOTALSALE"]."</td>
-            <td><span style='color:".$colorOH."'>".$item["ONHAND"]."</span></td>
-            <td><span style='color:".$colorWH1."'>".$item["WH1"]."</span></td>
-            <td>".$item["WH2"]."</td>
-            <td>".$item["CATEGORYID"]."</td>
-            <td>".$item["COLOR"]."</td>
-            <td>".$item["PRICE"]."</td>            
-            <td>".$item["LASTRECEIVEDATE"]."</td>
-            <td>".$item["LASTSALEDATE"]."
-            <input type='hidden' name='".$item["BARCODE"]."' value='".json_encode($item)."'>
-            </td>
-          
-
-          </tr>";             
-    }
-    */   
+  "; 
   }
   return $body;
 }
@@ -1719,10 +1666,12 @@ function renderItemSearch($items)
         $item["TOTALTHROWN"] = truncatePrice($item["TOTALTHROWN"]);
         $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
         $item["LASTCOST"] = truncatePrice($item["LASTCOST"]);
-        $item["PERCENTSALE"] = (floatval($item["TOTALSALE"]) * 100) 
-                                  / 
-                                ( floatval($item["TOTALRECEIVE"]) );  
-        $item["PERCENTSALE"] = truncatePrice($item["PERCENTSALE"]);
+        if (floatval($item["TOTALRECEIVE"]) > 0.0){
+          $item["PERCENTSALE"] = (floatval($item["TOTALSALE"]) * 100) / ( floatval($item["TOTALRECEIVE"]) );  
+          $item["PERCENTSALE"] = truncatePrice($item["PERCENTSALE"]);
+        }
+        
+        
 
         if ($item["SALELAST30"] == "")
           $item["SALELAST30"] = "0";
@@ -3191,57 +3140,7 @@ function renderLowProfit($data)
   } );
   </script>
   ";
-      /*
-      foreach($items as $item)
-      {
-       
-
-        
-
-        $item["PRICE"] = truncatePrice($item["PRICE"]);
-        $item["COST"] = truncatePrice($item["COST"]);
-        $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
-        $profit = truncatePrice($item["PRICE"] - $item["AVGCOST"]);        
-        $item["TOTALSALE"] = truncatePrice($item["TOTALSALE"]);
-        $item["ONHAND"] = truncatePrice($item["ONHAND"]);
-        $item["WH1"] = truncatePrice($item["WH1"]);
-        $item["WH2"] = truncatePrice($item["WH2"]);
-
-
-        $body .=  "<tr bgcolor='$color'>
-
-              <td><img height='50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'</td> 
-              <td ><input type='checkbox' style='left:0px;visibility:visible;position:relative' value='".$item["PRODUCTNAME"]."' name='".$item["BARCODE"]."'/>".$item["BARCODE"]."</td>
-              
-                  
-              </td>
-              <td align='center'>".$item["PRODUCTNAME"]."</td>
-              <td align='center'>".$item["PRODUCTNAME1"]."</td>
-              <td align='center'>".$item["PRICE"]."</td>
-              <td align='center'>".$item["COST"]."</td>
-              <td align='center'>".$item["AVGCOST"]."</td>
-              <td align='center'>".$profit."</td>
-              <td align='center'>".$item["VENDNAME"]."</td>
-              <td align='center'>".$item["TOTALRECEIVE"]."</td>
-              <td align='center'>".$item["TOTALSALE"]."</td>
-              <td align='center'><span style='color:".$colorOH."'>".$item["ONHAND"]."</span></td>
-              <td align='center'><span style='color:".$colorWH1."'>".$item["WH1"]."</span></td>
-              <td align='center'>".$item["WH2"]."</td>
-              <td align='center'>".$item["CATEGORYID"]."</td>
-              <td align='center'>".$item["COLOR"]."</td>              
-              <td align='center'>".$item["SALELAST30"]."</td>
-              <td align='center'>".$item["LASTRECEIVEDATE"]."</td>
-              <td align='center'>".$item["LASTSALEDATE"]."
-                <input type='hidden' name='".$item["PRODUCTID"]."' value='".json_encode($item)."'>
-              </td>
-            
-
-            </tr>";             
-      }
-      $body .= "</table>";
-      $body .= "</form>";     
-    }*/
-
+      
   return $body;  
 }
 
@@ -4243,8 +4142,7 @@ function renderItemRequestActionDetails($data){
                   <th>Debt</th>    
 
                   <th>TRANS</th>
-                  <th>PURCH</th>              
-                  <th>ACTION</th>
+                  <th>PURCH</th>                                
                </tr></thead>
 
                <tfoot><tr>
@@ -4263,7 +4161,6 @@ function renderItemRequestActionDetails($data){
 
                   <th>TRANS</th>
                   <th>PURCH</th>              
-                  <th>ACTION</th>
                </tr></tfoot>
                </table></form>
                ";  
@@ -4285,41 +4182,13 @@ function renderItemRequestActionDetails($data){
           '".$item["TRANSFER_POOL"]."',    
           '".$item["PURCHASE_POOL"]."',    
           '".$item["REQUEST_QUANTITY"]."',    
-          '".$item["DEBT_QTY"]."',    
-          '<input value=\"".$item["ID"]."\" type=\"hidden\"><input style=\"text-align:center\" id=\"transfer_".$item["ID"]."\" value=\"".$item["REQUEST_QUANTITY"]."\" type=\"text\"  >',
-          '<input style=\"text-align:center\" id=\"purchase_".$item["ID"]."\" value=\"0\" type=\"text\"  >',
-          '<button onclick=\"All(".$item["ID"].")\">ALL</button><br><button onclick=\"Add(".$item["ID"].")\">-</button><button onclick=\"Substract(".$item["ID"].")\">+</button>',             
+          '".$item["DEBT_QTY"]."'    
+          
           ],";
     }
-     $dataSet1 = rtrim($dataSet1,",");        
-        $body .= "  
-        <script> 
-        function Add(id)
-        {
-          if (document.getElementById('transfer_' + id).value == ".$item["REQUEST_QUANTITY"].")
-            return;
-          var t = parseInt(document.getElementById('transfer_' + id).value) + 1;
-          var p = parseInt(document.getElementById('purchase_' + id).value) - 1;
-          document.getElementById('transfer_' + id).value = t;
-          document.getElementById('purchase_' + id).value = p;
-        }
-
-        function Substract(id)
-        {
-          if (document.getElementById('transfer_' + id).value == 0)
-            return;
-          var t = parseInt(document.getElementById('transfer_' + id).value) - 1;
-          var p = parseInt(document.getElementById('purchase_' + id).value) + 1;
-          document.getElementById('transfer_' + id).value = t;
-          document.getElementById('purchase_' + id).value = p;
-        }
-
-        function All(id)
-        {
-          document.getElementById('transfer_' + id).value = 0;
-          document.getElementById('purchase_' + id).value = ".$item["REQUEST_QUANTITY"]."; 
-        }
-
+     $dataSet1 = rtrim($dataSet1,",");     
+       $body .= "  
+        <script>      
         var dataSet1 = [".$dataSet1."];
         var table;        
         table =  $(document).ready( function () {
@@ -4329,7 +4198,8 @@ function renderItemRequestActionDetails($data){
            });
         });
       </script>
-    ";   
+    ";      
+         
     $body .=  "</div>"; 
     
     $body .=  "<center>
@@ -4355,11 +4225,92 @@ function renderItemRequestActionDetails($data){
                <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
-
     return $body; 
 }
 
+
+
+
 function renderItemRequestActionCreate($data){
+ 
+   $items = $data;
+       
+
+     $body = "<div class='col s12 m8 l9'>
+              <div class='row margin'>
+              <form class='col s12' method='GET'>
+                
+              
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='productid' name='PRODUCTID' type='text' >
+                    <label for='productid' class='center-align'>Product ID</label>               
+                  </div>
+              </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='quantity' name='REQUEST_QUANTITY' type='text' >
+                    <label for='quantity' class='center-align'>Quantity</label>               
+                  </div>
+              </div>
+
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                       <input type='hidden' name='display' value='".$_GET["display"]."'>
+                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>
+
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add'><br><br>
+                      
+                     </div>
+                     
+                </div>
+            </form>
+              </div>
+             </div> 
+
+
+            <div class='col s12 m8 l9'>
+              <div class='row margin'>
+              <form class='col s12' method='POST' enctype=multipart/form-data>
+                
+              
+              <div class='row'>
+                  <div class='input-field col s12'>     
+                    <center>              
+                    <input id='productid' name='filename' type='file' >
+                    <label for='productid' class='center-align'>Template upload</label>               
+                    </center>
+                  </div>
+              </div>
+
+             
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                       <input type='hidden' name='display' value='".$_GET["display"]."'>
+                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>
+
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Multiple Add'><br><br>
+                      
+                     </div>
+                     
+                </div>
+            </form>
+              </div>
+             </div> 
+
+             <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
+              ";  
+
+
+
+   $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","LOTWH1","LOTWH2",
+              "LOTEXPIREWH1","LOTEXPIREWH2","WH1REQUESTQTY","WH2REQUESTQTY","ACTION"];
+   $body .= _ItemsTable($items,$fields,$_GET);
+
+  return $body;
 }
 
 function renderItemRequestDebtList($data){  
@@ -4520,8 +4471,7 @@ function renderSupplyRecordList($data,$action){
                <thead><tr>
                   <th>DETAILS</th>
                   <th>NOPONOTE</th>
-                  <th>LINKEDPO</th>
-                  <th>VENDOR</th> 
+                  <th>LINKEDPO</th>                  
                   <th>STATUS</th>
                   <th>LAST UPDATED</th>
                   <th>VAL</th>
@@ -4662,6 +4612,12 @@ function renderSupplyRecordDetail($data,$action){
           <th>IMAGE</th>
           <th>BARCODE</th>
           <th>NAME</th>
+
+          <th>MINVENDORNAME</th>
+          <th>MINCOST</th>
+          <th>MAXVENDORNAME</th>
+          <th>MAXCOST</th>
+          <th>DISCOUNT</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -4673,6 +4629,12 @@ function renderSupplyRecordDetail($data,$action){
           <th>IMAGE</th>
           <th>BARCODE</th>
           <th>NAME</th>
+
+          <th>MINVENDORNAME</th>
+          <th>MINCOST</th>
+          <th>MAXVENDORNAME</th>
+          <th>MAXCOST</th>
+          <th>DISCOUNT</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -4700,6 +4662,17 @@ function renderSupplyRecordDetail($data,$action){
         $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
         $item["TRANCOST"] = truncatePrice($item["TRANCOST"],4);
 
+
+        $item["MINCOST"] = truncatePrice($item["MINCOST"]);
+        $item["MAXCOST"] = truncatePrice($item["MAXCOST"]);
+
+        if ($item["TRANCOST"] > $item["MINCOST"])
+          $color = "#FF5933";
+        else if ($item["TRANCOST"] < $item["MINCOST"])
+          $color = "#7CFF33";         
+        else 
+          $color = "#0D1EE0";
+
         if (floatval($item["ORDER_QTY"]) != floatval($item["PPSS_VALIDATION_QTY"]))
           $order = "<span style='color:red'>".$item["ORDER_QTY"]."</span>";
         else 
@@ -4709,7 +4682,14 @@ function renderSupplyRecordDetail($data,$action){
               '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',
               '".$item["PRODUCTID"]." <input type=\"hidden\"  value=\"".$item["PRODUCTID"]."\">',                         
               \"".$item["PRODUCTNAME"]."\",
-              \"".$item["TRANCOST"]."\",      
+
+              \"".$item["MINVENDORNAME"]."\",
+              \"".$item["MINCOST"]."\",
+              \"".$item["MAXVENDORNAME"]."\",
+              \"".$item["MAXCOST"]."\",
+              \"".$item["TRANDISC"]."\",
+
+              '<span style=\"color:".$color."\">".$item["TRANCOST"]."</span>',      
              \"".$order."\",
               '<input ".$valdisable." style=\"text-align:center\" type=\"text\" id=\"validationqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_VALIDATION_QTY"]."\">',                            
               '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"receptionqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_RECEPTION_QTY"]."\">',              
@@ -6297,6 +6277,7 @@ function renderLowseller($data)
           <th>Packing</th>                    
           <th>TOTAL SOLD</th>          
           <th>TOTAL THROWN</th>            
+          <th>LASTRECEIVEDATE</th>           
           <th>TOTAL RECEIVE</th>           
           <th>VENDNAME</th>
           <th>ON HAND</th> 
@@ -6318,7 +6299,8 @@ function renderLowseller($data)
           <th>Packing</th>          
           <th>TOTAL SOLD</th>          
           <th>TOTAL THROWN</th>  
-          <th>TOTAL RECEIVE</th>                    
+          <th>TOTAL RECEIVE</th>   
+          <th>LASTRECEIVEDATE</th>
           <th>VENDNAME</th>
           <th>ON HAND</th> 
           <th>WH1</th> 
@@ -6357,7 +6339,8 @@ function renderLowseller($data)
           \"".$item["PRODUCTNAME1"]."\",
           \"".$item["PACKINGNOTE"]."\",                           
           '".$item["TOTALSALE"]."',
-          '".$item["TOTALTHROWN"]."',                  
+          '".$item["TOTALTHROWN"]."',   
+          '".$item["LASTRECEIVEDATE"]."',   
           '".$item["TOTALRECEIVE"]."',          
           '".$item["VENDNAME"]."',   
           '".$item["ONHAND"]."',

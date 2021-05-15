@@ -41,12 +41,14 @@ class RestEngine
 		return $json;
 	}
 
-	static function DELETE($uri,$headers = array())
+	static function DELETE($uri,$data,$headers = array())
 	{		
 		$response = \Httpful\Request::delete($uri)
+				->sendsJson()
+				->body($data)
 				->expectsJson()
 				->addHeaders($headers)
-				->send();			
+				->send();
 		$json = json_decode(json_encode($response->body), TRUE);
 		return $json;
 	}

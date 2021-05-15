@@ -41,6 +41,8 @@ class RestEngine
 	static function DELETE($uri,$headers = array())
 	{		
 		$response = \Httpful\Request::delete($uri)
+				->sendsJson()
+				->body($data)
 				->expectsJson()
 				->addHeaders($headers)
 				->send();			

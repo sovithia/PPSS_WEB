@@ -158,9 +158,9 @@ class Service
  	const ResourceSupplyRecordDetails = Service::BaseURL."/supplyrecorddetails";
 
  	// ITEMREQUEST
- 	const ResourceItemRequestAction = Service::BaseURL2."/itemrequestaction";
- 	const ResourceItemRequestDetails = Service::BaseURL2."/itemrequestactionitems";
- 	const ResourceItemRequestPool = Service::BaseURL2."/itemrequestitemspool";
+ 	const ResourceItemRequestAction = Service::BaseURL."/itemrequestaction";
+ 	const ResourceItemRequestDetails = Service::BaseURL."/itemrequestactionitems";
+ 	const ResourceItemRequestPool = Service::BaseURL."/itemrequestitemspool";
 
 						 	  
 						 	  
@@ -293,19 +293,21 @@ class Service
 
 		if ($option != "" && (substr($option,0,1) != "?"))
 			$option = "/".$option;				
-				
-		error_log(Service::modelRoute[$model] . $option);
-		//exit;
+						
 		return RestEngine::GET(Service::modelRoute[$model] . $option,$header);				
 	}
 
-	static function CreateEntity($model,$data){
+	static function CreateEntity($model,$data,$option = ""){
 		$header = array();
 		if (isset($_SESSION["IDENTIFIER"]))			
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))
-			$header["TOKEN"] = $_SESSION["TOKEN"];		
-		return RestEngine::POST(Service::modelRoute[$model],$data,$header);						
+			$header["TOKEN"] = $_SESSION["TOKEN"];	
+
+		if ($option != "" && (substr($option,0,1) != "?"))
+			$option = "/".$option;				
+		//var_dump(Service::modelRoute[$model] . $option);					
+		return RestEngine::POST(Service::modelRoute[$model] . $option,$data,$header);						
 	}
 
 	static function UpdateEntity($model,$data){			
@@ -319,13 +321,13 @@ class Service
 		return $response;
 	}
 
-	static function DeleteEntity($model,$id){
+	static function DeleteEntity($model,$id,$data = ""){
 		$header = array();
 		if (isset($_SESSION["IDENTIFIER"]))			
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))	
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
-		$response = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$header);		
+		$response = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$data,$header);		
 		return $response;
 	}		
 }

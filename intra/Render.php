@@ -354,7 +354,7 @@ function renderLeftSidebar()
                             
 
                             <li '.$nodemohide.' '.hoverColor("itemrequestactioncreate"."itemrequestitemspool"."RESTOCK").' >
-                            <a href="?display=itemrequestactioncreate&entity=itemrequestitemspool&type=RESTOCK" >
+                            <a href="?display=itemrequestactioncreate&entity=itemrequestactionpool&type=RESTOCK" >
                             <img src="images/icons/STRSPVR/ItemRequestRestockCreatePage.png" width="30px" height="30px">ItemRestock(+)</a></li>
                             
 
@@ -380,11 +380,11 @@ function renderLeftSidebar()
                           
                            <li '.hoverColor("supplyrecordlist"."supplyrecord"."WAITING"."VAL").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=WAITING&action=VAL" >
-                           <img src="images/icons/VAL/SupplyRecordListVALTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                           <img src="images/icons/VAL/SupplyRecordListVALTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
 
                            <li  '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."VAL").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED&action=VAL" >
-                           <img src="images/icons/VAL/SupplyRecordListVALDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>                        
+                           <img src="images/icons/VAL/SupplyRecordListVALDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>                        
                           ';
 
 
@@ -393,11 +393,11 @@ function renderLeftSidebar()
                           
                            <li '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."WH").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED&action=WH" >
-                           <img src="images/icons/WH/SupplyRecordListWHTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                           <img src="images/icons/WH/SupplyRecordListWHTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
 
                            <li  '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."WH").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=WH" >
-                           <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
+                           <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
 
 
                            <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."RESTOCK").' >
@@ -410,15 +410,15 @@ function renderLeftSidebar()
 
 
                            <li '.$nodemohide.' '.hoverColor("itemrequestactioncreate"."itemrequestitemspool"."PURCHASE").' >
-                           <a href="?display=itemrequestactioncreate&entity=itemrequestitemspool&type=PURCHASE" >
+                           <a href="?display=itemrequestactioncreate&entity=itemrequestactionpool&type=PURCHASE" >
                            <img src="images/icons/WH/ItemRequestPurchaseCreatePage.png" width="30px" height="30px">ItemPurchase(+)</a></li>
                            
                            <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."PURCHASE").' >
                            <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=PURCHASE&status=SUBMITTED" >
                            <img src="images/icons/WH/ItemRequestPurchaseSubmittedListPage.png" width="30px" height="30px">ItemPurchase(!)</a></li>
                            
-                           <li '.$nodemohide.' '.hoverColor("itemrequestactioncreate"."itemrequestitemspool"."TRANSFER").' >
-                           <a href="?display=itemrequestactioncreate&entity=itemrequestitemspool&type=TRANSFER" >
+                           <li '.$nodemohide.' '.hoverColor("itemrequestactioncreate"."itemrequestactionpool"."TRANSFER").' >
+                           <a href="?display=itemrequestactioncreate&entity=itemrequestactionpool&type=TRANSFER" >
                            <img src="images/icons/WH/ItemRequestTransferCreatePage.png" width="30px" height="30px">ItemTransfer(+)</a></li>
 
                            <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."TRANSFER").' >
@@ -431,17 +431,21 @@ function renderLeftSidebar()
   $sectionPURCHASER = '<li class="li-hover"><div class="divider"></div></li>
                         <li  class="li-hover"><p class="ultra-small margin more-text">PURCHASER</p></li>
                                                 
+                        <li  '.hoverColor("supplyrecordlist"."supplyrecord"."WAITING"."PCH").' >
+                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=WAITING&action=PCH">
+                        <img src="images/icons/PCH/SupplyRecordListPCHCreatedPage.png" width="30px" height="30px">SupplyRecord(Waiting)</a></li>   
+
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."VALIDATED"."PCH").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED&action=PCH" >
-                        <img src="images/icons/PCH/SupplyRecordListPCHTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                        <img src="images/icons/PCH/SupplyRecordListPCHTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
 
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."ORDERED"."PCH").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=ORDERED&action=PCH" >
-                        <img src="images/icons/PCH/SupplyRecordListPCHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
+                        <img src="images/icons/PCH/SupplyRecordListPCHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
 
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."WH").' >
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=WH" >
-                           <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
+                           <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
 
 
                         <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."PURCHASE").' >
@@ -461,11 +465,11 @@ function renderLeftSidebar()
 
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVERED"."RCV").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=RCV" >
-                        <img src="images/icons/RCV/SupplyRecordListRCVTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                        <img src="images/icons/RCV/SupplyRecordListRCVTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
 
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."RCV").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED&action=RCV" >
-                        <img src="images/icons/RCV/SupplyRecordListRCVDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>
+                        <img src="images/icons/RCV/SupplyRecordListRCVDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
                                                   
                         <li '.hoverColor("custombarcode").'><a href="?display=custombarcode&action=no&entity=custombarcode"><img src="images/barcode.png" width="30px" height="30px">Custom Barcodes List</a></li>
                         <li '.hoverColor("barcodegenerator").'><a href="?display=barcodegenerator&action=no&entity=barcodegenerator"><img src="images/barcodesgenerator.png" width="30px" height="30px">Barcode generator</a></li>
@@ -480,11 +484,11 @@ function renderLeftSidebar()
                         
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."PAID"."ACC").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">(NEW)SupplyRecord(Todo)</a></li>
+                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
 
                         <li  '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."ACC").' >
                         <a href="?display=supplyrecordlist&entity=supplyrecord&status=PAID&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">(NEW)SupplyRecord(Done)</a></li>                       
+                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>                       
             ';
 
 
@@ -515,7 +519,7 @@ function renderLeftSidebar()
             <li  class="li-hover"><div class="divider"></div></li>        
             <li  class="li-hover"><p class="ultra-small margin more-text">LABELS</p></li>  
             <li '.hoverColor("labelsmall").'><a href="?display=labelsmall&action=no&entity=smalllabel"><img src="images/smalllabel.png" width="30px" height="30px">Small Label</a></li>
-            <li '.hoverColor("smalllabelnew").'><a href="?display=smalllabelnew&action=no&entity=smalllabelnew"><img src="images/smalllabel.png" width="30px" height="30px">Small Label (NEW)</a></li>          
+            <li '.hoverColor("smalllabelnew").'><a href="?display=smalllabelnew&action=no&entity=smalllabelnew"><img src="images/smalllabel.png" width="30px" height="30px">Small Label</a></li>          
             <li '.hoverColor("a7label").'><a href="?display=a7label&action=no&entity=a7label"><img src="images/A6Labels.png" width="30px" height="30px">A7 Labels</a></li>  
             <li '.hoverColor("a6label").'><a href="?display=a6label&action=no&entity=a6label"><img src="images/A6Labels.png" width="30px" height="30px">A6 Labels</a></li>  
             <li '.hoverColor("a5label").'><a href="?display=a5label&action=no&entity=a5label"><img src="images/A5Labels.png" width="30px" height="30px">A5 Labels</a></li>            
@@ -829,6 +833,94 @@ function renderModalFrame($id,$text,$yesLink)
               </div>
             </div>'
             ;
+}
+
+function _ItemsTable($items,$fields,$params = null)
+{
+  $body = "<div><form id='myform'><table border='1' id='result'>";
+  $body .= "<thead><tr>";
+  foreach($fields as $field)
+    $body .= "<th>".$field."</th>";
+  $body .= "</tr></thead>";
+
+  $body .= "<tfoot><tr>";
+  foreach($fields as $field)
+    $body .= "<th>".$field."</th>";
+  $body .= "</tr></tfoot>";
+
+  $body .= "</table></form>";
+  $dataSet = "";
+   foreach($items as $item)
+    {   
+      $dataSet .= "[";
+        foreach($fields as $field)
+        {
+            if ($field == "IMAGE")
+              $dataSet .= "'<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',";
+            
+            else if ($field == "REQUEST_QUANTITY"){
+              $dataSet .= "'<input style=\"text-align:center\" type=\"text\" value=\"".$item[$field]."\" ><br><button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\",\"".$item["REQUEST_QUANTITY"]."\")>Update</button>',";
+            }
+            else if ($field == "ACTION"){
+              $dataSet .= "'<form method=\"GET\"><input type=\"submit\" value=\"Delete\">\
+                              <input type=\"hidden\" name=\"PRODUCTID\" value=\"".$item["PRODUCTID"]."\">\
+                              <input type=\"hidden\" name=\"action\" value=\"DELETE\">\
+                              <input type=\"hidden\" name=\"display\" value=\"".$params["display"]."\">\
+                              <input type=\"hidden\" name=\"entity\" value=\"".$params["entity"]."\">\
+                              <input type=\"hidden\" name=\"type\" value=\"".$params["type"]."\">\
+                            </form>'";
+
+            }
+            else 
+              $dataSet .= "\"".(isset($item[$field]) ? $item[$field] : "")."\",";         
+        }
+      $dataSet = rtrim($dataSet,",");    
+      $dataSet .= "],";      
+    }
+    $dataSet = rtrim($dataSet,",");    
+
+  $body .= "
+        <script>      
+        var dataSet = [".$dataSet."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#result').DataTable({                
+         data:dataSet, 
+         'lengthMenu':[-1],          
+           });
+        });
+
+
+  function updatePoolQty (type,productid,request_quantity) 
+  {
+    
+    var form_data = new Object();
+    form_data['PRODUCTID'] = productid;
+    form_data['REQUEST_QUANTITY'] = request_quantity;
+
+    var url = 'http://phnompenhsuperstore.com/api/api.php/itemrequestitemspool/' + type;
+
+    var request_method = $(this).attr('method');     
+
+    $.ajax({
+      url : url,
+      type: 'PUT',
+      data : JSON.stringify(form_data),
+      dataType : 'json'
+      }).done(function(response)
+      {          
+        if (response['RESULT'] == 'OK'){
+          alert('Update Success');       
+        }else{
+          alert('Error Updating');     
+        } 
+    });   
+    
+  }
+
+      </script>
+      </div>";
+    return $body;
 }
 
 

@@ -14,9 +14,6 @@ require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
- 
-
-
 
 function i18n($key)
 {
@@ -289,7 +286,57 @@ function getData($display,$entity,$param)
     return Service::ListEntity($entity,$param["ID"]);          
   }
   else if ($display == "itemrequestactioncreate")
-  {
+  {    
+    $type = isset($_GET["type"]) ? $_GET["type"] : ""; 
+    if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))
+    {
+      $data["PRODUCTID"] = $_GET["PRODUCTID"];
+      $data["REQUEST_QUANTITY"] = $_GET["REQUEST_QUANTITY"];
+    
+      Service::CreateEntity($entity,$data,$type);    
+    }
+    else if (isset($_FILES["filename"]))
+    {
+      $filename = $_FILES["filename"]["tmp_name"];
+      $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+      $reader->setReadDataOnly(true);
+      $spreadsheet = $reader->load($filename);    
+      $worksheet = $spreadsheet->getActiveSheet();  
+      $allData = array(); 
+      $count = 0;
+      foreach ($worksheet->getRowIterator() AS $row) 
+      {
+          if ($count == 0){
+              $count++;
+              continue;
+          }
+        $data = array();            
+        $cellIterator = $row->getCellIterator();
+        $cellIterator->setIterateOnlyExistingCells(FALSE); // This loops through all cells,
+        $cells = [];    
+        foreach ($cellIterator as $cell) 
+          {        
+              if ($cell->getColumn() == "A")
+                  $data["PRODUCTID"] = $cell->getValue();
+              if ($cell->getColumn() == "B")
+                  $data["REQUEST_QUANTITY"] = $cell->getValue();
+              if ($cell->getColumn() == "C")
+                  $data["LOTWH1"] = $cell->getValue();
+              if ($cell->getColumn() == "D")
+                  $data["LOTWH1"] = $cell->getValue();                            
+          }
+          array_push($allData,$data);
+       } 
+       $data["ITEMS"] = $allData;
+       Service::CreateEntity($entity,$data,$type);                
+     }
+     else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
+       $data = array();
+       $data["PRODUCTID"] = $_GET["PRODUCTID"];
+
+       Service::DeleteEntity($entity,$type,$data);
+     }
+
     return Service::ListEntity($entity,$param["type"]);          
   }
   else if ($display == "scheduleAll" || $display == "trombi" || $display == "supplierlist" || 
@@ -315,7 +362,14 @@ function getData($display,$entity,$param)
 function renderBody()
 {
   $display = (isset($_GET["display"]) ? $_GET["display"] : "");
-  $entity = (isset($_GET["entity"]) ? $_GET["entity"] : "");    
+  if($display == "")
+    $display = (isset($_POST["display"]) ? $_POST["display"] : "");
+
+  $entity = (isset($_GET["entity"]) ? $_GET["entity"] : "");
+  if ($entity == "")
+    $entity = (isset($_POST["entity"]) ? $_POST["entity"] : "");
+
+
   $data = (array)getData($display,$entity,$_GET);   
 
 
@@ -503,7 +557,7 @@ function renderBody()
     return renderItemRequestActionList($data);
   else if ($display == "itemrequestactiondetails")
     return renderItemRequestActionDetails($data);
-  else if ($display == "itemrequestactiondcreate")
+  else if ($display == "itemrequestactioncreate")
     return renderItemRequestActionCreate($data);
   // DEPRECATION
   else if ($display == "whdone")
