@@ -4141,8 +4141,6 @@ function renderItemRequestActionDetails($data){
                   <th>Req_Qty</th>
                   <th>Debt</th>    
 
-                  <th>TRANS</th>
-                  <th>PURCH</th>                                
                </tr></thead>
 
                <tfoot><tr>
@@ -4159,8 +4157,7 @@ function renderItemRequestActionDetails($data){
                   <th>Req_Qty</th>
                   <th>Debt</th> 
 
-                  <th>TRANS</th>
-                  <th>PURCH</th>              
+              
                </tr></tfoot>
                </table></form>
                ";  
@@ -4309,6 +4306,28 @@ function renderItemRequestActionCreate($data){
    $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","LOTWH1","LOTWH2",
               "LOTEXPIREWH1","LOTEXPIREWH2","WH1REQUESTQTY","WH2REQUESTQTY","ACTION"];
    $body .= _ItemsTable($items,$fields,$_GET);
+
+   $body .= "
+              <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
+              <input type='hidden' id='status'  value='".$status."'>                
+              <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
+
+              <center><button type='button' onclick='zkSignature.clear()'>
+                Clear Signature
+               </button>
+          
+               <div id='canvas' style='width:466px;border:1px solid black;!important'>
+                Canvas is not supported.
+               </div>
+
+               <script>
+                zkSignature.capture();
+               </script>
+        
+               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+                SEND
+               </button><center><br><br><br>";
+   
 
   return $body;
 }
