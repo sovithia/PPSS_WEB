@@ -859,7 +859,10 @@ function _ItemsTable($items,$fields,$params = null)
               $dataSet .= "'<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',";
             
             else if ($field == "REQUEST_QUANTITY"){
-              $dataSet .= "'<input style=\"text-align:center\" type=\"text\" value=\"".$item[$field]."\" ><br><button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\",\"".$item["REQUEST_QUANTITY"]."\")>Update</button>',";
+
+              $dataSet .= "'<input value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
+                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_\"".$item["PRODUCTID"]." value=\"".$item[$field]."\" ><br>\
+                            <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\",\"".$item["REQUEST_QUANTITY"]."\")>Update</button>',";
             }
             else if ($field == "ACTION"){
               $dataSet .= "'<form method=\"GET\"><input type=\"submit\" value=\"Delete\">\

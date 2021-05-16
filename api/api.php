@@ -3723,9 +3723,10 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			continue;
 		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,LOTWH1,LOTWH2,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$item["LOCATION"],
-					( isset($item["LOTWH1"]) ? $item["LOTWH1"] : null),
-					( isset($item["LOTWH2"]) ? $item["LOTWH2"] : null),$lastID));
+		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],
+					(isset($item["LOCATION"]) ? $item["LOCATION"] : null),
+					(isset($item["LOTWH1"]) ? $item["LOTWH1"] : null),
+					(isset($item["LOTWH2"]) ? $item["LOTWH2"] : null),$lastID));
 
 		if ($suffix == "")
 			$targetQty =$item["REQUEST_QUANTITY"];

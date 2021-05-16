@@ -4140,9 +4140,10 @@ function renderItemRequestActionDetails($data){
                   <th>Purch_P</th>                  
                   <th>Req_Qty</th>
                   <th>Debt</th>    
-
+                  <th>TRANS</th>
+                  <th>PURCH</th>              
+                  <th>ACTION</th>
                </tr></thead>
-
                <tfoot><tr>
                   <th>IMAGE</th>
                   <th>NAME</th>
@@ -4156,8 +4157,9 @@ function renderItemRequestActionDetails($data){
                   <th>Purch_P</th>                  
                   <th>Req_Qty</th>
                   <th>Debt</th> 
-
-              
+                  <th>TRANS</th>
+                  <th>PURCH</th>              
+                  <th>ACTION</th>
                </tr></tfoot>
                </table></form>
                ";  
@@ -4179,13 +4181,38 @@ function renderItemRequestActionDetails($data){
           '".$item["TRANSFER_POOL"]."',    
           '".$item["PURCHASE_POOL"]."',    
           '".$item["REQUEST_QUANTITY"]."',    
-          '".$item["DEBT_QTY"]."'    
-          
+          '".$item["DEBT_QTY"]."',    
+          '<input value=\"".$item["ID"]."\" type=\"hidden\"><input style=\"text-align:center\" id=\"transfer_".$item["ID"]."\" value=\"".$item["REQUEST_QUANTITY"]."\" type=\"text\"  >',
+          '<input style=\"text-align:center\" id=\"purchase_".$item["ID"]."\" value=\"0\" type=\"text\"  >',
+          '<button onclick=\"All(".$item["ID"].")\">ALL</button><br><button onclick=\"Add(".$item["ID"].")\">-</button><button onclick=\"Substract(".$item["ID"].")\">+</button>',             
           ],";
     }
-     $dataSet1 = rtrim($dataSet1,",");     
-       $body .= "  
-        <script>      
+     $dataSet1 = rtrim($dataSet1,",");        
+        $body .= "  
+        <script> 
+        function Add(id)
+        {
+          if (document.getElementById('transfer_' + id).value == ".$item["REQUEST_QUANTITY"].")
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) + 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) - 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+        function Substract(id)
+        {
+          if (document.getElementById('transfer_' + id).value == 0)
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) - 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) + 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+        function All(id)
+        {
+          document.getElementById('transfer_' + id).value = 0;
+          document.getElementById('purchase_' + id).value = ".$item["REQUEST_QUANTITY"]."; 
+        }
         var dataSet1 = [".$dataSet1."];
         var table;        
         table =  $(document).ready( function () {
@@ -4195,15 +4222,14 @@ function renderItemRequestActionDetails($data){
            });
         });
       </script>
-    ";      
-         
+    ";   
     $body .=  "</div>"; 
     
     $body .=  "<center>
-                <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
+              <input type='hidden' id='action'  value='update'>
+                <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>                
                 <input type='hidden' id='status'  value='".$status."'>                
                 <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
-
                 (Sign with your trackpad or mouse)<br>";
     
     $body .= "
@@ -4214,7 +4240,6 @@ function renderItemRequestActionDetails($data){
                <div id='canvas' style='width:466px;border:1px solid black;!important'>
                 Canvas is not supported.
                </div>
-
                <script>
                 zkSignature.capture();
                </script>
@@ -4222,9 +4247,9 @@ function renderItemRequestActionDetails($data){
                <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
+
     return $body; 
 }
-
 
 
 
@@ -4309,7 +4334,8 @@ function renderItemRequestActionCreate($data){
 
    $body .= "
               <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
-              <input type='hidden' id='status'  value='".$status."'>                
+              <input type='hidden' id='action'  value='create'>                              
+               <input type='hidden' id='type' value='".$_GET["type"]."'>       
               <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
 
               <center><button type='button' onclick='zkSignature.clear()'>
@@ -4730,11 +4756,8 @@ function renderSupplyRecordDetail($data,$action){
             });
            });
 
-            function serializeArray() {              
-                                          
-            }
-            
-          
+            function serializeArray() {                                                      
+            }                      
           </script>
       ";   
       $body .= "<b>Total : ". $total."</b><br>";

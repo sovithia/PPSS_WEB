@@ -185,37 +185,66 @@ var zkSignature = (function () {
 						var type = document.getElementById('detailtype').value;					
 						var author = document.getElementById('author').value;												
 						var name = '';						
-						
+						var b64 = canvas.toDataURL("image/png").split("data:image/png;base64,")[1];
+
 						if (type == "ITEMREQUEST")
-						{							
+						{	
+							var action = document.getElementById('action').value; 						
 							var status = document.getElementById('status').value;
-	   					 	var fields = document.getElementById('myform').getElementsByTagName('input');  
-              				var allItems = {};
-		            		for(var i=0;i<fields.length;i++)
-		              		{  
-				                if (fields[i].type == 'hidden')
-				                {
-				                  var oneItem = {};
-				                  oneItem['ID'] = fields[i].value;                  
-				                  oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
-				                  oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
-				                  allItems[fields[i].value] = oneItem; 
-				                }
-		             		}  
-			             	ItemJSON = {  "REQUESTEE" : author,
-	   					 				  "REQUESTEESIGNATURE" :  b64,	   					 					  
-	   					 				  "ITEMS" : allItems,
-	   					 	  			  "STATUS" : status }; 
-							var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction/' + identifier; 
-	   						var xmlhttp = new XMLHttpRequest();	    						    					
-	    					xmlhttp.onreadystatechange = function () {
-			                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
-			                        alert('ItemRequest updated changed')
-			                      }
-			                 }
-	    					xmlhttp.open("PUT", URL,false);
-	    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-	    					xmlhttp.send(JSON.stringify(ItemJSON)); 				
+
+							var fields = document.getElementById('myform').getElementsByTagName('input');  
+							var allItems = {};
+							if (action == "update")
+							{	              		
+			            		for(var i=0;i<fields.length;i++)
+			              		{  
+					                if (fields[i].type == 'hidden')
+					                {
+					                  var oneItem = {};
+					                  oneItem['ID'] = fields[i].value;                  
+					                  oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
+					                  oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
+					                  allItems[fields[i].value] = oneItem; 
+					                }
+			             		}  
+				             	ItemJSON = {  "REQUESTEE" : author,
+		   					 				  "REQUESTEESIGNATURE" :  b64,	   					 					  
+		   					 				  "ITEMS" : allItems,
+		   					 	  			  "STATUS" : status }; 
+								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction/' + identifier; 
+		   						var xmlhttp = new XMLHttpRequest();	    						    					
+		    					xmlhttp.onreadystatechange = function () {
+				                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
+				                        alert('ItemRequest updated changed')
+				                      }
+				                 }
+		    					xmlhttp.open("PUT", URL,false);
+		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
+							}
+							else if ($type == "create")
+							{
+								var type = document.getElementById('type').value;
+								for(var i=0;i<fields.length;i++)
+			              		{  
+					                if (fields[i].type == 'hidden')
+					                {
+					                  var oneItem = {};
+					                  oneItem['ID'] = fields[i].value;                  
+					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;					                  
+					                  allItems[fields[i].value] = oneItem; 
+					                }
+			             		}  
+								ItemJSON = {  "REQUESTER" : author,
+		   					 				  "REQUESTERSIGNATURE" :  b64,	   					 					  
+		   					 				  "ITEMS" : allItems,
+		   					 	  			  "TYPE" : type }; 
+
+								xmlhttp.open("POST", URL,false);
+		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
+							}
+	   					 				
 						}
 						else 
 						{
@@ -233,9 +262,7 @@ var zkSignature = (function () {
 								}						
 								
 							}
-
-
-							var b64 = canvas.toDataURL("image/png").split("data:image/png;base64,")[1];
+							
 							var ItemJSON = "";
 
 	   					 	if (type == 'RCV'){
@@ -282,10 +309,9 @@ var zkSignature = (function () {
 	    					xmlhttp.open("PUT", URL,false);
 	    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 	    					xmlhttp.send(JSON.stringify(ItemJSON)); 
-							}
-						
+							}						
     					
-					},
+						},
 		            
 		        );
 			    
