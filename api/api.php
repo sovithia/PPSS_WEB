@@ -3698,8 +3698,8 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$imageData = base64_decode($json["REQUESTERSIGNATURE"]);
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
-	$items =  json_decode($json["ITEMS"],true);
-
+	$items =  $json["ITEMS"];
+	error_log(count($items));
 	// NO ADDITIONNAL ACTION FOR DEMAND
 	$suffix = "";
 	$tableName = "";
@@ -4009,7 +4009,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 	$req->execute(array($id));
 	$ira = $req->fetch();
 
-	$items = json_decode($json["ITEMS"],true);
+	$items = $json["ITEMS"];
 	if($json["STATUS"] == "TODO") // Validation
 	{
 		$sql = "UPDATE ITEMREQUESTACTION set REQUESTEE = :requestee WHERE ID = :id";
@@ -4028,9 +4028,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));			
 				$cnt = $req->fetch();
-
 				
-
 				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY
 					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
 					$req1 = $db->prepare($sql1);
@@ -4427,6 +4425,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
+	error_log($type);
 
 	$suffix = "";
 	if ($type == "RESTOCK")

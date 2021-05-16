@@ -861,7 +861,7 @@ function _ItemsTable($items,$fields,$params = null)
             else if ($field == "REQUEST_QUANTITY"){
 
               $dataSet .= "'<input value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
-                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_\"".$item["PRODUCTID"]." value=\"".$item[$field]."\" ><br>\
+                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" ><br>\
                             <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\",\"".$item["REQUEST_QUANTITY"]."\")>Update</button>',";
             }
             else if ($field == "ACTION"){
@@ -873,7 +873,7 @@ function _ItemsTable($items,$fields,$params = null)
                               <input type=\"hidden\" name=\"type\" value=\"".$params["type"]."\">\
                             </form>'";
 
-            }
+            } 
             else 
               $dataSet .= "\"".(isset($item[$field]) ? $item[$field] : "")."\",";         
         }
