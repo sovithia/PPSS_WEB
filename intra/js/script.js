@@ -208,7 +208,7 @@ var zkSignature = (function () {
 			             		}  
 				             	ItemJSON = {  "REQUESTEE" : author,
 		   					 				  "REQUESTEESIGNATURE" :  b64,	   					 					  
-		   					 				  "ITEMS" : allItems,
+		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "STATUS" : status }; 
 								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction/' + identifier; 
 		   						var xmlhttp = new XMLHttpRequest();	    						    					
@@ -238,7 +238,7 @@ var zkSignature = (function () {
 			             		
 								ItemJSON = {  "REQUESTER" : author,
 		   					 				  "REQUESTERSIGNATURE" :  b64,	   					 					  
-		   					 				  "ITEMS" : allItems,
+		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "TYPE" : type }; 
 
 								//alert(JSON.stringify(ItemJSON["ITEMS"]));

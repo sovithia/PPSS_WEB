@@ -285,4 +285,211 @@ $app->post('/transfer2WH/{barcode}',function($request,Response $response) {
 	$response = $response->withJson($result);
 });
 
+
+// Purchase list my waitingpo all
+$app->get('/mywaitingpo/{login}', function(Request $request,Response $response) { 
+
+	$login = $request->getAttribute('login');
+	$cvUser = CVUserByLogin($login);	
+	$conn=getDatabase();	
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS != 'C' AND POSTATUS != 'V' AND USERADD = ? ORDER BY DATEADD ASC";
+	$req = $conn->prepare($sql);
+	$req->execute(array($cvUser));
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$response = $response->withJson($result);
+	return $response;
+});
+
+// list completed po now and 7 days before
+$app->get('/mycompletedpo/{login}', function(Request $request,Response $response) { 
+	$login = $request->getAttribute('login');
+	$cvUser = CVUserByLogin($login);
+
+	$today = date("Y-m-d");
+	$timestamp = strtotime('-7 days');
+	$day7before = date("Y-m-d",$timestamp);
+
+
+	$conn=getDatabase();	
+	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = 'C' AND USERADD = ? 
+			AND DATEADD BETWEEN '$day7before 00:00:00.000' AND '$today 23:59:59.999' 
+			ORDER BY DATEADD DESC";
+	$req = $conn->prepare($sql);
+	$req->execute(array($cvUser));
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$response = $response->withJson($result);
+	return $response;
+});
+
+// ***********// LIST ITEMDAMAGED ***********// 
+$app->get('/itemdamaged/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMDAMAGED WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+
+
+	$data = array();
+	foreach($records as $record){
+		if ($record["IMAGEDAMAGED"] != null)				
+			$record["IMAGEDAMAGED"] = base64_encode($record["IMAGEDAMAGED"]);
+		array_push($data,$record);
+	}
+	$response = $response->withJson($data);
+	return $response;
+});
+
+// create items damaged
+$app->post('/itemsdamaged', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMDAMAGED (BARCODE,IMAGEDAMAGED,QUANTITY,REASON,NAME,DATECREATED,CREATOR) 
+				VALUES (:barcode,:imagedamaged,:quantity,:reason,:name,:datecreated,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+			$data3 = base64_decode($item["IMAGEDAMAGED"]);		
+		$req->bindParam(':imagedamaged',$data3,PDO::PARAM_LOB);
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);	
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);		
+		$req->bindParam(':datecreated',$now,PDO::PARAM_INT);
+		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+		$req->execute();
+
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+// Validate
+$app->put('/itemdamaged/validate', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+	foreach($items as $item){
+		$sql = "UPDATE ITEMDAMAGED SET QUANTITYMODIFIED = ?,
+									   COMMENT = ?,
+									   DATEMODIFIED = ?,
+									   VERIFIER = ?,
+									   STATUS = 'VALIDATED' 
+									   WHERE BARCODE = ?
+									   AND ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["QUANTITYMODIFIED"],$item["COMMENT"],$now,$item["VERIFIER"],$item["BARCODE"],$item["ID"]));
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+// Set As recorded
+$app->put('/itemdamaged/setrecorded', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	
+	$items = $json["ITEMS"]; 
+	foreach($items as $item){
+		$sql = "UPDATE ITEMDAMAGED SET DATEMODIFIED = ?,
+									   STATUS = 'RECORDED',
+									   RECORDER = ? 
+									   WHERE BARCODE = ?
+									   AND ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($now,$item["RECORDER"],$item["BARCODE"],$item["ID"]));
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+// ***********// PROMOTION ***********// 
+$app->get('/itempromotionned/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMPROMOTIONNED WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+
+	$data = array();
+	foreach($records as $record){
+		if ($record["IMAGEDAMAGED"] != null)				
+			$record["IMAGEDAMAGED"] = base64_encode($record["IMAGEDAMAGED"]);
+		array_push($data,$record);
+	}
+	$response = $response->withJson($data);
+	return $response;
+});
+
+
+// create promotion
+$app->post('/itempromotionned', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMPROMOTIONNED (BARCODE,NAME,IMAGEDAMAGED,QUANTITY,COST,REASON,PROMOTION,OLDPRICE,NEWPRICE,DATECREATED,CREATOR) 
+				VALUES (:barcode,:name,:image,:quantity,:cost,
+						:reason,:promotion,:oldprice,:newprice,:datecreated,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);
+
+		if ($item["IMAGEDAMAGED"] != null){
+			$imgData = base64_decode($item["IMAGEDAMAGED"]);		
+			$req->bindParam(':image',$imgData,PDO::PARAM_LOB);
+		}else
+		$req->bindParam(':image',null,PDO::PARAM_LOB);
+
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);		
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);
+		$req->bindParam(':promotion',$item["PROMOTION"],PDO::PARAM_STR);
+		$req->bindParam(':oldprice',$item["OLDPRICE"],PDO::PARAM_STR);		
+		$req->bindParam(':newprice',$item["NEWPRICE"],PDO::PARAM_STR);				
+		$req->bindParam(':datecreated',$now,PDO::PARAM_INT);
+		$req->bindParam(':creator',$item["CREATOR"],PDO::PARAM_STR);
+
+		$req->execute();
+
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+// validate promotion 
+$app->put('/itempromotionned', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+	foreach($items as $item){
+		$sql = "UPDATE ITEMPROMOTIONNED SET STATUS = 'VERIFIED',
+									   		VERIFIER = ?									   
+									   	WHERE BARCODE = ?
+									   	AND ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["VERIFIER"],$item["BARCODE"],$item["ID"]));
+	}
+	$result["result"] = "OK";
+	return $response;
+});
+
+
+
 ?>

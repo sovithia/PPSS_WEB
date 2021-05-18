@@ -17,7 +17,6 @@ function getDatabase()
 	return $conn;
 }
 
-
 function getInternalDatabase()
 {
 	try{
