@@ -8,7 +8,7 @@ set_time_limit(0);
 
 <head>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script type="text/javascript" src="html2canvas.min.js"></script>
+    <script type="text/javascript" src="js/html2canvas.min.js"></script>
 	<style>
 
 		#target{

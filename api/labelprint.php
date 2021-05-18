@@ -9,9 +9,9 @@ set_time_limit(0);
 <head>
     <meta name="format-detection" content="telephone=no">
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script type="text/javascript" src="html2canvas.min.js"></script>
-    <script type="text/javascript" src="canvas-toBlob.js"></script>
-    <script type="text/javascript" src="FileSaver.js"></script>
+    <script type="text/javascript" src="js/html2canvas.min.js"></script>
+    <script type="text/javascript" src="js/canvas-toBlob.js"></script>
+    <script type="text/javascript" src="js/FileSaver.js"></script>
     <style>
 
         body{

@@ -74,15 +74,6 @@ function base64_to_jpeg($base64_string, $output_file)
     return $output_file; 
 }
 $barcode = $_GET["barcode"];
-/*
-$sql = "SELECT  (select PICTURE as '*' for xml path('')) AS PICTURE FROM dbo.ICPRODUCT WHERE PRODUCTID = ?";
-$conn=getDatabase();
-$req = $conn->prepare($sql);
-$req->execute(array($barcode));
-$result = $req->fetch(PDO::FETCH_ASSOC);	
-
-$data = base64_decode($result["PICTURE"]);
-*/
 $name = './tmp.png';
 $data = base64_decode(getImage($barcode));
 file_put_contents($name,$data);
