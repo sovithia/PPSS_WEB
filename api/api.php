@@ -2257,7 +2257,51 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req->execute(array());
 		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
-	else {
+	else if ($status == "WAITINGAUTO")
+	{
+		$sql = "SELECT *
+		FROM SUPPLY_RECORD 
+		WHERE STATUS = ?
+		AND TYPE = 'PO' 
+		ORDER BY LAST_UPDATED DESC";	
+		$req = $db->prepare($sql);
+		$req->execute(array($status));
+		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
+
+		$filter = array();
+		foreach($POData as $onePOData)
+		{
+			if ($onePOData["PONUMBER"] != null)
+			{
+				$sql = "SELECT *,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as REALCOST
+						FROM PODETAIL WHERE PONUMBER = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($onePOData["PONUMBER"]));
+				$details = $req->fetchAll(PDO::FETCH_ASSOC);
+
+				$isClean = true;
+				foreach($details as $detail)
+				{
+					$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as COST
+					FROM PORECEIVEDETAIL 
+					WHERE PRODUCTID = ?
+					ORDER BY TRANCOST DESC";
+					$req = $db2->prepare($maxsql); 
+	 				$req->execute(array($$detail["PRODUCTID"]));
+	 				$maxcost = $req->fetch()["COST"];		 		 
+	 				if ($detail["REALCOST"]  > $maxcost){
+						$isClean = false;
+						break;
+	 				}		 		
+				}
+				if ($isClean == true)
+	 				array_push($filter,$onePOData);
+			} 					
+		}
+		$POData = $filter;
+	}
+	else 
+	{
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
 			WHERE STATUS = ?
@@ -2304,13 +2348,13 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	else {
 		$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE STATUS = ?
-			AND TYPE = 'NOPO' 
-			ORDER BY LAST_UPDATED DESC";	
+		FROM SUPPLY_RECORD 
+		WHERE STATUS = ?
+		AND TYPE = 'NOPO' 
+		ORDER BY LAST_UPDATED DESC";	
 		$req = $db->prepare($sql);
 		$req->execute(array($status));
-		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
+		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);			
 	}	
 
 	$newNOPOData = array();
