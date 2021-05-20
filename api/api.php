@@ -765,7 +765,6 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 	return $response;
 });
 
-
 /************** COMMON ***************/
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
 	$conn=getDatabase();
@@ -814,7 +813,6 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$items["STOREBIN2"] = $item["STORBIN"];
 
 		$items["result"] = "OK";
-		
 		$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
 		
 		if ($json["result"] != "KO")			
@@ -929,6 +927,7 @@ $app->get('/item2/{barcode}',function(Request $request,Response $response) {
 
 		$items["result"] = "OK";
 
+		error_log($$GLOBALS['URL'].$barcode);
 		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
 		
 		if ($json["result"] != "KO")			
@@ -1011,8 +1010,6 @@ $app->get('/item2/{barcode}',function(Request $request,Response $response) {
 });
 
 $app->get('/picture/{barcode}',function(Request $request,Response $response) {
-
-
 	$barcode = $request->getAttribute('barcode');
 	$result["PICTURE"] = getImage($barcode);
 	$response = $response->withJson($result);
@@ -1020,9 +1017,6 @@ $app->get('/picture/{barcode}',function(Request $request,Response $response) {
 });
 
 /**************SALE ***************/
-
-
-
 /*
                            ,,,,                   ,,,,,
                            ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
@@ -1340,7 +1334,6 @@ $app->get('/KPISales',function(Request $request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;	
 });
-
 /**************SALE ***************/
 
 
@@ -2406,6 +2399,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 
 	}
+	// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
+	
 	else if ($json["ACTIONTYPE"] == "WH"){
 
 			$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
@@ -2422,9 +2417,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET PPSS_DIFFERENT_PRICE = ?, TRANCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($value["TRANCOST"],$value["PPSS_DIFFERENT_PRICE "],$value["PPSS_RECEPTION_QTY"] ,$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
@@ -2521,7 +2516,9 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$rr["items"] = null;
 
 
-	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,TRANCOST,ORDER_QTY,PPSS_VALIDATION_QTY,TRANDISC,
+	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,
+				   (TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as TRANCOST,
+				   ORDER_QTY,PPSS_VALIDATION_QTY,TRANDISC,
 			PPSS_RECEPTION_QTY,PPSS_NOTE FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")
@@ -4858,7 +4855,6 @@ $app->get('/itemsale',function($request,Response $response) {
 	if ($result == false)
 		$result["COUNT"] = 0;	
 
-
 	$sql2 = "SELECT PRODUCTNAME FROM 
 			 dbo.POSDETAIL WHERE PRODUCTID = ?";
 	$req2 = $conn->prepare($sql2);
@@ -4868,12 +4864,8 @@ $app->get('/itemsale',function($request,Response $response) {
 		$result["PRODUCTNAME"] = $result2["PRODUCTNAME"];
 	else
 		$result["PRODUCTNAME"] = "N/A";
-	$result["PRODUCTID"] = $barcode;
-
-	
+	$result["PRODUCTID"] = $barcode;	
 	$response = $response->withJson($result);	
-
-
 
 	return $response;	
 });
@@ -4948,9 +4940,10 @@ $app->get('/bestsellerpromotion',function($request,Response $response) {
 	  WHERE DATEFROM >= '".$begin." 00:00:00.000' AND DATETO <= '".$end." 23:59:59.999')
 	  GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,PRICE
 	  ORDER BY COUNT DESC";
-	$req = $conn->prepare($sql);
-	$req->execute(array());
-	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$result = SELECTALL($sql);	
+	//$req = $conn->prepare($sql);
+	//$req->execute(array());
+	//$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$response = $response->withJson($result);  
 	return $response;	
 });
@@ -4987,10 +4980,8 @@ $app->get('/selection',function($request,Response $response) {
 		HAVING (select ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID) * -1),0)  * 100 / ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID),0)) < 100
 		ORDER BY PERCENTSALE DESC
 		"; 
-
-	$req = $conn->prepare($sql);	
-	$req->execute(array());
-	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$result = SELECTALL($sql);	
+	
 	$response = $response->withJson($result);
 	return $response;	
 });
@@ -4998,7 +4989,7 @@ $app->get('/selection',function($request,Response $response) {
 // best seller general
 $app->get('/bestseller',function($request,Response $response) {
 	
-	$conn=getDatabase();
+
 	$json = json_decode($request->getBody(),true);
 	$begin = $request->getParam('begin','');
 	$end = $request->getParam('end','');
@@ -5028,10 +5019,7 @@ $app->get('/bestseller',function($request,Response $response) {
 		AND POSDATE <= '$end 23:59:59.999'
 		GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
 		ORDER BY COUNT DESC"; 
-
-	$req = $conn->prepare($sql);	
-	$req->execute(array());
-	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$result = SELECTALL($sql);		
 	$response = $response->withJson($result);
 	return $response;	
 });

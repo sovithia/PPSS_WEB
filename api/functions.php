@@ -1,5 +1,109 @@
 <?php 
 
+require_once 'RestEngine.php';
+
+function SELECTALL($sql,$params = array(),$database = "MAIN")
+{
+	if (posix_uname()["machine"] == "x86_64")
+	//if (0)
+	{
+		$db=getDatabase($database);
+		$req = $db->prepare($sql);		
+		$req->execute($params);
+		return $req->fetchAll(PDO::FETCH_ASSOC);
+	}
+	else 
+	{		
+		$data["SQL"] = $sql;
+		$data["PARAMS"] = json_encode($params);
+		$data["DATABASE"] = $database;
+		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/SELECT",$data);      
+		return $json["DATA"];
+	}
+}
+
+function SELECTONE($sql,$params = array(),$database = "MAIN")
+{
+	if (posix_uname()["machine"] == "x86_64")
+	{
+		$db=getDatabase($database);
+		$req = $db->prepare($sql);	
+		$req->execute($params);
+		return $req->fetch(PDO::FETCH_ASSOC);
+	}
+	else
+	{
+		$data["SQL"] = $sql;
+		$data["PARAMS"] = json_encode($params);
+		$data["DATABASE"] = $database;
+		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/SELECT",$data);
+		if (count($json["DATA"]) > 0)      
+			return $json["DATA"];
+		else
+			return null;
+	}	
+}
+
+function INSERT($sql,$params = array(),$database = "MAIN")
+{
+	if (posix_uname()["machine"] == "x86_64")
+	{
+		$db=getDatabase($database);
+		$req = $db->prepare($sql);	
+		$req->execute($params);
+		return $req->fetch(PDO::FETCH_ASSOC);
+	}
+	else
+	{
+		$data["SQL"] = $sql;
+		$data["PARAMS"] = json_encode($params);
+		$data["DATABASE"] = $database;
+		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/INSERT",$data);
+		return $json["RESULT"];
+	}	
+}
+
+
+function UPDATE($sql,$params = array(),$database = "MAIN")
+{
+	if (posix_uname()["machine"] == "x86_64")
+	{
+		$db=getDatabase($database);
+		$req = $db->prepare($sql);	
+		$req->execute($params);
+		return $req->fetch(PDO::FETCH_ASSOC);
+	}
+	else
+	{
+		$data["SQL"] = $sql;
+		$data["PARAMS"] = json_encode($params);
+		$data["DATABASE"] = $database;
+		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/UPDATE",$data);
+		return $json["RESULT"];
+	}	
+}
+
+
+function DELETE($sql,$params = array(),$database = "MAIN")
+{
+	if (posix_uname()["machine"] == "x86_64")
+	{
+		$db=getDatabase($database);
+		$req = $db->prepare($sql);	
+		$req->execute($params);
+		return $req->fetch(PDO::FETCH_ASSOC);
+	}
+	else
+	{
+		$data["SQL"] = $sql;
+		$data["PARAMS"] = json_encode($params);
+		$data["DATABASE"] = $database;
+		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/DELETE",$data);
+		return $json["RESULT"];
+	}	
+}
+
+
 function blueUser($author){
 	if($author == "thoeun_s") // TODO FUNCTION
 		return "THOEUN SOPHAL";	
