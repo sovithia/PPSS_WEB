@@ -399,6 +399,9 @@ function renderLeftSidebar()
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVERED&action=WH" >
                            <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
 
+                           <li '.hoverColor("supplyrecordlist"."supplyrecord"."DELIVEREDAUTO"."RCV").' >
+                           <a href="?display=supplyrecordlist&entity=supplyrecord&status=DELIVEREDAUTO&action=RCV" >
+                           <img src="images/icons/WH/SupplyRecordListWHTodoPage.png" width="30px" height="30px">SupplyRecord(EASY PO)</a></li>
 
                            <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."RESTOCK").' >
                            <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=RESTOCK&status=TODO" >

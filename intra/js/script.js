@@ -312,7 +312,7 @@ var zkSignature = (function () {
 	   					 					  "SIGNATURE" :  b64,	   					 					  
 	   					 					 "ACTIONTYPE" : type }; 	
 	   					 	}   					 	    				      				    
-	   						var	URL = 'http://phnompenhsuperstore.com/api/api_dev.php/supplyrecord'; 
+	   						var	URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord'; 
 	   						var xmlhttp = new XMLHttpRequest();
 	    					xmlhttp.onreadystatechange = callbackFunction(xmlhttp);
 	    					xmlhttp.open("PUT", URL,false);

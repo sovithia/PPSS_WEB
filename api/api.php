@@ -2257,7 +2257,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req->execute(array());
 		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
-	else if ($status == "WAITINGAUTO")
+	else if ($status == "DELIVEREDAUTO")
 	{
 		$sql = "SELECT *
 		FROM SUPPLY_RECORD 
@@ -2265,7 +2265,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		AND TYPE = 'PO' 
 		ORDER BY LAST_UPDATED DESC";	
 		$req = $db->prepare($sql);
-		$req->execute(array($status));
+		$req->execute(array("DELIVERED"));
 		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
 
 		$filter = array();
@@ -2275,7 +2275,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			{
 				$sql = "SELECT *,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as REALCOST
 						FROM PODETAIL WHERE PONUMBER = ?";
-				$req = $db->prepare($sql);
+				$req = $db2->prepare($sql);
 				$req->execute(array($onePOData["PONUMBER"]));
 				$details = $req->fetchAll(PDO::FETCH_ASSOC);
 
@@ -2283,12 +2283,13 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 				foreach($details as $detail)
 				{
 					$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as COST
-					FROM PORECEIVEDETAIL 
-					WHERE PRODUCTID = ?
-					ORDER BY TRANCOST DESC";
+							   FROM PORECEIVEDETAIL 
+							   WHERE PRODUCTID = ?
+							  ORDER BY TRANCOST DESC";
 					$req = $db2->prepare($maxsql); 
-	 				$req->execute(array($$detail["PRODUCTID"]));
-	 				$maxcost = $req->fetch()["COST"];		 		 
+	 				$req->execute(array($detail["PRODUCTID"]));
+	 				$maxcost = $req->fetch()["COST"];	
+	 				error_log($detail["REALCOST"] . " " . $maxcost);	 		 
 	 				if ($detail["REALCOST"]  > $maxcost){
 						$isClean = false;
 						break;
@@ -2423,6 +2424,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		if (isset($json["ITEMS"]))
 		{
+			// TODO UPDATE EXTCOST
 			foreach($json["ITEMS"] as $key => $value)
 			{
 				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
@@ -2432,7 +2434,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}
 		$data["RESULT"] = "OK";
 	}
-	else if ($json["ACTIONTYPE"] == "PCH"){		
+	else if ($json["ACTIONTYPE"] == "PCH"){			
 		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
 		$req = $db->prepare($sql);			
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
@@ -2444,7 +2446,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 	}
 	// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
-	
+
 	else if ($json["ACTIONTYPE"] == "WH"){
 
 			$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
@@ -2459,12 +2461,166 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		if (isset($json["ITEMS"]))
 		{
+			$isDKSH = false;
+			$sql = "SELECT VENDID FROM POHEADER WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$vendid = $req->fetch()["VENDID"];
+			if ($vendid == "100-003" || $vendid == "100-150")
+			$isDKSH = true;
+			$needSplit = false;
+
+
+			// PPSS_ORDER_PRICE PRICE WITH DISC 
+			// PPSS_INVOICE_PRICE WITH DISC 
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET PPSS_DIFFERENT_PRICE = ?, TRANCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+
+				$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["TRANCOST"],$value["PPSS_DIFFERENT_PRICE "],$value["PPSS_RECEPTION_QTY"] ,$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($json["PONUMBER"],$key));
+				$res = $req->fetch();
+				$VAT_PERCENT = $res["VAT_PERCENT"];
+				$TRANDISC = $res["TRANDISC"];
+
+				$calculatedCost =  $value["PPSS_INVOICE_PRICE"] - ($value["PPSS_INVOICE_PRICE"] * ($TRANDISC / 100));
+				$extcost = $value["ORDER_QTY"] * $calculatedCost; 
+				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = ? ,PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$req = $dbBLUE->prepare($sql);
+
+
+				$req->execute(array($value["TRANCOST"],$value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	 						
 			}
+
+			if ($needSplit == true)
+			{
+				$sql = "SELECT * FROM POHEADER WHERE PONUMBER = ?";
+				$req = $dbBLUE->prepare($sql); 
+				$req->execute(array($json["PONUMBER"]));
+				$header = $req->fetch();
+
+				$sql = "SELECT num3 FROM SYSDATA where sysid = 'PO'";
+				$req = $db->prepare($sql);
+				$req->execute(array());	
+				$num2 = $req->fetch(PDO::FETCH_ASSOC)["num2"];
+				$newID = intval($num2);
+				$identifier = sprintf("PO%80d,",$newID);
+
+				// Increment gen ID for Next	
+				$incremented = $newID + 1;
+				$sql = "UPDATE SYSDATA set num2 = ? where sysid = 'PO'"; 
+				$req = $db->prepare($sql);
+				$req->execute(array($incremented));
+
+				$PONUMBER = $identifier;
+				$VENDID = $header["VENDID"];
+				$VENDNAME = $header["VENDNAME"];
+				$VENDNAME1 = $header["VENDNAME1"];
+				$PODATE = $now;
+
+				$LOCID = $header["LOCID"];	
+				$USERADD = $header["USERADD"];
+				$DATEADD = $now;
+				$VATPERCENT = $header["VATPERCENT"];
+
+				$PCNAME = "APPLICATION";
+				$CURR_RATE = $header["CURR_RATE"];
+				$CURRID = $header["CURRID"];
+				$EST_ARRIVAL = $now;
+				$REQUIRE_DATE = $now;
+
+				$DISC_PERCENT = $header["DISC_PERCENT"];
+				$BASECURR_ID = $header["BASECURR_ID"];
+				
+
+				$PURCHASE_AMT = 0;
+				$VAT_AMT = 0;
+				foreach($json["ITEMS"] as $key => $value)
+				{
+					$vat = $value["TRANCOST"] * ($VATPERCENT / 100);
+					$price =   $value["TRANCOST"] + $vat - ($value["TRANCOST"] * ($DISC_PERCENT / 100)); 
+					$PURCHASE_AMT += $price;
+					$VAT_AMT += $vat;
+				}
+				$CURRENCY_VATAMOUNT = $VAT_AMT;
+
+				$sql = "INSERT POHEADER (PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
+					LOCID,PURCHASE_AMT,USERADD,DATEADD,VATPERCENT,
+					PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
+					VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT) 
+					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+				$req =$dbBLUE->prepare($sql);	
+				$req->execute(array(
+					$PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
+					$LOCID,PURCHASE,$USERADD,$DATEADD,$VATPERCENT,
+					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,
+					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT
+				));
+
+				$line = 1;
+				foreach($json["ITEMS"] as $key => $value)
+				{
+
+					$sql = "SELECT * FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
+					$dbBLUE->prepare($sql);
+					$req->$execute(array($key,$json["PONUMBER"]));		
+					$itemdetail =  $req->fetch();
+
+					$PURCHASEDATE = $item["PURCHASEDATE"];
+					$PRODUCTID = $key;
+					$PRODUCTNAME = $itemdetail["PRODUCTNAME"];
+					$ORDER_QTY = $item["PPSS_RECEPTION_QTY"];
+
+					$TRANUNIT = $itemdetail["TRANUNIT"];	
+					$TRANFACTOR = $itemdetail["TRANFACTOR"];
+					$STKUNIT = $itemdetail["STKUNIT"];
+					$STKFACTOR = $itemdetail["STKFACTOR"];
+					$TRANDISC = $itemdetail["TRANDISC"];
+
+					$TRANCOST = $itemdetail["TRANCOST"];
+					$EXTCOST = $itemdetail["EXTCOST"];
+					$CURRENTHAND = $itemdetail["CURRENTHAND"];
+					$CURRID = $itemdetail["CURRID"];
+					$CURR_RATE = $itemdetail["CURR_RATE"];
+
+					$WEIGHT = $itemdetail["WEIGHT"];
+					$OLDWEIGHT = $itemdetail["OLDWEIGHT"];
+					$USERADD = $itemdetail["USERADD"];
+					$DATEADD = $now;
+
+					$VATABLE = $itemdetail["VATABLE"];
+					$VAT_PERCENT = $itemdetail["VAT_PERCENT"];
+					$BASECURR_ID = $itemdetail["BASECURR_ID"];
+					$CURRENCY_AMOUNT = $itemdetail["CURRENCY_AMOUNT"];
+					$CURRENCY_COST = $itemdetail["CURRENCY_COST"];
+
+					$sql = "INSERT INTO PODETAIL (PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASEDATE, 
+					PRODUCTID,LOCID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY, 	
+					TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,TRANDISC,
+					TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
+					WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
+					VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST"; 
+
+					$dbBLUE->prepare($sql);
+					$req->$execute(array(
+					$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASEDATE,
+					$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
+					$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
+					$TRANDISC, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
+					$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
+					$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST));		
+
+					// DELETE FROM CURRENT PODETAIL
+					$sql = "DELETE FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
+					$dbBLUE->prepare($sql);
+					$req->$execute(array($key,$json["PONUMBER"]));		
+					
+					$line++;
+				}
+
+			}
+
 		}
 		$data["RESULT"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
@@ -2561,9 +2717,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,
-				   (TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as TRANCOST,
-				   ORDER_QTY,PPSS_VALIDATION_QTY,TRANDISC,
-			PPSS_RECEPTION_QTY,PPSS_NOTE FROM PODETAIL WHERE PONUMBER = ?";
+				   ORDER_QTY,TRANCOST,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_NOTE,PPSS_INVOICE_PRICE,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")
 	{
@@ -2586,10 +2740,13 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$tmpItems = array();
 	foreach($items as $item){
-		$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as COST
-		FROM PORECEIVEDETAIL 
-		WHERE PRODUCTID = ?
-		ORDER BY TRANCOST DESC";
+
+		$maxsql = "SELECT VENDNAME,TRANDISC, (TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as COST,TRANCOST
+				   FROM PORECEIVEDETAIL 
+				   WHERE PRODUCTID =  ? 
+				   AND TRANDISC < 100 
+				   ORDER BY TRANCOST DESC,TRANDISC ASC";
+
 		$req = $db2->prepare($maxsql); 
  		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
@@ -2597,11 +2754,12 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
  		$item["MAXCOST"] = $res["COST"];
  		$item["MAXVENDORNAME"] = $res["VENDNAME"];
 
-		$minsql = "SELECT TOP(1) VENDNAME,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as COST
-		FROM PORECEIVEDETAIL 
-		WHERE PRODUCTID = ?
-		ORDER BY TRANCOST ASC";
-		$db2->prepare($minsql);
+		$minsql = "SELECT VENDNAME,TRANDISC, (TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as COST,TRANCOST
+				   FROM PORECEIVEDETAIL 
+				   WHERE PRODUCTID =  ? 
+				   AND TRANDISC < 100 
+				   ORDER BY TRANCOST ASC,TRANDISC DESC";
+		$req = $db2->prepare($minsql);
 		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
 

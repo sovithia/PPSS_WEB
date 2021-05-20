@@ -4588,6 +4588,7 @@ function renderSupplyRecordList($data,$action){
 
 function renderSupplyRecordDetail($data,$action){
   $supplyrecord = $data;
+
   if(isset($supplyrecord["items"]))
     $items = $supplyrecord["items"];
   else 
@@ -4691,22 +4692,32 @@ function renderSupplyRecordDetail($data,$action){
 
       $dataSet = "";
       $total = 0;
-      
+      $totalAmt = 0;
 
       
       $valdisable = ($action == "VAL") ? '' : 'disabled';    
       $whdisable = ($action == "WH") ? '' : 'disabled';
-    
+
+
+
       foreach($items as $item)
       {           
-        $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);
+        if ($supplyrecord["STATUS"] == "WAITING" || $supplyrecord["STATUS"] == "ORDERED"){
+          $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["ORDER_QTY"]);
+        }
+        else if ($supplyrecord["STATUS"] == "VALIDATED"){  
+           $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATION_QTY"]);     
+        }
+        else if ($supplyrecord["STATUS"] == "DELIVERED"){
+          $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);     
+        }        
         $item["AMT"] = truncatePrice($item["AMT"],4);        
-
-        $total += $item["AMT"];
+        
         $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
         $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
         $item["TRANCOST"] = truncatePrice($item["TRANCOST"],4);
 
+        
 
         $item["MINCOST"] = truncatePrice($item["MINCOST"]);
         $item["MAXCOST"] = truncatePrice($item["MAXCOST"]);
@@ -4741,7 +4752,8 @@ function renderSupplyRecordDetail($data,$action){
               '<input  style=\"text-align:center\" type=\"text\" id=\"note_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_NOTE"]."\">',              
               \"".$item["AMT"]."\"               
               ],";
-        $total++;              
+        $total++;
+        $totalAmt += $item["AMT"];              
       }
       $dataSet = rtrim($dataSet,",");        
       $body .= "  
@@ -4760,7 +4772,8 @@ function renderSupplyRecordDetail($data,$action){
             }                      
           </script>
       ";   
-      $body .= "<b>Total : ". $total."</b><br>";
+      $body .= "<b>Total Quanitty: ". $total."</b><br>";
+      $body .= "<b>Total Amount: ". $totalAmt."</b><br>";
      }
      else
      {
