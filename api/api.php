@@ -769,7 +769,6 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
 	$conn=getDatabase();
 	$barcode = $request->getAttribute('barcode'); 
-	error_log($barcode);
 	$check = "NO";
 	if (substr($barcode,0,1) == 'X'){
 		$barcode = substr($barcode, 1);
@@ -927,7 +926,6 @@ $app->get('/item2/{barcode}',function(Request $request,Response $response) {
 
 		$items["result"] = "OK";
 
-		error_log($$GLOBALS['URL'].$barcode);
 		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
 		
 		if ($json["result"] != "KO")			
@@ -2283,7 +2281,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		{
 			if ($onePOData["PONUMBER"] != null)
 			{
-				$sql = "SELECT *,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as REALCOST
+				$sql = "SELECT *,(TRANCOST - (TRANCOST * (TRANDISC / 100)) ) as REALCOST
 						FROM PODETAIL WHERE PONUMBER = ?";
 				$req = $db2->prepare($sql);
 				$req->execute(array($onePOData["PONUMBER"]));
@@ -2292,14 +2290,14 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 				$isClean = true;
 				foreach($details as $detail)
 				{
-					$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST + (TRANCOST * (VAT_PERCENT /100)) - (TRANCOST * (TRANDISC / 100)) ) as COST
+					$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST  - (TRANCOST * (TRANDISC / 100)) ) as COST
 							   FROM PORECEIVEDETAIL 
 							   WHERE PRODUCTID = ?
 							  ORDER BY TRANCOST DESC";
 					$req = $db2->prepare($maxsql); 
 	 				$req->execute(array($detail["PRODUCTID"]));
 	 				$maxcost = $req->fetch()["COST"];	
-	 				error_log($detail["REALCOST"] . " " . $maxcost);	 		 
+	 		 
 	 				if ($detail["REALCOST"]  > $maxcost){
 						$isClean = false;
 						break;
@@ -2909,7 +2907,6 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
 	$items = json_decode($json["ITEMS"],true);
-	error_log(count($items));
 	// NO ADDITIONNAL ACTION FOR DEMAND
 	$suffix = "";
 	$tableName = "";
@@ -3622,7 +3619,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
-	error_log($type);
 
 	$suffix = "";
 	if ($type == "RESTOCK")
@@ -3641,7 +3637,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	if (!isset($json["ITEMS"]))
 	{
-		error_log("ici");
 		$item["PRODUCTID"] = $json["PRODUCTID"];
 		$item["REQUEST_QUANTITY"] = $json["REQUEST_QUANTITY"];
 		$item["LOTWH1"] = isset($json["LOTWH1"]) ? $json["LOTWH1"] : "";
