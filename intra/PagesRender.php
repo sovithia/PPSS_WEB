@@ -4714,7 +4714,10 @@ function renderSupplyRecordDetail($data,$action){
         $item["AMT"] = truncatePrice($item["AMT"],4);        
         
         $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
-        $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
+        if (isset($item["PPSS_VALIDATION_QTY"]))
+          $item["PPSS_VALIDATION_QTY"] = truncatePrice($item["PPSS_VALIDATION_QTY"],2);
+        else
+          $item["PPSS_VALIDATION_QTY"] = 0;
         $item["TRANCOST"] = truncatePrice($item["TRANCOST"],4);
 
         
