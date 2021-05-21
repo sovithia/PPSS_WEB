@@ -4698,8 +4698,6 @@ function renderSupplyRecordDetail($data,$action){
       $valdisable = ($action == "VAL") ? '' : 'disabled';    
       $whdisable = ($action == "WH") ? '' : 'disabled';
 
-
-
       foreach($items as $item)
       {           
         if ($supplyrecord["STATUS"] == "WAITING" || $supplyrecord["STATUS"] == "ORDERED"){
@@ -4775,7 +4773,7 @@ function renderSupplyRecordDetail($data,$action){
             }                      
           </script>
       ";   
-      $body .= "<b>Total Quanitty: ". $total."</b><br>";
+      $body .= "<b>Total Quantity: ". $total."</b><br>";
       $body .= "<b>Total Amount: ". $totalAmt."</b><br>";
      }
      else
