@@ -1,5 +1,6 @@
 <?php
 include('RestEngine.php');
+require_once('functions.php');
 ?>
 
 <html>
@@ -253,13 +254,20 @@ include('RestEngine.php');
   
   if (isset($_GET["barcodes"]))
   {  
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $_GET["barcodes"]);      
+    $barcodes = split("|",$_GET["barcodes"]);
+    $newString = "";
+    foreach($barcodes as $barcode){
+      $newString .= str_replace(" ","%20",$barcode). "|";
+    }
+    $newString = substr($newString,0,-1);
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);              
     if (count($itemList) == 1)
       renderOneProduct($itemList[0]);  
   } 
   else if (isset($_GET["barcode1"]) )
-  {    
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $_GET["barcode1"]);      
+  { 
+    $b1 = str_replace(" ","%20",$_GET['barcode1']);   
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $b1);      
     if (count($itemList) == 1)  
       renderOneProduct($itemList[0]);    
 ?>
@@ -333,9 +341,7 @@ function renderOneProduct($product)
             <img class='originpicture' src=$flag />
             <br>
             <center><span>Origin : $country</span></center>
-          </div>
-        <br>
-        <br>
+          </div>        
         
         <img  class='smallcircle whitecontour' src='img/roundlogo.png'>             
         </td>
@@ -427,9 +433,6 @@ function renderOneProduct($product)
   }
 }
 
-function flagByCountry($flag){
-  return $flag = 'img/flags/'.strtolower($flag).'.png';
-}
 ?>
 
 <script>

@@ -589,12 +589,10 @@ function PriceTag($item)
 		<?php 
 			if (isset($_GET["barcodes"]))
 			{
-
-                $barcodes = str_replace(" ","",$_GET["barcodes"]);							                        	               
-                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/itemlabels/".$barcodes);                 
-                //var_dump($labels);
+                $barcodes = str_replace(" ","%20",$_GET["barcodes"]);							                     
+                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/itemlabels/".$barcodes);                                 
 				render($labels);				
-                //render(null);
+                
 			}		
 		?>
 	</div>

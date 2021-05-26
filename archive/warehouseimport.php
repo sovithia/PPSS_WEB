@@ -65,4 +65,36 @@ $conn=getDatabase();
 */
 
 
+
+
+function Add(id)
+        {
+          if (document.getElementById('transfer_' + id).value == ".$item["REQUEST_QUANTITY"].")
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) + 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) - 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+        function Substract(id)
+        {
+          if (document.getElementById('transfer_' + id).value == 0)
+            return;
+          var t = parseInt(document.getElementById('transfer_' + id).value) - 1;
+          var p = parseInt(document.getElementById('purchase_' + id).value) + 1;
+          document.getElementById('transfer_' + id).value = t;
+          document.getElementById('purchase_' + id).value = p;
+        }
+        function All(id)
+        {
+          document.getElementById('transfer_' + id).value = 0;
+          document.getElementById('purchase_' + id).value = ".$item["REQUEST_QUANTITY"]."; 
+        }
+
+,    
+
+          '<input  value=\"".$item["ID"]."\" type=\"hidden\"><input style=\"text-align:center\" id=\"transfer_".$item["ID"]."\" value=\"".$item["REQUEST_QUANTITY"]."\" type=\"text\"  >',
+          '<input style=\"text-align:center\" id=\"purchase_".$item["ID"]."\" value=\"0\" type=\"text\"  >',          
+          '<button type=\"button\" onclick=\"All(".$item["ID"].")\">ALL</button><br><button type=\"button\" onclick=\"Add(".$item["ID"].")\">-</button><button type=\"button\" onclick=\"Substract(".$item["ID"].")\">+</button>',
+        
 ?>

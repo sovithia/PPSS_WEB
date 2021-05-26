@@ -300,7 +300,8 @@ function packLookup($barcode)
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
 		
-	$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
+
+	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
 	if ($item != false)
 	{
 		if ($json["result"] != "KO")			
@@ -768,7 +769,7 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 /************** COMMON ***************/
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
 	$conn=getDatabase();
-	$barcode = $request->getAttribute('barcode'); 
+	$barcode = $request->getAttribute('barcode');	 
 	$check = "NO";
 	if (substr($barcode,0,1) == 'X'){
 		$barcode = substr($barcode, 1);
@@ -812,121 +813,8 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$items["STOREBIN2"] = $item["STORBIN"];
 
 		$items["result"] = "OK";
+
 		$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
-		
-		if ($json["result"] != "KO")			
-			$items["PICTURE"] = $json["image"];
-		else 
-			$items["PICTURE"] = getImage($barcode);
-		$item = $items;
-
-		if ($check == "WH1" || $check == "WH2")
-		{							
-			$inDB = getInternalDatabase();
-			$begin = strtotime($request->getParam('begin',''));
-			$params = array($barcode,$check,$begin);
-			$sql = "SELECT * FROM ITEMADJUST WHERE BARCODE = ? AND location = ? AND DATE > ?";
-			$req=$inDB->prepare($sql);
-			$req->execute($params);
-			$res = $req->fetch();			
-			if ($res != false)
-				$item["SCANNEDRANGE"] = 'YES';
-			else 
-				$item["SCANNEDRANGE"] = 'NO';
-		}	
-		else
-			$item["SCANNED"] = 'NO';
-	}
-	else
-	{
-		$packInfo = packLookup($barcode);
-		if ($packInfo != null) // IS  A PACK
-		{
-			$packcode = $barcode;		
-			$result = itemLookup($packInfo["PRODUCTID"]);
-			$result["BARCODE"] = $packcode;
-			//if (file_exists("img/packs/".$packcode.".jpg"))
-			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
-			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
-			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
-			$result["DISC"] = $packInfo["DISC"];
-			$result["PRODUCTNAMEPACK"] = $packInfo["DESCRIPTION1"];
-			$result["PRICE"] = $packInfo["SALEPRICE"];		
-			
-			// PICTURE PACK
-			$result["ISPACK"] = "PACK";
-			$result["result"] = "OK";
-			$item = $result; 
-		}
-		else			
-			$item["result"] = "KO";
-	}
-
-	// IF NO LOT NULL
-	$qsql = "SELECT BATCHNO,QUANTITY,CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE LOCID = 'WH1' AND PRODUCTID = ? AND ACTIVE = 1";
-	$req=$conn->prepare($qsql);
-	$req->execute(array($barcode));
-	$item["LOTWH1LIST"] = $req->fetchAll();
-
-	$qsql = "SELECT BATCHNO,QUANTITY, CONVERT(varchar(10), TDATE, 120) as TDATE FROM ICQUANTITY WHERE LOCID = 'WH2' AND PRODUCTID = ? AND ACTIVE = 1";
-	$req=$conn->prepare($qsql);
-	$req->execute(array($barcode));
-	$item["LOTWH2LIST"] = $req->fetchAll();
-
-		
-	$response = $response->withJson($item);
-	return $response;
-});
-
-$app->get('/item2/{barcode}',function(Request $request,Response $response) {    
-	$conn=getDatabase("TRAINING");
-	$barcode = $request->getAttribute('barcode'); 
-	$check = "NO";
-	if (substr($barcode,0,1) == 'X'){
-		$barcode = substr($barcode, 1);
-		$check = "WH1";
-	}
-	if (substr($barcode,0,1) == 'Y'){
-		$barcode = substr($barcode, 1);
-		$check = "WH2";
-	}
-
-	$params = array($barcode,$barcode);
-	$sql="	SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE,(SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'LOCATION'
-	FROM dbo.ICPRODUCT  
-	WHERE BARCODE = ?";
-	$getItems=$conn->prepare($sql);
-	$getItems->execute($params);
-	$items=$getItems->fetchAll(PDO::FETCH_ASSOC);
-	if (count($items) > 0){
-	
-		$items = $items[0];
-		$sql="
-		SELECT LOCONHAND,STORBIN 
-		FROM dbo.ICLOCATION  
-		WHERE LOCID = 'WH1' AND PRODUCTID = ?";
-		$params = array($barcode);
-		$req=$conn->prepare($sql);
-		$req->execute($params);
-		$item=$req->fetch();
-		$items["WH1"] = $item["LOCONHAND"];
-		$items["STOREBIN1"] = $item["STORBIN"];
-		
-		$sql="
-		SELECT LOCONHAND,STORBIN 
-		FROM dbo.ICLOCATION  
-		WHERE LOCID = 'WH2' AND PRODUCTID = ?";
-		$params = array($barcode);
-		$req=$conn->prepare($sql);
-		$req->execute($params);
-		$item=$req->fetch();
-		$items["WH2"] = $item["LOCONHAND"];
-		$items["STOREBIN2"] = $item["STORBIN"];
-
-		$items["result"] = "OK";
-
-		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
 		
 		if ($json["result"] != "KO")			
 			$items["PICTURE"] = $json["image"];
@@ -1006,6 +894,7 @@ $app->get('/item2/{barcode}',function(Request $request,Response $response) {
 	$response = $response->withJson($item);
 	return $response;
 });
+
 
 $app->get('/picture/{barcode}',function(Request $request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
@@ -2309,6 +2198,17 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		}
 		$POData = $filter;
 	}
+	else if ($status == "RECEIVED")
+	{
+		$sql = "SELECT *
+			FROM SUPPLY_RECORD 
+			WHERE (STATUS = 'RECEIVED' OR STATUS = 'PAID')
+			AND TYPE = 'PO' 
+			ORDER BY LAST_UPDATED DESC";	
+			$req = $db->prepare($sql);
+			$req->execute(array());
+			$POData = $req->fetchAll(PDO::FETCH_ASSOC);
+	}
 	else 
 	{
 		$sql = "SELECT *
@@ -2500,8 +2400,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 						WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
 
-
-				$req->execute(array($value["TRANCOST"],$value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	
+				$req->execute(array($value["TRANCOST"],$value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
+									$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	
 
 				if ($value["PPSS_RECEPTION_QTY"] == "0" && $isDKSH == true)
 					$needSplit = true; 						
@@ -2578,8 +2478,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 					PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
 					VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-					NOTES) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+					NOTES,REFERENCE) 
+					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 				$req =$dbBLUE->prepare($sql);	
 
@@ -2587,9 +2487,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
 								$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 								$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
-								$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT,"AUTOVALIDATED");
-
-
+								$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT,"AUTOVALIDATED",
+								("SPLIT FROM ".$json["PONUMBER"]) 
+								);
 				$req->execute($params);
 
 				$line = 1;
@@ -2601,7 +2501,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$req = $dbBLUE->prepare($sql);
 					$req->execute(array($key,$json["PONUMBER"]));		
 					$itemdetail =  $req->fetch();
-
 
 
 					$PURCHASE_DATE = $itemdetail["PURCHASE_DATE"];
@@ -2966,7 +2865,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 });
 
 function transferItems($items, $author,$type = "TRANSFER"){	
-	$db = getDatabase("TRAINING");
+	$db = getDatabase();
 	$now = date("Y-m-d H:i:s");
 
 	//************ TR ************ //
@@ -3385,7 +3284,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			
 $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
-	$dbBlue = getDatabase("TRAINING");
+	$dbBlue = getDatabase();
 	
 	$id = $request->getAttribute('id');
 	if ($id == "DEBT")
@@ -3400,8 +3299,9 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$asql = "SELECT * FROM ITEMREQUESTACTION WHERE ID = ?";
 	$req = $db->prepare($asql);
 	$req->execute(array($id));
-	$type = $req->fetch()["TYPE"];	
-	
+	$res = $req->fetch();	
+	$type = $res["TYPE"];
+	$requester = $res["REQUESTER"];
 	// Debt (internal) OK
 	// demand (internal) OK
 	// restock(internal) OK
@@ -3432,6 +3332,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 
 		// TYPE
 		$item["TYPE"] = $type;
+		$item["REQUESTER"] = $requester;
 
 		// DEBT
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as DEBT_QTY from ITEMREQUESTDEBT WHERE PRODUCTID = ?";
@@ -3555,7 +3456,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 
 $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
-	$db2 = getDatabase("TRAINING");
+	$db2 = getDatabase();
 	
 	$type = $request->getAttribute('type');
 	

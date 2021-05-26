@@ -219,7 +219,8 @@ function getCurrentRate(){
 }
 
 function getImage($barcode){
-	$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
+
+	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
 	if ($json["result"] != "KO")					
 		return $json["image"];
 	else if (file_exists("img/products/".$barcode.".jpg"))
@@ -297,5 +298,11 @@ function generateRielPrice($price){
 	return $num;
 }
 
+function flagByCountry($flag){
+  if ($flag == "" || $flag == null)
+    return $flag = 'img/mystery.png';
+    else 
+  return $flag = 'img/flags/'.strtolower($flag).'.png';
+}
 
 ?>

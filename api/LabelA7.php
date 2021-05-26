@@ -1,5 +1,6 @@
 <?php
 include('RestEngine.php');
+require_once('functions.php');
 ?>
 
 <html>
@@ -308,14 +309,28 @@ include('RestEngine.php');
   //}
   if (isset($_GET["barcodes"]))
   {  
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $_GET["barcodes"]);      
+    $barcodes = split("|",$_GET["barcodes"]);
+    $newString = "";
+    foreach($barcodes as $barcode){
+      $newString .= str_replace(" ","%20",$barcode). "|";
+    }
+    $newString = substr($newString,0,-1);
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);                
     if (count($itemList) > 0)
       renderEightProduct($itemList);  
   } 
   else if (isset($_GET["barcode1"]) )
   {    
-    $barcodes = implode("|",array($_GET["barcode1"],$_GET["barcode2"],$_GET["barcode3"],$_GET["barcode4"],$_GET["barcode5"],$_GET["barcode6"],$_GET["barcode7"],$_GET["barcode8"]));
-    //echo "http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes;
+    $b1 = str_replace(" ","%20",$_GET['barcode1']);
+    $b2 = str_replace(" ","%20",$_GET['barcode2']);
+    $b3 = str_replace(" ","%20",$_GET['barcode3']);
+    $b4 = str_replace(" ","%20",$_GET['barcode4']);
+    $b5 = str_replace(" ","%20",$_GET['barcode5']);
+    $b6 = str_replace(" ","%20",$_GET['barcode6']);
+    $b7 = str_replace(" ","%20",$_GET['barcode7']);
+    $b8 = str_replace(" ","%20",$_GET['barcode8']);
+
+    $barcodes = implode("|",array($b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8));      
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes);        
     
     if (count($itemList) > 0)  
@@ -738,9 +753,6 @@ function renderOneProduct($product)
     echo $render;
 }
 
-function flagByCountry($flag){
-  return $flag = 'img/flags/'.strtolower($flag).'.png';
-}
 ?>
 
 <script>

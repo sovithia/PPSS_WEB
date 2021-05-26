@@ -1,5 +1,6 @@
 <?php
 include('RestEngine.php');
+require_once('functions.php');
 ?>
 
 <html>
@@ -525,7 +526,14 @@ include('RestEngine.php');
 
   if (isset($_GET["barcodes"]))
   {    
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $_GET["barcodes"]);      
+
+    $barcodes = split("|",$_GET["barcodes"]);
+    $newString = "";
+    foreach($barcodes as $barcode){
+      $newString .= str_replace(" ","%20",$barcode). "|";
+    }
+    $newString = substr($newString,0,-1);
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
@@ -537,7 +545,12 @@ include('RestEngine.php');
   }
   else if (isset($_GET["barcode1"]) )
   {
-    $barcodes = implode("|",array($_GET['barcode1'],$_GET['barcode2'],$_GET['barcode3'],$_GET['barcode4']));
+    $b1 = str_replace(" ","%20",$_GET['barcode1']);
+    $b2 = str_replace(" ","%20",$_GET['barcode2']);
+    $b3 = str_replace(" ","%20",$_GET['barcode3']);
+    $b4 = str_replace(" ","%20",$_GET['barcode4']);
+
+    $barcodes = implode("|",array($b1,$b2,$b3,$b4));
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
@@ -1462,9 +1475,7 @@ function renderFourProduct($product1,$product2,$product3,$product4)
 
 
 
-function flagByCountry($flag){
-  return $flag = 'img/flags/'.strtolower($flag).'.png';
-}
+
 ?>
 
 <script>
