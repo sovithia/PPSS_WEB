@@ -4680,15 +4680,25 @@ function renderSupplyRecordDetail($data,$action){
 
       foreach($items as $item)
       {           
-        if ($supplyrecord["STATUS"] == "WAITING" || $supplyrecord["STATUS"] == "ORDERED"){
+        if ($supplyrecord["TYPE"] == "PO")
+        {
+          if ($supplyrecord["STATUS"] == "WAITING" || $supplyrecord["STATUS"] == "ORDERED"){
+          $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["ORDER_QTY"]);
+          }
+          else if ($supplyrecord["STATUS"] == "VALIDATED"){  
+             $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATION_QTY"]);     
+          }
+          else if ($supplyrecord["STATUS"] == "DELIVERED" || $supplyrecord["STATUS"] == "RECEIVED" || $supplyrecord["STATUS"] == "PAID"){
+            $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);     
+          }  
+        }
+        else if ($supplyrecord["TYPE"] == "NOPO")
+        {
           $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["ORDER_QTY"]);
         }
-        else if ($supplyrecord["STATUS"] == "VALIDATED"){  
-           $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATION_QTY"]);     
-        }
-        else if ($supplyrecord["STATUS"] == "DELIVERED" || $supplyrecord["STATUS"] == "RECEIVED" || $supplyrecord["STATUS"] == "PAID"){
-          $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);     
-        }        
+        
+
+
         $item["AMT"] = truncatePrice($item["AMT"],4);        
         
         $item["ORDER_QTY"] = truncatePrice($item["ORDER_QTY"],2);
