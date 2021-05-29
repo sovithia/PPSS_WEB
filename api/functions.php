@@ -63,7 +63,6 @@ function INSERT($sql,$params = array(),$database = "MAIN")
 	}	
 }
 
-
 function UPDATE($sql,$params = array(),$database = "MAIN")
 {
 	if (posix_uname()["machine"] == "x86_64")
@@ -82,7 +81,6 @@ function UPDATE($sql,$params = array(),$database = "MAIN")
 		return $json["RESULT"];
 	}	
 }
-
 
 function DELETE($sql,$params = array(),$database = "MAIN")
 {
@@ -149,8 +147,9 @@ function getDatabase($name = "MAIN")
 	{  		
 		if ($name == "MAIN")
 		{
-			if (isLocal())
+			if (isLocal()){				
 				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+			}
 			else 
 				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 		}
@@ -171,10 +170,14 @@ function getDatabase($name = "MAIN")
 	return $conn;
 }
 
-function getInternalDatabase()
+
+function getInternalDatabase($base = "MAIN")
 {
 	try{
-		$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
+		if ($base == "MAIN")
+			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
+		else if ($base == "ECOMMERCE")
+			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}

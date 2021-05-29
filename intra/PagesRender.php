@@ -3308,7 +3308,7 @@ function renderItemUpdate($items)
               ";                             
     if ($items != null)
     { 
-
+       $dataSet = "";
        $body .= "Total : ".count($items);
 
        
@@ -3346,7 +3346,7 @@ function renderItemUpdate($items)
         $item["COST"] = truncatePrice($item["COST"]);
         $item["PRICE"] = truncatePrice($item["PRICE"]);
 
-        $item["THROWN"] = truncatePrice($item["THROWN"]);
+        $item["TOTALTHROWN"] = truncatePrice($item["TOTALTHROWN"]);
         $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
         $item["LASTCOST"] = truncatePrice($item["LASTCOST"]);
 
@@ -4686,7 +4686,7 @@ function renderSupplyRecordDetail($data,$action){
         else if ($supplyrecord["STATUS"] == "VALIDATED"){  
            $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATION_QTY"]);     
         }
-        else if ($supplyrecord["STATUS"] == "DELIVERED"){
+        else if ($supplyrecord["STATUS"] == "DELIVERED" || $supplyrecord["STATUS"] == "RECEIVED" || $supplyrecord["STATUS"] == "PAID"){
           $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);     
         }        
         $item["AMT"] = truncatePrice($item["AMT"],4);        

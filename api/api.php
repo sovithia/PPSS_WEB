@@ -1317,35 +1317,52 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 	return $response;	
 }); 
 /************** SEARCH   ***************/
+//||||||LASTSALEDATE
+
 $app->post('/itemget',function(Request $request,Response $response) {    	
 	$conn=getDatabase();
 	$json = json_decode($request->getBody(),true);
 	$barcodes = $json["barcodes"];
+	$today = date("Y-m-d");
+	$timestamp = strtotime('-30 days');
+	$day30before = date("Y-m-d",$timestamp);
 
 	$sql =  "SELECT PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
-			PACKING,
-			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
-			,PRICE,VENDNAME,
+			PACKING,PRICE,VENDNAME,
+			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST',
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',			
-			COLOR,CATEGORYID,ONHAND,PRICE
+			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',		
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+		  (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',	
+		  ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',		
+		  ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',
+		  ISNULL(PACKINGNOTE,'N/A') as 'PACKINGNOTE', 		
+		  (SELECT COUNT(PRODUCTID) AS 'CNT' 
+		   FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID 
+		   AND POSDATE BETWEEN '$day30before 00:00:00.000'  
+		   AND '$today 23:59:59.999' GROUP BY PRODUCTID) as 'SALELAST30',
+			COLOR,CATEGORYID,ONHAND,PRICE,LASTRECEIVEDATE,LASTSALEDATE
 			FROM dbo.ICPRODUCT,dbo.APVENDOR  
 			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID
 			 ";
 
 	$params = array();    	 
 	$sql .= " AND PRODUCTID in (";
-    foreach($barcodes as $oneBarcode)
+  foreach($barcodes as $oneBarcode)
     {
+
     	$sql .=  "?,"; 
-		array_push($params,$oneBarcode);	
+		  array_push($params,$oneBarcode);	
     }
-    $sql = substr($sql, 0, -1);
-    $sql .= ")";
-    $sql .= " ORDER BY CATEGORYID";
+  $sql = substr($sql, 0, -1);    
+  $sql .= ")";
+  $sql .= " ORDER BY CATEGORYID";
+
+  error_log($sql);
+	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -2704,9 +2721,10 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$req = $db2->prepare($maxsql); 
  		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
-
- 		$item["MAXCOST"] = $res["COST"];
- 		$item["MAXVENDORNAME"] = $res["VENDNAME"];
+	
+ 		$item["MAXCOST"] = ($res != false) ? $res["COST"] : "";
+ 		$item["MAXVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";	
+ 	
 
 		$minsql = "SELECT VENDNAME,TRANDISC, (TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as COST,TRANCOST
 				   FROM PORECEIVEDETAIL 
@@ -2717,8 +2735,8 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
 
- 		$item["MINCOST"] = $res["COST"];
- 		$item["MINVENDORNAME"] = $res["VENDNAME"];
+ 		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
+ 		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";
  		array_push($tmpItems, $item);
 	}
 	$rr["items"] = $tmpItems;
@@ -5262,7 +5280,13 @@ $app->get('/bestseller',function($request,Response $response) {
 });
 
 $app->get('/info',function(Request $request,Response $response){
-	phpinfo();
+	$db=getDatabase();
+	$sql = "SELECT TOP(1) * FROM ICPRODUCT";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$item = $req->fetch();
+	$response = $response->withJson($item);
+	return $response;
 });
 
 ini_set('max_execution_time', 0);
