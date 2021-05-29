@@ -136,14 +136,23 @@ function CVUserByLogin($login)
 	return $result["clearview_identifier"];
 }
 
+function isLocal()
+{
+	$mac = shell_exec("dig +short myip.opendns.com @resolver1.opendns.com");    
+	return ($mac != "119.82.252.226");
+}
+
 function getDatabase($name = "MAIN")
 { 
 	$conn = null;      
 	try  
-	{  
+	{  		
 		if ($name == "MAIN")
 		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+			if (isLocal())
+				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+			else 
+				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 		}
 		else if ($name == "TRAINING")
 		{
