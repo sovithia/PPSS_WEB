@@ -4642,6 +4642,7 @@ function renderSupplyRecordDetail($data,$action){
           <th>MAXVENDORNAME</th>
           <th>MAXCOST</th>
           <th>DISCOUNT</th>
+          <th>ORDER_PRICE</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -4659,6 +4660,7 @@ function renderSupplyRecordDetail($data,$action){
           <th>MAXVENDORNAME</th>
           <th>MAXCOST</th>
           <th>DISCOUNT</th>
+          <th>ORDER_PRICE</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -4698,15 +4700,23 @@ function renderSupplyRecordDetail($data,$action){
 
         
 
-        $item["MINCOST"] = truncatePrice($item["MINCOST"]);
-        $item["MAXCOST"] = truncatePrice($item["MAXCOST"]);
+        $item["MINCOST"] = truncatePrice($item["MINCOST"],4);
+        $item["MAXCOST"] = truncatePrice($item["MAXCOST"],4);
 
-        if ($item["TRANCOST"] > $item["MINCOST"])
-          $color = "#FF5933";
+
+        if ($item["TRANCOST"] > $item["MAXCOST"])
+          $color = "#FF5933"; // RED
+        else if ($item["TRANCOST"] > $item["MINCOST"] && $item["TRANCOST"] < $item["MAXCOST"])
+          $color = "#FFA500"; // ORANGE
         else if ($item["TRANCOST"] < $item["MINCOST"])
-          $color = "#7CFF33";         
+          $color = "#7CFF33"; // GREEN        
         else 
-          $color = "#0D1EE0";
+          $color = "#0D1EE0"; // 
+        
+        if ( abs($item["TRANCOST"] - $item["PPSS_ORDER_PRICE"]) > 0.01)
+          $colorOrderQty = "#FF5933";
+        else 
+          $colorOrderQty = "#0D1EE0";
 
         if (floatval($item["ORDER_QTY"]) != floatval($item["PPSS_VALIDATION_QTY"]))
           $order = "<span style='color:red'>".$item["ORDER_QTY"]."</span>";
@@ -4723,7 +4733,8 @@ function renderSupplyRecordDetail($data,$action){
               \"".$item["MAXVENDORNAME"]."\",
               \"".$item["MAXCOST"]."\",
               \"".$item["TRANDISC"]."\",
-
+              
+              '<span style=\"color:".$colorOrderQty."\">".$item["PPSS_ORDER_PRICE"]."</span>',      
               '<span style=\"color:".$color."\">".$item["TRANCOST"]."</span>',      
              \"".$order."\",
               '<input ".$valdisable." style=\"text-align:center\" type=\"text\" id=\"validationqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_VALIDATION_QTY"]."\">',                            
@@ -4752,7 +4763,7 @@ function renderSupplyRecordDetail($data,$action){
           </script>
       ";   
       $body .= "<b>Total Quantity: ". $total."</b><br>";
-      $body .= "<b>Total Amount: ". $totalAmt."</b><br>";
+      $body .= "<b>Total Amount: $". $totalAmt."</b><br>";
      }
      else
      {
