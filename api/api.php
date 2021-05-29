@@ -633,10 +633,11 @@ function itemLookupLabel($barcode)
 		$oneItem["productImg"] = getImage($barcode);			
 		$oneItem["country"] = $item["COLOR"];
 
-		if ( (count(explode('.',$item["DISCPERCENT"])) > 0) &&  intval(explode('.',$item["DISCPERCENT"])[1]) == 0)
+		$exp = explode('.',$item["DISCPERCENT"]);
+		if ( (count($exp) > 1) &&   intval($exp[1]) == 0)
 			$oneItem["discpercent"] = explode('.',$item["DISCPERCENT"])[0];
 		else 
-			$oneItem["discpercent"] = explode('.',$item["DISCPERCENT"])[0].".".substr(explode('.',$item["DISCPERCENT"])[1],0,2);	
+			$oneItem["discpercent"] = $exp[0].".".substr($exp[1],0,2);	
 
 		if ($item["DISCPERCENTEND"] != null && $item["DISCPERCENTEND"] != "")
 		{
@@ -779,17 +780,17 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$barcode = substr($barcode, 1);
 		$check = "WH2";
 	}
-
-	$params = array($barcode,$barcode);
-	$sql="	SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE,(SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'LOCATION'
-	FROM dbo.ICPRODUCT  
-	WHERE BARCODE = ?";
-	$getItems=$conn->prepare($sql);
-	$getItems->execute($params);
-	$items=$getItems->fetchAll(PDO::FETCH_ASSOC);
-	if (count($items) > 0){
 	
-		$items = $items[0];
+	$sql="SELECT PRODUCTID,ORDERPOINT,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE
+		  FROM dbo.ICPRODUCT  
+	      WHERE BARCODE = ?";
+	$req=$conn->prepare($sql);
+	$req->execute(array($barcode));
+	$item =$req->fetch(PDO::FETCH_ASSOC);
+
+	if (isset($item["PRODUCTID"]))
+	{
+			
 		$sql="
 		SELECT LOCONHAND,STORBIN 
 		FROM dbo.ICLOCATION  
@@ -797,9 +798,10 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$params = array($barcode);
 		$req=$conn->prepare($sql);
 		$req->execute($params);
-		$item=$req->fetch();
-		$items["WH1"] = $item["LOCONHAND"];
-		$items["STOREBIN1"] = $item["STORBIN"];
+		$item1=$req->fetch();
+
+		$item["WH1"] = $item1["LOCONHAND"];
+		$item["STOREBIN1"] = $item1["STORBIN"];
 		
 		$sql="
 		SELECT LOCONHAND,STORBIN 
@@ -808,19 +810,14 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$params = array($barcode);
 		$req=$conn->prepare($sql);
 		$req->execute($params);
-		$item=$req->fetch();
-		$items["WH2"] = $item["LOCONHAND"];
-		$items["STOREBIN2"] = $item["STORBIN"];
+		$item2=$req->fetch();
 
-		$items["result"] = "OK";
+		$item["WH2"] = $item2["LOCONHAND"];
+		$item["STOREBIN2"] = $item2["STORBIN"];
 
-		$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
-		
-		if ($json["result"] != "KO")			
-			$items["PICTURE"] = $json["image"];
-		else 
-			$items["PICTURE"] = getImage($barcode);
-		$item = $items;
+		$item["result"] = "OK";
+
+		$item["PICTURE"] = getImage($barcode);		
 
 		if ($check == "WH1" || $check == "WH2")
 		{							
@@ -894,6 +891,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$response = $response->withJson($item);
 	return $response;
 });
+
 
 
 $app->get('/picture/{barcode}',function(Request $request,Response $response) {
@@ -1391,7 +1389,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$category = $request->getParam('category','');
 	$keyword =  $request->getParam('keyword','');
 	$vendor =  $request->getParam('vendor',''); 
-	$country = $request->getParam('country','');
+	$storebin = $request->getParam('storebin','');
 	$vendorid = $request->getParam('vendorid','');
 	$count = $request->getParam('count',"3000");
 
@@ -1458,13 +1456,30 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 		$sql .= " AND dbo.ICPRODUCT.VENDID = ?";
 		array_push($params,$vendorid);
 	}
+	
 
-	if ($country != ""){
-		$country = "%".$country."%";
-		$sql .= " AND COLOR like ?";
-		array_push($params,$country);
-	}
-	$sql .= " ORDER BY PRODUCTNAME ASC";
+	if ($storebin != "")
+	{
+		$sqlBis = "SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN = ?";
+		$req = $conn->prepare($sqlBis);
+		$req->execute(array($storebin));
+		$locitems = $req->fetchall();
+		
+		if(count($locitems) > 0)
+		{
+			$sql .= " AND PRODUCTID IN (";
+			foreach($locitems as $locitem){
+    			$sql .=  "?,"; 
+				array_push($params,$locitem["PRODUCTID"]);	
+    		}
+    		$sql = substr($sql, 0, -1);
+    		$sql .= ")";					
+		}	
+		else		
+			$sql .= " AND PRODUCTID IN ('IMPOSSIBLEVALUE')";		
+		
+	}	
+	$sql .= " ORDER BY PRODUCTNAME ASC";	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -5072,7 +5087,23 @@ $app->get('/itemsale',function($request,Response $response) {
 
 	return $response;	
 });
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+          
+function purifyPromotion($result)
+{
+	$output = array();
+
+	foreach($result as $item)
+	{
+		if ($item["DISCAMOUNT"] != null && $item["DISCAMOUNTSTART"] != null && $item["DISCAMOUNTEND"] != null) 
+			array_push($output,$item);
+		
+		if ($item["DISCPERCENT"] != null && $item["DISCPERCENTSTART"] != null && $item["DISCPERCENTEND"] != null) 
+			array_push($output,$item);		
+	}
+	return $output;
+}
+
+
 $app->get('/currentpromotion',function($request,Response $response) {
 	$json = json_decode($request->getBody(),true);
 	$begin = date("Y-m-d");
@@ -5192,12 +5223,12 @@ $app->get('/selection',function($request,Response $response) {
 // best seller general
 $app->get('/bestseller',function($request,Response $response) {
 	
-
+	$conn=getDatabase();
 	$json = json_decode($request->getBody(),true);
 	$begin = $request->getParam('begin','');
 	$end = $request->getParam('end','');
 	$sql = "
-		SELECT TOP (500)
+		SELECT TOP (100)
 		dbo.POSDETAIL.PRODUCTID
 		,dbo.POSDETAIL.PRODUCTNAME
 		,dbo.POSDETAIL.PRODUCTNAME1
@@ -5222,7 +5253,10 @@ $app->get('/bestseller',function($request,Response $response) {
 		AND POSDATE <= '$end 23:59:59.999'
 		GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
 		ORDER BY COUNT DESC"; 
-	$result = SELECTALL($sql);		
+
+	$req = $conn->prepare($sql);	
+	$req->execute(array());
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$response = $response->withJson($result);
 	return $response;	
 });
