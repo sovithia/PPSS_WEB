@@ -143,6 +143,12 @@ function getUserSession($login,$password)
 				                	 
     }  
 }
+
+$app->get('/image/{id}',function(Request $request,Response $response) { 
+	$id = $request->getAttribute('id');
+	$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
+	$response = $response->withJson($result);
+});
 		
 $app->post('/login',function(Request $request,Response $response) { 
 
