@@ -149,12 +149,14 @@ $app->get('/image/{id}',function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
 	$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
 	$response = $response->withJson($result);
+	return $response;
 });
 
 $app->post('/image',function(Request $request,Response $response) { 
 	$json = json_decode($request->getBody(),true);
 	$result = RestEngine::POST("http://192.168.72.62/api/api.php/picture",$json);	
 	$response = $response->withJson($result);
+	return $response;
 });
 		
 $app->post('/login',function(Request $request,Response $response) { 
