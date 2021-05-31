@@ -52,7 +52,7 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 $app = new \Slim\App;
 
-$URL = "http://192.168.72.62/api/api.php/picture/";
+$URL = "http://phnompenhsuperstore.com/api/api.php/picture/";
 
 /**************CORE ***************/
 
@@ -144,9 +144,16 @@ function getUserSession($login,$password)
     }  
 }
 
+// WRAP
 $app->get('/image/{id}',function(Request $request,Response $response) { 
 	$id = $request->getAttribute('id');
 	$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
+	$response = $response->withJson($result);
+});
+
+$app->post('/image',function(Request $request,Response $response) { 
+	$json = json_decode($request->getBody(),true);
+	$result = RestEngine::POST("http://192.168.72.62/api/api.php/picture",$json);	
 	$response = $response->withJson($result);
 });
 		
@@ -3678,6 +3685,23 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 	return $response;
 });
 
+$app->put('/itemrequestrestockpool/{id}', function(Request $request,Response $response) {
+	
+	$db = getInternalDatabase();	
+	$id = $request->getAttribute('id');
+	$json = json_decode($request->getBody(),true);	
+	$listname = $json["LISTNAME"];	
+
+	$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET LISTNAME = ? WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($listname,$id));
+
+	$data["RESULT"] = "OK";
+	$response = $response->withJson($data);
+	return $response;
+});
+
+
 // UPDATE
 $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -5146,7 +5170,11 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	(SELECT VENDNAME FROM dbo.APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME',
 	CATEGORYID,COLOR,
 	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
-	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE'
+	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
+	ISNULL( (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1' ) ,'N/A') 
+	as 'STOREBIN1',
+	ISNULL( (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH2' ) ,'N/A') 
+	as 'STOREBIN2'
   		
 	FROM dbo.ICPRODUCT 	
 	WHERE PRODUCTID in (SELECT PRODUCTID FROM [PhnomPenhSuperStore2019].[dbo].[ICPROMOTION] WHERE DATESTART <= '$begin 00:00:00.000' AND DATEEND >= '$begin 23:59:59.999' ) 
@@ -5181,7 +5209,7 @@ $app->get('/bestsellerpromotion',function($request,Response $response) {
 	$end = $request->getParam('end','');//$json["end"];
 	$conn=getDatabase();
 	
-	$sql = "SELECT TOP (150)
+	$sql = "SELECT TOP (50)
       [PRODUCTID]
       ,[PRODUCTNAME]
 	  ,[PRODUCTNAME1]
@@ -5252,7 +5280,7 @@ $app->get('/bestseller',function($request,Response $response) {
 	$begin = $request->getParam('begin','');
 	$end = $request->getParam('end','');
 	$sql = "
-		SELECT TOP (100)
+		SELECT TOP (50)
 		dbo.POSDETAIL.PRODUCTID
 		,dbo.POSDETAIL.PRODUCTNAME
 		,dbo.POSDETAIL.PRODUCTNAME1

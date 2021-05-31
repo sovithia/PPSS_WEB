@@ -232,7 +232,7 @@ function getCurrentRate(){
 
 function getImage($barcode){
 
-	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
+	$json = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/image/".str_replace(" ","%20",$barcode));      
 	if ($json["result"] != "KO")					
 		return $json["image"];
 	else if (file_exists("img/products/".$barcode.".jpg"))
