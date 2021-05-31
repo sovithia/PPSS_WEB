@@ -1652,7 +1652,7 @@ function renderItemSearch($items)
         </table>              
        </form>
       <br><br>";
-
+       $dataSet = "";
        foreach($items as $item)
        {
         $item["PRODUCTID"] = $item["BARCODE"];

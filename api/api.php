@@ -2116,7 +2116,7 @@ function createSupplyRecordForPO(){
 			}
 			if($onePO["NOTES"] == "NOPO")
 			{
-				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','NOPO','YES')";
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 			}
@@ -2797,6 +2797,63 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 								ITEMREQUESTACTIONS
 								ITEMREQUESTACTIONS                               */
 
+
+$app->get('/itemrequestactionsearch', function(Request $request,Response $response) {
+
+	$today = date("Y-m-d");
+	// TYPE
+	// REQUESTER 
+	// REQUESTEE 
+	// PRODUCTID ITEMREQUEST
+	// DATE FROM
+	// DATE TO  
+
+	$type =  $request->getParam('type','ALL');
+	$requester =  $request->getParam('requester','');
+	$requestee =  $request->getParam('requestee','');
+	$productid = $request->getParam('productid','');
+	$start =  $request->getParam('start','');
+	$end =  $request->getParam('end','');
+
+
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM ITEMREQUESTACTION,ITEMREQUEST   
+		    WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID";
+	$params = array();
+
+	if ($type != 'ALL'){
+		$sql .= " AND TYPE = ?";
+		array_push($params,$type);
+	}
+
+	if ($requester != ''){
+		$sql .= " AND REQUESTER = ?";
+		array_push($params,$requester);	
+	}
+
+	if ($requestee != ''){
+		$sql .= " AND REQUESTEE = ?";
+		array_push($params,$requestee);	
+	}
+
+	if ($start != '' && $end != ''){
+		$sql .= " AND REQUEST_TIME between ? AND ?";
+		array_push($params,$start." 00:00:00.000" ,$end." 23:59:59.999");	
+	}
+
+	if ($productid != '')
+	{
+		$sql .= " AND PRODUCTID = ?";
+		array_push($params, $productid); 
+	}
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$response = $response->withJson($data);
+	return $response;
+});
+
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	
@@ -3188,8 +3245,8 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				}
 			}
 		}
-		else if ($ira["TYPE"] == "RESTOCK"){ // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
-		
+		else if ($ira["TYPE"] == "RESTOCK")  // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
+		{
 			foreach($items as $item)
 			{
 				// TRANSFER POOL
@@ -3617,7 +3674,12 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],
 					(isset($item["LOTWH1"]) ? $item["LOTWH1"]:  null),
 					(isset($item["LOTWH2"]) ? $item["LOTWH2"]:  null)));		
-				}			
+				}
+				else if ($type == "RESTOCK"){
+						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$json["LISTNAME"]));		
+				}
 				else 
 				{
 					$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
@@ -3678,9 +3740,19 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$suffix = " AND USERID = ".$userid;
 	}
 
-	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;	
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
+	if ($type == "TRANSFER")
+	{
+		$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ? AND LISTNAME = ?";	
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["LISTNAME"]));
+	}
+	else 
+	{
+		$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;	
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));	
+	}
+	
 	
 	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
@@ -3725,10 +3797,19 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$suffix = " AND USERID = ".$userid;
 	}
 
-	$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
-	$req = $db->prepare($sql);
+	if ($type == "RESTOCK")
+	{
+		$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"],$json["LISTNAME"]));	
+	}
+	else
+	{
+		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
+		$req = $db->prepare($sql);
+		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"]));	
+	}
 	
-	$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"]));	
 	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
