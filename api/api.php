@@ -5528,7 +5528,7 @@ $app->get('/info',function(Request $request,Response $response){
 });
 
 
-$app->('/depleteditems', function($request,Response $response) {
+$app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
 	$sql = "SELECT ICPRODUCT.PRODUCTID,PRODUCTNAME,ONHAND, 
 					FROM ICLOCATION,ICPRODUCT WHERE 
