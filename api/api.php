@@ -2168,7 +2168,7 @@ function createSupplyRecordForPO(){
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 			}
-			if($onePO["NOTES"] == "NOPO")
+			else if($onePO["NOTES"] == "NOPO")
 			{
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','NOPO','YES')";
 				$req = $indb->prepare($sql);
