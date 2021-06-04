@@ -3352,9 +3352,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				$cnt = $req->fetch();
 				
 				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY
-					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
+					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values (?,?,?)";
 					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));	
+					$req1->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]),'A');	
 				}
 				else 
 				{
