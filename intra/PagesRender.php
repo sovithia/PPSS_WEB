@@ -4052,6 +4052,7 @@ function renderBank($data)
 /**********************/
 /**** ItemRequest ****/
 
+
 function renderItemRequestActionList($data){
   $items = $data;
   $status = $_GET["status"];
@@ -4203,14 +4204,16 @@ function renderItemRequestActionDetails($data){
     ";   
     $body .=  "</div>"; 
     
-    $body .=  "<center>
+    if ($status != "READONLY")
+    {
+      $body .=  "<center>
               <input type='hidden' id='action'  value='update'>
                 <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>                
                 <input type='hidden' id='status'  value='".$status."'>                
                 <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
                 (Sign with your trackpad or mouse)<br>";
     
-    $body .= "
+      $body .= "
             <button type='button' onclick='zkSignature.clear()'>
                 Clear Signature
                </button>
@@ -4224,9 +4227,151 @@ function renderItemRequestActionDetails($data){
         
                <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
-               </button><center><br><br><br>";
+               </button><center><br><br><br>";  
+    }
+    
 
     return $body; 
+}
+
+function renderItemRequestActionSearch($data){
+
+   $types = array("ALL","DEMAND","RESTOCK","PUCHASE","TRANSFER","TRANSFERBACK");
+  
+   $type = isset($_GET["TYPE"]) ? $_GET["TYPE"] : "";
+   $productid = isset($_GET["PRODUCTID"]) ? $_GET["PRODUCTID"] : "";
+   $requester = isset($_GET["REQUESTER"]) ? $_GET["REQUESTER"] : "";
+   $requestee = isset($_GET["REQUESTEE"]) ? $_GET["REQUESTEE"] : "";
+   $start = isset($_GET["START"]) ? $_GET["START"] : "2000-1-1";
+   $end = isset($_GET["END"]) ? $_GET["END"] : "2050-1-1";
+
+   
+
+   $body = "";  
+   $body .= "<div class='col s12 m8 l9'>
+              <div class='row margin'>
+                <form class='col s12' method='GET'>
+        
+        <div class='row'>
+                  <div class='input-field col s12'>
+                    ".elemSelect($types,"TYPE",12,$type)."
+                  </div>
+              </div>
+
+
+                <div class='row'>
+                   <div class='input-field col s12'>                   
+                      <input id='productid' name='PRODUCTID' type='text' value='".$productid."' >
+                      <label for='productid' class='center-align'>Product ID</label>               
+                   </div>
+                </div>
+
+                <div class='row'>
+                   <div class='input-field col s12'>                   
+                      <input id='requester' name='REQUESTER' type='text' value='".$requester."' >
+                      <label for='requester' class='center-align'>Requester</label>               
+                   </div>
+                </div>
+
+                <div class='row'>
+                   <div class='input-field col s12'>                   
+                      <input id='requestee' name='REQUESTEE' type='text' value='".$requestee."' >
+                      <label for='requestee' class='center-align'>Requestee</label>               
+                   </div>
+                </div>
+
+                <div class='row'>
+                    <div class='input-field col s12'>
+                      ".dateSelect("START",$start)."
+                    </div>
+                </div>
+
+                <div class='row'>
+                    <div class='input-field col s12'>                        
+                        ".dateSelect("END",$end)."
+                    </div>
+                </div>
+            
+
+
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                      <input type='hidden' name='display' value='itemrequestactionsearch'>
+                      <input type='hidden' name='entity' value='itemrequestactionsearch'>
+                      <input type='hidden' name='action' value='itemrequestactionsearch'>
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
+                     </div>
+                  </div>
+            </form>
+              </div>
+             </div> 
+              ";    
+
+    $items = $data;
+
+  $items = $data;
+  if ($items != null)
+  {
+   $body .= "<div >";   
+   $body .=   "<table border='1' id='result'>
+               <thead><tr>
+                  <th>DETAILS</th>                                
+                  <th>ID</th>
+                  <th>TYPE</th> 
+                  <th>REQUEST_TIME</th>
+                  <th>REQUESTER</th>
+                  <th>REQUESTEE</th>                  
+               </tr></thead>
+
+               <tfoot><tr>
+                  <th>DETAILS</th>                                
+                  <th>ID</th>
+                  <th>TYPE</th> 
+                  <th>REQUEST_TIME</th>
+                  <th>REQUESTER</th>
+                  <th>REQUESTEE</th> 
+               </tr></tfoot>
+               </table>
+               ";  
+    $dataSet1 = "";
+    
+
+    foreach($items as $item)
+    {   
+       $base = "../api/img/requestaction/";
+
+        
+        $ID = $item["ID"];
+
+        $REQUESTER = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."R".$ID.".png")) ? $base."R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTER"];
+        $REQUESTEE = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."E".$ID.".png")) ? $base."E".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTEE"];
+
+         $dataSet1 .= 
+         "[ 
+          '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=READONLY&ID=".$item["ID"]."\">DETAILS</a>',                
+          '".$item["ID"]."',          
+          '".$item["TYPE"]."',
+          '".$item["REQUEST_TIME"]."',    
+          '".$REQUESTER."',
+          '".$REQUESTEE."'                  
+          ],";
+    }
+     $dataSet1 = rtrim($dataSet1,",");        
+        $body .= "  
+        <script>      
+        var dataSet1 = [".$dataSet1."];
+        var table;        
+        table =  $(document).ready( function () {
+         $('#result').DataTable({                
+         data:dataSet1, 
+         'lengthMenu':[-1],          
+           });
+        });
+      </script>
+    ";   
+    $body .=  "</div>"; 
+  }
+  return $body;
 }
 
 
@@ -4638,8 +4783,10 @@ function renderSupplyRecordDetail($data,$action){
           <th>NAME</th>
 
           <th>MINVENDORNAME</th>
+          <th>MINDISC</th>
           <th>MINCOST</th>
           <th>MAXVENDORNAME</th>
+          <th>MAXDISC</th>
           <th>MAXCOST</th>
           <th>DISCOUNT</th>
           <th>ORDER_PRICE</th>
@@ -4739,8 +4886,10 @@ function renderSupplyRecordDetail($data,$action){
               \"".$item["PRODUCTNAME"]."\",
 
               \"".$item["MINVENDORNAME"]."\",
+              \"".$item["MINDISC"]."\",
               \"".$item["MINCOST"]."\",
               \"".$item["MAXVENDORNAME"]."\",
+              \"".$item["MAXDISC"]."\",
               \"".$item["MAXCOST"]."\",
               \"".$item["TRANDISC"]."\",
               
@@ -4773,7 +4922,7 @@ function renderSupplyRecordDetail($data,$action){
           </script>
       ";   
       $body .= "<b>Total Quantity: ". $total."</b><br>";
-      $body .= "<b>Total Amount: $". $totalAmt."</b><br>";
+      $body .= "<b>Total Amount: $". $totalAmt."</b><br><br><br>";
      }
      else
      {
@@ -4815,15 +4964,17 @@ function renderSupplyRecordDetail($data,$action){
     return $body;      
 }
 
+
 function renderSupplyRecordSearch($data){
    $statuses = array("ALL","WAITING","VALIDATED","ORDERED","DELIVERED","RECEIVED","PAID");
-   $potypes = array("ALL","PO","NOPO");
+   $potypes = array("ALL","PO","NOPO","AUTOVALIDATED");
 
-   $ponumber = isset($_GET["ponumber"]) ? $_GET["ponumber"] : "";
-   $start = isset($_GET["start"]) ? $_GET["start"] : "2000-1-1";
-   $end = isset($_GET["end"]) ? $_GET["end"] : "2050-1-1";
-   $status = isset($_GET["start"]) ? $_GET["start"] : "";
-   $potype = isset($_GET["end"]) ? $_GET["end"] : "";
+   $ponumber = isset($_GET["PONUMBER"]) ? $_GET["PONUMBER"] : "";
+   $productid = isset($_GET["PRODUCTID"]) ? $_GET["PRODUCTID"] : "";
+   $start = isset($_GET["START"]) ? $_GET["START"] : "2000-1-1";
+   $end = isset($_GET["END"]) ? $_GET["END"] : "2050-1-1";
+   $status = isset($_GET["STATUS"]) ? $_GET["STATUS"] : "";
+   $potype = isset($_GET["POTYPE"]) ? $_GET["POTYPE"] : "";
 
 
    $body = "";  
@@ -4831,43 +4982,51 @@ function renderSupplyRecordSearch($data){
               <div class='row margin'>
                 <form class='col s12' method='GET'>
         
-                <div class='row'>
-                    <div class='input-field col s12'>
-                      ".dateSelect("start",$start)."
-                    </div>
-                </div>
-
-                <div class='row'>
-                    <div class='input-field col s12'>                        
-                        ".dateSelect("end",$end)."
-                    </div>
-                </div>
-
-
-              <div class='row'>
+        <div class='row'>
                   <div class='input-field col s12'>
-                    ".elemSelect($statuses,"status",12,$status)."
+                    ".elemSelect($statuses,"STATUS",12,$status)."
                   </div>
               </div>
 
               <div class='row'>
                   <div class='input-field col s12'>
-                    ".elemSelect($potypes,"potype",12,$potype)."
+                    ".elemSelect($potypes,"POTYPE",12,$potype)."
                   </div>
               </div>
 
                 <div class='row'>
                    <div class='input-field col s12'>                   
-                      <input id='ponumber' name='ponumber' type='text' value='".$ponumber."' >
+                      <input id='ponumber' name='PRODUCTID' type='text' value='".$productid."' >
+                      <label for='ponumber' class='center-align'>Product ID</label>               
+                   </div>
+                </div>
+
+                <div class='row'>
+                   <div class='input-field col s12'>                   
+                      <input id='ponumber' name='PONUMBER' type='text' value='".$ponumber."' >
                       <label for='ponumber' class='center-align'>PO Number</label>               
                    </div>
                 </div>
 
+                <div class='row'>
+                    <div class='input-field col s12'>
+                      ".dateSelect("START",$start)."
+                    </div>
+                </div>
+
+                <div class='row'>
+                    <div class='input-field col s12'>                        
+                        ".dateSelect("END",$end)."
+                    </div>
+                </div>
+            
+
+
               <div class='row'>    
                      <div class='input-field col s12'>             
-                      <input type='hidden' name='display' value='receptionrecordsearch'>
-                      <input type='hidden' name='entity' value='receptionrecordsearch'>
-                      <input type='hidden' name='action' value='receptionrecordsearch'>
+                      <input type='hidden' name='display' value='supplyrecordsearch'>
+                      <input type='hidden' name='entity' value='supplyrecordsearch'>
+                      <input type='hidden' name='action' value='supplyrecordsearch'>
                       <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
                      </div>
                   </div>
@@ -4877,6 +5036,12 @@ function renderSupplyRecordSearch($data){
               ";    
 
     $items = $data;
+
+
+   //$fields = ["DETAILS","TYPE","STATUS","VAL","PCH","WH","RCV","ACC",
+    //          "PONUMBER","VENDNAME","LAST_UPDATED"];
+   //$body .= _ItemsTable($items,$fields,$_GET);
+
 
   
     if ($items != null)
@@ -4916,19 +5081,19 @@ function renderSupplyRecordSearch($data){
         {   
           if ($item["TYPE"] == 'NOPO'){
             $item["PONUMBER"] = $item["LINKEDPO"];
-            $item["VENDOR"] = $item["PONOTE"];
+            $item["VENDOR"] = $item["NOPONOTE"];
           }
 
             $base = "http://phnompenhsuperstore.com/api/img/supplyrecords_signatures/";
-            $VAL = "<img src='".$base."VAL_".$item["ID"].".png' alt='N/A'><br>".$item["VALIDATORUSER"] ;
-            $PCH = "<img src='".$base."PCH_".$item["ID"].".png' alt='N/A'><br>".$item["PURCHASERUSER"] ;
-            $WH = "<img src='".$base."WH_".$item["ID"].".png' alt='N/A'><br>".$item["WAREHOUSEUSER"] ;
-            $RCV = "<img src='".$base."RCV_".$item["ID"].".png' alt='N/A'><br>".$item["RECEIVERUSER"] ;
-            $ACC = "<img src='".$base."ACC_".$item["ID"].".png' alt='N/A'><br>".$item["ACCOUNTANTUSER"] ;
+            $VAL = "<img width=\"70px\" src=\"".$base."VAL_".$item["ID"].".png\" alt=\"N/A\"><br>".$item["VALIDATOR_USER"] ;
+            $PCH = "<img width=\"70px\" src=\"".$base."PCH_".$item["ID"].".png\" alt=\"N/A\"><br>".$item["PURCHASER_USER"] ;
+            $WH = "<img width=\"70px\" src=\"".$base."WH_".$item["ID"].".png\" alt=\"N/A\"><br>".$item["WAREHOUSE_USER"] ;
+            $RCV = "<img width=\"70px\" src=\"".$base."RCV_".$item["ID"].".png\" alt=\"N/A\"><br>".$item["RECEIVER_USER"] ;
+            $ACC = "<img width=\"70px\" src=\"".$base."ACC_".$item["ID"].".png\" alt=\"N/A\"><br>".$item["ACCOUNTANT_USER"] ;
 
 
              $dataSet1 .= "[    
-              '<a href=\"?display=receptionRecordDetail&entity=receptionRecordDetail&action=no&ID=".$item["ID"]."\">DETAILS</a>',
+              '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=NO&ID=".$item["ID"]."\">DETAILS</a>',
               '".$item["TYPE"]."',
               '".$item["STATUS"]."',
               '".$VAL."',
@@ -5786,146 +5951,7 @@ function renderPCHTodo($data){
     return $body; 
 }
 
-function renderReceptionRecordSearch($data){
 
-  //
-   $statuses = array("ALL","WAITING","VALIDATED","ORDERED","DELIVERED","RECEIVED","PAID");
-   $potypes = array("ALL","PO","NOPO");
-
-
-   $ponumber = isset($_GET["ponumber"]) ? $_GET["ponumber"] : "";
-   $start = isset($_GET["start"]) ? $_GET["start"] : "2000-1-1";
-   $end = isset($_GET["end"]) ? $_GET["end"] : "2050-1-1";
-   $status = isset($_GET["start"]) ? $_GET["start"] : "";
-   $potype = isset($_GET["end"]) ? $_GET["end"] : "";
-
-
-   $body = "";  
-   $body .= "<div class='col s12 m8 l9'>
-              <div class='row margin'>
-                <form class='col s12' method='GET'>
-        
-                <div class='row'>
-                    <div class='input-field col s12'>
-                      ".dateSelect("start",$start)."
-                    </div>
-                </div>
-
-                <div class='row'>
-                    <div class='input-field col s12'>                        
-                        ".dateSelect("end",$end)."
-                    </div>
-                </div>
-
-
-              <div class='row'>
-                  <div class='input-field col s12'>
-                    ".elemSelect($statuses,"status",12,$status)."
-                  </div>
-              </div>
-
-              <div class='row'>
-                  <div class='input-field col s12'>
-                    ".elemSelect($potypes,"potype",12,$potype)."
-                  </div>
-              </div>
-
-                <div class='row'>
-                   <div class='input-field col s12'>                   
-                      <input id='ponumber' name='ponumber' type='text' value='".$ponumber."' >
-                      <label for='ponumber' class='center-align'>PO Number</label>               
-                   </div>
-                </div>
-
-              <div class='row'>    
-                     <div class='input-field col s12'>             
-                      <input type='hidden' name='display' value='receptionrecordsearch'>
-                      <input type='hidden' name='entity' value='receptionrecordsearch'>
-                      <input type='hidden' name='action' value='receptionrecordsearch'>
-                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
-                     </div>
-                  </div>
-            </form>
-              </div>
-             </div> 
-              ";    
-
-    $items = $data;
-
-    if ($items != null)
-    {
-       $body .=   "<table id='resultTable1'>
-                 <thead><tr>
-                    <th>DETAILS</th> 
-                    <th>TYPE</th>
-                    <th>STATUS</th>
-                    <th>XWH SIGNATURE</th><th>XWH USER</th>
-                    <th>PCH SIGNATURE</th><th>PCH USER</th>
-                    <th>WH SIGNATURE</th><th>WH USER</th>
-                    <th>RCV SIGNATURE</th><th>RCV USER</th>
-                    <th>ACC SIGNATURE</th><th>ACC USER</th>
-                    <th>PONUMBER</th>
-                    <th>VENDOR/NOTE</th> <th>LAST UPDATED</th>
-                 </tr></thead>
-
-                 <tfoot><tr>
-                    <th>DETAILS</th>
-                    <th>TYPE</th>
-                    <th>STATUS</th>
-                    <th>XWH SIGNATURE</th><th>XWH USER</th>
-                    <th>PCH SIGNATURE</th><th>PCH USER</th>                  
-                     <th>WH SIGNATURE</th><th>WH USER</th>
-                    <th>RCV SIGNATURE</th><th>RCV USER</th>
-                    <th>ACC SIGNATURE</th><th>ACC USER</th>
-                    <th>PONUMBER</th>
-                    <th>VENDOR/NOTE</th> <th>LAST UPDATED</th>
-                 </tr></tfoot>
-               </table>
-               ";  
-                $dataSet1 = "";            
-        foreach($items as $item)
-        {   
-          if ($item["TYPE"] == 'NOPO'){
-            $item["PONUMBER"] = $item["LINKEDPO"];
-            $item["VENDOR"] = $item["PONOTE"];
-          }
-
-             $dataSet1 .= "[    
-              '<a href=\"?display=receptionRecordDetail&entity=receptionRecordDetail&action=no&ID=".$item["ID"]."\">DETAILS</a>',
-              '".$item["TYPE"]."',
-              '".$item["STATUS"]."',"
-              .( strlen($item["XWAREHOUSESIGNATUREIMAGE"]) > 0 ? "'<img height=\"50px\" style=\"background-color:#009183\" src=\"data:image/png;base64,".$item["XWAREHOUSESIGNATUREIMAGE"]."\">'" : "'N/A'" ).",
-              '".$item["XWAREHOUSE_USER"]."',"
-              .( strlen($item["PURCHASERSIGNATUREIMAGE"]) > 0 ? "'<img height=\"50px\" style=\"background-color:#009183\" src=\"data:image/png;base64,".$item["PURCHASERSIGNATUREIMAGE"]."\">'" : "'N/A'" ).",
-              '".$item["PURCHASER_USER"]."',"
-              .( strlen($item["WAREHOUSESIGNATUREIMAGE"]) > 0 ? "'<img height=\"50px\" style=\"background-color:#009183\" src=\"data:image/png;base64,".$item["WAREHOUSESIGNATUREIMAGE"]."\">'" : "'N/A'" ).",
-              '".$item["WAREHOUSE_USER"]."',"
-              .( strlen($item["RECEIVERSIGNATUREIMAGE"]) > 0 ? "'<img height=\"50px\" style=\"background-color:#009183\" src=\"data:image/png;base64,".$item["RECEIVERSIGNATUREIMAGE"]."\">'" : "'N/A'" ).",
-              '".$item["RECEIVER_USER"]."'," 
-              .( strlen($item["ACCOUNTANTSIGNATUREIMAGE"]) > 0 ? "'<img height=\"50px\" style=\"background-color:#009183\" src=\"data:image/png;base64,".$item["ACCOUNTANTSIGNATUREIMAGE"]."\">'" : "'N/A'" ).",
-              '".$item["ACCOUNTANT_USER"]."', 
-              \"".$item["PONUMBER"]."\",
-              \"".$item["VENDNAME"]."\",                    
-              \"".$item["LAST_UPDATED"]."\"],";
-        }
-         $dataSet1 = rtrim($dataSet1,",");        
-            $body .= "  
-            <script>      
-            var dataSet1 = [".$dataSet1."];
-            var table;        
-            table =  $(document).ready( function () {
-             $('#resultTable1').DataTable({                
-             data:dataSet1, 
-             'lengthMenu':[-1],          
-               });
-            });
-          </script>
-        ";
-    }
-
-
-    return $body;
-}
           
 function renderReceptionRecordAll2($data){
  

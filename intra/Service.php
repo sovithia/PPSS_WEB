@@ -43,10 +43,10 @@ class MODELS
 class Service
 {
 	
-	const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
-	const BaseURL2 = "http://phnompenhsuperstore.com/api/api_dev.php";	
-	const BaseURLIntra = "http://phnompenhsuperstore.com/api/intrapi.php";
-	const BaseURLEcommerce = "http://phnompenhsuperstore.com/api/api_ecommerce.php";	
+	const BaseURL = "http://sites.local/PPSS/api/api.php";	
+	const BaseURL2 = "http://sites.local/PPSS/api/api_dev.php";	
+	const BaseURLIntra = "http://sites.local/PPSS/api/intrapi.php";
+	const BaseURLEcommerce = "http://sites.local/PPSS/api/api_ecommerce.php";	
 
 	// Login
 	const ResourceLogin = Service::BaseURLIntra."/login";
@@ -154,10 +154,12 @@ class Service
  	const ResourceItemUpdate = Service::BaseURLEcommerce."/items";
 
  	// NEW
- 	const ResourceSupplyRecord = Service::BaseURL."/supplyrecord";
+ 	const ResourceSupplyRecordSearch = Service::BaseURL."/supplyrecordsearch";
+ 	const ResourceSupplyRecord = Service::BaseURL."/supplyrecord"; 	
  	const ResourceSupplyRecordDetails = Service::BaseURL."/supplyrecorddetails";
 
  	// ITEMREQUEST
+ 	const ResourceItemRequestActionSearch = Service::BaseURL."/itemrequestactionsearch"; 
  	const ResourceItemRequestAction = Service::BaseURL."/itemrequestaction";
  	const ResourceItemRequestDetails = Service::BaseURL."/itemrequestactionitems";
  	const ResourceItemRequestPool = Service::BaseURL."/itemrequestitemspool";
@@ -247,9 +249,11 @@ class Service
 						 	  "receptionRecordDetailNOPO" => Service::ResourceReceptionRecordDetails,
 
 
+							  "supplyrecordsearch" => Service::ResourceSupplyRecordSearch,
 						 	  "supplyrecord" => Service::ResourceSupplyRecord,
 						 	  "supplyrecorddetails" => Service::ResourceSupplyRecordDetails,
 
+							  "itemrequestactionsearch" => Service::ResourceItemRequestActionSearch,
 						 	  "itemrequestaction" => Service::ResourceItemRequestAction,
 						 	  "itemrequestactiondetails" => Service::ResourceItemRequestDetails,
 						 	  "itemrequestactionpool" => Service::ResourceItemRequestPool,
@@ -293,7 +297,7 @@ class Service
 
 		if ($option != "" && (substr($option,0,1) != "?"))
 			$option = "/".$option;				
-						
+		error_log(Service::modelRoute[$model] . $option);
 		return RestEngine::GET(Service::modelRoute[$model] . $option,$header);				
 	}
 

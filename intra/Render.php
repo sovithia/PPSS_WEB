@@ -499,12 +499,16 @@ function renderLeftSidebar()
             <li  class="li-hover"><div class="divider"></div></li>
             <li  class="li-hover"><p class="ultra-small margin more-text">COMMON</p></li>
 
+            <li '.hoverColor("supplyrecordsearch").'><a href="?display=supplyrecordsearch&action=no&entity=supplyrecordsearch"><img src="images/icons/SupplyRecordSearchPage.png" width="30px" height="30px">SupplyRecord Search</a></li>
+
+              <li '.hoverColor("itemrequestactionsearch").'><a href="?display=itemrequestactionsearch&action=no&entity=itemrequestactionsearch"><img src="images/icons/ItemRequestActionSearchPage.png" width="30px" height="30px">ItemRequestAction Search</a></li>
+
             <li '.hoverColor("priceprogression").' ><a href="?display=priceprogression&action=no&entity=priceprogression"><img src="images/progression.png" width="30px" height="30px">Price Progression</a></li>
 
             <li '.hoverColor("itemsearch").'><a href="?display=itemsearch&action=no&entity=itemsearch"><img src="images/loupe.png" width="30px" height="30px">Item Search</a></li> 
             <li '.hoverColor("itemsearch2").'><a href="?display=itemsearch2&action=no&entity=itemsearch2"><img src="images/loupe.png" width="30px" height="30px">Item Search 2</a></li>
             
-            <li '.hoverColor("receptionrecordsearch").'><a href="?display=receptionrecordsearch&action=no&entity=receptionrecordsearch"><img src="images/receptionrecord.png" width="30px" height="30px">Items Transactions</a></li>
+            
 
             <li '.hoverColor("supplierlist").'><a href="?display=supplierlist&action=no&entity=supplier"><img src="images/supplier.png" width="30px" height="30px">Supplier List</a></li>            
             <li '.hoverColor("allwaitingpo").'><a href="?display=allwaitingpo&action=no&entity=allwaitingpo"><img src="images/waitingpo.png" width="30px" height="30px">All Waiting PO</a></li>

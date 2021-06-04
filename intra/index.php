@@ -91,24 +91,27 @@ function getData($display,$entity,$param)
 {     
   if ($display == "sales" && isset($param["date"]))
     return Service::ListEntity($entity,$param["date"]);
-  else if ($display == "receptionrecordsearch" && isset($param["potype"]))
+  else if ($display == "itemrequestactionsearch" && isset($param["START"]))
   {
     $params = "?a=1";
-    $params .= (strlen($param["ponumber"]) > 0)  ? "&ponumber=".$param["ponumber"] : "";
-    $params .= (strlen($param["start"]) > 0)  ? "&start=".$param["start"] : "";
-    $params .= (strlen($param["end"]) > 0)  ? "&end=".$param["end"] : "";
-    $params .= (strlen($param["status"]) > 0)  ? "&status=".$param["status"] : "";
-    $params .= (strlen($param["potype"]) > 0)  ? "&potype=".$param["potype"] : "";   
+    $params .= (strlen($param["TYPE"]) > 0)  ? "&TYPE=".$param["TYPE"] : "";    
+    $params .= (strlen($param["REQUESTER"]) > 0)  ? "&REQUESTER=".$param["REQUESTER"] : "";
+    $params .= (strlen($param["REQUESTEE"]) > 0)  ? "&REQUESTEE=".$param["REQUESTEE"] : "";   
+    $params .= (strlen($param["PRODUCTID"]) > 0)  ? "&potype=".$param["PRODUCTID"] : "";   
+    $params .= (strlen($param["START"]) > 0)  ? "&START=".$param["START"] : "";
+    $params .= (strlen($param["END"]) > 0)  ? "&END=".$param["END"] : "";
+
     return Service::ListEntity($entity,$params);
   } 
-  else if ($display == "supplyrecordsearch" && isset($param["potype"]))
+  else if ($display == "supplyrecordsearch" && isset($param["START"]))
   {
     $params = "?a=1";
-    $params .= (strlen($param["ponumber"]) > 0)  ? "&ponumber=".$param["ponumber"] : "";
-    $params .= (strlen($param["start"]) > 0)  ? "&start=".$param["start"] : "";
-    $params .= (strlen($param["end"]) > 0)  ? "&end=".$param["end"] : "";
-    $params .= (strlen($param["status"]) > 0)  ? "&status=".$param["status"] : "";
-    $params .= (strlen($param["potype"]) > 0)  ? "&potype=".$param["potype"] : "";   
+    $params .= (strlen($param["PONUMBER"]) > 0)  ? "&PONUMBER=".$param["PONUMBER"] : "";
+    $params .= (strlen($param["PRODUCTID"]) > 0)  ? "&productid=".$param["productid"] : "";
+    $params .= (strlen($param["STATUS"]) > 0)  ? "&STATUS=".$param["STATUS"] : "";
+    $params .= (strlen($param["POTYPE"]) > 0)  ? "&POTYPE=".$param["POTYPE"] : "";   
+    $params .= (strlen($param["START"]) > 0)  ? "&START=".$param["START"] : "";
+    $params .= (strlen($param["END"]) > 0)  ? "&END=".$param["END"] : "";    
     return Service::ListEntity($entity,$params);
   }  
   else if ( $display == "itemsearch" && isset($param["keyword"]) ) // 
@@ -543,22 +546,25 @@ function renderBody()
     return renderBank($data);  
 
   // SUPPLY RECORD
+  else if ($display == "supplyrecordsearch")
+    return renderSupplyRecordSearch($data);
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
   else if ($display == "supplyrecordlist")
     return renderSupplyRecordList($data,$_GET["action"]);
-  else if ($display == "supplyrecordsearch")
-    return renderSupplyRecordSearch($data);
   else if ($display == "supplyrecorddetails")
     return renderSupplyRecordDetail($data,$_GET["action"]);
   
   // ITEM REQUEST
+  else if ($display == "itemrequestactionsearch")
+    return renderItemRequestActionSearch($data); 
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
   else if ($display == "itemrequestactiondetails")
     return renderItemRequestActionDetails($data);
   else if ($display == "itemrequestactioncreate")
     return renderItemRequestActionCreate($data);
+
   // DEPRECATION
   else if ($display == "whdone")
     return renderWHDone($data);
@@ -591,10 +597,6 @@ function renderBody()
 
 
   // DEPRECATION
-  else if ($display == "receptionrecordsearch")
-    return renderReceptionRecordSearch($data);
-  else if ($display == "receptionRecordDetail")
-    return renderReceptionRecordDetail($data);
   else if ($display == "receptionRecordDetailNOPO")
     return renderReceptionRecordDetailNOPO($data);
 

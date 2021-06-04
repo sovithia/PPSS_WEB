@@ -407,7 +407,7 @@ function itemLookup($barcode){
 		$finalItem["WH2"] = $item["LOCONHAND"];
 
 		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
-		if (isset($json["result"]) && $json["result"] != "KO")			
+		if ($json["result"] != "KO")			
 			$finalItem["PICTURE"] = $json["image"];
 		else 		
 			$finalItem["PICTURE"] = getImage($barcode);					
@@ -796,7 +796,9 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,ORDERPOINT,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE,
+	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
+	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1',
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
 	$req=$conn->prepare($sql);
@@ -1376,7 +1378,7 @@ $app->post('/itemget',function(Request $request,Response $response) {
   $sql .= ")";
   $sql .= " ORDER BY CATEGORYID";
 
-  error_log($sql);
+  
 	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
@@ -1428,6 +1430,8 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$sql =  "SELECT TOP(".$count.") PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
+			(SELECT ORDERPOINT FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
+			(SELECT ORDERQTY   FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1',
 			PACKINGNOTE,COST,PRICE,VENDNAME,
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
@@ -1625,6 +1629,56 @@ $app->put('/itempromo/{barcode}', function(Request $request,Response $response) 
 	return $response;
 });
 
+
+$app->put('/item/{barcode}',function(Request $request,Response $response) {   
+
+	$db=getDatabase();	
+	$json = json_decode($request->getBody(),true);	
+	$field = $json["field"];
+	$value = isset($json["value"]) ? $json["value"] : null;
+	$barcode = $request->getAttribute('barcode'); 
+
+	if ($field == "PRODUCTNAME" || $field == "PRODUCTNAME1" || $field == "CATEGORY" ||
+		  $field == "PACKINGNOTE" ){
+		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ? WHERE BARCODE = ?";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );	
+	}
+	else if ($field == "PICTURE"){
+		$data["image"] = $value;
+		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+	}	
+	else if ($field == "PACKPICTURE")	{
+		$data["image"] = $value;
+		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+	}
+	else if ($field == "STOREBIN1"){ // MEDIUM
+		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH1' ";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );	
+	}
+	else if ($field == "STOREBIN2"){ // MEDIUM
+		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH2' ";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );			
+	}	
+	else if ($field == "PRICE"){ // HIGH
+		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ? WHERE BARCODE = ?";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );	
+	}
+
+	if ($result == true)	
+		$result["result"] = "OK";	
+	else
+		$result["result"] = "KO";	
+
+	$response = $response->withJson($result);
+	return $response;
+});
+
+
+// DEPRECATED
 $app->post('/itemupdate/{barcode}',function(Request $request,Response $response) {   
 	$conn=getDatabase();	
 	$json = json_decode($request->getBody(),true);	
@@ -2114,7 +2168,7 @@ function createSupplyRecordForPO(){
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 			}
-			else if($onePO["NOTES"] == "NOPO")
+			if($onePO["NOTES"] == "NOPO")
 			{
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','NOPO','YES')";
 				$req = $indb->prepare($sql);
@@ -2146,23 +2200,26 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 
 	$today = date("Y-m-d");
 		
-	$ponumber = $request->getParam('ponumber','');
-	$start =  $request->getParam('start','');
-	$end =  $request->getParam('end','');
-	$status =  $request->getParam('status','ALL');
-	$potype =  $request->getParam('potype','ALL');
+	$ponumber = $request->getParam('PONUMBER','');
+	$start =  $request->getParam('START','');
+	$end =  $request->getParam('END','');
+	$status =  $request->getParam('STATUS','ALL');
+	$potype =  $request->getParam('POTYPE','ALL');
+	$productid = $request->getParam('PRODUCTID','ALL');
 
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
 		    WHERE 1 = 1";
 	$params = array();
+
 	if ($ponumber != ''){
 		$sql .= " AND (PONUMBER = ? OR LINKEDPO = ?)";
 		array_push($params,$ponumber,$ponumber);
 	}
 
 	if ($start != '' && $end != ''){
-		$sql .= " AND PODATE between ? AND ?";
+		$sql .= " AND CREATED between ? AND ?";
 		array_push($params,$start." 00:00:00.000" ,$end." 23:59:59.999");	
 	}
 
@@ -2171,16 +2228,65 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 		array_push($params,$status);
 	}
 
-	if ($potype != 'ALL'){
-		$sql .= " AND TYPE = ?";
-		array_push($params,$potype);
+	if ($potype != 'ALL')
+	{
+		if ($potype == 'AUTOVALIDATED')
+			$sql .= " AND AUTOVALIDATED = 'YES'";
+		else {
+			$sql .= " AND TYPE = ?";
+			array_push($params,$potype);
+		}
+		
 	}
-	
+
+	if ($productid != ''){
+				
+		$sql1 = "SELECT PONUMBER FROM PODETAIL WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql1);
+		$ponumbers = $req->fetchAll();
+		if (count($ponumbers) > 0)
+		{
+			$sql .= "AND PONUMBER IN (";
+			foreach($ponumbers as $ponumber)
+			{
+				$sql .= "?,";
+				array_push($params,$ponumber["PONUMBER"]);
+			}
+			$sql = substr($sql,0,-1);
+			$sql .= ")"; 	
+		} 
+	}
+
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$response = $response->withJson($data);
+	// ADD VENDNAME	
+	$newData = array();
+
+	foreach($data as $oneData){
+		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($oneData["PONUMBER"]));		
+		$oneRes = $req->fetch();
+		if ($oneRes != false)
+			$oneData["VENDNAME"] = $oneRes["VENDNAME"];
+		
+		// COUNT INVOICES
+		$count = 1;
+		$nbinvoices = 0;
+		do
+		{       
+	        if (file_exists("./img/supplyrecords_invoices/INV_".$oneData["ID"]."_".$count.".png"))
+	          $nbinvoices++;                
+	        $count++;        
+	        $go = file_exists("./img/supplyrecords_invoices/INV_".$oneData["ID"]."_".$count.".png");
+    	}while($go);		
+		$oneData["NBINVOICES"] = $nbinvoices;
+		array_push($newData,$oneData);
+	}
+	$response = $response->withJson($newData);
 	return $response;
 });
 
@@ -2736,7 +2842,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$req = $db2->prepare($maxsql); 
  		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
-	
+		$item["MAXDISC"] = ($res != false) ? $res["TRANDISC"] : "";
  		$item["MAXCOST"] = ($res != false) ? $res["COST"] : "";
  		$item["MAXVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";	
  	
@@ -2750,6 +2856,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$req->execute(array($item["PRODUCTID"]));
  		$res = $req->fetch();
 
+		$item["MINDISC"] = ($res != false) ? $res["TRANDISC"] : "";
  		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
  		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";
  		array_push($tmpItems, $item);
@@ -2808,17 +2915,17 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 	// DATE FROM
 	// DATE TO  
 
-	$type =  $request->getParam('type','ALL');
-	$requester =  $request->getParam('requester','');
-	$requestee =  $request->getParam('requestee','');
-	$productid = $request->getParam('productid','');
-	$start =  $request->getParam('start','');
-	$end =  $request->getParam('end','');
+	$type =  $request->getParam('TYPE','ALL');
+	$requester =  $request->getParam('REQUESTER','');
+	$requestee =  $request->getParam('REQUESTEE','');
+	$productid = $request->getParam('PRODUCTID','');
+	$start =  $request->getParam('START','');
+	$end =  $request->getParam('END','');
 
 
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM ITEMREQUESTACTION,ITEMREQUEST   
-		    WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID";
+	$sql = "SELECT * FROM ITEMREQUESTACTION   
+		    WHERE 1 = 1 ";
 	$params = array();
 
 	if ($type != 'ALL'){
@@ -2840,11 +2947,25 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 		$sql .= " AND REQUEST_TIME between ? AND ?";
 		array_push($params,$start." 00:00:00.000" ,$end." 23:59:59.999");	
 	}
+	error_log($start);
+	error_log($end);
 
 	if ($productid != '')
 	{
-		$sql .= " AND PRODUCTID = ?";
-		array_push($params, $productid); 
+		$sql1 = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID ?";
+		$req = $db->prepare($sql1);
+		$irs = $req->fetchAll();
+		if (count($irs) > 0)
+		{
+			$sql .= " AND ID in (";
+			foreach($irs as $ir)
+			{
+				$sql .= "?,";
+				array_push($params,$ir["ITEMREQUESTACTION_ID"]);
+			}	
+			$sql = substr($sql,0,-1);
+			$sql .= " )";
+		}	
 	}
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -5405,6 +5526,22 @@ $app->get('/info',function(Request $request,Response $response){
 	$response = $response->withJson($item);
 	return $response;
 });
+
+
+$app->('/depleteditems', function($request,Response $response) {
+	$db=getDatabase();
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRODUCTNAME,ONHAND, 
+					FROM ICLOCATION,ICPRODUCT WHERE 
+					LOCID = 'WH1'
+					ONHAND < ORDERPOINT 
+					AND ORDERPOINT > 0";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll();
+	$response = $response->withJson($items);
+	return $response;
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
