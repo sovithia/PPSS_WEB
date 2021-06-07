@@ -3749,8 +3749,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$json = json_decode($request->getBody(),true);	
 
 	$suffix = "";
-	if ($type == "RESTOCK")
-		$tableName = "ITEMREQUESTRESTOCKPOOL";
+	if ($type == "RESTOCK")		
+		$tableName = "ITEMREQUESTRESTOCKPOOL";		
 	else if($type == "PURCHASE")
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
@@ -3777,10 +3777,18 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 
 	foreach($items as $item)
-	{
-		$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ?".$suffix;
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
+	{		
+		if ($type == "RESTOCK"){
+			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ? AND LISTNAME = ?";
+			$req = $db->prepare($sql);	
+			$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));
+		}
+		else
+		{
+			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ?".$suffix;		
+			$req = $db->prepare($sql);	
+			$req->execute(array($item["PRODUCTID"]));
+		}		
 		$res = $req->fetch();	
 
 
@@ -3797,6 +3805,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					(isset($item["LOTWH2"]) ? $item["LOTWH2"]:  null)));		
 				}
 				else if ($type == "RESTOCK"){
+						error_log($json["LISTNAME"]);
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
 					$req = $db->prepare($sql);
 					$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$json["LISTNAME"]));		
@@ -3826,6 +3835,12 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					(isset($item["LOTWH1"]) ? $item["LOTWH1"]:  null),
 					(isset($item["LOTWH2"]) ? $item["LOTWH2"]:  null),
 					$item["PRODUCTID"]));		
+			}
+			else if ($type == "RESTOCK"){
+				$newQty = $item["REQUEST_QUANTITY"]; // NO MORE ADD 
+				$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($newQty,$item["PRODUCTID"],$json["LISTNAME"]));		
 			}
 			else
 			{		
@@ -5530,14 +5545,19 @@ $app->get('/info',function(Request $request,Response $response){
 
 $app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
-	$sql = "SELECT ICPRODUCT.PRODUCTID,PRODUCTNAME,ONHAND, 
-					FROM ICLOCATION,ICPRODUCT WHERE 
-					LOCID = 'WH1'
-					ONHAND < ORDERPOINT 
-					AND ORDERPOINT > 0";
+	$sql = "SELECT TOP(10) ICPRODUCT.PRODUCTID,PRODUCTNAME, ICLOCATION.ORDERPOINT, ORDERQTY,
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
+		(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
+
+					FROM ICLOCATION,ICPRODUCT 
+					WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND LOCID = 'WH1'
+					AND ONHAND < ICLOCATION.ORDERPOINT 
+					AND ICLOCATION.ORDERPOINT > 0";
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$items = $req->fetchAll();
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$response = $response->withJson($items);
 	return $response;
 });
