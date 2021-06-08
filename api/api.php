@@ -796,7 +796,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,COST,PRICE,ONHAND,PACKINGNOTE,
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
 	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1'
 		  FROM dbo.ICPRODUCT  
@@ -1646,24 +1646,26 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	$value = isset($json["value"]) ? $json["value"] : null;
 	$barcode = $request->getAttribute('barcode'); 
 
-	if ($field == "PRODUCTNAME" || $field == "PRODUCTNAME1" || $field == "CATEGORY" ||
+	if ($field == "PRODUCTNAME" || $field == "PRODUCTNAME1" || $field == "CATEGORYID" ||
 		  $field == "PACKINGNOTE" ){
 		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ? WHERE BARCODE = ?";
 		$req = $db->prepare($sql);
 		$result = $req->execute(array($value,$barcode) );	
 	}
-	else if ($field == "PICTURE"){
+	else if ($field == "PICTURE"){		
 		$data["image"] = $value;
-		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);      
 	}	
 	else if ($field == "PACKPICTURE")	{
 		$data["image"] = $value;
-		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);      
 	}
 	else if ($field == "STOREBIN1"){ // MEDIUM
+		
 		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH1' ";
 		$req = $db->prepare($sql);
 		$result = $req->execute(array($value,$barcode) );	
+	
 	}
 	else if ($field == "STOREBIN2"){ // MEDIUM
 		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH2' ";
@@ -1676,10 +1678,8 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$result = $req->execute(array($value,$barcode) );	
 	}
 
-	if ($result == true)	
-		$result["result"] = "OK";	
-	else
-		$result["result"] = "KO";	
+	$result = array();	
+	$result["result"] = "OK";	
 
 	$response = $response->withJson($result);
 	return $response;
@@ -2955,15 +2955,14 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 		$sql .= " AND REQUEST_TIME between ? AND ?";
 		array_push($params,$start." 00:00:00.000" ,$end." 23:59:59.999");	
 	}
-	error_log($start);
-	error_log($end);
 
 	if ($productid != '')
 	{
-		$sql1 = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID ?";
+		$sql1 = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql1);
-		$irs = $req->fetchAll();
-		if (count($irs) > 0)
+		$req->execute(array($productid));
+		$irs = $req->fetchAll(PDO::FETCH_ASSOC);
+		if ($irs != false)
 		{
 			$sql .= " AND ID in (";
 			foreach($irs as $ir)
@@ -2973,6 +2972,9 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 			}	
 			$sql = substr($sql,0,-1);
 			$sql .= " )";
+		}
+		else {
+			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}	
 	}
 	$req = $db->prepare($sql);
@@ -3354,21 +3356,20 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			
 			foreach($items as $item){
 				
-				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT,count(*) as OCU FROM ITEMREQUESTRESTOCKPOOL WHERE PRODUCTID = ?";
+				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT,count(*) as OCU FROM ITEMREQUESTRESTOCKPOOL WHERE LISTNAME = 'A' AND PRODUCTID = ? ";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));			
 				$cnt = $req->fetch();
 				
-				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY
+				if ($cnt["OCU"] == 0){ // CREATE NEW ENTRY					
 					$sql1 = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values (?,?,?)";
 					$req1 = $db->prepare($sql1);
-					$req1->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]),'A');	
+					$req1->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],'A'));	
 				}
 				else 
 				{
-
 					$newQty = $item["REQUEST_QUANTITY"] + $cnt["CNT"];					
-					$sql1 = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?";
+					$sql1 = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE LISTNAME = 'A' AND PRODUCTID = ? ";
 					$req1 = $db->prepare($sql1);
 					$req1->execute(array($newQty,$item["PRODUCTID"]));		
 				}
