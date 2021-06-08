@@ -1425,9 +1425,32 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$vendor =  $request->getParam('vendor',''); 
 	$storebin = $request->getParam('storebin','');
 	$vendorid = $request->getParam('vendorid','');
-	$count = $request->getParam('count',"3000");
+	$count = $request->getParam('count',"300");
 
-	$sql =  "SELECT TOP(".$count.") PRODUCTID,BARCODE,
+	$storebin1 = $request->getParam('storebin1','');
+	$storebin2 = $request->getParam('storebin2','');
+
+	$params = array();
+
+	if ($storebin1 != "")
+	{
+		$IN1 = "AND ICPRODUCT.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND STORBIN LIKE ? )";
+		$storebin1 = "%".$storebin1."%";
+		array_push($params,$storebin1);
+	}	
+	else
+		$IN1 = "";
+	
+	if ($storebin2 != "")
+	{
+		$IN2 = "AND ICPRODUCT.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH2' AND STORBIN LIKE ? )";
+		$storebin2 = "%".$storebin2."%";
+		array_push($params,$storebin2);
+	}	
+	else
+		$IN2 = "";
+
+	$sql =  "SELECT TOP(".$count.") ICPRODUCT.PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
 			(SELECT ORDERPOINT FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
@@ -1441,15 +1464,22 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',				
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
-			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',			
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+
+			(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+			(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2',	
+
 			(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID 
 			 AND POSDATE BETWEEN  '$day30before 00:00:00.000' AND '$today 23:59:59.999'
 	  		 GROUP BY PRODUCTID) as 'SALELAST30',
 			PRICE,LASTRECEIVEDATE, LASTSALEDATE,dbo.ICPRODUCT.DATEADD
-			FROM dbo.ICPRODUCT,dbo.APVENDOR  
-			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID";
+			FROM dbo.ICPRODUCT,dbo.APVENDOR,dbo.ICLOCATION  
+			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID
+			AND dbo.ICPRODUCT.PRODUCTID = dbo.ICLOCATION.PRODUCTID 
+			".$IN1." ".$IN2;
+			
 
-	$params = array();
+	error_log($sql);
 
 
 	if ($barcode != ""){
@@ -1457,7 +1487,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 		if (strpos($barcode, '|') !== false) 
 		{
     		$barcodes = explode('|',$barcode); 
-			$sql .= " AND PRODUCTID in (";
+			$sql .= " AND ICPRODUCT.PRODUCTID in (";
     		foreach($barcodes as $oneBarcode){
     			$sql .=  "?,"; 
 				array_push($params,$oneBarcode);	
@@ -1467,11 +1497,9 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 		}
 		else 
 		{
-			$sql .= " AND PRODUCTID = ?";
+			$sql .= " AND ICPRODUCT.PRODUCTID = ?";
 			array_push($params,$barcode);	
-		}
-
-	
+		}	
 	}
 	if ($category != "" && $category != "ALL"){
 		$sql .=	" AND CATEGORYID = ?";
@@ -1494,27 +1522,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	}
 	
 
-	if ($storebin != "")
-	{
-		$sqlBis = "SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN = ?";
-		$req = $conn->prepare($sqlBis);
-		$req->execute(array($storebin));
-		$locitems = $req->fetchall();
-		
-		if(count($locitems) > 0)
-		{
-			$sql .= " AND PRODUCTID IN (";
-			foreach($locitems as $locitem){
-    			$sql .=  "?,"; 
-				array_push($params,$locitem["PRODUCTID"]);	
-    		}
-    		$sql = substr($sql, 0, -1);
-    		$sql .= ")";					
-		}	
-		else		
-			$sql .= " AND PRODUCTID IN ('IMPOSSIBLEVALUE')";		
-		
-	}	
+
 	$sql .= " ORDER BY PRODUCTNAME ASC";	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
@@ -3792,7 +3800,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$res = $req->fetch();	
 
 
-		if ($res["OCU"] == 0)
+		if ($res["OCU"] == 0) // NO RECORD THEN INSERT
 		{
 			if ($suffix == "")
 			{
@@ -3808,7 +3816,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 						error_log($json["LISTNAME"]);
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
 					$req = $db->prepare($sql);
-					$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$json["LISTNAME"]));		
+					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$json["LISTNAME"]));		
 				}
 				else 
 				{
@@ -3824,7 +3832,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$userid));		
 			}		
 		}
-		else
+		else // RECORD THEN UPDATE
 		{
 			if ($type == "TRANSFER" || $type == "TRANSFERBACK")
 			{				
@@ -5545,7 +5553,7 @@ $app->get('/info',function(Request $request,Response $response){
 
 $app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
-	$sql = "SELECT TOP(10) ICPRODUCT.PRODUCTID,PRODUCTNAME, ICLOCATION.ORDERPOINT, ORDERQTY,
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRODUCTNAME, ICLOCATION.ORDERPOINT, ORDERQTY,
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
 		(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'

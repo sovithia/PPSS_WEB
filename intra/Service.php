@@ -164,7 +164,7 @@ class Service
  	const ResourceItemRequestDetails = Service::BaseURL."/itemrequestactionitems";
  	const ResourceItemRequestPool = Service::BaseURL."/itemrequestitemspool";
 
-						 	  
+	const ResourceDepletedItems = Service::BaseURL."/depleteditems";			 	  
 						 	  
 	const modelRoute = array( 		
 							  "sales" => Service::ResourceSales,
@@ -252,6 +252,8 @@ class Service
 							  "supplyrecordsearch" => Service::ResourceSupplyRecordSearch,
 						 	  "supplyrecord" => Service::ResourceSupplyRecord,
 						 	  "supplyrecorddetails" => Service::ResourceSupplyRecordDetails,
+
+						 	  "depleteditems" => Service::ResourceDepletedItems,
 
 							  "itemrequestactionsearch" => Service::ResourceItemRequestActionSearch,
 						 	  "itemrequestaction" => Service::ResourceItemRequestAction,

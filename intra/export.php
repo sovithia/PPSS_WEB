@@ -62,6 +62,16 @@ function fieldsPresets($type)
         return ["IMAGE","BARCODE","PRODUCTNAME","last1","last2","last3","last4","last4"];    
     else if ($type == "ecommerce")
         return ["IMAGE","PRODUCTNAME","PRODUCTNAME1","PACKING","ONHAND","CATEGORYID","COUNTRY","COST","PRICE","MARGIN"];  
+    
+    else if ($type == "itemrequestactionpool_PURCHASE" || 
+             $type == "itemrequestactionpool_TRANSFER" ||  
+             $type == "itemrequestactionpool_RESTOCK")
+        return ["IMAGE", "PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY"];
+
+    else if ($type == "depleteditems")
+    {
+        return ["IMAGE","PRODUCTID","PRODUCTNAME", "VENDNAME","WH1","WH2","ORDERPOINT","ORDERQUANTITY"];    
+    }
 }
 
 
@@ -279,8 +289,6 @@ function generatePricesCalculatorExcel($items)
     $writer->save('calculated.xlsx');
 }
 
-
-
 function download_send_headers($filename) {
     // disable caching
     $now = gmdate("D, d M Y H:i:s");
@@ -309,6 +317,8 @@ function downloadFile($filename)
 
 
 $type = isset($_POST["type"]) ? $_POST["type"] : 0;
+//var_dump($type);
+//exit;
 //if($type == 0)
 //    $type =  "EXPORTALL";
 if ($type == "EXPORTALL")
@@ -352,6 +362,16 @@ else if ($type == "EXPORTSELECT")
 {
     $items = purifySelectedData($_POST);    
     generateExcel($items,$type);    
+    downloadFile("data.xlsx");
+}                  
+else if ($type == "itemrequestactionpool_PURCHASE" || 
+         $type == "itemrequestactionpool_TRANSFER" || 
+         $type == "itemrequestactionpool_RESTOCK" || 
+         $type == "depleteditems")
+{
+
+    $items = json_decode($_POST["items"],true);    
+    generateExcel($items,$type);
     downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems

@@ -288,17 +288,11 @@ function getData($display,$entity,$param)
   {
     return Service::ListEntity($entity,$param["ID"]);          
   }
-  else if ($display == "itemrequestactioncreate")
-  {    
+  else if ($display == "itemrequestactioncreate" || $display == "itemrequestrestockcreate")
+  {
     $type = isset($_GET["type"]) ? $_GET["type"] : ""; 
-    if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))
-    {
-      $data["PRODUCTID"] = $_GET["PRODUCTID"];
-      $data["REQUEST_QUANTITY"] = $_GET["REQUEST_QUANTITY"];
-    
-      Service::CreateEntity($entity,$data,$type);    
-    }
-    else if (isset($_FILES["filename"]))
+   
+    if (isset($_FILES["filename"]))
     {
       $filename = $_FILES["filename"]["tmp_name"];
       $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
@@ -330,9 +324,32 @@ function getData($display,$entity,$param)
           }
           array_push($allData,$data);
        } 
+
+      if ($_POST["action"] == 'Template Add(A)')
+        $data["LISTNAME"] = "A";
+      else if ($_POST["action"] == 'Template Add(B)')
+        $data["LISTNAME"] = "B";
+      else if ($_POST["action"] == 'Template Add(C)')
+        $data["LISTNAME"] = "C";
+
        $data["ITEMS"] = $allData;
+       var_dump($data);
        Service::CreateEntity($entity,$data,$type);                
      }
+    else if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))
+    {
+      $data["PRODUCTID"] = $_GET["PRODUCTID"];
+      $data["REQUEST_QUANTITY"] = $_GET["REQUEST_QUANTITY"];
+    
+      if ($_GET["action"] == 'Single Add (A)')
+        $data["LISTNAME"] = "A";
+      if ($_GET["action"] == 'Single Add (B)')
+        $data["LISTNAME"] = "B";
+      if ($_GET["action"] == 'Single Add (C)')
+        $data["LISTNAME"] = "C";
+
+      Service::CreateEntity($entity,$data,$type);    
+    }
      else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
        $data = array();
        $data["PRODUCTID"] = $_GET["PRODUCTID"];
@@ -351,7 +368,7 @@ function getData($display,$entity,$param)
            $display == "acctodo" ||  $display == "accdone" || 
            $display == "pchtodo" || $display == "pchdone" ||            
            $display == "rcvtodo" || $display == "rcvdone" || 
-           $display == "whdone" || $display == "whdone2" || $display == "lowseller" || $display == "vault") 
+           $display == "whdone" || $display == "whdone2" || $display == "lowseller" || $display == "depleteditems") 
   {    
 
     return Service::ListEntity($entity);    
@@ -557,6 +574,8 @@ function renderBody()
   
   // ITEM REQUEST
   else if ($display == "itemrequestactionsearch")
+    return renderItemRequestActionSearch($data);
+    else if ($display == "itemrequestactionsearch")
     return renderItemRequestActionSearch($data); 
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
@@ -564,6 +583,13 @@ function renderBody()
     return renderItemRequestActionDetails($data);
   else if ($display == "itemrequestactioncreate")
     return renderItemRequestActionCreate($data);
+
+  else if ($display == "itemrequestrestockcreate")
+    return renderItemRequestRestockCreate($data);
+
+
+  else if ($display == "depleteditems")
+    return renderDepletedItemList($data);
 
   // DEPRECATION
   else if ($display == "whdone")

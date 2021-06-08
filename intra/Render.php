@@ -344,6 +344,10 @@ function renderLeftSidebar()
   $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
                             <li class="li-hover"><p class="ultra-small margin more-text">STORE SUPERVISOR</p></li>
                       
+                            <li '.hoverColor("depleteditems").' >
+                            <a href="?display=depleteditems&entity=depleteditems" >
+                            <img src="images/icons/STRSPVR/DepletemItemListPage.png" width="30px" height="30px">Depleted Items(!)</a></li>
+
                             <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."DEMAND").' >
                             <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=DEMAND&status=TODO" >
                             <img src="images/icons/STRSPVR/ItemRequestDemandTodoListPage.png" width="30px" height="30px">ItemDemand(!)</a></li>
@@ -353,8 +357,8 @@ function renderLeftSidebar()
                             <img src="images/icons/STRSPVR/ItemRequestDemandValidatedListPage.png" width="30px" height="30px">ItemDemand(#)</a></li>
                             
 
-                            <li '.$nodemohide.' '.hoverColor("itemrequestactioncreate"."itemrequestitemspool"."RESTOCK").' >
-                            <a href="?display=itemrequestactioncreate&entity=itemrequestactionpool&type=RESTOCK" >
+                            <li '.$nodemohide.' '.hoverColor("itemrequestrestockcreate"."itemrequestitemspool"."RESTOCK").' >
+                            <a href="?display=itemrequestrestockcreate&entity=itemrequestactionpool&type=RESTOCK" >
                             <img src="images/icons/STRSPVR/ItemRequestRestockCreatePage.png" width="30px" height="30px">ItemRestock(+)</a></li>
                             
 
@@ -841,10 +845,18 @@ function renderModalFrame($id,$text,$yesLink)
             </div>'
             ;
 }
+    
 
-function _ItemsTable($items,$fields,$params = null)
+function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
 {
-  $body = "<div><form id='myform'><table border='1' id='result'>";
+  $body = "<div id='".$name."'>
+          <center>Item count: ".count($items)."<center><br>
+          <form target=_blank action='export.php' method='POST' id='myform'>         
+            <input type='hidden' name='type' value='".$exporttype."'>
+            <input type='hidden' name='items' value='".json_encode($items)."'>
+            <input type='submit' value='EXPORT'>
+          </form>
+  <table border='1' id='result".$name."'>";   
   $body .= "<thead><tr>";
   foreach($fields as $field)
     $body .= "<th>".$field."</th>";
@@ -855,7 +867,7 @@ function _ItemsTable($items,$fields,$params = null)
     $body .= "<th>".$field."</th>";
   $body .= "</tr></tfoot>";
 
-  $body .= "</table></form>";
+  $body .= "</table>";
   $dataSet = "";
    foreach($items as $item)
     {   
@@ -869,7 +881,7 @@ function _ItemsTable($items,$fields,$params = null)
 
               $dataSet .= "'<input value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
                             <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" ><br>\
-                            <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\",\"".$item["REQUEST_QUANTITY"]."\")>Update</button>',";
+                            <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\")>Update</button>',";
             }
             else if ($field == "ACTION"){
               $dataSet .= "'<form method=\"GET\"><input type=\"submit\" value=\"Delete\">\
@@ -883,33 +895,33 @@ function _ItemsTable($items,$fields,$params = null)
             } 
             else 
               $dataSet .= "\"".(isset($item[$field]) ? $item[$field] : "")."\",";         
-        }
-      $dataSet = rtrim($dataSet,",");    
-      $dataSet .= "],";      
+        }       
+        $dataSet = rtrim($dataSet,",");    
+        $dataSet .= "],";      
     }
     $dataSet = rtrim($dataSet,",");    
 
   $body .= "
         <script>      
-        var dataSet = [".$dataSet."];
+        var dataSet".$name." = [".$dataSet."];
         var table;        
         table =  $(document).ready( function () {
-         $('#result').DataTable({                
-         data:dataSet, 
+         $('#result".$name."').DataTable({                
+         data:dataSet".$name.", 
          'lengthMenu':[-1],          
            });
         });
 
 
-  function updatePoolQty (type,productid,request_quantity) 
+  function updatePoolQty (type,productid) 
   {
     
     var form_data = new Object();
     form_data['PRODUCTID'] = productid;
-    form_data['REQUEST_QUANTITY'] = request_quantity;
-
+    form_data['REQUEST_QUANTITY'] = document.getElementById('quantity_' + productid).value;    
+    form_data['LISTNAME'] = document.getElementById('listnameLbl').innerHTML;
     var url = 'http://phnompenhsuperstore.com/api/api.php/itemrequestitemspool/' + type;
-
+                                                          
     var request_method = $(this).attr('method');     
 
     $.ajax({

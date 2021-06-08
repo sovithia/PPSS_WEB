@@ -1564,14 +1564,16 @@ function renderItemSearch($items)
    $vendorid = isset($_GET["vendorid"]) ? $_GET["vendorid"] : "";   
    $vendor = isset($_GET["vendor"]) ? $_GET["vendor"] : "";  
    $country = isset($_GET["country"]) ? $_GET["country"] : "ALL";
+  
+   $storebin1 = isset($_GET["storebin1"]) ? $_GET["storebin1"] : "";
+   $storebin2 = isset($_GET["storebin2"]) ? $_GET["storebin2"] : "";
 
    $body = "";	
    $body .= "<div class='col s12 m8 l9'>
               <div class='row margin'>
                 <form class='col s12' method='GET'>
                 <div class='row'>
-	          			<div class='input-field col s12'>	            		  
-	            		  
+	          			<div class='input-field col s12'>	            		  	            		  
                   <textarea id='barcode' name='barcode'  >".$barcode."</textarea>
 	            		  <label for='barcode' class='center-align'>Barcode</label>          			
 			   			    </div>
@@ -1604,6 +1606,20 @@ function renderItemSearch($items)
 	            		  <label for='vendor' class='center-align'>Vendor</label>          			
 			   			    </div>
 		       		</div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                                       
+                    <input id='storebin1' name='storebin1' type='text' value='".$storebin1."'>  
+                    <label for='storebin1' class='center-align'>StoreBin(WH1)</label>               
+                  </div>
+              </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                                       
+                    <input id='storebin2' name='storebin2' type='text' value='".$storebin2."'>
+                    <label for='storebin2' class='center-align'>StoreBin(WH2)</label>               
+                  </div>
+              </div>
 
 		       		<div class='row'>
 	          			<div class='input-field col s12'>
@@ -1638,14 +1654,14 @@ function renderItemSearch($items)
         <thead><tr>
   		  	<th>Picture</th><th>BARCODE</th><th>QTY</th><th>Name</th><th>Name-KH</th>
           <th>Packing</th><th>Vendor</th><th>RCV</th><th>SOLD</th><th>THROWN</th> 
-          <th>ON HAND</th> <th>WH1</th> <th>WH2</th> <th>Category</th> <th>COUNTRY</th>
+          <th>ON HAND</th> <th>WH1</th> <th>WH2</th><th>STOREBIN1</th> <th>STOREBIN2</th>  <th>Category</th> <th>COUNTRY</th>
   		  	<th>LAST COST</th><th>PRICE</th><th>SALE LAST 30</th><th>PERCENTSALE</th>
           <th>LAST RCV</th><th>LAST SALE</th><th></th>
   		  </tr></thead>
         <tfoot><tr>
           <th>Picture</th><th>BARCODE</th><th>QTY</th><th>Name</th><th>Name-KH</th>
           <th>Packing</th> <th>Vendor</th> <th>RCV</th><th>SOLD</th> <th>THROWN</th>
-          <th>ON HAND</th> <th>WH1</th> <th>WH2</th> <th>Category</th> <th>COUNTRY</th>
+          <th>ON HAND</th> <th>WH1</th> <th>WH2</th> <th>STOREBIN1</th> <th>STOREBIN2</th> <th>Category</th> <th>COUNTRY</th>
           <th>LAST COST</th><th>PRICE</th><th>SALE LAST 30</th><th>PERCENTSALE</th>
           <th>LAST RCV</th><th>LAST SALE</th><th></th>
         </tr></tfoot>
@@ -1669,7 +1685,8 @@ function renderItemSearch($items)
         if (floatval($item["TOTALRECEIVE"]) > 0.0){
           $item["PERCENTSALE"] = (floatval($item["TOTALSALE"]) * 100) / ( floatval($item["TOTALRECEIVE"]) );  
           $item["PERCENTSALE"] = truncatePrice($item["PERCENTSALE"]);
-        }
+        }else
+          $item["PERCENTSALE"] = "";
         
         
 
@@ -1689,6 +1706,8 @@ function renderItemSearch($items)
           '".$item["ONHAND"]."',
           '".$item["WH1"]."',
           '".$item["WH2"]."',
+          '".$item["STOREBIN1"]."',
+          '".$item["STOREBIN2"]."',
           '".$item["CATEGORYID"]."',
           '".$item["COLOR"]."',          
           '".$item["LASTCOST"]."',
@@ -4052,6 +4071,13 @@ function renderBank($data)
 /**********************/
 /**** ItemRequest ****/
 
+function renderDepletedItemList($data){
+
+ $body = "Depleted Items<br>";
+ $fields = ["IMAGE","PRODUCTID","PRODUCTNAME","VENDNAME","WH1", "WH2","ORDERPOINT","ORDERQTY"];
+ $body = _ItemsTable($data,$fields,"","","depleteditems"); 
+ return $body; 
+}
 
 function renderItemRequestActionList($data){
   $items = $data;
@@ -4309,79 +4335,253 @@ function renderItemRequestActionSearch($data){
 
     $items = $data;
 
-  $items = $data;
-  if ($items != null)
-  {
-   $body .= "<div >";   
-   $body .=   "<table border='1' id='result'>
-               <thead><tr>
-                  <th>DETAILS</th>                                
-                  <th>ID</th>
-                  <th>TYPE</th> 
-                  <th>REQUEST_TIME</th>
-                  <th>REQUESTER</th>
-                  <th>REQUESTEE</th>                  
-               </tr></thead>
+    $items = $data;
+    if ($items != null)
+    {
+     $body .= "<div >";   
+     $body .=   "<table border='1' id='result'>
+                 <thead><tr>
+                    <th>DETAILS</th>                                
+                    <th>ID</th>
+                    <th>TYPE</th> 
+                    <th>REQUEST_TIME</th>
+                    <th>REQUESTER</th>
+                    <th>REQUESTEE</th>                  
+                 </tr></thead>
 
-               <tfoot><tr>
-                  <th>DETAILS</th>                                
-                  <th>ID</th>
-                  <th>TYPE</th> 
-                  <th>REQUEST_TIME</th>
-                  <th>REQUESTER</th>
-                  <th>REQUESTEE</th> 
-               </tr></tfoot>
-               </table>
-               ";  
-    $dataSet1 = "";
-    
+                 <tfoot><tr>
+                    <th>DETAILS</th>                                
+                    <th>ID</th>
+                    <th>TYPE</th> 
+                    <th>REQUEST_TIME</th>
+                    <th>REQUESTER</th>
+                    <th>REQUESTEE</th> 
+                 </tr></tfoot>
+                 </table>
+                 ";  
+      $dataSet1 = "";
+      
 
-    foreach($items as $item)
-    {   
-       $base = "../api/img/requestaction/";
+      foreach($items as $item)
+      {   
+         $base = "../api/img/requestaction/";
 
-        
-        $ID = $item["ID"];
+          
+          $ID = $item["ID"];
 
-        $REQUESTER = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."R".$ID.".png")) ? $base."R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTER"];
-        $REQUESTEE = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."E".$ID.".png")) ? $base."E".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTEE"];
+          $REQUESTER = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."R".$ID.".png")) ? $base."R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTER"];
+          $REQUESTEE = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."E".$ID.".png")) ? $base."E".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTEE"];
 
-         $dataSet1 .= 
-         "[ 
-          '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=READONLY&ID=".$item["ID"]."\">DETAILS</a>',                
-          '".$item["ID"]."',          
-          '".$item["TYPE"]."',
-          '".$item["REQUEST_TIME"]."',    
-          '".$REQUESTER."',
-          '".$REQUESTEE."'                  
-          ],";
+           $dataSet1 .= 
+           "[ 
+            '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=READONLY&ID=".$item["ID"]."\">DETAILS</a>',                
+            '".$item["ID"]."',          
+            '".$item["TYPE"]."',
+            '".$item["REQUEST_TIME"]."',    
+            '".$REQUESTER."',
+            '".$REQUESTEE."'                  
+            ],";
+      }
+       $dataSet1 = rtrim($dataSet1,",");        
+          $body .= "  
+          <script>      
+          var dataSet1 = [".$dataSet1."];
+          var table;        
+          table =  $(document).ready( function () {
+           $('#result').DataTable({                
+           data:dataSet1, 
+           'lengthMenu':[-1],          
+             });
+          });
+        </script>
+      ";   
+      $body .=  "</div>"; 
     }
-     $dataSet1 = rtrim($dataSet1,",");        
-        $body .= "  
-        <script>      
-        var dataSet1 = [".$dataSet1."];
-        var table;        
-        table =  $(document).ready( function () {
-         $('#result').DataTable({                
-         data:dataSet1, 
-         'lengthMenu':[-1],          
-           });
-        });
-      </script>
-    ";   
-    $body .=  "</div>"; 
-  }
-  return $body;
+    return $body;
 }
 
 
 
-function renderItemRequestActionCreate($data){
+function renderItemRequestRestockCreate($data)
+{
+  $items = $data; 
+  $body = "            
+     <div class='col s12 m8 l9'>
+              <div class='row margin'>
+              <form class='col s12' method='GET'>
+                
+              
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='productid' name='PRODUCTID' type='text' >
+                    <label for='productid' class='center-align'>Product ID</label>               
+                  </div>
+              </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='quantity' name='REQUEST_QUANTITY' type='text' >
+                    <label for='quantity' class='center-align'>Quantity</label>               
+                  </div>
+              </div>
+
+              <div class='row'>    
+
+                     <div class='input-field col s12'>             
+                       <input type='hidden' name='display' value='".$_GET["display"]."'>
+                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>
+                       <table>
+                       <tr>
+                          <td><input type='submit'  name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add (A)'></td>
+                          <td><input type='submit'  name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add (B)'></td>
+                          <td><input type='submit'  name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add (C)'></td>
+                       </tr>
+                       </table>
+                      <br><br>                      
+                     </div>                    
+                </div>
+            </form>
+              </div>
+             </div> 
+
+
+            <div class='col s12 m8 l9'>
+              <div class='row margin'>
+              <form class='col s12' method='POST' enctype=multipart/form-data>
+                
+              
+              <div class='row'>
+                  <div class='input-field col s12'>     
+                    <center>              
+                      <input id='productid' name='filename' type='file' >
+                      <label for='productid' class='center-align'>Template upload</label>               
+                    </center>
+                  </div>
+              </div>
+
+             
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                       <input type='hidden' name='display' value='".$_GET["display"]."'>
+                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>
+                       <table>
+                        <tr>
+                          <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(A)'></td>
+                          <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(B)'></td>
+                          <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(C)'></td>
+                        </tr>
+                       </table>
+                      <br><br>
+                     </div>
+                     
+                </div>
+            </form>
+              </div>
+             </div> 
+
+             <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
+
+            <table>
+            <tr>
+             <td><button id='btnA' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showListA()' >List A</button></td>
+             <td><button id='btnB' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showListB()' >List B</button></td>
+             <td><button id='btnC' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showListC()' >List C</button></td>
+            <tr>
+            </table>
+              ";  
+
+
+
+   $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","ACTION"];
+
+   $itemsA = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "A");} );
+   $itemsB = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "B");});
+   $itemsC = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "C");});
+
+    //var_dump($itemsA);
+   $body .= "<center><span style='display:none' id='listnameLbl'></span></center>";
+
+   $body .= _ItemsTable($itemsA,$fields,$_GET,"listA",($_GET["entity"]."_".$_GET["type"]));   
+   $body .= _ItemsTable($itemsB,$fields,$_GET,"listB",($_GET["entity"]."_".$_GET["type"]));   
+   $body .= _ItemsTable($itemsC,$fields,$_GET,"listC",($_GET["entity"]."_".$_GET["type"]));   
+
+
+
+   $body .= " <script>
+              function showListA(){
+                document.getElementById('listA').style.display = 'block';
+                document.getElementById('listB').style.display = 'none';
+                document.getElementById('listC').style.display = 'none';
+
+                document.getElementById('btnA').disabled = true;
+                document.getElementById('btnB').disabled = false;
+                document.getElementById('btnC').disabled = false;  
+
+                document.getElementById('listnameLbl').innerHTML = 'A';             
+              }
+
+              function showListB(){
+                document.getElementById('listA').style.display = 'none';
+                document.getElementById('listB').style.display = 'block';
+                document.getElementById('listC').style.display = 'none';
+
+                document.getElementById('btnA').disabled = false;
+                document.getElementById('btnB').disabled = true;
+                document.getElementById('btnC').disabled = false;   
+
+                document.getElementById('listnameLbl').innerHTML = 'B';       
+              }
+
+              function showListC(){
+                document.getElementById('listA').style.display = 'none';
+                document.getElementById('listB').style.display = 'none';
+                document.getElementById('listC').style.display = 'block';
+
+                document.getElementById('btnA').disabled = false;
+                document.getElementById('btnB').disabled = false;
+                document.getElementById('btnC').disabled = true;  
+
+                  document.getElementById('listnameLbl').innerHTML = 'C';    
+              }
+              showListA();
+              </script> "; 
+
+   $body .= "
+              <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
+              <input type='hidden' id='action'  value='create'>                              
+               <input type='hidden' id='type' value='".$_GET["type"]."'>       
+              <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
+
+              <center><button type='button' onclick='zkSignature.clear()'>
+                Clear Signature
+               </button>
+          
+               <div id='canvas' style='width:466px;border:1px solid black;!important'>
+                Canvas is not supported.
+               </div>
+
+               <script>
+                zkSignature.capture();
+               </script>
+        
+               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+                SEND
+               </button><center><br><br><br>";
+   
+
+  return $body;  
+}
+
+function renderItemRequestActionCreate($data)
+{
  
-   $items = $data;
+  $items = $data;
        
 
-     $body = "<div class='col s12 m8 l9'>
+  $body = "            
+     <div class='col s12 m8 l9'>
               <div class='row margin'>
               <form class='col s12' method='GET'>
                 
@@ -4445,15 +4645,32 @@ function renderItemRequestActionCreate($data){
             </form>
               </div>
              </div> 
-
-             <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
-              ";  
-
+             <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>";  
 
 
    $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","LOTWH1","LOTWH2",
               "LOTEXPIREWH1","LOTEXPIREWH2","WH1REQUESTQTY","WH2REQUESTQTY","ACTION"];
-   $body .= _ItemsTable($items,$fields,$_GET);
+
+   $body .= " <script>
+              function showListA(){
+                document.getElementById('listA').style.display = 'block';
+                document.getElementById('listB').style.display = 'none';
+                document.getElementById('listC').style.display = 'none';
+              }
+              function showListB(){
+                document.getElementById('listA').style.display = 'none';
+                document.getElementById('listB').style.display = 'block';
+                document.getElementById('listC').style.display = 'none';
+              }
+
+              function showListC(){
+                document.getElementById('listA').style.display = 'none';
+                document.getElementById('listB').style.display = 'none';
+                document.getElementById('listC').style.display = 'block';
+              }
+              </script> ";              
+
+   $body .= _ItemsTable($items,$fields,$_GET,"",($_GET["entity"]."_".$_GET["type"]));   
 
    $body .= "
               <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
@@ -4476,8 +4693,6 @@ function renderItemRequestActionCreate($data){
                <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
-   
-
   return $body;
 }
 
