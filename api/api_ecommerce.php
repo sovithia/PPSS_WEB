@@ -33,8 +33,18 @@ $app->get('/items',function(Request $request,Response $response) {
 		$url = "http://phnompenhsuperstore.com/api/api.php/itemget";
 	$data["barcodes"] = $barcodes;
 	$jsonData = RestEngine::POST($url,$data);
-  
-	$response = $response->withJson($jsonData);
+
+	$newData = array();
+	foreach($jsonData as $data){
+		$sql = "SELECT MYPHSARCATEGORYID FROM ITEM WHERE ID = ?";
+		$req = $inDB->prepare($sql);
+		$req->execute(array($data["PRODUCTID"]));
+
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$data["MYPHSARCATEGORYID"] = $res["MYPHSARCATEGORYID"];
+		array_push($newData,$data);
+	}
+	$response = $response->withJson($newData);
 	return $response;
 });
 
