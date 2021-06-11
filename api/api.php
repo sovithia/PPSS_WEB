@@ -320,7 +320,7 @@ function packLookup($barcode)
 	if ($item != false)
 	{
 		if ($json["result"] != "KO")			
-			$item["PICTURE"] = $json["image"];
+			$item["PICTURE"] = $json["PICTURE"];
 		else
 			$item["PICTURE"] = null;	
 		return $item;
@@ -365,10 +365,13 @@ function itemLookup($barcode){
 	$params = array($barcode,$barcode);
 	$begin = date("Y-m-d");
 	
-	$sql="SELECT PRODUCTID,
+	$sql="SELECT PRODUCTID,PACKINGNOTE,
 	(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATETO DESC) as 'DISCPERCENT', 
 	(SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 	(SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID ORDER BY DATEFROM DESC) as 'DISCPERCENTEND',
+	(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+	(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2',	
+
 	CATEGORYID,CATEGORYNEWID,BARCODE,PRODUCTNAME,PRODUCTNAME1,
 	(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
 	,STORE,SIZE,COLOR,PRICE,VENDNAME,
@@ -408,7 +411,7 @@ function itemLookup($barcode){
 
 		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
 		if ($json["result"] != "KO")			
-			$finalItem["PICTURE"] = $json["image"];
+			$finalItem["PICTURE"] = $json["PICTURE"];
 		else 		
 			$finalItem["PICTURE"] = getImage($barcode);					
 		return $finalItem;
@@ -796,7 +799,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
 	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1'
 		  FROM dbo.ICPRODUCT  
@@ -883,8 +886,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
 			$result["DISC"] = $packInfo["DISC"];
-			$result["PRODUCTNAMEPACK"] = $packInfo["DESCRIPTION1"];
-			$result["PRICE"] = $packInfo["SALEPRICE"];		
+			$result["PRODUCTNAME"] = $packInfo["DESCRIPTION1"];
+			$result["PRODUCTNAME1"] = $packInfo["DESCRIPTION2"];
+			$result["PRICE"] = $packInfo["SALEPRICE"];	
+
+			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
 			
 			// PICTURE PACK
 			$result["ISPACK"] = "PACK";
@@ -914,6 +920,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 $app->get('/picture/{barcode}',function(Request $request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
 	$result["PICTURE"] = getImage($barcode);
+	$result["result"] = "OK";
 	$response = $response->withJson($result);
 	return $response;
 });
@@ -1424,7 +1431,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$keyword =  $request->getParam('keyword','');
 	$vendor =  $request->getParam('vendor',''); 
 	$storebin = $request->getParam('storebin','');
-	$vendorid = $request->getParam('vendorid','');
+	$vendid = $request->getParam('vendid','');
 	$count = $request->getParam('count',"300");
 
 	$storebin1 = $request->getParam('storebin1','');
@@ -1450,7 +1457,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	else
 		$IN2 = "";
 
-	$sql =  "SELECT TOP(".$count.") ICPRODUCT.PRODUCTID,BARCODE,
+	$sql =  "SELECT DISTINCT TOP(".$count.") ICPRODUCT.PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
 			(SELECT ORDERPOINT FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
@@ -1479,7 +1486,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 			".$IN1." ".$IN2;
 			
 
-	error_log($sql);
+
 
 
 	if ($barcode != ""){
@@ -1516,9 +1523,9 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 		array_push($params,$vendor);
 	}
 
-	if ($vendorid != ""){
+	if ($vendid != ""){
 		$sql .= " AND dbo.ICPRODUCT.VENDID = ?";
-		array_push($params,$vendorid);
+		array_push($params,$vendid);
 	}
 	
 
@@ -1645,20 +1652,40 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	$field = $json["field"];
 	$value = isset($json["value"]) ? $json["value"] : null;
 	$barcode = $request->getAttribute('barcode'); 
+	$author = isset($json["author"]) ? blueUser($json["author"]) : "";
+	$now = date("Y-m-d H:i:s");
+
+
+	$comment = isset($json["comment"]) ? $json["comment"] : ""; 
 
 	if ($field == "PRODUCTNAME" || $field == "PRODUCTNAME1" || $field == "CATEGORYID" ||
-		  $field == "PACKINGNOTE" ){
-		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ? WHERE BARCODE = ?";
+		  $field == "PACKINGNOTE" || $field == "COLOR" || $field == "SIZE"){
+		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ?, USEREDIT = ?,DATEEDIT = ?  WHERE BARCODE = ?";
 		$req = $db->prepare($sql);
-		$result = $req->execute(array($value,$barcode) );	
+		$params = array ($value,$author,$now,$barcode);		
+		$result = $req->execute($params);	
+	}
+	else if ($field == "DESCRIPTION1" || $field == "DESCRIPTION2"){
+		$sql = "UPDATE dbo.ICPRODUCT_SALEUNIT set ".$field." = ?, WHERE PACK_CODE = ?";
+		$req = $db->prepare($sql);
+		$params = array ($value,$barcode);		
+		$result = $req->execute($params);
 	}
 	else if ($field == "PICTURE"){		
 		$data["image"] = $value;
 		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);      
 	}	
 	else if ($field == "PACKPICTURE")	{
+		error_log("HERE");
 		$data["image"] = $value;
-		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);      
+		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);   
+
+		$sql = "UPDATE ICPRODUCT_SALEUNIT SET PICTURE_PATH = ? WHERE PACK_CODE = ?";
+		$req = $db->prepare($sql);
+		$imagePath = "Y:\\".$barcode.".jpg";	
+		$req->execute(array($imagePath,$barcode));
+		error_log($barcode);
+		   
 	}
 	else if ($field == "STOREBIN1"){ // MEDIUM
 		
@@ -1673,14 +1700,30 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$result = $req->execute(array($value,$barcode) );			
 	}	
 	else if ($field == "PRICE"){ // HIGH
-		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ? WHERE BARCODE = ?";
+			
+
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,PRICE 
+				FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
-		$result = $req->execute(array($value,$barcode) );	
+		$req->execute(array($barcode));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$productname = $res["PRODUCTNAME"];
+		$productname1 = $res["PRODUCTNAME1"];
+		$oldprice = $res["PRICE"];
+
+		$sql = "INSERT INTO  POSLOG_ITEMPRICE (PRODUCTID,PRODUCTNAME,PRODUCTNAME1,COMMENT,OLDPRICE,
+												NEWPRICE,USERADD,DATEADD,PCNAME,OLD_OTHERPRICE,NEW_OTHERPRICE) 
+												VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req-> execute(array($barcode,$productname,$productname1, $comment,$oldprice,
+							 $value,$author,$now,"APPLICATION",$oldprice,$value));		
+
+		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ?,USEREDIT = ?,DATEEDIT = ? WHERE BARCODE = ?";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$author,$now,$barcode) ); 										
 	}
-
-	$result = array();	
+	$result = array();
 	$result["result"] = "OK";	
-
 	$response = $response->withJson($result);
 	return $response;
 });
@@ -3871,7 +3914,6 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
 
-	//var_dump($json["PRODUCTID"]);
 	$suffix = "";
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
@@ -3879,6 +3921,8 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if($type == "TRANSFERBACK")
+		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
 		$userid = substr($type,7);
 		$tableName = "ITEMREQUESTDEMANDPOOL";	
@@ -3940,6 +3984,38 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$userid = substr($type,7);
 		$tableName = "ITEMREQUESTDEMANDPOOL";	
 		$suffix = " AND USERID = ".$userid;
+	}
+
+	if ($type == "TRANSFER")
+	{
+		$dbBlue = getDatabase();
+		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if (floatval($res["LOCONHAND"]) < floatval($json["REQUEST_QUANTITY"]))
+		{
+			$data["RESULT"] = "KO";
+			$data["MSG"] = $res["LOCONHAND"];
+			$response = $response->withJson($data);
+			return $response;
+		}
+	}
+
+	if ($type == "TRANSFERBACK")
+	{
+		$dbBlue = getDatabase();
+		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if (floatval($res["LOCONHAND"]) < floatval($json["REQUEST_QUANTITY"]))
+		{
+			$data["RESULT"] = "KO";
+			$data["MSG"] = $res["LOCONHAND"];
+			$response = $response->withJson($data);
+			return $response;
+		}
 	}
 
 	if ($type == "RESTOCK")
@@ -5554,13 +5630,16 @@ $app->get('/info',function(Request $request,Response $response){
 
 $app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
-	$sql = "SELECT ICPRODUCT.PRODUCTID,PRODUCTNAME, ICLOCATION.ORDERPOINT, ORDERQTY,
+	$sql = "SELECT ICPRODUCT.PRODUCTID,
+		replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME', 
+		ICLOCATION.ORDERPOINT, ORDERQTY,
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
 		(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
 
 					FROM ICLOCATION,ICPRODUCT 
 					WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND ACTIVE = 1
 					AND LOCID = 'WH1'
 					AND ONHAND < ICLOCATION.ORDERPOINT 
 					AND ICLOCATION.ORDERPOINT > 0";

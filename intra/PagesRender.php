@@ -1561,7 +1561,7 @@ function renderItemSearch($items)
    $barcode = isset($_GET["barcode"]) ? $_GET["barcode"] : "";
    $keyword = isset($_GET["keyword"]) ? $_GET["keyword"] : "";
    $category = isset($_GET["category"]) ? $_GET["category"] : "ALL";
-   $vendorid = isset($_GET["vendorid"]) ? $_GET["vendorid"] : "";   
+   $vendid = isset($_GET["vendid"]) ? $_GET["vendid"] : "";   
    $vendor = isset($_GET["vendor"]) ? $_GET["vendor"] : "";  
    $country = isset($_GET["country"]) ? $_GET["country"] : "ALL";
   
@@ -1595,8 +1595,8 @@ function renderItemSearch($items)
 
               <div class='row'>
                   <div class='input-field col s12'>                   
-                    <input id='vendorid' name='vendorid' type='text' value='".$vendorid."'>
-                    <label for='vendorid' class='center-align'>Vendor ID</label>               
+                    <input id='vendid' name='vendid' type='text' value='".$vendid."'>
+                    <label for='vendid' class='center-align'>Vendor ID</label>               
                   </div>
               </div>  
 

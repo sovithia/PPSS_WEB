@@ -121,8 +121,10 @@ function getData($display,$entity,$param)
     $params .= (strlen($param["keyword"]) > 0)  ? "&keyword=".urlencode($param["keyword"]) : "";
     $params .= ($param["country"] != "ALL")  ? "&country=".urlencode($param["country"]) : "";
     $params .= ($param["vendor"] != "ALL")  ? "&vendor=".urlencode($param["vendor"]) : "";
-    $params .= (strlen($param["vendorid"]) > 0) ? "&vendorid=".urlencode($param["vendorid"]) : "";
-    $params .= ($param["category"] != "ALL") ? "&category=".urlencode($param["category"]) : "";            
+    $params .= (strlen($param["vendid"]) > 0) ? "&vendid=".urlencode($param["vendid"]) : "";
+    $params .= ($param["category"] != "ALL") ? "&category=".urlencode($param["category"]) : "";     
+    $params .= ($param["storebin1"] != "ALL") ? "&storebin1=".urlencode($param["storebin1"]) : "";   
+    $params .= ($param["storebin2"] != "ALL") ? "&storebin2=".urlencode($param["storebin2"]) : "";          
     return Service::ListEntity($entity,$params);                                             
   }
   else if ($display == "itemsearch2" && isset($param["category"]) ) // 
