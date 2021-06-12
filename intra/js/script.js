@@ -190,7 +190,7 @@ var zkSignature = (function () {
 						if (type == "ITEMREQUEST")
 						{	
 							var action = document.getElementById('action').value; 													
-							var fields = document.getElementById('myform').getElementsByTagName('input');  
+							var fields = document.getElementsByTagName('input');  
 							var allItems = {};
 							if (action == "update")
 							{	
@@ -222,17 +222,20 @@ var zkSignature = (function () {
 		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
 							}
 							else if (action == "create")
-							{								
+							{															
 								var type = document.getElementById('type').value;
+								
 								for(var i=0;i<fields.length;i++)
 			              		{  
 					                if (fields[i].type == 'hidden' && fields[i].name !=  "PRODUCTID" && fields[i].name !=  "action" && 
-					                	fields[i].name != "display" && fields[i].name != "entity" && fields[i].name != "type"	)
-					                {					                						                  
+					                	fields[i].name != "display" && fields[i].name != "entity" && fields[i].name != "type" && 
+					                	fields[i].name != "author" && fields[i].name != "items" &&fields[i].name != "detailtype")
+					                {					                						                  					                					                	
 					                  var oneItem = {};
-					                  oneItem['PRODUCTID'] = fields[i].value;  					                  
+					                  oneItem['PRODUCTID'] = fields[i].value;  							                  								
 					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;					                  
 					                  allItems[fields[i].value] = oneItem; 
+
 					                }
 			             		}  
 			             		
@@ -241,7 +244,7 @@ var zkSignature = (function () {
 		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "TYPE" : type }; 
 
-								//alert(JSON.stringify(ItemJSON["ITEMS"]));
+								
 								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction'; 
 		   						var xmlhttp = new XMLHttpRequest();	    						    					
 		    					xmlhttp.onreadystatechange = function () {

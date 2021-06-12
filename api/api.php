@@ -2218,12 +2218,21 @@ function createSupplyRecordForPO(){
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+
+				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"]));
+
 			}
 			else if($onePO["NOTES"] == "NOPO")
 			{
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','NOPO','YES')";
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
+
+				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($onePO["PONUMBER"]));
 			}
 			else 
 			{
@@ -2552,9 +2561,13 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
 		$req->execute();
-		pictureRecord($json["SIGNATURE"],"PCH",$json["IDENTIFIER"]);
-		$data["RESULT"] = "OK";	
+		pictureRecord($json["SIGNATURE"],"PCH",$json["IDENTIFIER"]);		
 
+		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($json["PONUMBER"]));
+		
+		$data["RESULT"] = "OK";	
 
 	}
 	// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
@@ -2582,9 +2595,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$isDKSH = true;
 			$needSplit = false;
 
-
-			// PPSS_ORDER_PRICE PRICE WITH DISC 
-			// PPSS_INVOICE_PRICE WITH DISC 
+		
 			foreach($json["ITEMS"] as $key => $value)
 			{
 
@@ -2600,11 +2611,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$calculatedCost =  $value["PPSS_INVOICE_PRICE"] - ($value["PPSS_INVOICE_PRICE"] * ($TRANDISC / 100));
 				$extcost = $value["ORDER_QTY"] * $calculatedCost;
 				 
-				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = ? ,PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? 
+				$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ? 
 						WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
 
-				$req->execute(array($value["TRANCOST"],$value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
+				$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
 									$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	
 
 				if ($value["PPSS_RECEPTION_QTY"] == "0" && $isDKSH == true)

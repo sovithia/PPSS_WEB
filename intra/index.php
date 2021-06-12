@@ -335,7 +335,7 @@ function getData($display,$entity,$param)
         $data["LISTNAME"] = "C";
 
        $data["ITEMS"] = $allData;
-       var_dump($data);
+       //var_dump($data);
        Service::CreateEntity($entity,$data,$type);                
      }
     else if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))

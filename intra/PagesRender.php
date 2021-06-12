@@ -4500,7 +4500,7 @@ function renderItemRequestRestockCreate($data)
    $itemsB = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "B");});
    $itemsC = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "C");});
 
-    //var_dump($itemsA);
+  
    $body .= "<center><span style='display:none' id='listnameLbl'></span></center>";
 
    $body .= _ItemsTable($itemsA,$fields,$_GET,"listA",($_GET["entity"]."_".$_GET["type"]));   
@@ -4545,13 +4545,14 @@ function renderItemRequestRestockCreate($data)
 
                   document.getElementById('listnameLbl').innerHTML = 'C';    
               }
+              
               showListA();
               </script> "; 
 
    $body .= "
               <input type='hidden' id='detailtype' name='detailtype' value='ITEMREQUEST'>
-              <input type='hidden' id='action'  value='create'>                              
-               <input type='hidden' id='type' value='".$_GET["type"]."'>       
+              <input type='hidden' id='action' name='action'  value='create'>                              
+               <input type='hidden' id='type' name='type' value='".$_GET["type"]."'>       
               <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
 
               <center><button type='button' onclick='zkSignature.clear()'>
@@ -4667,7 +4668,7 @@ function renderItemRequestActionCreate($data)
                 document.getElementById('listA').style.display = 'none';
                 document.getElementById('listB').style.display = 'none';
                 document.getElementById('listC').style.display = 'block';
-              }
+              }              
               </script> ";              
 
    $body .= _ItemsTable($items,$fields,$_GET,"",($_GET["entity"]."_".$_GET["type"]));   
