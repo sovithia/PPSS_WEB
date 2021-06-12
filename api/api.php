@@ -3096,11 +3096,18 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
 	$items = json_decode($json["ITEMS"],true);
-	// NO ADDITIONNAL ACTION FOR DEMAND
+	
 	$suffix = "";
+	$suffix2 = "";
 	$tableName = "";
-	if ($json["TYPE"] == "RESTOCK") // STORE SUPERVISOR CREATE RESTOCK REQUEST AND REMOVE FROM POOL
+	if ($json["TYPE"] == "RESTOCK") {// STORE SUPERVISOR CREATE RESTOCK REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
+		if(isset($json["LISTNAME"]))
+			$listname = $json["LISTNAME"];
+		else 
+			$listname = $items[0]["LISTNAME"];
+		$suffix2 = " AND LISTNAME = '".$listname."'";
+	}
 	else if($json["TYPE"] == "TRANSFER") // WAREHOUSE CREATE TRANSFER REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
 	else if($json["TYPE"] == "TRANSFERBACK") // WAREHOUSE CREATE TRANSFER REQUEST AND REMOVE FROM POOL
@@ -3130,21 +3137,21 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$targetQty =$item["REQUEST_QUANTITY"];	
 	
 		// UPDATE POOL
-		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;			
+		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;			
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch();
 				
 		if (($res != false && $res["REQUEST_QUANTITY"] >= $item["REQUEST_QUANTITY"])) // DELETE FROM POOL
 		{
-			$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
+			$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));				
 		}
 		else if ($res != false && $res["REQUEST_QUANTITY"] != $targetQty)// SUBSTRACT POOL
 		{
 			$newQty = $item["REQUEST_QUANTITY"] - $targetQty;
-			$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;;
+			$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix.$suffix2;
 			$req = $db->prepare($sql);
 			$req->execute(array($newQty,$item["PRODUCTID"]));								
 		}									
