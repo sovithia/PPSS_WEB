@@ -582,4 +582,5 @@ $app->get('outofstock',function(Request $request, Response $response) {
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
+ini_set('post_max_size','1000M');
 $app->run();

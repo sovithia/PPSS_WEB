@@ -343,11 +343,7 @@ function renderLeftSidebar()
 
   $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
                             <li class="li-hover"><p class="ultra-small margin more-text">STORE SUPERVISOR</p></li>
-                      
-                            <li '.hoverColor("depleteditems").' >
-                            <a href="?display=depleteditems&entity=depleteditems" >
-                            <img src="images/icons/STRSPVR/DepletemItemListPage.png" width="30px" height="30px">Depleted Items(!)</a></li>
-
+                                                  
                             <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."DEMAND").' >
                             <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=DEMAND&status=TODO" >
                             <img src="images/icons/STRSPVR/ItemRequestDemandTodoListPage.png" width="30px" height="30px">ItemDemand(!)</a></li>
@@ -502,6 +498,10 @@ function renderLeftSidebar()
   $sectionCOMMON = '
             <li  class="li-hover"><div class="divider"></div></li>
             <li  class="li-hover"><p class="ultra-small margin more-text">COMMON</p></li>
+
+            <li '.hoverColor("depleteditems").' >
+                <a href="?display=depleteditems&entity=depleteditems" >
+                <img src="images/icons/STRSPVR/DepletemItemListPage.png" width="30px" height="30px">Depleted Items(!)</a></li>
 
             <li '.hoverColor("supplyrecordsearch").'><a href="?display=supplyrecordsearch&action=no&entity=supplyrecordsearch"><img src="images/icons/SupplyRecordSearchPage.png" width="30px" height="30px">SupplyRecord Search</a></li>
 
@@ -851,11 +851,11 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
 {
   $body = "<div id='".$name."'>
           <center>Item count: ".count($items)."<center><br>
-          <form target=_blank action='export.php' method='POST' id='myform'>         
+          <form target=_blank action='export.php' method='POST' >         
             <input type='hidden' name='type' value='".$exporttype."'>
             <input type='hidden' name='items' value='".json_encode($items)."'>
             <input type='submit' value='EXPORT'>
-          </form>
+          </form>          
   <table border='1' id='result".$name."'>";   
   $body .= "<thead><tr>";
   foreach($fields as $field)
@@ -879,8 +879,8 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             
             else if ($field == "REQUEST_QUANTITY"){
 
-              $dataSet .= "'<input value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
-                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" ><br>\
+              $dataSet .= "'<input name=\"idfield\" value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
+                            <input  style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" ><br>\
                             <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\")>Update</button>',";
             }
             else if ($field == "ACTION"){

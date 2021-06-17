@@ -226,11 +226,9 @@ var zkSignature = (function () {
 								var type = document.getElementById('type').value;
 								
 								for(var i=0;i<fields.length;i++)
-			              		{  
-					                if (fields[i].type == 'hidden' && fields[i].name !=  "PRODUCTID" && fields[i].name !=  "action" && 
-					                	fields[i].name != "display" && fields[i].name != "entity" && fields[i].name != "type" && 
-					                	fields[i].name != "author" && fields[i].name != "items" &&fields[i].name != "detailtype")
-					                {					                						                  					                					                	
+			              		{ 			              		
+					                if (fields[i].name == 'idfield')
+					                {					                                						                  					                					                	
 					                  var oneItem = {};
 					                  oneItem['PRODUCTID'] = fields[i].value;  							                  								
 					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;					                  
@@ -238,11 +236,17 @@ var zkSignature = (function () {
 
 					                }
 			             		}  
-			             		
+			             										
+
+			             		if (document.getElementById('listnameLbl') != null)
+			             			listname = document.getElementById('listnameLbl').innerHTML;
+			             		else 
+			             			listname = '';			             	
 								ItemJSON = {  "REQUESTER" : author,
 		   					 				  "REQUESTERSIGNATURE" :  b64,	   					 					  
 		   					 				  "ITEMS" : JSON.stringify(allItems),
-		   					 	  			  "TYPE" : type }; 
+		   					 	  			  "TYPE" : type,
+		   					 	  			  "LISTNAME" : listname }; 
 
 								
 								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction'; 
@@ -250,6 +254,8 @@ var zkSignature = (function () {
 		    					xmlhttp.onreadystatechange = function () {
 				                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
 				                        alert('ItemRequest created')
+				                        document.getElementById('sendBtn').style.display = 'none';
+				                        
 				                      }
 				                 }
 								xmlhttp.open("POST", URL,false);

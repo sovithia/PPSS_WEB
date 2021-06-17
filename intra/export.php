@@ -370,14 +370,14 @@ else if ($type == "itemrequestactionpool_PURCHASE" ||
          $type == "depleteditems")
 {
 
-    $items = json_decode($_POST["items"],true);    
+    $items = json_decode($_POST["items"],true);        
     generateExcel($items,$type);
     downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
 {             
-    $items = purifyData($_POST);      
-    //var_dump($_POST);
+    $items = purifyData($_POST);
+          
     generateExcel($items,$type);        
     downloadFile("data.xlsx");
 } 

@@ -120,7 +120,7 @@ function blueUser($author){
 	else if ($author == "sin_p")
 		return "PHEAK";
 	else 
-		return "DEMO";
+		return $author;
 
 }	
 

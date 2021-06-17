@@ -4240,7 +4240,7 @@ function renderItemRequestActionDetails($data){
                 (Sign with your trackpad or mouse)<br>";
     
       $body .= "
-            <button type='button' onclick='zkSignature.clear()'>
+            <button id='sendBtn' type='button' onclick='zkSignature.clear()'>
                 Clear Signature
                </button>
           
@@ -4251,7 +4251,7 @@ function renderItemRequestActionDetails($data){
                 zkSignature.capture();
                </script>
         
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";  
     }
@@ -4555,7 +4555,7 @@ function renderItemRequestRestockCreate($data)
                <input type='hidden' id='type' name='type' value='".$_GET["type"]."'>       
               <input type='hidden' id='author' name='author' value='".$_SESSION["USER"]["login"]."'>
 
-              <center><button type='button' onclick='zkSignature.clear()'>
+              <center><button id='sendBtn' type='button' onclick='zkSignature.clear()'>
                 Clear Signature
                </button>
           
@@ -4567,7 +4567,7 @@ function renderItemRequestRestockCreate($data)
                 zkSignature.capture();
                </script>
         
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button  id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
    
@@ -4691,7 +4691,7 @@ function renderItemRequestActionCreate($data)
                 zkSignature.capture();
                </script>
         
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
   return $body;
@@ -5173,7 +5173,7 @@ function renderSupplyRecordDetail($data,$action){
                 zkSignature.capture();
                </script>
         
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
     }  
@@ -6429,7 +6429,7 @@ function renderReceptionRecordDetail($data){
                 zkSignature.capture();
                </script>
         
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
     }         
@@ -6535,7 +6535,7 @@ function renderReceptionRecordDetailNOPO($data){
                <script>
                 zkSignature.capture();
                </script>      
-               <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+               <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                 SEND
                </button><center><br><br><br>";
     }         
@@ -6856,7 +6856,7 @@ function renderVaultDetail($data){
                   zkSignature.capture();
                  </script>
           
-                 <button style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
+                 <button id='sendBtn' style='font-size:20pt;background-color:#009183;color:white' type='button' onclick='zkSignature.send()'>
                   SEND
                  </button><center><br><br><br>";
              
