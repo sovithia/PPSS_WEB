@@ -119,6 +119,8 @@ function blueUser($author){
 		return "PHARY";
 	else if ($author == "sin_p")
 		return "PHEAK";
+	else if ($tauthor == "chea_s")
+		return "SOPHAL";
 	else 
 		return $author;
 

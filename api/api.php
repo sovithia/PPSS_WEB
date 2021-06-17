@@ -3039,10 +3039,72 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 	return $response;
 });
 
+function createGroupedPurchases()
+{
+	$db = getInternalDatabase();
+
+	$sql = "SELECT DISTINCT(VENDID) FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach($vendors as $vendor)
+	{
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ?"; 
+		$req = $db->prepare($sql);
+		$req->execute(array($vendor["VENDID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res == false)
+		{
+			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1) VALUES ('GROUPEDPURCHASE','AUTO',?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($vendor["VENDID"]));
+			$theID = $db->lastInsertId();
+		}
+		else		
+			$theID = $res["ID"];	
+
+		$sql = "SELECT * FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE VENDID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($vendor["VENDID"]));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($items as $item)
+		{
+			$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$theID));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res == false){
+				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
+			}
+			else{
+				$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? 
+						WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$theID));
+			}
+			$sql = "DELETE FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+		}
+
+	}
+	
+}
+
+
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	
+
 	$type = $request->getAttribute('type');
+
+	if ($type == "GROUPEDPURCHASE")
+		createGroupedPurchases();
 
 	if (substr($type,0,1) == "v")
 	{
@@ -3075,14 +3137,21 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	$req->execute(array($type));
 	$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
 	$response = $response->withJson($actions);
+
 	return $response;
 });
 
+
+
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
 
-	$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
+	if($json["TYPE"] == "PURCHASE") 
+		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";
+	else 
+		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
 	$req = $db->prepare($sql);
 
 	if (substr($json["TYPE"],0,6) == "DEMAND")
@@ -3130,6 +3199,47 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 					(isset($item["LOCATION"]) ? $item["LOCATION"] : null),
 					(isset($item["LOTWH1"]) ? $item["LOTWH1"] : null),
 					(isset($item["LOTWH2"]) ? $item["LOTWH2"] : null),$lastID));
+
+		// IF PURCHASE CLONE TO ITEMREQUESTUNGROUPEDPURCHASEPOOL
+		if($json["TYPE"] == "PURCHASE") 
+		{
+			$sql = "SELECT 1 FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res == false)
+			{
+				$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+
+				if ($res == false)
+				{
+					$sql = "SELECT VENDID 
+							FROM ICPRODUCT,ICPRODUCT_SALEUNIT 
+							WHERE ICPRODUCT.PRODUCTID = ICPRODUCT_SALEUNIT.PRODUCTID
+							AND PACK_CODE = ?";
+					$req = $dbBlue->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$res = $req->fetch(PDO::FETCH_ASSOC)["VENDID"];
+				} 
+				$vendid = $res["VENDID"];
+
+
+				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));
+			}
+			else
+			{
+				$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE  PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+			}
+		}
+
 
 		if ($suffix == "")
 			$targetQty =$item["REQUEST_QUANTITY"];
