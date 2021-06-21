@@ -651,6 +651,9 @@ function itemLookupLabel($barcode)
 		$oneItem["productImg"] = getImage($barcode);			
 		$oneItem["country"] = $item["COLOR"];
 
+		if (substr($item["DISCPERCENT"],0,1) == ".")
+			$item["DISCPERCENT"] = "0".$item["DISCPERCENT"];
+
 		$exp = explode('.',$item["DISCPERCENT"]);
 		if ( (count($exp) > 1) &&   intval($exp[1]) == 0)
 			$oneItem["discpercent"] = explode('.',$item["DISCPERCENT"])[0];
@@ -2563,7 +2566,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();
 		pictureRecord($json["SIGNATURE"],"PCH",$json["IDENTIFIER"]);		
 
-		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]));
 		

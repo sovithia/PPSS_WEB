@@ -451,12 +451,12 @@ function renderLeftSidebar()
                            <img src="images/icons/WH/SupplyRecordListWHDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>
 
 
-                        <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."PURCHASE").' >
-                        <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=PURCHASE&status=TODO" >
+                        <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."PURCHASE").' >
+                        <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=GROUPEDPURCHASE&status=TODO" >
                         <img src="images/icons/PCH/ItemRequestPurchaseTodoListPage.png" width="30px" height="30px">ItemPurchase(!)</a></li>
 
-                        <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."vPURCHASE").' >
-                        <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=vPURCHASE&status=VALIDATED" >
+                        <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."vGROUPEDPURCHASE").' >
+                        <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=vGROUPEDPURCHASE&status=VALIDATED" >
                         <img src="images/icons/PCH/ItemRequestPurchaseValidatedListPage.png" width="30px" height="30px">ItemPurchase(#)</a></li>                  
 
                         ';
