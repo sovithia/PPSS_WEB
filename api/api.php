@@ -2222,7 +2222,7 @@ function createSupplyRecordForPO(){
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 
-				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"]));
 
@@ -2233,7 +2233,7 @@ function createSupplyRecordForPO(){
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
 
-				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = TRANCOST WHERE PONUMBER = ?";
+				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"]));
 			}
