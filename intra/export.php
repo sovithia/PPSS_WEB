@@ -75,7 +75,7 @@ function fieldsPresets($type)
 }
 
 
-function purifyData($data)
+function extractItems($data)
 {        
     $result = array();    
     foreach($data as $key => $value)    
@@ -109,10 +109,9 @@ function purifySelectedData($data)
 }
 
 
-function generateExcel($items,$type = 1,$setQuantity = false)
+function generateExcel($items,$fields,$setQuantity = false)
 {
-        
-    $fields = fieldsPresets($type);  
+
 
     $alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V"];
 
@@ -154,13 +153,13 @@ function generateExcel($items,$type = 1,$setQuantity = false)
 
  
     $count = 2;    
-
-    
-
+        
     foreach($items as $item)    
     {  
-        if ($item["PRODUCTID"] == "153020") // MYSTERY
-            continue;              
+    
+        if (isset($item["PRODUCTID"]) && $item["PRODUCTID"] == "153020") // MYSTERY
+            continue;        
+
         $sheet->getRowDimension($count)->setRowHeight(100); 
          
         if ($setQuantity == true)
@@ -168,12 +167,13 @@ function generateExcel($items,$type = 1,$setQuantity = false)
             if ($_POST["qty".$item["PRODUCTID"]] == "0" || 
                 $_POST["qty".$item["PRODUCTID"]] == 0)
                 continue;
-        }    
-      
+        }           
 
         if (!isset($item["PRODUCTID"]))
             continue;
         
+
+
         $alphacount = 0;
         foreach($fields as $field )
         {            
@@ -375,10 +375,18 @@ else if ($type == "itemrequestactionpool_PURCHASE" ||
     downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
-{             
-    $items = purifyData($_POST);
-          
-    generateExcel($items,$type);        
+{       
+    if(isset($_POST["items"]))              
+        $items = json_decode($_POST["items"],true);
+    else 
+        $items = extractItems($_POST);
+      
+    if (isset($_POST["fields"]))
+        $fields = json_decode($_POST["fields"],true);
+    else 
+        $fields = fieldsPresets($type);  
+         
+    generateExcel($items,$fields);        
     downloadFile("data.xlsx");
 } 
 

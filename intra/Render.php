@@ -854,6 +854,7 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
           <form target=_blank action='export.php' method='POST' >         
             <input type='hidden' name='type' value='".$exporttype."'>
             <input type='hidden' name='items' value='".json_encode($items)."'>
+            <input type='hidden' name='fields' value='".json_encode($fields)."'>
             <input type='submit' value='EXPORT'>
           </form>          
   <table border='1' id='result".$name."'>";   

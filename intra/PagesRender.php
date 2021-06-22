@@ -4158,83 +4158,8 @@ function renderItemRequestActionDetails($data){
    //$itemrequest = $data;
    $status = $_GET["status"];
 
-
-
-   $body = "<div >";   
-   $body .=   "<form id='myform'><table border='1' id='result'>
-               <thead><tr>
-                  <th>IMAGE</th>
-                  <th>BARCODE</th>
-                  <th>NAME</th>           
-                  <th>DEM</th>                                
-                  <th>RES</th>
-                  <th>TRAN</th> 
-                  <th>PURC</th>
-                  <th>WH</th>
-                  <th>(BLUE)</th>                  
-                  <th>Trans_P</th>
-                  <th>Purch_P</th>                  
-                  <th>Req_Qty</th>
-                  <th>Debt</th> 
-                  <th>REQ</th>   
-                 
-               </tr></thead>
-               <tfoot><tr>
-                  <th>IMAGE</th>
-                  <th>BARCODE</th>
-                  <th>NAME</th>  
-                  <th>DEM</th>                                
-                  <th>RES</th>
-                  <th>TRAN</th> 
-                  <th>PURC</th>
-                  <th>WH</th>
-                  <th>(BLUE)</th>                  
-                  <th>Trans_P</th>
-                  <th>Purch_P</th>                  
-                  <th>Req_Qty</th>
-                  <th>Debt</th> 
-                  <th>REQ</th>
-                 
-               </tr></tfoot>
-               </table></form>
-               ";  
-    $dataSet1 = "";
-    
-
-    foreach($items as $item)
-    {   
-         $dataSet1 .= 
-         "[ 
-         '<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',          
-          \"".$item["PRODUCTID"]."\",  
-          \"".$item["PRODUCTNAME"]."\",              
-          '".$item["DEMAND_QTY"]."',
-          '".$item["RESTOCK_QTY"]."',    
-          '".$item["TRANSFER_QTY"]."',    
-          '".$item["PURCHASE_QTY"]."',    
-          '".$item["WAREHOUSE_QTY"]."',    
-          '".$item["SUPPLIERREQUESTED_QTY"]."',    
-          '".$item["TRANSFER_POOL"]."',    
-          '".$item["PURCHASE_POOL"]."',    
-          '".$item["REQUEST_QUANTITY"]."',    
-          '".$item["DEBT_QTY"]."',
-          '".$item["REQUESTER"]."'             
-          ],";
-    }
-     $dataSet1 = rtrim($dataSet1,",");        
-        $body .= "  
-        <script>         
-        var dataSet1 = [".$dataSet1."];
-        var table;        
-        table =  $(document).ready( function () {
-         $('#result').DataTable({                
-         data:dataSet1, 
-         'lengthMenu':[-1],          
-           });
-        });
-      </script>
-    ";   
-    $body .=  "</div>"; 
+   $fields = ["IMAGE","PRODUCTID","PRODUCTNAME","DEMAND_QTY","RESTOCK_QTY","TRANSFER_QTY","PURCHASE_QTY","WAREHOUSE_QTY","SUPPLIERREQUESTED_QTY","TRANSFER_POOL","PURCHASE_POOL","REQUEST_QUANTITY","DEBT_QTY","REQUESTER"];
+    $body = _ItemsTable($items,$fields,$_GET,$_GET["entity"],$_GET["entity"]);
     
     if ($status != "READONLY")
     {
