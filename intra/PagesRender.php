@@ -4089,6 +4089,8 @@ function renderItemRequestActionList($data){
                   <th>DETAILS</th>                                
                   <th>ID</th>
                   <th>TYPE</th> 
+                  <th>ARG1</th>
+                  <th>ARG2</th>
                   <th>REQUEST_TIME</th>
                   <th>REQUESTER</th>
                   <th>REQUESTEE</th>                  
@@ -4098,6 +4100,8 @@ function renderItemRequestActionList($data){
                   <th>DETAILS</th>                                
                   <th>ID</th>
                   <th>TYPE</th> 
+                  <th>ARG1</th>
+                  <th>ARG2</th>
                   <th>REQUEST_TIME</th>
                   <th>REQUESTER</th>
                   <th>REQUESTEE</th> 
@@ -4122,6 +4126,8 @@ function renderItemRequestActionList($data){
           '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=".$status."&ID=".$item["ID"]."\">DETAILS</a>',                
           '".$item["ID"]."',          
           '".$item["TYPE"]."',
+          '".$item["ARG1"]."',
+          '".$item["ARG2"]."',
           '".$item["REQUEST_TIME"]."',    
           '".$REQUESTER."',
           '".$REQUESTEE."'                  
