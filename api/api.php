@@ -3060,9 +3060,19 @@ function createGroupedPurchases()
 
 		if ($res == false)
 		{
-			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1) VALUES ('GROUPEDPURCHASE','AUTO',?)";
+
+			$sql = "SELECT VENDNAME FROM APVENDOR WHERE VENDID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($vendor["VENDID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+				$vendorname = $res["VENDNAME"];
+			else 
+				$vendorname = "";
+
+			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDPURCHASE','AUTO',?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($vendor["VENDID"]),$vendorname);
 			$theID = $db->lastInsertId();
 		}
 		else		
