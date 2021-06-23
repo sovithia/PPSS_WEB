@@ -316,10 +316,12 @@ var zkSignature = (function () {
 	   					 	}
 	   					 	else 
 	   					 	{
+	   					 		var ponumber = document.getElementById('ponumber').value;
 	   					 		ItemJSON = {"IDENTIFIER" :  identifier,
 	   					 					 "AUTHOR" : author,
 	   					 					  "SIGNATURE" :  b64,	   					 					  
-	   					 					 "ACTIONTYPE" : type }; 	
+	   					 					 "ACTIONTYPE" : type,
+	   					 					 "PONUMBER" : ponumber}; 	
 	   					 	}   					 	    				      				    
 	   						var	URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord'; 
 	   						var xmlhttp = new XMLHttpRequest();
