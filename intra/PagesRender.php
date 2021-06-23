@@ -4936,6 +4936,7 @@ function renderSupplyRecordDetail($data,$action){
           <th>MAXCOST</th>
           <th>DISCOUNT</th>
           <th>ORDER_PRICE</th>
+          <th>RECEPTION PRICE</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -4956,6 +4957,7 @@ function renderSupplyRecordDetail($data,$action){
           <th>MAXCOST</th>
           <th>DISCOUNT</th>
           <th>ORDER_PRICE</th>
+          <th>RECEPTION PRICE</th>
           <th>COST</th>
           <th>ORDER QTY</th>
           <th>VALIDATION QTY</th>
@@ -5041,9 +5043,10 @@ function renderSupplyRecordDetail($data,$action){
               \"".$item["MAXCOST"]."\",
               \"".$item["TRANDISC"]."\",
               
-              '<span style=\"color:".$colorOrderQty."\">".$item["PPSS_ORDER_PRICE"]."</span>',      
+              '<span style=\"color:".$colorOrderQty."\">".$item["PPSS_ORDER_PRICE"]."</span>',
+              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"invoiceprice_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_ORDER_PRICE"]."\">',      
               '<span style=\"color:".$color."\">".$item["TRANCOST"]."</span>',      
-             \"".$order."\",
+              \"".$order."\",
               '<input ".$valdisable." style=\"text-align:center\" type=\"text\" id=\"validationqty_".$item["PRODUCTID"]."\" value=\"".$item["ORDER_QTY"]."\">',                            
               '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"receptionqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_RECEPTION_QTY"]."\">',              
               '<input  style=\"text-align:center\" type=\"text\" id=\"note_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_NOTE"]."\">',              

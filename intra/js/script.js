@@ -282,7 +282,7 @@ var zkSignature = (function () {
 							}
 							
 							var ItemJSON = "";
-
+							document.getElementById('sendBtn').style.display = 'none';
 	   					 	if (type == 'RCV'){
 	   					 		ItemJSON = {"IDENTIFIER" :  identifier,
 	   					 					 "AUTHOR" : author,
@@ -292,6 +292,7 @@ var zkSignature = (function () {
 	   					 	}
 	   					 	else if (type == "VAL" || type == "WH")
 	   					 	{
+
 	   					 		var ponumber = document.getElementById('ponumber').value;
 	   					 		var fields = document.getElementById('myform').getElementsByTagName('input');  
               					var allItems = {};
@@ -300,7 +301,8 @@ var zkSignature = (function () {
 					                if (fields[i].type == 'hidden')
 					                {
 					                  var oneItem = {};
-					                  oneItem['ID'] = fields[i].value;                  
+					                  oneItem['ID'] = fields[i].value;  
+					                  oneItem["PPSS_INVOICE_PRICE"] =  document.getElementById('invoiceprice_' + fields[i].value).value;               
 					                  oneItem['PPSS_VALIDATION_QTY'] = document.getElementById('validationqty_' + fields[i].value).value;
 					                  oneItem['PPSS_RECEPTION_QTY'] = document.getElementById('receptionqty_' + fields[i].value).value;
 					                  oneItem['PPSS_NOTE'] = document.getElementById('note_' + fields[i].value).value;

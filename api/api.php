@@ -2696,7 +2696,7 @@ function splitPOWithItems($ponumber,$items)
 	$req->execute(array($PONUMBER, $USERADD, $VENDID, $VENDNAME, $DATEADD));
 
 	$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-	$req = $$dbBLUE->prepare($sql);
+	$req = $dbBLUE->prepare($sql);
 	$req->execute(array($PONUMBER));
 
 }
@@ -2772,6 +2772,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$absentitems = array();
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
 			{			
+				error_log($key.":".$value["PPSS_INVOICE_PRICE"]);
 				if ($value["PPSS_RECEPTION_QTY"] == "0" || $value["PPSS_RECEPTION_QTY"] == 0)
 				{
 						$value["ID"] = $key; // useful ?
@@ -2804,19 +2805,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				}
 					 						
 			}
-
 			error_log(count($absentitems));
-			//if ($isSplitCompany  == true)
-			//	splitPOWithItems($json["PONUMBER"],$absentitems);
+		//	if ($isSplitCompany  == true)
+		//		splitPOWithItems($json["PONUMBER"],$absentitems);
 			  
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
-
 			foreach($absentitems as $item)
 			{
 				$sql = "DELETE FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($item["ID"],$json["PONUMBER"]));
 			}
+			
+		
 			
 			// RECALCULATE AMOUNT ON POHEADER
 			$sql = "SELECT EXTCOST FROM PODETAIL WHERE PONUMBER = ? ";
