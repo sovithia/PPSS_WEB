@@ -116,9 +116,6 @@ function getUserSession($login,$password)
     $stmt->execute(array($login,$password));
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    error_log($login);
-    error_log($password);
-
     if ($user != false)
     {
     	$expiration = time() + 86400;
@@ -2217,8 +2214,6 @@ function createSupplyRecordForPO(){
 		$req = $indb->prepare($sql);
 		$req->execute(array($onePO["PONUMBER"]));
 		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		error_log($onePO["PONUMBER"]);
-		error_log($cnt);
 		if ($cnt == 0)
 		{
 
@@ -2739,7 +2734,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]));
-		error_log($json["PONUMBER"]);
+
 		$data["RESULT"] = "OK";	
 
 	}
@@ -2772,7 +2767,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$absentitems = array();
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
 			{			
-				error_log($key.":".$value["PPSS_INVOICE_PRICE"]);
+	
 				if ($value["PPSS_RECEPTION_QTY"] == "0" || $value["PPSS_RECEPTION_QTY"] == 0)
 				{
 						$value["ID"] = $key; // useful ?
@@ -2805,9 +2800,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				}
 					 						
 			}
-			error_log(count($absentitems));
-		//	if ($isSplitCompany  == true)
-		//		splitPOWithItems($json["PONUMBER"],$absentitems);
+	
+			if ($isSplitCompany  == true)
+				splitPOWithItems($json["PONUMBER"],$absentitems);
 			  
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
@@ -3950,7 +3945,6 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$sql = "SELECT * FROM ITEMREQUESTDEBT";	
 	else if (substr($type,0,6) == "DEMAND"){		
 		$userid = substr($type,7);
-		error_log($userid);
 		$sql = "SELECT * FROM ITEMREQUESTDEMANDPOOL WHERE USERID = ".$userid;
 
 	}
@@ -4057,7 +4051,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					(isset($item["LOTWH2"]) ? $item["LOTWH2"]:  null)));		
 				}
 				else if ($type == "RESTOCK"){
-						error_log($json["LISTNAME"]);
+
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
 					$req = $db->prepare($sql);
 					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$json["LISTNAME"]));		
