@@ -113,7 +113,7 @@ function generateExcel($items,$fields,$setQuantity = false)
 {
 
 
-    $alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V"];
+    $alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
 
 
     $spreadsheet = new Spreadsheet();
@@ -141,6 +141,10 @@ function generateExcel($items,$fields,$setQuantity = false)
     $sheet->getColumnDimension('T')->setWidth(10);
     $sheet->getColumnDimension('U')->setWidth(10);
     $sheet->getColumnDimension('V')->setWidth(10);
+    $sheet->getColumnDimension('W')->setWidth(10);
+    $sheet->getColumnDimension('X')->setWidth(10);
+    $sheet->getColumnDimension('Y')->setWidth(10);
+    $sheet->getColumnDimension('Z')->setWidth(10);
     
     $alphacount = 0;
 
@@ -385,7 +389,10 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
         $fields = json_decode($_POST["fields"],true);
     else 
         $fields = fieldsPresets($type);  
-         
+      
+    //var_dump($items);  
+    //var_dump($fields);
+
     generateExcel($items,$fields);        
     downloadFile("data.xlsx");
 } 

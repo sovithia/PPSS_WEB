@@ -67,6 +67,7 @@ class Service
 	
 	const ResourceItemSearch = Service::BaseURL."/itemsearch";
 	const ResourceItemSearch2 = Service::BaseURL."/itemsearch2";
+	const ResourceItemSearch3 = Service::BaseURL."/itemsearch3";
 
 	const ResourceBestSeller = Service::BaseURL."/bestseller";
 	const ResourceItemSale = Service::BaseURL."/itemsale";
@@ -176,6 +177,7 @@ class Service
 						 	  "biglabel" => Service::ResourceBiglabel,
 						 	  "biglabelpromo" => Service::ResourceBiglabelpromo,
 						 	  "itemsearch2" => Service::ResourceItemSearch2,
+						 	  "itemsearch3" => Service::ResourceItemSearch3,
 						 	  "itemsearch" => Service::ResourceItemSearch,
 						 	  "itemupdate" => Service::ResourceItemUpdate,  
 						 	  "promotionlist" => Service::ResourcePromotionList,

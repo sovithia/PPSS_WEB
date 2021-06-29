@@ -1459,8 +1459,53 @@ function renderItemSearch2($items)
       $body .= "<center><h4>No Results</h4></center><br><br><br>";
     }
   return $body;  
+}
 
+function renderItemSearch3($items) 
+{
+  $categories = getOrderedCategories();
+  $years = array("2018","2019","2020","2021","2022","2023");
+  array_unshift($categories, "ALL");
 
+  $category = isset($_GET["category"]) ? $_GET["category"] : "ALL";
+  $year = isset($_GET["year"]) ? $_GET["year"] : "2021";
+  
+  $body = "";  
+  $body .= "<div class='col s12 m8 l9'>
+              <div class='row margin'>
+                <form class='col s12' method='GET'>
+
+                <div class='row'>
+                    <div class='input-field col s12'>
+                      ".elemSelect($categories,"category",12,$category)."
+                   </div>
+                </div>
+                
+                <div class='row'>
+                    <div class='input-field col s12'>
+                      ".elemSelect($years,"year",12,$year)."
+                   </div>
+                </div>   
+
+                <div class='row'>    
+                       <div class='input-field col s12'>             
+                        <input type='hidden' name='display' value='itemsearch3'>
+                        <input type='hidden' name='entity' value='itemsearch3'>
+                        <input type='hidden' name='action' value='itemsearch3'>
+                        <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
+                       </div>
+                </div>
+                </form>
+              </div>
+            </div> 
+              ";   
+
+  $fields = ["PRODUCTID","IMAGE","PRODUCTNAME","PRODUCTNAME1","PACKINGNOTE","COST","PRICE","AVGCOST","LASTCOST","TOTALSALE","TOTALRECEIVE",
+               "LASTRECEIVEQTY","LASTSALEDATE","DATEADD","SALEJANUARY","SALEFEBRUARY","SALEMARCH","SALEAPRIL","SALEMAY","SALEJUNE","SALEJULY",
+               "SALEAUGUST","SALESEPTEMBER","SALEOCTOBER","SALENOVEMBER","SALEDECEMBER"];
+  $body .= _ItemsTable($items,$fields,"","search3","search3"); 
+
+  return $body;  
 }
 
 function renderTinyItemSearch($items)

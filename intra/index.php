@@ -140,6 +140,14 @@ function getData($display,$entity,$param)
 
     return Service::ListEntity($entity,$params);
   }
+  else if ($display == "itemsearch3" && isset($param["category"]) )
+  {
+    $params = "?a=1";
+    $params .= ($param["category"] != "ALL") ? "&category=".urlencode($param["category"]) : "";
+    $params .= ($param["year"] != "") ? "&year=".urlencode($param["year"]) : "";
+
+    return Service::ListEntity($entity,$params);
+  }
   else if ($display == "priceprogression" &&  ( isset($param["barcode"]) || 
                                                 isset($param["vendor"])  || 
                                                 isset($param["vendorid"])  ))
@@ -419,6 +427,8 @@ function renderBody()
     return renderItemSearch($data); // FORM
   else if ($display == "itemsearch2")
     return renderItemSearch2($data); // FORM
+else if ($display == "itemsearch3")
+    return renderItemSearch3($data); // FORM
 
   else if ($display == "itemupdate")
     return renderItemUpdate($data);
@@ -594,35 +604,7 @@ function renderBody()
   else if ($display == "depleteditems")
     return renderDepletedItemList($data);
 
-  // DEPRECATION
-  else if ($display == "whdone")
-    return renderWHDone($data);
-  else if ($display == "whdone2")
-    return renderWHDone($data,false);
-  else if ($display == "rcvtodo")
-    return renderRCVTodo($data);
-  else if ($display == "rcvdone")
-    return renderRCVDone($data);
-  else if ($display == "accdone")
-    return renderACCDone($data);
-  else if ($display == "acctodo")
-    return renderACCTodo($data);
-  else if ($display == "xwhtodo")
-    return renderXWHTodo($data);
-  else if ($display == "pchtodo")
-    return renderPCHTodo($data);  
-  else if ($display == "pchdone")
-    return renderPCHDone($data);
-  else if ($display == "whdone")
-    return renderWHDone($data);
-  else if ($display == "receivetodo")  
-    return renderRCVTodo($data);
-  else if ($display == "receivedone")
-    return renderRCVDone($data);
-  else if ($display == "acctodo")
-    return renderACCTodo($data);
-  else if ($display == "accdone")
-    return renderACCDone($data);
+
 
 
   // DEPRECATION

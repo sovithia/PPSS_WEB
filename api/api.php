@@ -1344,6 +1344,58 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 	$response = $response->withJson($result);
 	return $response;	
 }); 
+
+$app->get('/itemsearch3',function(Request $request,Response $response) {    	
+	$conn=getDatabase();
+
+ 	$today = date("Y-m-d");
+	
+	$category = $request->getParam('category','ALL');
+	$year = $request->getParam('year','2021');
+
+    $sql = "SELECT PRODUCTID,BARCODE,		
+		replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
+		replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',		
+		PACKINGNOTE,COST,PRICE,VENDNAME,
+		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
+		(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
+	
+		ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
+		ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
+		CATEGORYID,				
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-1-1' AND '$year-1-31' GROUP BY PRODUCTID) as 'SALEJANUARY',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-2-1' AND '$year-2-28' GROUP BY PRODUCTID) as 'SALEFEBRUARY',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-3-1' AND '$year-3-31' GROUP BY PRODUCTID) as 'SALEMARCH',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-4-1' AND '$year-4-30' GROUP BY PRODUCTID) as 'SALEAPRIL',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-5-1' AND '$year-5-31' GROUP BY PRODUCTID) as 'SALEMAY',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEJUNE',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEJULY',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEAUGUST',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALESEPTEMBER',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEOCTOBER',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALENOVEMBER',
+		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEDECEMBER',
+
+		PRICE,LASTRECEIVEDATE, 
+		(SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTRECEIVEQTY',
+		LASTSALEDATE,dbo.ICPRODUCT.DATEADD
+		FROM dbo.ICPRODUCT,dbo.APVENDOR  
+		WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID";
+
+	$params = array();
+
+	if ($category != "ALL"){
+		$sql .=	" AND CATEGORYID = ?";
+		array_push($params,$category);
+	}			
+	$sql .= " ORDER BY PRODUCTNAME ASC";
+	$req = $conn->prepare($sql);	
+
+	$req->execute($params);
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$response = $response->withJson($result);
+	return $response;	
+}); 
 /************** SEARCH   ***************/
 //||||||LASTSALEDATE
 
@@ -2407,7 +2459,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 							  ORDER BY TRANCOST DESC";
 					$req = $db2->prepare($maxsql); 
 	 				$req->execute(array($detail["PRODUCTID"]));
-	 				$maxcost = $req->fetch()["COST"];	
+	 				$maxcost = $req->fetch(PDO::FETCH_ASSOC)["COST"];	
 	 		 
 	 				if ($detail["REALCOST"]  > $maxcost){
 						$isClean = false;
@@ -2781,7 +2833,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$res = $req->fetch();
 					$TRANDISC = $res["TRANDISC"];
 
+
 					if (!isset($value["PPSS_INVOICE_PRICE"]) ||  $value["PPSS_INVOICE_PRICE"] == null)				
+						$value["PPSS_INVOICE_PRICE"] = "0";
+
+					if (!is_numeric($value["PPSS_INVOICE_PRICE"]))
 						$value["PPSS_INVOICE_PRICE"] = "0";
 							
 					if ($TRANDISC != null && $TRANDISC != "0")

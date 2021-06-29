@@ -511,7 +511,7 @@ function renderLeftSidebar()
 
             <li '.hoverColor("itemsearch").'><a href="?display=itemsearch&action=no&entity=itemsearch"><img src="images/loupe.png" width="30px" height="30px">Item Search</a></li> 
             <li '.hoverColor("itemsearch2").'><a href="?display=itemsearch2&action=no&entity=itemsearch2"><img src="images/loupe.png" width="30px" height="30px">Item Search 2</a></li>
-            
+            <li '.hoverColor("itemsearch3").'><a href="?display=itemsearch3&action=no&entity=itemsearch3"><img src="images/loupe.png" width="30px" height="30px">Item Search 3</a></li>
             
 
             <li '.hoverColor("supplierlist").'><a href="?display=supplierlist&action=no&entity=supplier"><img src="images/supplier.png" width="30px" height="30px">Supplier List</a></li>            
