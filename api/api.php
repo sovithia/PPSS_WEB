@@ -2798,7 +2798,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req = $db->prepare($sql);							
 			$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 			$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);			
-			//$req->execute();
+			$req->execute();			
 
 			if(isset($json["INVOICEJSONDATA"]))
 				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
@@ -2853,8 +2853,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
 										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$key,$json["PONUMBER"]) );	
-				}
-					 						
+				}					 						
 			}
 	
 			if ($isSplitCompany  == true)
@@ -2867,8 +2866,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($item["ID"],$json["PONUMBER"]));
 			}
-			
-		
 			
 			// RECALCULATE AMOUNT ON POHEADER
 			$sql = "SELECT EXTCOST FROM PODETAIL WHERE PONUMBER = ? ";
@@ -2998,7 +2995,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$rr["items"] = $poitems;
 	}
 
-	$items = $rr["items"];
+	$items = ($rr["items"] != null) ? $rr["items"] : array();
 
 	$tmpItems = array();
 	foreach($items as $item){
