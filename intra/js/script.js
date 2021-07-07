@@ -194,18 +194,20 @@ var zkSignature = (function () {
 							var allItems = {};
 							if (action == "update")
 							{	
-								var status = document.getElementById('status').value;              		
+								var status = document.getElementById('status').value;     
+								var identifier = document.getElementById('identifier').value;								      		
 			            		for(var i=0;i<fields.length;i++)
 			              		{  
 					                if (fields[i].type == 'hidden')
 					                {
 					                  var oneItem = {};
 					                  oneItem['PRODUCTID'] = fields[i].value;                  
-					                  oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
-					                  oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
+					                  //oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
+					                  //oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
 					                  allItems[fields[i].value] = oneItem; 
 					                }
-			             		}  
+			             		}
+			             		
 				             	ItemJSON = {  "REQUESTEE" : author,
 		   					 				  "REQUESTEESIGNATURE" :  b64,	   					 					  
 		   					 				  "ITEMS" : JSON.stringify(allItems),

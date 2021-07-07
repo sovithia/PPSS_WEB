@@ -4203,9 +4203,11 @@ function renderItemRequestActionDetails($data){
    //$itemrequest = $data;
    $status = $_GET["status"];
 
+
+
    $fields = ["IMAGE","PRODUCTID","PRODUCTNAME","DEMAND_QTY","RESTOCK_QTY","TRANSFER_QTY","PURCHASE_QTY","WAREHOUSE_QTY","SUPPLIERREQUESTED_QTY","TRANSFER_POOL","PURCHASE_POOL","REQUEST_QUANTITY","DEBT_QTY","REQUESTER"];
     $body = _ItemsTable($items,$fields,$_GET,$_GET["entity"],$_GET["entity"]);
-    
+    $body .= "<input type='hidden' id='identifier' name='identifier' value='".$_GET["ID"]."'>";
     if ($status != "READONLY")
     {
       $body .=  "<center>
