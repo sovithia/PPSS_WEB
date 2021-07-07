@@ -2327,12 +2327,24 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	$status =  $request->getParam('STATUS','ALL');
 	$potype =  $request->getParam('POTYPE','ALL');
 	$productid = $request->getParam('PRODUCTID','ALL');
+	$vendorname = $request->getParam('VENDORNAME','');
+	$vendid = $request->getParam('VENDID','');
 
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
 		    WHERE 1 = 1";
 	$params = array();
+
+	if ($vendid != ''){
+		$sql .= " AND VENDID = ? ";
+		array_push($params,$vendid);
+	}
+
+	if ($vendorname != ''){
+		$sql .= " AND VENDNAME LIKE ? ";
+		array_push($params,'%'.$vendorname.'%');
+	}
 
 	if ($ponumber != ''){
 		$sql .= " AND (PONUMBER = ? OR LINKEDPO = ?)";
@@ -2377,7 +2389,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 			$sql .= ")"; 	
 		} 
 	}
-
+	error_log($sql);
 
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -2813,8 +2825,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$vendid = $req->fetch()["VENDID"];
 
 			$isSplitCompany = false;
-			if ($vendid == "100-003" || $vendid == "100-150" || $vendid == "100-999")
+
+			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
+				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999"){
 				$isSplitCompany = true;
+			}
 
 			$absentitems = array();
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
@@ -2976,7 +2992,9 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,
-				   ORDER_QTY,TRANCOST,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_INVOICE_PRICE,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
+				   ORDER_QTY,
+					(TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as TRANCOST
+				   ,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_INVOICE_PRICE,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")
 	{
