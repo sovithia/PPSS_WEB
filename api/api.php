@@ -824,9 +824,14 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$req->execute($params);
 		$item1=$req->fetch();
 
-		$item["WH1"] = $item1["LOCONHAND"];
-		$item["STOREBIN1"] = $item1["STORBIN"];
-		
+		if ($item1 != false){
+			$item["WH1"] = $item1["LOCONHAND"];
+			$item["STOREBIN1"] = $item1["STORBIN"];
+		}else{
+			$item["WH1"] = "";
+			$item["STOREBIN1"] = "";
+		}
+
 		$sql="
 		SELECT LOCONHAND,STORBIN 
 		FROM dbo.ICLOCATION  
@@ -836,8 +841,14 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$req->execute($params);
 		$item2=$req->fetch();
 
-		$item["WH2"] = $item2["LOCONHAND"];
-		$item["STOREBIN2"] = $item2["STORBIN"];
+		if ($item2 != false){
+			$item["WH2"] = $item2["LOCONHAND"];
+			$item["STOREBIN2"] = $item2["STORBIN"];	
+		}else{
+			$item["WH2"] = "";
+			$item["STOREBIN2"] = "";	
+		}
+		
 
 		$item["result"] = "OK";
 
@@ -2513,7 +2524,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req = $db2->prepare($sql);
 		$req->execute(array($onePOData["PONUMBER"]));
 		$oneRes = $req->fetch();
-		$onePOData["VENDNAME"] = $oneRes["VENDNAME"];
+		if ($oneRes != false)
+			$onePOData["VENDNAME"] = $oneRes["VENDNAME"];
 		
 		// COUNT INVOICES
 		$count = 1;
@@ -3162,6 +3174,70 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 	return $response;
 });
 
+
+
+function createGroupedRestocks()
+{
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+
+	$sql = "SELECT DISTINCT(VENDID) FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
+	$OTHER = array("VENDID" =>  "OTHER", "VENDNAME" => "OTHER");
+	$SOPHIESOK = array("VENDID" =>  "400-463", "VENDNAME" => "SOPHIE SOK");
+	$MAKROCLICK = array("VENDID" => "400-429", "VENDNAME" => "MAKRO CLICK");
+	$vendors = array($SOPHIESOK,$MAKROCLICK,$OTHER);
+
+	foreach($vendors as $vendor)
+	{	
+			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND ARG1 = ?"; 
+			$req = $db->prepare($sql);
+			$req->execute(array($vendor["VENDID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res == false)
+			{
+				$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));
+				$theID = $db->lastInsertId();
+			}
+			else 
+				$theID = $res["ID"];	
+			$sql = "SELECT * FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE VENDID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($vendor["VENDID"]));
+			$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+			foreach($items as $item)
+			{
+				$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$theID));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+
+				if ($res == false){
+						$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
+				}else {
+						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? 
+						WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$theID));
+				}
+				$sql = "DELETE FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+		  }
+	}
+}
+
+// ADD TO DEBT
 function createGroupedPurchases()
 {
 	$db = getInternalDatabase();
@@ -3181,7 +3257,6 @@ function createGroupedPurchases()
 
 		if ($res == false)
 		{
-
 			$sql = "SELECT VENDNAME FROM APVENDOR WHERE VENDID = ?";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($vendor["VENDID"]));
@@ -3190,7 +3265,6 @@ function createGroupedPurchases()
 				$vendorname = $res["VENDNAME"];
 			else 
 				$vendorname = "";
-
 			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDPURCHASE','AUTO',?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($vendor["VENDID"],$vendorname));
@@ -3234,11 +3308,13 @@ function createGroupedPurchases()
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	
-
 	$type = $request->getAttribute('type');
 
 	if ($type == "GROUPEDPURCHASE")
 		createGroupedPurchases();
+
+	if ($type == "GROUPEDRESTOCK")
+		createGroupedRestocks();
 
 	if (substr($type,0,1) == "v")
 	{
@@ -3259,16 +3335,15 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$filter = "UNVALIDATED";
 
 
-
-
 	if ($filter == "UNVALIDATED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? ORDER BY REQUEST_TIME DESC";
+		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";
 	else if ($filter == "VALIDATED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
+		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 	else if ($filter == "SUBMITED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? ORDER BY REQUEST_UPDATED DESC";
+		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
 	else if ($filter == "ALL")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE TYPE = ? ORDER BY REQUEST_UPDATED DESC";		
+		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE 
+			TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
 
 	$req = $db->prepare($sql);
 	$req->execute(array($type));
@@ -3279,13 +3354,12 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 });
 
 
-
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
 
-	if($json["TYPE"] == "PURCHASE") 
+	if($json["TYPE"] == "PURCHASE" || $json["TYPE"] == "RESTOCK") 
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";
 	else 
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
@@ -3360,7 +3434,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 							AND PACK_CODE = ?";
 					$req = $dbBlue->prepare($sql);
 					$req->execute(array($item["PRODUCTID"]));
-					$res = $req->fetch(PDO::FETCH_ASSOC)["VENDID"];
+					$res = $req->fetch(PDO::FETCH_ASSOC);
 				} 
 				$vendid = $res["VENDID"];
 
@@ -3377,6 +3451,45 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			}
 		}
 
+		if ($json["TYPE"] == "RESTOCK")
+		{
+			$sql = "SELECT 1 FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res == false)
+			{
+				$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+
+				if ($res == false)
+				{
+					$sql = "SELECT VENDID 
+							FROM ICPRODUCT,ICPRODUCT_SALEUNIT 
+							WHERE ICPRODUCT.PRODUCTID = ICPRODUCT_SALEUNIT.PRODUCTID
+							AND PACK_CODE = ?";
+					$req = $dbBlue->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$res = $req->fetch(PDO::FETCH_ASSOC);
+				} 
+				$vendid = $res["VENDID"];			
+				// 					"MAKRO CLICK"						"SOPHIE SOK"
+				if ($vendid != "400-429" && $vendid != "400-463")
+					$vendid = "OTHER";
+				
+				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));
+			}
+			else
+			{
+				$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE  PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+			}
+		}
 
 		if ($suffix == "")
 			$targetQty =$item["REQUEST_QUANTITY"];
@@ -3437,7 +3550,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 	$PCNAME = "APPLICATION";
 	$USERADD = blueUser($author);
 	$APPLID = "IC";
-	
+
 	$TOTAL_AMT = 0;
 	foreach($items as $item){
 		$psql = "SELECT COST FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -3558,7 +3671,6 @@ function transferItems($items, $author,$type = "TRANSFER"){
 				$BATCHNO2 = $item["LOTWH1"];
 				$EXPIRED_DATE2 = $req1->fetch()["TDATE"];	
 			}
-
 		}
 
 		$sql = "INSERT INTO ICTRANDETAIL(
@@ -3580,7 +3692,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		?,?,?,?,?,
 		?,?,?,?,?,
 		?,?,?) 
-		";
+		";		
 		$req = $db->prepare($sql);
 
 		// TR
@@ -3660,10 +3772,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		$imageData = base64_decode($json["REQUESTEESIGNATURE"]);
 		file_put_contents("./img/requestaction/E" .$id.".png" , $imageData);
 		
-		if ($ira["TYPE"] == "DEMAND"){ // STORE SUPERVISOR VALIDATE DEMAND AND ADD TO RESTOCK POOL					
-			
+		if ($ira["TYPE"] == "DEMAND"){ // STORE SUPERVISOR VALIDATE DEMAND AND ADD TO RESTOCK POOL				
+
 			foreach($items as $item){
-				
 				$sql = "SELECT sum(REQUEST_QUANTITY) as CNT,count(*) as OCU FROM ITEMREQUESTRESTOCKPOOL WHERE LISTNAME = 'A' AND PRODUCTID = ? ";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));			
@@ -3682,20 +3793,18 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 					$req1->execute(array($newQty,$item["PRODUCTID"]));		
 				}
 			}
-		}
-		else if ($ira["TYPE"] == "RESTOCK")  // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
+		}	
+		else if ($ira["TYPE"] == "RESTOCK" || $ira["TYPE"] == "GROUPEDRESTOCK")  // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
 		{
 			foreach($items as $item)
 			{
 				// TRANSFER POOL
 				if (intval($item["TRANSFER_POOL_NEW"]) > 0)
 				{
-
 					$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
 					$req = $db->prepare($sql);
 					$req->execute(array($item["PRODUCTID"]));
 					$cnt = $req->fetch();
-
 						
 					if ($cnt["OCU"] == 0){
 						$sql1 = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) values (?,?)";
@@ -3710,7 +3819,6 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 					}
 				}
 
-		
 				// PURCHASE POOL
 				if (intval($item["PURCHASE_POOL_NEW"]) > 0)
 				{	
@@ -3749,9 +3857,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 						$req = $db->prepare($sql);
 						$req->execute(array($totalQty,$item["REQUEST_QUANTITY"]));					
 					}
-				}
-
-				
+				}			
 			}
 		}
 		else if ($ira["TYPE"] == "TRANSFER")
@@ -3942,17 +4048,27 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req->execute(array($itemID));
 		$item["TRANSFER_POOL"] = $req->fetch(PDO::FETCH_ASSOC)["TRANSFER_POOL"];
 
-		// WH Stock
-		$sql = "SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";		
+		// WH Stock & Storebin
+		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";		
 		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));		
-		$item["WAREHOUSE_QTY"] = floatval($req->fetch()["LOCONHAND"]);		
+		$req->execute(array($itemID));	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false) 	{
+			$item["WAREHOUSE_QTY"] = floatval($res["LOCONHAND"]);		
+			$item["STOREBIN1"] = $res["LOC"];	
+		}
+		
 
-		// Store Stock
-		$sql = "SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
+		// Store Stock		
+		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
 		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));		
-		$item["STORE_QTY"] = floatval($req->fetch()["LOCONHAND"]);		
+		$req->execute(array($itemID));	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$item["STORE_QTY"] = floatval($res["LOCONHAND"]);		
+			$item["STOREBIN2"] = $res["LOC"];	
+		}	
+		
 				
 		// On ORDER		
 		$sql = "SELECT ISNULL(SUM(ORDER_QTY),0) as SUPPLIERREQUESTED_QTY 
@@ -3972,10 +4088,17 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 
 		$req=$dbBlue->prepare($sql);
 		$req->execute(array($itemID));
-		$res = $req->fetch(); 				
-		$item["VENDNAME"] = $res["VENDNAME"];	
-		$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		$res = $req->fetch();
+		if ($res != false){
+			$item["VENDNAME"] = $res["VENDNAME"];	
+			$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];	
+		} else{
+			$item["VENDNAME"] = "";
+			$item["PACKINGNOTE"] = "";
+			$item["PRODUCTNAME"] = "";
+		}				
+		
 		//
 
 		// IF NO LOT NULL
@@ -4051,9 +4174,11 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$req = $db2->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$oneItem = $req->fetch(PDO::FETCH_ASSOC);
-		$item["PACKINGNOTE"] = $oneItem["PACKINGNOTE"];
-		$item["VENDNAME"] = $oneItem["VENDNAME"];
-		$item["PRODUCTNAME"] = $oneItem["PRODUCTNAME"];
+		if ($oneItem != false){
+			$item["PACKINGNOTE"] = $oneItem["PACKINGNOTE"];
+			$item["VENDNAME"] = $oneItem["VENDNAME"];
+			$item["PRODUCTNAME"] = $oneItem["PRODUCTNAME"];	
+		}		
 		array_push($itemsNEW,$item);
 	}
 	$items = $response->withJson($itemsNEW);
@@ -4092,7 +4217,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$items = $json["ITEMS"];
 	}
 
-
 	foreach($items as $item)
 	{		
 		if ($type == "RESTOCK"){
@@ -4107,7 +4231,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			$req->execute(array($item["PRODUCTID"]));
 		}		
 		$res = $req->fetch();	
-
 
 		if ($res["OCU"] == 0) // NO RECORD THEN INSERT
 		{

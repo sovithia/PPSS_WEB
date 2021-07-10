@@ -319,4 +319,17 @@ function flagByCountry($flag){
   return $flag = 'img/flags/'.strtolower($flag).'.png';
 }
 
+
+function statisticsByItem($barcode)
+{	
+	$response["MARGIN"] = "";
+	$response["THROWN"] = "";
+	$response["RETURN"] = "";
+	$response["TURNOVER"] = "";
+	$response["RATIOSALE"] = "";
+	$response["OVERALL"] = "";
+	return $response;
+}
+
+
 ?>
