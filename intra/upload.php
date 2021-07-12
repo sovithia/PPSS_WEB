@@ -37,10 +37,6 @@ function readExcel()
                 $data["PRODUCTID"] = $cell->getValue();
             if ($cell->getColumn() == "B")
                 $data["QUANTITY"] = $cell->getValue();
-            if ($cell->getColumn() == "C")
-                $data["LOTWH1"] = $cell->getValue();
-            if ($cell->getColumn() == "D")
-                $data["LOTWH1"] = $cell->getValue();
             
              
         }

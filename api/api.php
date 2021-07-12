@@ -3044,7 +3044,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$item["MINDISC"] = ($res != false) ? $res["TRANDISC"] : "";
  		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
  		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";
- 		$item["STATS"] = statisticsByItem($res["PRODUCTID"]);
+ 		//$item["STATS"] = statisticsByItem($res["PRODUCTID"]);
  		array_push($tmpItems, $item); 		
 	}
 	$rr["items"] = $tmpItems;
