@@ -358,9 +358,9 @@ function renderLeftSidebar()
                             <img src="images/icons/STRSPVR/ItemRequestRestockCreatePage.png" width="30px" height="30px">ItemRestock(+)</a></li>
                             
 
-                            <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."RESTOCK").' >
-                            <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=RESTOCK&status=SUBMITTED" >
-                            <img src="images/icons/STRSPVR/ItemRequestRestockSubmittedListPage.png" width="30px" height="30px">ItemRestock(?)</a></li>
+                           <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."vRESTOCK").' >
+                           <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=vRESTOCK&status=SUBMITTED" >
+                           <img src="images/icons/WH/ItemRequestRestockValidatedListPage.png" width="30px" height="30px">ItemRestock(#)</a></li>
                             
 
                             <li '.$nodemohide.' '.hoverColor("itemrequestactionlist"."itemrequestaction"."TRANSFER").' >
