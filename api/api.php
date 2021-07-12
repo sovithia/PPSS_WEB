@@ -3053,7 +3053,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	return $response;
 });
 
-
 $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -3086,6 +3085,14 @@ $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Re
 	$response = $response->withJson($data);	
 	return $response;
 });
+
+$app->get('/itemstats/{id}', function(Request $request,Response $response) {
+	$id = $request->getAttribute('id');
+	$stats = statisticsByItem($id);
+	$response = $response->withJson($stats);
+	return $response;
+});
+
 
 /*
                            ,,,,                   ,,,,,
