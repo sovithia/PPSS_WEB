@@ -361,7 +361,7 @@ function statisticsByItem($barcode)
 	$response["PRICE"] = $item["PRICE"];
 	$response["MARGIN"] = $response["PRICE"] - $response["COST"];
 	if ($response["COST"] != "0" && $response["COST"] != 0)
-		$response["SCOREMARGIN"] = 100 * ($response["MARGIN"] /  $response["COST"]);
+		$response["SCOREMARGIN"] = min(100 * ($response["MARGIN"] /  $response["COST"]),100);
 	else
 		$response["SCOREMARGIN"] = 0;
 
