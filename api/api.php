@@ -3151,7 +3151,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 
 	$db = getInternalDatabase();
 	$sql = "SELECT * FROM ITEMREQUESTACTION   
-		    WHERE 1 = 1 ";
+				  WHERE ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)";
 	$params = array();
 
 	if ($type != 'ALL'){
