@@ -360,7 +360,10 @@ function statisticsByItem($barcode)
 	$response["COST"] = $item["LASTCOST"]; 
 	$response["PRICE"] = $item["PRICE"];
 	$response["MARGIN"] = $response["PRICE"] - $response["COST"];
-	$response["SCOREMARGIN"] = 100 * ($response["MARGIN"] /  $response["COST"]);
+	if ($response["COST"] != "0" && $response["COST"] != 0)
+		$response["SCOREMARGIN"] = 100 * ($response["MARGIN"] /  $response["COST"]);
+	else
+		$response["SCOREMARGIN"] = 0;
 
 	// TURNOVER
 	$response["TOTALORDERTIME"] = $item["TOTALORDERTIME"];

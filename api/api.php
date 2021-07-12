@@ -886,7 +886,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$item["WARNING"] = "WH1 Location missing"; 
 		else if ($res2 < 1)
 			$item["WARNING"] = "WH2 Location missing"; 	
-		$item["STATS"] = statisticsByItem($barcode);		
+		//$item["STATS"] = statisticsByItem($barcode);		
 	}
 	else
 	{
@@ -4026,7 +4026,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$item["TRANSFER_POOL"] = $req->fetch(PDO::FETCH_ASSOC)["TRANSFER_POOL"];
 
 		// WH Stock & Storebin
-		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";		
+		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
 		$req=$dbBlue->prepare($sql);
 		$req->execute(array($itemID));	
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -4037,7 +4037,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		
 
 		// Store Stock		
-		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
+		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";		
 		$req=$dbBlue->prepare($sql);
 		$req->execute(array($itemID));	
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -4074,10 +4074,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 			$item["VENDNAME"] = "";
 			$item["PACKINGNOTE"] = "";
 			$item["PRODUCTNAME"] = "";
-		}					
-		$item["STATS"] = statisticsByItem($item["PRODUCTID"]);
-
-
+		}							
 		array_push($newData,$item);
 	}	
 
