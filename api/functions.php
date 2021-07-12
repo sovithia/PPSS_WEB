@@ -319,17 +319,87 @@ function flagByCountry($flag){
   return $flag = 'img/flags/'.strtolower($flag).'.png';
 }
 
+function truncatePrice2($price)
+{
+  if (strpos($price, 'E') !== false)
+  {
+    return floatval($price);
+  }
+  if (substr($price,0,3) == ".00")
+    return "0";
+	$left = explode('.',$price)[0];
+
+	if (count(explode('.',$price)) > 1)
+	{
+		$right = explode('.',$price)[1];
+		$right = substr($right,0,2);
+		return $left.".".$right;
+	}
+	else	
+		return  substr($left,0,2);		
+	
+}
+
 
 function statisticsByItem($barcode)
 {	
-	$response["MARGIN"] = "";
-	$response["THROWN"] = "";
-	$response["RETURN"] = "";
-	$response["TURNOVER"] = "";
-	$response["RATIOSALE"] = "";
-	$response["OVERALL"] = "";
+	$db=getDatabase();
+
+	$sql =  "SELECT PRODUCTID,PRODUCTNAME,PRICE,
+						(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',			
+					 (SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
+					 ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'NBTHROWN',
+					 ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
+					 ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',		
+					 ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALNBRETURN',		
+					 ISNULL((SELECT SUM(ORDER_QTY) FROM PODETAIL WHERE POSTATUS = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALQTYRETURN',		
+					 ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALORDERTIME',		
+					 ONHAND
+					FROM dbo.ICPRODUCT
+					WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));			
+	$item = $req->fetch(PDO::FETCH_ASSOC);	
+	$ATTEUANCEFACTOR = 3;
+	if ($item != false)
+	{
+	$response["PRODUCTID"] = $item["PRODUCTID"];
+	$response["PRODUCTNAME"] = $item["PRODUCTNAME"];
+		// MARGIN
+	$response["COST"] = $item["LASTCOST"]; 
+	$response["PRICE"] = $item["PRICE"];
+	$response["MARGIN"] = $response["PRICE"] - $response["COST"];
+	$response["SCOREMARGIN"] = 100 * ($response["MARGIN"] /  $response["COST"]);
+
+	// TURNOVER
+	$response["TOTALORDERTIME"] = $item["TOTALORDERTIME"];
+	$response["SCORETURNOVER"] = max(0,min(100, $item["TOTALORDERTIME"] * 10));
+	$response["NBTHROWN"] = $item["NBTHROWN"];	
+	$response["SCORETHROWN"] = 100 - (max(0,min(100,$response["NBTHROWN"])));
+	// RATIOSALE 
+	$response["TOTALSALE"] = $item["TOTALSALE"];
+	$response["TOTALRECEIVE"] = $item["TOTALRECEIVE"];
+	$response["SCORERATIOSALE"] = $item["TOTALSALE"] * 100 / $item["TOTALRECEIVE"];
+	// RETURN 
+	$response["TOTALNBRETURN"] = $item["TOTALNBRETURN"];
+	$response["TOTALQTYRETURN"] = $item["TOTALQTYRETURN"];
+	$response["SCORERETURN"] = 100 - (max(0,min(100,$response["TOTALNBRETURN"] * 20)));
+	
+	$response["TOTALSCORE"] = ($response["SCOREMARGIN"] / 5) + 
+												 ($response["SCORETHROWN"] / 5) + 
+												 ($response["SCORERETURN"] / 5) + 
+												 ($response["SCORETURNOVER"] / 5) + 
+												 ($response["SCORERATIOSALE"] / 5); 
+
+ 
+  $response["TOTALSCORE"] = truncatePrice2($response["TOTALSCORE"],4);
+	
+	}
+	else
+	{
+		$response["WARNING"] = "NOT FOUND";
+	}
 	return $response;
 }
-
 
 ?>
