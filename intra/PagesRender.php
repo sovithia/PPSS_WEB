@@ -722,33 +722,6 @@ function renderItemList($list)
   return $body;
 }
 
-function truncatePrice($price,$decimals = 4)
-{
-  if (strpos($price, '.') === false)
-    return  $price.".00";
-
-  if (strpos($price, 'E') !== false)
-    return floatval($price);
-
-  if (substr($price,0,3) == ".00")
-    return "0";
-
-  if (substr($price,0,1) == ".")
-    return "0".substr($price,0,1 + $decimals);
-
-	$left = explode('.',$price)[0];
-
-	if (count(explode('.',$price)) > 1)
-	{
-		$right = explode('.',$price)[1];
-		$right = substr($right,0,$decimals);    
-    return $left.".".$right;
-
-	}
-	else	    
-		return  substr($left,0,2);		
-	
-}
 
 function escapeJS($string)
 {
@@ -4627,7 +4600,7 @@ function renderItemRequestActionCreate($data)
              <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>";  
 
 
-   $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","LOTWH1","LOTWH2",
+   $fields = ["IMAGE","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY",
               "LOTEXPIREWH1","LOTEXPIREWH2","WH1REQUESTQTY","WH2REQUESTQTY","ACTION"];
 
    $body .= " <script>

@@ -212,16 +212,28 @@ function findTmpUser($login,$password)
 		return null;
 }
 
-function truncateNumber($number){
-	if (count(explode('.',$number)) == 2)
-	{
-		$left = explode('.',$number)[0];
-		$right = explode('.',$number)[1];
-		return $left.".".substr($right, 0,2);	
-	}
-	else
-		return "0.0";
-}
+
+
+function truncatePrice($price)
+{
+  if (strpos($price, 'E') !== false)
+  {
+    return floatval($price);
+  }
+  if (substr($price,0,3) == ".00")
+    return "0";
+  $left = explode('.',$price)[0];
+
+  if (count(explode('.',$price)) > 1)
+  {
+    $right = explode('.',$price)[1];
+    $right = substr($right,0,2);
+    return $left.".".$right;
+  }
+  else  
+    return  substr($left,0,2);    
+  
+} 
 
 function getCurrentRate(){
 	$conn=getDatabase();
@@ -319,27 +331,6 @@ function flagByCountry($flag){
   return $flag = 'img/flags/'.strtolower($flag).'.png';
 }
 
-function truncatePrice2($price)
-{
-  if (strpos($price, 'E') !== false)
-  {
-    return floatval($price);
-  }
-  if (substr($price,0,3) == ".00")
-    return "0";
-	$left = explode('.',$price)[0];
-
-	if (count(explode('.',$price)) > 1)
-	{
-		$right = explode('.',$price)[1];
-		$right = substr($right,0,2);
-		return $left.".".$right;
-	}
-	else	
-		return  substr($left,0,2);		
-	
-}
-
 
 function statisticsByItem($barcode)
 {	
@@ -392,7 +383,7 @@ function statisticsByItem($barcode)
 												 ($response["SCORERATIOSALE"] / 5); 
 
  
-  $response["TOTALSCORE"] = truncatePrice2($response["TOTALSCORE"],4);
+  $response["TOTALSCORE"] = truncatePrice($response["TOTALSCORE"],4);
 	
 	}
 	else

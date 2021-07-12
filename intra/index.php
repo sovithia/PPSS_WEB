@@ -15,26 +15,6 @@ require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-function truncatePrice($price)
-{
-  if (strpos($price, 'E') !== false)
-  {
-    return floatval($price);
-  }
-  if (substr($price,0,3) == ".00")
-    return "0";
-  $left = explode('.',$price)[0];
-
-  if (count(explode('.',$price)) > 1)
-  {
-    $right = explode('.',$price)[1];
-    $right = substr($right,0,2);
-    return $left.".".$right;
-  }
-  else  
-    return  substr($left,0,2);    
-  
-}
 
 function i18n($key)
 {
@@ -347,11 +327,7 @@ function getData($display,$entity,$param)
               if ($cell->getColumn() == "A")
                   $data["PRODUCTID"] = $cell->getValue();
               if ($cell->getColumn() == "B")
-                  $data["REQUEST_QUANTITY"] = $cell->getValue();
-              if ($cell->getColumn() == "C")
-                  $data["LOTWH1"] = $cell->getValue();
-              if ($cell->getColumn() == "D")
-                  $data["LOTWH1"] = $cell->getValue();                            
+                  $data["REQUEST_QUANTITY"] = $cell->getValue();                           
           }
           array_push($allData,$data);
        } 
