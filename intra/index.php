@@ -340,7 +340,6 @@ function getData($display,$entity,$param)
         $data["LISTNAME"] = "C";
 
        $data["ITEMS"] = $allData;
-       //var_dump($data);
        Service::CreateEntity($entity,$data,$type);                
      }
     else if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))
@@ -359,8 +358,8 @@ function getData($display,$entity,$param)
     }
      else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
        $data = array();
-       $data["PRODUCTID"] = $_GET["PRODUCTID"];
-
+       $data["PRODUCTID"] = $_GET["PRODUCTID"];  
+       $data["LISTNAME"] = $_GET["LISTNAME"];            
        Service::DeleteEntity($entity,$type,$data);
      }
 

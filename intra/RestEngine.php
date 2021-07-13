@@ -42,7 +42,7 @@ class RestEngine
 	}
 
 	static function DELETE($uri,$data,$headers = array())
-	{		
+	{				
 		$response = \Httpful\Request::delete($uri)
 				->sendsJson()
 				->body($data)
@@ -50,6 +50,7 @@ class RestEngine
 				->addHeaders($headers)
 				->send();
 		$json = json_decode(json_encode($response->body), TRUE);
+		//var_dump($json);
 		return $json;
 	}
 }

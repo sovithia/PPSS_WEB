@@ -263,7 +263,7 @@ var zkSignature = (function () {
 				                 }
 								xmlhttp.open("POST", URL,false);
 		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-		    					//xmlhttp.send(JSON.stringify(ItemJSON)); 		
+		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
 							}
 	   					 				
 						}

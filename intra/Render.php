@@ -884,8 +884,15 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
                             <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\")>Update</button>',";
             }
             else if ($field == "ACTION"){
+              if ($name == "listA")
+                $list = '<input type=\"hidden\" name=\"LISTNAME\" value=\"A\">';
+              else if ($name == "listB")
+                $list = '<input type=\"hidden\" name=\"LISTNAME\" value=\"B\">';                
+              else if ($name == "listC")
+                $list = '<input type=\"hidden\" name=\"LISTNAME\" value=\"C\">';
+
               $dataSet .= "'<form method=\"GET\"><input type=\"submit\" value=\"Delete\">\
-                              <input type=\"hidden\" name=\"PRODUCTID\" value=\"".$item["PRODUCTID"]."\">\
+                      ".$list."<input type=\"hidden\" name=\"PRODUCTID\" value=\"".$item["PRODUCTID"]."\">\
                               <input type=\"hidden\" name=\"action\" value=\"DELETE\">\
                               <input type=\"hidden\" name=\"display\" value=\"".$params["display"]."\">\
                               <input type=\"hidden\" name=\"entity\" value=\"".$params["entity"]."\">\

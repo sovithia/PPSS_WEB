@@ -655,6 +655,7 @@ function itemLookupLabel($barcode)
 		if (substr($item["DISCPERCENT"],0,1) == ".")
 			$item["DISCPERCENT"] = "0".$item["DISCPERCENT"];
 
+		error_log($item["DISCPERCENT"]);
 		$exp = explode('.',$item["DISCPERCENT"]);
 		if ( (count($exp) > 1) &&   intval($exp[1]) == 0)
 			$oneItem["discpercent"] = explode('.',$item["DISCPERCENT"])[0];
@@ -4267,10 +4268,12 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 });
 
 // DELETE ITEM
-$app->delete('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
+
+$app->delete('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
+
 
 	$suffix = "";
 	if ($type == "RESTOCK")
@@ -4299,9 +4302,10 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));	
 	}
-	
-	
-	$data["RESULT"] = "OK";
+	$data["RESULT"] = $json["PRODUCTID"];
+	$data["SQL"] = $sql;
+	//$data[""] =
+
 	$response = $response->withJson($data);
 	return $response;
 });
