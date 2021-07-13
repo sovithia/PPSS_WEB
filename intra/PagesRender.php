@@ -2,6 +2,7 @@
 <?php 
 
 include('data.php');
+require_once("functions.php");
 
 ini_set('max_input_vars','10000' );
 
