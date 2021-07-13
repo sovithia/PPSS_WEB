@@ -173,6 +173,8 @@ var zkSignature = (function () {
 		,
 		send : function(){
 
+				document.getElementById('sendBtn').disabled = true;
+				document.getElementById('sendBtn').style.backgroundColor = 'grey'
 				if (empty == false)
 				{
 				
@@ -182,6 +184,7 @@ var zkSignature = (function () {
 		         html2canvas(document.getElementById('canvas'),opt).then(function(canvas) {	
 						                      			
 						
+
 						var type = document.getElementById('detailtype').value;					
 						var author = document.getElementById('author').value;												
 						var name = '';						
@@ -201,9 +204,7 @@ var zkSignature = (function () {
 					                if (fields[i].type == 'hidden')
 					                {
 					                  var oneItem = {};
-					                  oneItem['PRODUCTID'] = fields[i].value;                  
-					                  //oneItem['TRANSFER_POOL_NEW'] = document.getElementById('transfer_' + fields[i].value).value;
-					                  //oneItem['PURCHASE_POOL_NEW'] = document.getElementById('purchase_' + fields[i].value).value;					                  
+					                  oneItem['PRODUCTID'] = fields[i].value;                  					                 
 					                  allItems[fields[i].value] = oneItem; 
 					                }
 			             		}
@@ -262,7 +263,7 @@ var zkSignature = (function () {
 				                 }
 								xmlhttp.open("POST", URL,false);
 		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
+		    					//xmlhttp.send(JSON.stringify(ItemJSON)); 		
 							}
 	   					 				
 						}
@@ -283,8 +284,7 @@ var zkSignature = (function () {
 								
 							}
 							
-							var ItemJSON = "";
-							document.getElementById('sendBtn').style.display = 'none';
+							var ItemJSON = "";							
 	   					 	if (type == 'RCV'){
 	   					 		ItemJSON = {"IDENTIFIER" :  identifier,
 	   					 					 "AUTHOR" : author,
@@ -344,6 +344,8 @@ var zkSignature = (function () {
 				else
 				{
 					alert('missing signature');
+					document.getElementById('sendBtn').disabled = false;
+					document.getElementById('sendBtn').style.backgroundColor = '#009183';
 				}
 			}
 

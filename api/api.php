@@ -2315,8 +2315,6 @@ function createSupplyRecordForPO(){
 	// RETROACTIVE DELETE THE ONE VOIDED 
 }	
 
-
-
 $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 
 	$today = date("Y-m-d");
@@ -3204,7 +3202,6 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 });
 
 
-
 function createGroupedRestocks()
 {
 	$db = getInternalDatabase();
@@ -3220,23 +3217,10 @@ function createGroupedRestocks()
 	$SOPHIESOK = array("VENDID" =>  "400-463", "VENDNAME" => "SOPHIE SOK");
 	$MAKROCLICK = array("VENDID" => "400-429", "VENDNAME" => "MAKRO CLICK");
 	$vendors = array($SOPHIESOK,$MAKROCLICK,$OTHER);
+	$maxItem = 2;
 
 	foreach($vendors as $vendor)
-	{	
-			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND ARG1 = ?"; 
-			$req = $db->prepare($sql);
-			$req->execute(array($vendor["VENDID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			if ($res == false)
-			{
-				$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));
-				$theID = $db->lastInsertId();
-			}
-			else 
-				$theID = $res["ID"];	
+	{				
 			$sql = "SELECT * FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE VENDID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($vendor["VENDID"]));
@@ -3244,28 +3228,71 @@ function createGroupedRestocks()
 
 			foreach($items as $item)
 			{
-				$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+				//itemIsInGroupedRestock
+				$sql = "SELECT ITEMREQUESTACTION_ID,count(*) as 'CNT' FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID IN 
+				 (SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND REQUESTEE IS NULL)"; 
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$theID));
+				$req->execute(array($item["PRODUCTID"]));
 				$res = $req->fetch(PDO::FETCH_ASSOC);
+				if ($res['CNT'] == 0)
+					$irID =  false;
+				else	
+					$irID = $res["ITEMREQUESTACTION_ID"];	
 
-				if ($res == false){
-						$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
+				
+				if ($irID != false)// JUST UPDATE
+				{
+						$sql = "UPDATE ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
-				}else {
-						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? 
-						WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
-						$req = $db->prepare($sql);
-						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$theID));
+						$req->execute(array($item["PRODUCTID"],$irID));
 				}
+				else 
+				{
+					$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND ARG1 = ? AND REQUESTEE IS NULL"; 
+					$req = $db->prepare($sql);
+					$req->execute(array($vendor["VENDID"]));
+					$irs = $req->fetchAll(PDO::FETCH_ASSOC);
+
+					$theID = null;
+					// ID SEARCHING
+					if (count($irs) == 0)// NEW 
+					{
+						$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
+						$theID = $db->lastInsertId(); // ID FROM NEW
+					}
+					else
+					{
+						foreach($irs as $ir){
+							$sql = "SELECT COUNT(*) as 'CNT' FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+							$req = $db->prepare($sql);
+							$req->execute(array($ir["ID"]));
+							$requests = $req->fetch(PDO::FETCH_ASSOC); 
+							if ($requests['CNT'] < $maxItem){ // 
+								$theID = $ir["ID"]; // ID FROM OLD WITH ROOM
+								break;
+							}
+						}
+						if ($theID == null){ // ALL FULL						
+							$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
+							$req = $db->prepare($sql);
+							$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
+							$theID = $db->lastInsertId(); // ID FROM NEW
+						}										
+					}	
+
+					$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
+				}
+				// TREATED
 				$sql = "DELETE FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));
 		  }
 	}
 }
-
 // ADD TO DEBT
 function createGroupedPurchases()
 {
@@ -3332,7 +3359,6 @@ function createGroupedPurchases()
 	}
 	
 }
-
 
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -3431,6 +3457,8 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 
 	foreach($items as $item)
 	{		
+		if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
+			continue;
 		if ($item["REQUEST_QUANTITY"] == 0 && $suffix == "")
 			continue;
 		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
@@ -4163,6 +4191,9 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	foreach($items as $item)
 	{		
+		if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
+			continue;
+
 		if ($type == "RESTOCK"){
 			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);	
