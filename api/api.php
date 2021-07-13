@@ -3217,7 +3217,7 @@ function createGroupedRestocks()
 	$SOPHIESOK = array("VENDID" =>  "400-463", "VENDNAME" => "SOPHIE SOK");
 	$MAKROCLICK = array("VENDID" => "400-429", "VENDNAME" => "MAKRO CLICK");
 	$vendors = array($SOPHIESOK,$MAKROCLICK,$OTHER);
-	$maxItem = 2;
+	$maxItem = 30;
 
 	foreach($vendors as $vendor)
 	{				
