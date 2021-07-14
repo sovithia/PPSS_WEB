@@ -4302,10 +4302,7 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));	
 	}
-	$data["RESULT"] = $json["PRODUCTID"];
-	$data["SQL"] = $sql;
-	//$data[""] =
-
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
