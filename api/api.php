@@ -3243,9 +3243,10 @@ function createGroupedRestocks()
 				
 				if ($irID != false)// JUST UPDATE
 				{
-						$sql = "UPDATE ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+						error_log($irID);
+						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$irID));
+						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$irID));
 				}
 				else 
 				{
