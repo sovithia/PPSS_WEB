@@ -1,67 +1,51 @@
 <?php 
 
-require_once 'RestEngine.php';
-
-
-$URL = "http://192.168.72.62/api/api.php/picture/";
-
-
-function getDatabase()
-{ 
-	$conn = null;      
-	try  
-	{  
-	
-	$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=SuperStore2_Data;ConnectionPooling=0', 'sa', 'blue'); 
-	$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
-	}  
-	catch(Exception $e)  
-	{   
-	die( print_r( $e->getMessage() ) );   
-	} 
-	return $conn;
-} 
-
-
-function getImage($barcode)
+function loadPicture($barcode,$scale = 150,$base64 = false)
 {
-	if(strpos($barcode," ") !== false){
-		$path = "img/mystery.png";		
-		$data = file_get_contents($path);
-		return base64_encode($data);	  
-	}
+	// Create new state:
+	$state = smbclient_state_new();
+	// Initialize the state with workgroup, username and password:
+	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
+	$file = smbclient_open($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg','r');
 
-	$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
-
-	if ($json["result"] != "KO")					
-		return $json["image"];
-	else if (file_exists("img/products/".$barcode.".jpg"))
+	$error = smbclient_state_errno($state);
+	if ($error == 1 || $error == 2 || $error == 9)
 	{
-		$path = "img/products/".$barcode.".jpg";		
-		$data = file_get_contents($path);
-
-	}
-	else if (file_exists("img/products/".$barcode.".png"))
-	{
-		$path = "img/products/".$barcode.".jpg";		
-		$data = file_get_contents($path);
-	}
-	else
-	{		
 		$path = "img/mystery.png";		
-		$data = file_get_contents($path);  
- 	}
-	return base64_encode($data);	
+		$final = file_get_contents($path);
+	}
+	else 
+	{
+		$tmp = "";
+		$final = "";
+		while (true) {	
+			$tmp = smbclient_read($state, $file, 500);
+			if ($tmp === false || strlen($tmp) === 0) {
+				break;
+			}
+			$final .= $tmp;
+		}
+		$name = './tmp.jpg';
+		file_put_contents($name,$final);
+		
+		$data = imagecreatefromjpeg($name);
+		$data = imagescale($data,$scale);
+		ob_start();
+		imagejpeg($data);
+		$contents = ob_get_contents();
+		ob_end_clean();
+
+		$final = $contents;
+	}
+	if ($base64 == true)
+		return base64_encode($final);
+	return $final;		
 }
-
 
 $barcode = $_GET["barcode"];
 $name = './tmp.png';
-$data = base64_decode(getImage($barcode));
+$data = loadPicture($barcode);
 file_put_contents($name,$data);
-
-//base64_to_jpeg($result["PICTURE"],"tmp.png");
-
 
 $fp = fopen($name, 'rb');
 // send the right headers

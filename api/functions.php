@@ -244,31 +244,6 @@ function getCurrentRate(){
 	return $result["RATE"];
 }
 
-function getImage($barcode){
-
-	$json = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/image/".str_replace(" ","%20",$barcode));      
-	if ($json["result"] != "KO")					
-		return $json["image"];
-	else if (file_exists("img/products/".$barcode.".jpg"))
-	{
-		$path = "img/products/".$barcode.".jpg";		
-		$data = file_get_contents($path);
-
-	}
-	else if (file_exists("img/products/".$barcode.".png"))
-	{
-		$path = "img/products/".$barcode.".jpg";		
-		$data = file_get_contents($path);
-	}
-	else
-	{		
-		$path = "img/mystery.png";		
-		$data = file_get_contents($path);  
- 	}
-	return base64_encode($data);	
-}
-
-
 function truncateDollarPrice($price){
 
 	$pos = strpos($price,".");
@@ -330,6 +305,48 @@ function flagByCountry($flag){
     else 
   return $flag = 'img/flags/'.strtolower($flag).'.png';
 }
+
+function writePicture($barcode,$b64Image)
+{
+	$state = smbclient_state_new();
+	// Initialize the state with workgroup, username and password:
+	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
+	$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
+	smbclient_write($state,$file,base64_decode($b64Image));
+}
+
+
+function loadPicture($barcode,$base64 = false)
+{
+	// Create new state:
+	$state = smbclient_state_new();
+	// Initialize the state with workgroup, username and password:
+	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
+	$file = smbclient_open($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg','r');
+
+	$error = smbclient_state_errno($state);
+	if ($error == 1 || $error == 2 || $error == 9)
+	{
+		$path = "img/mystery.png";		
+		$final = file_get_contents($path);
+	}
+	else {
+		$tmp = "";
+		$final = "";
+		while (true) {	
+			$tmp = smbclient_read($state, $file, 500);
+			if ($tmp === false || strlen($tmp) === 0) {
+				break;
+			}
+			$final .= $tmp;
+		}
+	}
+	
+	if ($base64 == true)
+		return base64_encode($final);
+	return $final;		
+}
+
 
 
 function statisticsByItem($barcode)
