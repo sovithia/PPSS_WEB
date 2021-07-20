@@ -309,20 +309,10 @@ function packLookup($barcode)
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
-		
-	error_log("HERE");
-	error_log($GLOBALS['URL'].str_replace(" ","%20",$barcode));  
-	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));    
-
-	if ($item != false)
-	{
-		if ($json["result"] != "KO")			
-			$item["PICTURE"] = $json["PICTURE"];
-		else
-			$item["PICTURE"] = null;	
-		return $item;
-	}
-	else
+			
+	if ($item != false)			
+		$item["PICTURE"]= loadPicture($barcode,true);		
+	else					
 		return null;
 }
 
@@ -405,12 +395,9 @@ function itemLookup($barcode){
 		$req->execute($params);
 		$item=$req->fetch();
 		$finalItem["WH2"] = $item["LOCONHAND"];
-
-		$json = RestEngine::GET($GLOBALS['URL'].$barcode);      
-		if ($json["result"] != "KO")			
-			$finalItem["PICTURE"] = $json["PICTURE"];
-		else 		
-			$finalItem["PICTURE"] = loadPicture($barcode,300,true);					
+	
+		$finalItem["PICTURE"] = loadPicture($barcode,300,true);					
+				
 		return $finalItem;
 	}
 	else 
@@ -1860,11 +1847,11 @@ $app->post('/itemupdate/{barcode}',function(Request $request,Response $response)
 	
 	else if ($field == "PICTURE"){
 		$data["image"] = $value;
-		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+		writePicture($barcode,$value);		
 	}	
 	else if ($field == "PACKPICTURE")	{
 		$data["image"] = $value;
-		$json = RestEngine::POST($GLOBALS['URL'].$barcode,$data);      
+		writePicture($barcode,$value);		
 	}
 	else {
 		$sql = "";
