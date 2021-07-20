@@ -4060,7 +4060,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req->execute(array($itemID));	
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != false) 	{
-			$item["WAREHOUSE_QTY"] = floatval($res["LOCONHAND"]);		
+			$item["STORE_QTY"] = floatval($res["LOCONHAND"]);		
 			$item["STOREBIN1"] = $res["LOC"];	
 		}
 		
@@ -4071,7 +4071,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		$req->execute(array($itemID));	
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != false){
-			$item["STORE_QTY"] = floatval($res["LOCONHAND"]);		
+			$item["WAREHOUSE_QTY"] = floatval($res["LOCONHAND"]);		
 			$item["STOREBIN2"] = $res["LOC"];	
 		}	
 		

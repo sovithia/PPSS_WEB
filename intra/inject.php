@@ -31,68 +31,30 @@ function getInternalDatabase()
 }
 
 
-function old()
-{
-	//$indb = getInternalDatabase();
-	//$sql = "SELECT * FROM CATEGORY";
-	$req = $indb->prepare($sql);
-	$req->execute(array());
-	$categories=$req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$db = getDatabase();
-	$date = "2020-04-09 12:00:00.000";
-	foreach($categories as $category)
-	{
-		$sql = "INSERT INTO ICCATEGORY (CATEGORYID,USERADD,ACTIVE,DATEADD) VALUES (?,?,?,?)";		
-		$req2 = $db->prepare($sql);
-		$req2->execute(array($category["CATEGORYNAME"],"SOVI",1,$date));					
-	}	
-}
-
-
-function go2()
-{	
-	$db = getDatabase();
-	$sql = "SELECT CATEGORYID,PRODUCTID FROM ICPRODUCT WHERE CATEGORYOLDID IS NULL";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$categories=$req->fetchAll(PDO::FETCH_ASSOC);	
-	//var_dump($categories);	
-	foreach($categories as $category)
-	{
-		//echo $category["PRODUCTID"]."\n";
-		$sql2 = "UPDATE ICPRODUCT SET CATEGORYOLDID = ? WHERE PRODUCTID = ?";
-		$req2 = $db->prepare($sql2);
-		$req2->execute(array($category["CATEGORYID"],$category["PRODUCTID"]));		
-		//usleep(1000000);
-		//break;
-	}
-
-}
-
 function go()
 {	
 	$db = getDatabase();
-	$sql = "SELECT CATEGORYNEWID,PRODUCTID FROM ICPRODUCT WHERE CATEGORYNEWID IS NOT NULL";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$categories=$req->fetchAll(PDO::FETCH_ASSOC);	
-	//var_dump($categories);	
-	foreach($categories as $category)
+	if (($handle = fopen("costzero.csv", "r")) !== FALSE) 
 	{
-		//echo $category["PRODUCTID"]."\n";
-		$sql2 = "UPDATE ICPRODUCT SET CATEGORYID = ? WHERE PRODUCTID = ?";
-		$req2 = $db->prepare($sql2);
-		$req2->execute(array($category["CATEGORYNEWID"],$category["PRODUCTID"]));		
-		//usleep(1000000);
-		//break;
-	}
+    	while (($data = fgetcsv($handle, 1000, "\n")) !== FALSE) 
+    	{
+    		$split = explode(";",$data[0]);
+    		if ($split[1] != "0")
+    		{
+    			echo $split[0].":".str_replace(',','.',$split[1])."\n"; 
 
+    			$sql = "UPDATE ICPRODUCT SET LASTCOST = ? WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array(str_replace(',','.',$split[1]),$split[0]));  
+				usleep(100000);
+				//break;	
+    		}
+
+    		
+        }
+    }
+    fclose($handle);
 }
-
-
-
-
 
 go();
 
