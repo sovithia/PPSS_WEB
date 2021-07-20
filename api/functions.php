@@ -355,7 +355,7 @@ function statisticsByItem($barcode)
 
 	$sql =  "SELECT PRODUCTID,PRODUCTNAME,PRICE,
 						(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',			
-					 (SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
+					 (SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',COST,
 
 					 ISNULL((SELECT TOP(1) DATEADD FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY DATEADD DESC),0) as 'LASTTHROWN',
 
@@ -382,6 +382,8 @@ function statisticsByItem($barcode)
 	$response["PRODUCTNAME"] = $item["PRODUCTNAME"];
 		// MARGIN
 	$response["COST"] = $item["LASTCOST"]; 
+	if ($response["COST"] == null)
+		$response["COST"] = $item["COST"];
 	$response["PRICE"] = $item["PRICE"];
 	$response["MARGIN"] = $response["PRICE"] - $response["COST"];
 	if ($response["COST"] != "0" && $response["COST"] != 0)
@@ -395,7 +397,9 @@ function statisticsByItem($barcode)
 
 	$response["SCORETURNOVER"] = max(0,min(100, $item["TOTALORDERTIME"] * 10));
 	$response["LASTTHROWN"] = $item["LASTTHROWN"];
-	$response["NBTHROWN"] = $item["NBTHROWN"];	
+	if ($response["LASTTHROWN"] == "1900-01-01 00:00:00.000")
+		$response["LASTTHROWN"] = "N/A";
+	$response["NBTHROWN"] = floatval($item["NBTHROWN"]);	
 	$response["SCORETHROWN"] = 100 - (max(0,min(100,$response["NBTHROWN"])));
 	// RATIOSALE 
 	$response["TOTALSALE"] = $item["TOTALSALE"];
@@ -403,8 +407,8 @@ function statisticsByItem($barcode)
 	$response["SCORERATIOSALE"] = $item["TOTALSALE"] * 100 / $item["TOTALRECEIVE"];
 	// RETURN 
 	$response["TOTALNBRETURN"] = $item["TOTALNBRETURN"];
-	$response["TOTALQTYRETURN"] = $item["TOTALQTYRETURN"];
-	$response["SCORERETURN"] = 100 - (max(0,min(100,$response["TOTALNBRETURN"] * 20)));
+	$response["TOTALQTYRETURN"] = $item["TOTALQTYRETURN"] * -1;
+	$response["SCORERETURN"] = 100 - (max(0,min(100,$response["TOTALNBRETURN"] * 25)));
 	
 	$response["TOTALSCORE"] = ($response["SCOREMARGIN"] / 5) + 
 												 ($response["SCORETHROWN"] / 5) + 

@@ -3480,7 +3480,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 					$res = $req->fetch(PDO::FETCH_ASSOC);
 				} 
 				$vendid = $res["VENDID"];
-
+				error_log($vendid);
 
 				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
 				$req = $db->prepare($sql);
