@@ -6,7 +6,6 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 $app = new \Slim\App;
 
-$URL = "http://192.168.72.62/api/api.php/picture/";
 
 /**************CORE ***************/
 

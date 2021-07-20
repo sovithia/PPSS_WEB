@@ -52,7 +52,6 @@ use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
 $app = new \Slim\App;
 
-$URL = "http://phnompenhsuperstore.com/api/api.php/picture/";
 
 /**************CORE ***************/
 
@@ -148,18 +147,13 @@ function getUserSession($login,$password)
 // WRAP
 $app->get('/image/{id}',function(Request $request,Response $response) { 
 	$id = $request->getAttribute('id');
-	$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
+	//$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
+	$result["image"] = loadPicture($id,300,true);
 	$response = $response->withJson($result);
 	return $response;
 });
 
-$app->post('/image',function(Request $request,Response $response) { 
-	$json = json_decode($request->getBody(),true);
-	$result = RestEngine::POST("http://192.168.72.62/api/api.php/picture",$json);	
-	$response = $response->withJson($result);
-	return $response;
-});
-		
+	
 $app->post('/login',function(Request $request,Response $response) { 
 
 	$json = json_decode($request->getBody(),true);
@@ -316,8 +310,10 @@ function packLookup($barcode)
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
 		
+	error_log("HERE");
+	error_log($GLOBALS['URL'].str_replace(" ","%20",$barcode));  
+	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));    
 
-	$json = RestEngine::GET($GLOBALS['URL'].str_replace(" ","%20",$barcode));      
 	if ($item != false)
 	{
 		if ($json["result"] != "KO")			
@@ -414,7 +410,7 @@ function itemLookup($barcode){
 		if ($json["result"] != "KO")			
 			$finalItem["PICTURE"] = $json["PICTURE"];
 		else 		
-			$finalItem["PICTURE"] = getImage($barcode);					
+			$finalItem["PICTURE"] = loadPicture($barcode,300,true);					
 		return $finalItem;
 	}
 	else 
@@ -535,7 +531,7 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 			$oneItem["dollarPrice"] = "$". truncateDollarPrice($item["PRICE"]);
 			$oneItem["nameEN"] = $item["PRODUCTNAME"];
 			$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-			$oneItem["productImg"] = getImage($barcode);
+			$oneItem["productImg"] = loadPicture($barcode,300,true);
 			$oneItem["barcodeNumber"] = $barcode;
 			$oneItem["barcodeImage"] = generateBarcodeImage($barcode);
 			$oneItem["packing"] = $item["PACKINGNOTE"];
@@ -566,7 +562,7 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 					$oneItem["productImg"] = $packInfo["PICTURE"];
 				$oneItem["salefactor"] = $packInfo["SALEFACTOR"];				
 				$oneItem["return"] = $packInfo["SALEUNIT"];		
-				$oneItem["productImg"] = getImage($barcode);		
+				$oneItem["productImg"] = loadPicture($barcode,300,true);		
 				$oneItem["barcodeNumber"] = $packcode;
 				$oneItem["barcodeImage"] = generateBarcodeImage($packcode);
 
@@ -602,7 +598,9 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	$barcodes = explode("|",$barcodes);	
 
 	$result = array();
+	error_log("LA");
 	foreach($barcodes as $barcode){
+		error_log($barcode);
 		$params = array($barcode);
 		$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
 		FROM dbo.ICPRODUCT  
@@ -617,7 +615,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 			$oneItem["dollarPrice"] = "$". truncateDollarPrice($item["PRICE"]);
 			$oneItem["nameEN"] = $item["PRODUCTNAME"];
 			$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-			$oneItem["productImg"] = getImage($barcode);			
+			$oneItem["productImg"] = loadPicture($barcode,300,true);			
 			$oneItem["country"] = $item["COLOR"];
 			array_push($result,$oneItem);
 		}		
@@ -649,7 +647,7 @@ function itemLookupLabel($barcode)
 		$oneItem["barcode"] = $item["BARCODE"];						
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-		$oneItem["productImg"] = getImage($barcode);			
+		$oneItem["productImg"] = loadPicture($barcode,300,true);			
 		$oneItem["country"] = $item["COLOR"];
 
 		if (substr($item["DISCPERCENT"],0,1) == ".")
@@ -712,12 +710,14 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 	$result = array();
 	foreach($barcodes as $barcode)
 	{
+		error_log($barcode);
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
 
 		if ($packInfo != null)		
 		{
+			error_log("PACK");
 			//var_dump($packInfo);
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
@@ -748,8 +748,11 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 
 			array_push($result,$oneItem);
 		}
-		else 					
+		else 	{
+			error_log("NO PACK");
 			array_push($result,itemLookupLabel($barcode));					
+		}				
+			
 	}	
 	$response = $response->withJson($result);
 	return $response;
@@ -777,7 +780,7 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 			$oneItem["dollarPrice"] = "$". truncateDollarPrice($item["PRICE"]);
 			$oneItem["nameEN"] = $item["PRODUCTNAME"];
 			$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-			$oneItem["productImg"] = getImage($barcode);
+			$oneItem["productImg"] = loadPicture($barcode,300,true);
 			$oneItem["barcodeNumber"] = $barcode;
 			$oneItem["barcodeImage"] = generateBarcodeImage($barcode);
 			$oneItem["packing"] = $item["STORE"];
@@ -853,7 +856,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		$item["result"] = "OK";
 
-		$item["PICTURE"] = getImage($barcode);		
+		$item["PICTURE"] = loadPicture($barcode,300,true);		
 
 		if ($check == "WH1" || $check == "WH2")
 		{							
@@ -927,7 +930,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 $app->get('/picture/{barcode}',function(Request $request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
-	$result["PICTURE"] = getImage($barcode);
+	$result["PICTURE"] = loadPicture($barcode,300,true);
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
 	return $response;
@@ -1731,15 +1734,11 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$params = array ($value,$barcode);		
 		$result = $req->execute($params);
 	}
-	else if ($field == "PICTURE"){		
-		$data["image"] = $value;
-		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);      
+	else if ($field == "PICTURE"){				
+		writePicture($barcode,$value);
 	}	
 	else if ($field == "PACKPICTURE")	{
-
-		$data["image"] = $value;
-		$json = RestEngine::POST("http://192.168.72.62/api/api.php/picture/".$barcode,$data);   
-
+		writePicture($barcode,$value);
 		$sql = "UPDATE ICPRODUCT_SALEUNIT SET PICTURE_PATH = ? WHERE PACK_CODE = ?";
 		$req = $db->prepare($sql);
 		$imagePath = "Y:\\".$barcode.".jpg";	
@@ -3243,9 +3242,10 @@ function createGroupedRestocks()
 				
 				if ($irID != false)// JUST UPDATE
 				{
-						$sql = "UPDATE ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+						error_log($irID);
+						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$irID));
+						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$irID));
 				}
 				else 
 				{
