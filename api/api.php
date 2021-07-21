@@ -3294,7 +3294,7 @@ function createGroupedPurchases()
 
 	foreach($vendors as $vendor)
 	{
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ?"; 
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ? AND REQUESTEE = null"; 
 		$req = $db->prepare($sql);
 		$req->execute(array($vendor["VENDID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
