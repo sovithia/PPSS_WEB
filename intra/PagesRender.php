@@ -35,7 +35,6 @@ function renderA4Label()
     </center>";
 }
 
-
 // LABEL SMALL
 function renderA5Label()
 {
@@ -60,7 +59,6 @@ function renderA5Label()
         </table>
         </center>"; 
 }
-
 
 function renderA6Label()
 {
@@ -139,7 +137,6 @@ function renderLabelSmall()
 	</center>";
 }
 
-
 function renderLabelSmallNew()
 {
   return "
@@ -155,7 +152,6 @@ function renderLabelSmallNew()
   </div>
   </center>";
 }
-
 
 function renderSales($sales)
 {
@@ -188,8 +184,6 @@ function renderSales($sales)
 
  return $body;
 }
-
-
 
 function renderKPISales($data)
 {
@@ -315,7 +309,6 @@ function renderKPISales($data)
 
 function renderKPIRow($data)
 { 
-
   $months = array("","05/2019","06/2019","07/2019","08/2019","09/2019","10/2019","11/2019","12/2019",
               "01/2020","02/2020","03/2020","04/2020","06/2020","07/2020","08/2020","09/2020","10/2020","11/2020","12/2020",
               "01/2021","02/2021","03/2021","04/2021","06/2021","07/2021","08/2021","09/2021","10/2021","11/2021","12/2021",
@@ -456,13 +449,10 @@ function renderKPIRow($data)
                 
   });
   </script>";              
-
-  
 }
 
 function renderKPIAverage($data)
-{
-  
+{  
 }
 
 function CBN($name){
@@ -4098,77 +4088,105 @@ function renderDepletedItemList($data){
  return $body; 
 }
 
+function renderItemRequestactionGroupedPurchaseList($data){
+  $MONdata = $data["MON"];
+  $TUEdata = $data["TUE"];
+  $WEDdata = $data["WED"];
+  $THUdata = $data["THU"];
+  $FRIdata = $data["FRI"];
+  $SATdata = $data["SAT"];
+
+  $fields = array("DETAILS_IR","ID","TYPE","ARG1","ARG2","REQUEST_TIME","REQUESTER","REQUESTEE");
+  $body = "<center><span id='dayLbl'></span></center>
+          <table>
+            <tr>
+             <td><button id='btnMON' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"MON\")' >MON</button></td>
+             <td><button id='btnTUE' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"TUE\")' >TUE</button></td>
+             <td><button id='btnWED' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"WED\")' >WED</button></td>
+             <td><button id='btnTHU' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"THU\")' >THU</button></td>
+             <td><button id='btnFRI' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"FRI\")' >FRI</button></td>
+             <td><button id='btnSAT' class='btn waves-effect waves-light col s12 grey darken-2' type='button' onclick='showDay(\"SAT\")' >SAT</button></td>             
+            <tr>
+          </table>";
+
+  $body .= _ItemsTable($MONdata,$fields,$_GET,"listMON");  
+  $body .= _ItemsTable($TUEdata,$fields,$_GET,"listTUE");  
+  $body .= _ItemsTable($WEDdata,$fields,$_GET,"listWED");  
+  $body .= _ItemsTable($THUdata,$fields,$_GET,"listTHU");  
+  $body .= _ItemsTable($FRIdata,$fields,$_GET,"listFRI");  
+  $body .= _ItemsTable($SATdata,$fields,$_GET,"listSAT");  
+
+
+
+  $body .= " <script>
+              function showDay(day){
+                document.getElementById('listMON').style.display = 'none';
+                document.getElementById('listTUE').style.display = 'none';
+                document.getElementById('listWED').style.display = 'none';
+                document.getElementById('listTHU').style.display = 'none';
+                document.getElementById('listFRI').style.display = 'none';
+                document.getElementById('listSAT').style.display = 'none';
+
+                document.getElementById('btnMON').disabled = false;
+                document.getElementById('btnTUE').disabled = false;
+                document.getElementById('btnWED').disabled = false;
+                document.getElementById('btnTHU').disabled = false;
+                document.getElementById('btnFRI').disabled = false;
+                document.getElementById('btnSAT').disabled = false;
+
+                if (day == 'MON'){
+                    document.getElementById('listMON').style.display = 'block';
+                    document.getElementById('btnMON').disabled = true;
+                }
+                else if (day == 'TUE'){
+                    document.getElementById('listTUE').style.display = 'block';
+                    document.getElementById('btnTUE').disabled = true;
+                }
+                else if (day == 'WED'){
+                    document.getElementById('listWED').style.display = 'block';
+                    document.getElementById('btnWED').disabled = true;
+                }
+                else if (day == 'THU'){
+                    document.getElementById('listTHU').style.display = 'block';
+                    document.getElementById('btnTHU').disabled = true;
+                }
+                else if (day == 'FRI'){
+                    document.getElementById('listFRI').style.display = 'block';
+                    document.getElementById('btnFRI').disabled = true;
+                }
+                else if (day == 'SAT'){
+                    document.getElementById('listSAT').style.display = 'block';
+                    document.getElementById('btnSAT').disabled = true;
+                }              
+                document.getElementById('dayLbl').innerHTML = day;             
+              }
+
+              var day = new Date().getDay();              
+              if (day == 0 || day == 1)
+                showDay('MON');
+              else if (day == 2)
+                showDay('TUE');
+              else if (day == 3)
+                showDay('WED');
+              else if (day == 4)
+                showDay('THU');
+              else if (day == 5)
+                showDay('FRI');
+              else if (day == 6) 
+                showDay('SAT');                
+            </script> "; 
+  return $body;              
+}
+
+
 function renderItemRequestActionList($data){
   $items = $data;
   $status = $_GET["status"];
 
-   $body = "<div >";   
-   $body .=   "<table border='1' id='result'>
-               <thead><tr>
-                  <th>DETAILS</th>                                
-                  <th>ID</th>
-                  <th>TYPE</th> 
-                  <th>ARG1</th>
-                  <th>ARG2</th>
-                  <th>REQUEST_TIME</th>
-                  <th>REQUESTER</th>
-                  <th>REQUESTEE</th>                  
-               </tr></thead>
 
-               <tfoot><tr>
-                  <th>DETAILS</th>                                
-                  <th>ID</th>
-                  <th>TYPE</th> 
-                  <th>ARG1</th>
-                  <th>ARG2</th>
-                  <th>REQUEST_TIME</th>
-                  <th>REQUESTER</th>
-                  <th>REQUESTEE</th> 
-               </tr></tfoot>
-               </table>
-               ";  
-    $dataSet1 = "";
-    
-
-    foreach($items as $item)
-    {   
-       $base = "../api/img/requestaction/";
-
-        
-        $ID = $item["ID"];
-
-        $REQUESTER = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."R".$ID.".png")) ? $base."R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTER"];
-        $REQUESTEE = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."E".$ID.".png")) ? $base."E".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["REQUESTEE"];
-
-         $dataSet1 .= 
-         "[ 
-          '<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=".$status."&ID=".$item["ID"]."\">DETAILS</a>',                
-          '".$item["ID"]."',          
-          '".$item["TYPE"]."',
-          '".$item["ARG1"]."',
-          '".$item["ARG2"]."',
-          '".$item["REQUEST_TIME"]."',    
-          '".$REQUESTER."',
-          '".$REQUESTEE."'                  
-          ],";
-    }
-     $dataSet1 = rtrim($dataSet1,",");        
-        $body .= "  
-        <script>      
-        var dataSet1 = [".$dataSet1."];
-        var table;        
-        table =  $(document).ready( function () {
-         $('#result').DataTable({                
-         data:dataSet1, 
-         'lengthMenu':[-1],          
-           });
-        });
-      </script>
-    ";   
-    $body .=  "</div>"; 
-
-
-    return $body; 
+  $fields = array("DETAILS_IR","ID","TYPE","ARG1","ARG2","REQUEST_TIME","REQUESTER","REQUESTEE");
+  $body = _ItemsTable($items,$fields,$_GET);  
+  return $body; 
 }
 
 function renderItemRequestActionDetails($data){
@@ -4176,8 +4194,6 @@ function renderItemRequestActionDetails($data){
    //$items = $data["items"];   
    //$itemrequest = $data;
    $status = $_GET["status"];
-
-
 
    $fields = ["IMAGE","PRODUCTID","PRODUCTNAME","DEMAND_QTY","RESTOCK_QTY","TRANSFER_QTY","PURCHASE_QTY","WAREHOUSE_QTY","SUPPLIERREQUESTED_QTY","TRANSFER_POOL","PURCHASE_POOL","REQUEST_QUANTITY","DEBT_QTY","REQUESTER"];
     $body = _ItemsTable($items,$fields,$_GET,$_GET["entity"],$_GET["entity"]);
@@ -4350,8 +4366,8 @@ function renderItemRequestActionSearch($data){
       $body .=  "</div>"; 
     }
     return $body;
-}
 
+}
 
 
 function renderItemRequestRestockCreate($data)

@@ -291,10 +291,10 @@ function getData($display,$entity,$param)
   {
       return Service::ListEntity($entity,$param["status"]);          
   }
-  else if ($display == "itemrequestactionlist")
+  else if ($display == "itemrequestactionlist" || $display == "itemrequestactiongroupedpurchaselist")
   {
     return Service::ListEntity($entity,$param["type"]);          
-  }  
+  }    
   else if ($display == "itemrequestactiondetails")
   {
     return Service::ListEntity($entity,$param["ID"]);          
@@ -587,6 +587,8 @@ else if ($display == "itemsearch3")
     return renderItemRequestActionSearch($data); 
   else if ($display == "itemrequestactionlist")
     return renderItemRequestActionList($data);
+  else if ($display == "itemrequestactiongroupedpurchaselist")
+    return renderItemRequestactionGroupedPurchaseList($data);
   else if ($display == "itemrequestactiondetails")
     return renderItemRequestActionDetails($data);
   else if ($display == "itemrequestactioncreate")

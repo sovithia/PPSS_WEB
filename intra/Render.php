@@ -451,7 +451,7 @@ function renderLeftSidebar()
 
 
                         <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."PURCHASE").' >
-                        <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=GROUPEDPURCHASE&status=TODO" >
+                        <a href="?display=itemrequestactiongroupedpurchaselist&entity=itemrequestaction&type=GROUPEDPURCHASE&status=TODO" >
                         <img src="images/icons/PCH/ItemRequestPurchaseTodoListPage.png" width="30px" height="30px">ItemPurchase(!)</a></li>
 
                         <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."vGROUPEDPURCHASE").' >
@@ -877,6 +877,21 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             if ($field == "IMAGE")
               $dataSet .= "'<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',";
             
+            else if ($field == "DETAILS_IR"){               
+               $dataSet .=  "'<a href=\"?display=itemrequestactiondetails&entity=itemrequestactiondetails&status=".$params["status"]."&ID=".$item["ID"]."\">DETAILS</a>',";                
+            }
+            else if($field == "REQUESTER"){
+              $REQUESTER = isset($item["REQUESTER"]) ? $item["REQUESTER"] : "";              
+               $dataSet .= "'<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists("../api/img/requestaction/R".$item["ID"].".png")) ? 
+                "../api/img/requestaction/R".$item["ID"].".png" : "../api/img/na.jpg")."\"><br>".$REQUESTER."',";
+
+            }
+            else if ($field == "REQUESTEE"){
+              $REQUESTEE = isset($item["REQUESTEE"]) ? $item["REQUESTEE"] : "";
+               $dataSet .= "'<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists("../api/img/requestaction/E".$item["ID"].".png")) ? 
+                "../api/img/requestaction/R".$ID.".png" : "../api/img/na.jpg")."\"><br>".$REQUESTEE."',";
+            }
+
             else if ($field == "REQUEST_QUANTITY"){
 
               $dataSet .= "'<input name=\"idfield\" value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\

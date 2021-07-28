@@ -3282,8 +3282,35 @@ function createGroupedRestocks()
 	}
 }
 // ADD TO DEBT
+
+function patchGroupedPurchases()
+{
+	$db = getInternalDatabase();	
+	$dbBlue = getDatabase();
+	$sql = "SELECT * FROM ITEMREQUESTACTION WHERE ARG3 IS NULL AND TYPE = 'GROUPEDPURCHASE'";
+	$req = $db->prepare($sql);
+	$req->execute();
+	$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($actions as $action)
+	{		
+		$sql = "SELECT orderday FROM SUPPLIER WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($action["ARG1"]));	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false)
+			$orderday = $res["orderday"];
+		else 
+			$orderday = null;
+		error_log($action["ID"]." ".$action["ARG1"]." ".$orderday);
+		$sql = "UPDATE ITEMREQUESTACTION SET ARG3 = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($orderday,$action["ID"]));
+	}
+}
+
 function createGroupedPurchases()
 {
+	patchGroupedPurchases();
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 
@@ -3305,13 +3332,24 @@ function createGroupedPurchases()
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($vendor["VENDID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
+		
 			if ($res != false)
 				$vendorname = $res["VENDNAME"];
 			else 
 				$vendorname = "";
-			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDPURCHASE','AUTO',?,?)";
+
+			$sql = "SELECT orderday FROM SUPPLIER WHERE ID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($vendor["VENDID"],$vendorname));
+			$req->execute(array($vendor["VENDID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+				$orderday = $res["orderday"];
+			else 
+				$orderday = false;
+
+			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2,ARG3) VALUES ('GROUPEDPURCHASE','AUTO',?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($vendor["VENDID"],$vendorname,$orderday));
 			$theID = $db->lastInsertId();
 		}
 		else		
@@ -3344,56 +3382,79 @@ function createGroupedPurchases()
 			$req->execute(array($item["PRODUCTID"]));
 		}
 
-	}
-	
+	}	
 }
+
 
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
-	
+
 	$type = $request->getAttribute('type');
 
 	if ($type == "GROUPEDPURCHASE")
+	{	
 		createGroupedPurchases();
+	
+		$days = array("MON","TUE","WED","THU","FRI","SAT");
+		$data = array();
+				foreach($days as $day)
+				{
+					$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' 
+					FROM ITEMREQUESTACTION 
+					WHERE REQUESTEE IS NULL 
+					AND ARG3 = ?
+					AND TYPE = 'GROUPEDPURCHASE' AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";				
 
-	if ($type == "GROUPEDRESTOCK")
-		createGroupedRestocks();
-
-	if (substr($type,0,1) == "v")
-	{
-		$filter = "VALIDATED";
-		$type = substr($type,1);
-	}	
-	else if (substr($type,0,1) == "s")
-	{
-		$filter = "SUBMITED";
-		$type = substr($type,1);
-	}
-	else if (substr($type,0,1) == "a")
-	{
-		$filter = "ALL";
-		$type = substr($type,1);
+					$req = $db->prepare($sql);
+					$req->execute(array($day));
+					$data[$day] =  $req->fetchAll(PDO::FETCH_ASSOC);						
+				}			
+		$response = $response->withJson($data);
+		return $response;		
 	}
 	else
-		$filter = "UNVALIDATED";
+	{
+		if ($type == "GROUPEDRESTOCK")
+		createGroupedRestocks();
+
+		if (substr($type,0,1) == "v")
+		{
+			$filter = "VALIDATED";
+			$type = substr($type,1);
+		}	
+		else if (substr($type,0,1) == "s")
+		{
+			$filter = "SUBMITED";
+			$type = substr($type,1);
+		}
+		else if (substr($type,0,1) == "a")
+		{
+			$filter = "ALL";
+			$type = substr($type,1);
+		}
+		else
+			$filter = "UNVALIDATED";
 
 
-	if ($filter == "UNVALIDATED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";
-	else if ($filter == "VALIDATED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
-	else if ($filter == "SUBMITED")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
-	else if ($filter == "ALL")
-		$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE 
-			TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
+		if ($filter == "UNVALIDATED")
+		{		
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";			
+			
+		}
+		else if ($filter == "VALIDATED")
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+		else if ($filter == "SUBMITED")
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
+		else if ($filter == "ALL")
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE 
+				TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
 
-	$req = $db->prepare($sql);
-	$req->execute(array($type));
-	$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
-	$response = $response->withJson($actions);
-
-	return $response;
+		$req = $db->prepare($sql);
+		$req->execute(array($type));
+		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
+		$response = $response->withJson($actions);
+		return $response;
+	}	
 });
 
 
@@ -3956,9 +4017,12 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$asql = "SELECT * FROM ITEMREQUESTACTION WHERE ID = ?";
 	$req = $db->prepare($asql);
 	$req->execute(array($id));
-	$res = $req->fetch();	
-	$type = $res["TYPE"];
-	$requester = $res["REQUESTER"];
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res != false){
+		$type = $res["TYPE"];
+		$requester = $res["REQUESTER"];	
+	}	
+	
 	// Debt (internal) OK
 	// demand (internal) OK
 	// restock(internal) OK
