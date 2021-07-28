@@ -4109,12 +4109,12 @@ function renderItemRequestactionGroupedPurchaseList($data){
             <tr>
           </table>";
 
-  $body .= _ItemsTable($MONdata,$fields,$_GET,"listMON");  
-  $body .= _ItemsTable($TUEdata,$fields,$_GET,"listTUE");  
-  $body .= _ItemsTable($WEDdata,$fields,$_GET,"listWED");  
-  $body .= _ItemsTable($THUdata,$fields,$_GET,"listTHU");  
-  $body .= _ItemsTable($FRIdata,$fields,$_GET,"listFRI");  
-  $body .= _ItemsTable($SATdata,$fields,$_GET,"listSAT");  
+  $body .= _ItemsTable($MONdata,$fields,$_GET,"listMON","NO");  
+  $body .= _ItemsTable($TUEdata,$fields,$_GET,"listTUE","NO");  
+  $body .= _ItemsTable($WEDdata,$fields,$_GET,"listWED","NO");  
+  $body .= _ItemsTable($THUdata,$fields,$_GET,"listTHU","NO");  
+  $body .= _ItemsTable($FRIdata,$fields,$_GET,"listFRI","NO");  
+  $body .= _ItemsTable($SATdata,$fields,$_GET,"listSAT","NO");  
 
 
 

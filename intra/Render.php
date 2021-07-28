@@ -849,13 +849,18 @@ function renderModalFrame($id,$text,$yesLink)
 function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
 {
   $body = "<div id='".$name."'>
-          <center>Item count: ".count($items)."<center><br>
-          <form target=_blank action='export.php' method='POST' >         
+          <center>Item count: ".count($items)."<center><br>";
+
+ if($exporttype != "NO")
+ {
+    $body .= "<form target=_blank action='export.php' method='POST' >         
             <input type='hidden' name='type' value='".$exporttype."'>
             <input type='hidden' name='items' value='".json_encode($items)."'>
             <input type='hidden' name='fields' value='".json_encode($fields)."'>
             <input type='submit' value='EXPORT'>
-          </form>          
+          </form>";
+  }
+  $body .= "          
   <table border='1' id='result".$name."'>";   
   $body .= "<thead><tr>";
   foreach($fields as $field)
