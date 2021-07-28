@@ -747,7 +747,7 @@ function _renderTwoProductPromoLeft($product)
   $barcode = $product["barcode"];
 
 
-  if ($percent != "0")
+  if ($percent != "0" && $percent != ".")
   {
     if (strpos($percent,".") === false)
       $percentSize = "60";
@@ -865,7 +865,7 @@ function _renderTwoProductPromoRight($product)
   $barcode = $product["barcode"];
 
 
-  if ($percent != "0")
+  if ($percent != "0" && $percent != ".")
   {    
     if (strpos($percent,".") === false)
       $percentSize = "60";
