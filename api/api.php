@@ -636,16 +636,8 @@ function itemLookupLabel($barcode)
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];
 		$oneItem["productImg"] = loadPicture($barcode,300,true);			
 		$oneItem["country"] = $item["COLOR"];
+		$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
 
-		if (substr($item["DISCPERCENT"],0,1) == ".")
-			$item["DISCPERCENT"] = "0".$item["DISCPERCENT"];
-
-		error_log($item["DISCPERCENT"]);
-		$exp = explode('.',$item["DISCPERCENT"]);
-		if ( (count($exp) > 1) &&   intval($exp[1]) == 0)
-			$oneItem["discpercent"] = explode('.',$item["DISCPERCENT"])[0];
-		else 
-			$oneItem["discpercent"] = $exp[0].".".substr($exp[1],0,2);	
 
 		if ($item["DISCPERCENTEND"] != null && $item["DISCPERCENTEND"] != "")
 		{
@@ -697,20 +689,17 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 	$result = array();
 	foreach($barcodes as $barcode)
 	{
-		error_log($barcode);
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
 
 		if ($packInfo != null)		
 		{
-			error_log("PACK");
-			//var_dump($packInfo);
+		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
 			$oneItem = itemLookupLabel($barcode);
 			$oneItem["barcode"] = $packcode;
-
 			$oneItem["oldPrice"] = 	"$". truncateDollarPrice($packInfo["SALEPRICE"]);			
 
 			// CALCULATE PROMO
@@ -736,7 +725,7 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 			array_push($result,$oneItem);
 		}
 		else 	{
-			error_log("NO PACK");
+
 			array_push($result,itemLookupLabel($barcode));					
 		}				
 			
