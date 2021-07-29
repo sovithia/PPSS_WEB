@@ -866,7 +866,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$item["WARNING"] = "WH1 Location missing"; 
 		else if ($res2 < 1)
 			$item["WARNING"] = "WH2 Location missing"; 	
-		//$item["STATS"] = statisticsByItem($barcode);		
+		
 	}
 	else
 	{
@@ -2751,23 +2751,44 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		if (isset($json["ITEMS"]))
 		{
-			// TODO UPDATE EXTCOST
+		
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ?, PPSS_EXPIRE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ? PPSS_NOTE = ?, PPSS_EXPIRE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]) );	 						
+				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_VAL_COMMENT"],$value["PPSS_NOTE"],$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]));	 						
+
+				$sql = "UPDATE PODETAIL SET EXTCOST = (ORDER_QTY * TRANCOST) WHERE  PRODUCTID = ? AND PONUMBER = ?";				
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($key,$json["PONUMBER"]) );	 						
 			}
 		}
 		$data["RESULT"] = "OK";
 	}
-	else if ($json["ACTIONTYPE"] == "PCH"){			
+	else if ($json["ACTIONTYPE"] == "PCH")
+	{			
 		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
 		$req = $db->prepare($sql);			
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
 		$req->execute();
 		pictureRecord($json["SIGNATURE"],"PCH",$json["IDENTIFIER"]);		
+
+
+		if (isset($json["ITEMS"]))
+		{				
+			foreach($json["ITEMS"] as $key => $value)
+			{
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_PCH_COMMENT = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($value["PPSS_ORDER_QTY"],$value["PPSS_PCH_COMMENT"],$key,$json["PONUMBER"]));	 		
+
+				$sql = "UPDATE PODETAIL SET EXTCOST = (ORDER_QTY * TRANCOST) WHERE  PRODUCTID = ? AND PONUMBER = ?";				
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($key,$json["PONUMBER"]) );	 										
+			}
+		}
+
 
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
@@ -2968,7 +2989,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,
 				   ORDER_QTY,
 					(TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as TRANCOST
-				   ,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIRE,PPSS_INVOICE_PRICE,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
+				   ,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIRE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_VAL_COMMENT,PPSS_PCH_COMMENT,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")
 	{
@@ -3017,8 +3038,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 		$item["MINDISC"] = ($res != false) ? $res["TRANDISC"] : "";
  		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
- 		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";
- 		//$item["STATS"] = statisticsByItem($res["PRODUCTID"]);
+ 		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : ""; 		
  		array_push($tmpItems, $item); 		
 	}
 	$rr["items"] = $tmpItems;
@@ -3062,7 +3082,10 @@ $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Re
 
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
-	$stats = statisticsByItem($id);
+  $start =  $request->getParam('start','');
+	$end =  $request->getParam('end','');
+
+	$stats = statisticsByItem($id,$start,$end);
 	$response = $response->withJson($stats);
 	return $response;
 });
@@ -6035,8 +6058,7 @@ $app->get('/depleteditems', function($request,Response $response) {
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
 		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
-
-					FROM ICLOCATION,ICPRODUCT 
+				  FROM ICLOCATION,ICPRODUCT 
 					WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
 					AND ACTIVE = 1
 					AND LOCID = 'WH1'
@@ -6048,6 +6070,47 @@ $app->get('/depleteditems', function($request,Response $response) {
 	$response = $response->withJson($items);
 	return $response;
 });
+
+// ITEMDEPRECIATION
+/*
+$app->get('/itemdepreciation/{type}', function($request,Response $response) {
+
+});
+
+$app->post('/itemdepreciation', function($request,Response $response) {
+	$json = json_decode($request->getBody(),true);
+
+	if($json["TYPE"] == "CLEARANCEPROMOTION")
+	{
+
+	}
+	else if ($json["EXPIREPROMOTION"])
+	{
+
+	}
+	else if ($json["DAMAGEWASTE"])
+	{
+		
+	}
+	if($json["PROMOTIONLINKTYPE"] == "BLUE"){
+		// LINK IN BLUE
+	}
+});
+
+$app->put('/itemdepreciation', function($request,Response $response) {
+
+});
+
+// calculated
+$app->get('/penalty', function($request,Response $response) {
+
+});
+
+$app->get('/wastepool/{status}', function($request,Response $response) {
+
+});
+*/
+
 
 
 ini_set('max_execution_time', 0);
