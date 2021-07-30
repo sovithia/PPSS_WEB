@@ -2754,7 +2754,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ? PPSS_NOTE = ?, PPSS_EXPIRE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ?, PPSS_NOTE = ?, PPSS_EXPIRE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_VAL_COMMENT"],$value["PPSS_NOTE"],$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]));	 						
 
