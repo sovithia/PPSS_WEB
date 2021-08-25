@@ -305,13 +305,16 @@ function packLookup($barcode)
 
 	$conn=getDatabase();
 	$params = array($barcode);
+	error_log($barcode);
 	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,SALEUNIT FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
 			
-	if ($item != false)			
+	if ($item != false)			{
 		$item["PICTURE"]= loadPicture($barcode,true);		
+		return $item;
+	}
 	else					
 		return null;
 }
@@ -2528,6 +2531,15 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 	$newNOPOData = array();
 	foreach($NOPOData as $oneNOPOData){		
+
+		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
+		$req = $db2->prepare($sql);
+		$req->execute(array($onePOData["PONUMBER"]));
+		$oneRes = $req->fetch();
+		if ($oneRes != false)
+			$oneNOPOData["VENDNAME"] = $oneRes["VENDNAME"];
+
+
 		// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -2829,7 +2841,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 			$absentitems = array();
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
-			{			
+			{
+
 	
 				if ($value["PPSS_RECEPTION_QTY"] == "0" || $value["PPSS_RECEPTION_QTY"] == 0)
 				{
@@ -2844,6 +2857,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$res = $req->fetch();
 					$TRANDISC = $res["TRANDISC"];
 
+					if (isset($value["PPSS_EXPIREDATE"]))
+						$expiredate = $value["PPSS_EXPIREDATE"].' 00:00:00.000';
+					else 
+						$expiredate = "";
 
 					if (!isset($value["PPSS_INVOICE_PRICE"]) ||  $value["PPSS_INVOICE_PRICE"] == null)				
 						$value["PPSS_INVOICE_PRICE"] = "0";
@@ -2858,12 +2875,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 					$extcost = $value["PPSS_RECEPTION_QTY"] * $calculatedCost;
 					 
-					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?, PPSS_EXPIRE = ? 
+					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?,PPSS_EXPIREDATE = ?,PPSS_EXPIRE = ? 
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
 					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
-										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]) );	
+										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$expiredate,$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]) );	
 				}					 						
 			}
 	
@@ -2984,12 +3001,11 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$rr = $req->fetch(PDO::FETCH_ASSOC);
 
 	$rr["items"] = null;
-
-
-	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,
-				   ORDER_QTY,
-					(TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as TRANCOST
-				   ,TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIRE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_VAL_COMMENT,PPSS_PCH_COMMENT,PPSS_ORDER_PRICE FROM PODETAIL WHERE PONUMBER = ?";
+	
+	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,VAT_PERCENT,
+				   ORDER_QTY,(TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as TRANCOST,
+				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_VAL_COMMENT,PPSS_PCH_COMMENT,PPSS_ORDER_PRICE 
+				   FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")
 	{
@@ -4204,7 +4220,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	{
 		$item["TYPE"] = $type;
 
-		$sql = "SELECT PACKINGNOTE,VENDNAME,PRODUCTNAME 
+		$sql = "SELECT PACKINGNOTE,VENDNAME,
+				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
 				FROM ICPRODUCT,APVENDOR 
 				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
 				AND BARCODE = ?";
@@ -4216,7 +4233,17 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 			$item["PACKINGNOTE"] = $oneItem["PACKINGNOTE"];
 			$item["VENDNAME"] = $oneItem["VENDNAME"];
 			$item["PRODUCTNAME"] = $oneItem["PRODUCTNAME"];	
-		}		
+		}	
+
+		$sql = "SELECT * FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?"; 
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false)
+			$item["ISDEBT"] = "NO";
+		else
+			$item["ISDEBT"] = "YES";
+
 		array_push($itemsNEW,$item);
 	}
 	$items = $response->withJson($itemsNEW);

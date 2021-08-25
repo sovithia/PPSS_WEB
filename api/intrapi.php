@@ -92,7 +92,7 @@ $app->get('/supplier',function(Request $request,Response $response) {
 	$db = getInternalDatabase();	
 	$sql = "SELECT ID,orderday,replace(name,'''','') as 'name'  ,leadtime,
 			replace(phones,'''','') as 'phones',replace(replace(contacts,'''',''),'/','<br>') as 'contacts',vat,discount,term,
-			returnpolicy,spacerental			
+			returnpolicy			
 			FROM SUPPLIER
 			";
 	$params = array();
