@@ -799,7 +799,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	{
 			
 		$sql="
-		SELECT LOCONHAND,STORBIN 
+		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
 		WHERE LOCID = 'WH1' AND PRODUCTID = ?";
 		$params = array($barcode);
@@ -810,9 +810,12 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		if ($item1 != false){
 			$item["WH1"] = $item1["LOCONHAND"];
 			$item["STOREBIN1"] = $item1["STORBIN"];
+			$item["ORDERQTY"] = $item1["ORDERQTY"];
 		}else{
 			$item["WH1"] = "";
 			$item["STOREBIN1"] = "";
+			$item["ORDERQTY"] = "";
+
 		}
 
 		$sql="
@@ -2534,7 +2537,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
 		$req = $db2->prepare($sql);
-		$req->execute(array($onePOData["PONUMBER"]));
+		$req->execute(array($oneNOPOData["PONUMBER"]));
 		$oneRes = $req->fetch();
 		if ($oneRes != false)
 			$oneNOPOData["VENDNAME"] = $oneRes["VENDNAME"];
@@ -2749,6 +2752,9 @@ function splitPOWithItems($ponumber,$items)
 $app->put('/supplyrecord', function(Request $request,Response $response) {
 	$json = json_decode($request->getBody(),true);	
 	
+	error_log("coucou");	
+	error_log($json["ACTIONTYPE"]);	
+
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
 
@@ -2808,11 +2814,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		$data["RESULT"] = "OK";	
 
-	}
-	// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
-
+	}// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
 	else if ($json["ACTIONTYPE"] == "WH"){
-
 			$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
 			$req = $db->prepare($sql);							
 			$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
@@ -2942,7 +2945,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				STATUS = 'ORDERED', 
 				CANCELER = :author
 			   WHERE ID = :identifier";
-		$req = $db->prepare($sql);						
+		$req = $db->prepare($sql);		
+		error_log($json["IDENTIFIER"]);				
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
@@ -4243,6 +4247,9 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 			$item["ISDEBT"] = "NO";
 		else
 			$item["ISDEBT"] = "YES";
+
+		if($type == "RESTOCK")
+			$item["ITEMSTATS"] = statisticsByItem($item["PRODUCTID"]);
 
 		array_push($itemsNEW,$item);
 	}
@@ -6574,13 +6581,12 @@ $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
 $app->get('/returnrecordalert',function($request,Response $response) {
 	$db = getInternalDatabase();
 
-	$sql = "SELECT PRODUCTID,PPSS_EXPIRE as 'EXPIRATION',ONHAND as 'QUANTITY'
+	$sql = "SELECT ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME ,PPSS_EXPIREDATE as 'EXPIRATION',ONHAND as 'QUANTITY'
 					FROM PODETAIL,ICPRODUCT 
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID				
 					AND SIZE IS NOT NULL
 					AND PPSS_EXPIRE IS NOT NULL
-					AND DATEDIFF(GETDATE(), PPSS_EXPIRE) > substring(PPSS_EXPIRE,1,3)  
-				  AND substring(PPSS_EXPIRE,1,3) + 5 > DATEDIFF(GETDATE(), PPSS_EXPIRE)";
+					AND DATEDIFF(GETDATE(), PPSS_EXPIRE) > substring(SIZE,1,3) )";
 	$req = $db->prepare($sql);
 	$req->execute(array());				  				 
 	$req->fetchAll(PDO::FETCH_ASSOC);
@@ -7446,7 +7452,8 @@ function createCreditNote($items){
 	*/
 }
 
-function exchangeItems($items){
+function receiveItems($items){
+
 }
 
 $app->put('/returnrecord',function($request,Response $response) {

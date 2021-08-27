@@ -417,12 +417,15 @@ function statisticsByItem($barcode, $start = '',$end = '')
 		$response["SCOREMARGIN"] = min(100 * ($response["MARGIN"] /  $response["COST"]),100);
 	else
 		$response["SCOREMARGIN"] = 0;
+	$response["SCOREMARGIN"] = truncatePrice($response["SCOREMARGIN"]);
 
 	// TURNOVER
 	$response["TOTALORDERTIME"] = $item["TOTALORDERTIME"];
 	$response["LASTORDERTIME"] = $item["LASTORDERTIME"];
 
 	$response["SCORETURNOVER"] = max(0,min(100, $item["TOTALORDERTIME"] * 10));
+	$response["SCORETURNOVER"] = truncatePrice($response["SCORETURNOVER"]);
+
 	$response["LASTTHROWN"] = $item["LASTTHROWN"];
 	if ($response["LASTTHROWN"] == "1900-01-01 00:00:00.000")
 		$response["LASTTHROWN"] = "N/A";
@@ -435,6 +438,7 @@ function statisticsByItem($barcode, $start = '',$end = '')
 		$response["SCORERATIOSALE"] = 0;
 	else 
 		$response["SCORERATIOSALE"] = $item["TOTALSALE"] * 100 / $item["TOTALRECEIVE"];
+	$response["SCORERATIOSALE"] = truncatePrice($response["SCORERATIOSALE"]);
 	// RETURN 
 	$response["TOTALNBRETURN"] = $item["TOTALNBRETURN"];
 	$response["TOTALQTYRETURN"] = $item["TOTALQTYRETURN"] * -1;

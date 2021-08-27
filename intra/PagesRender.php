@@ -4704,7 +4704,7 @@ function renderSupplyRecordList($data,$action){
                               'AUTHOR'     : author, 
                               'PONUMBER'   : ponumber,                                                      
                               'ACTIONTYPE' : actiontype };   
-                  var URL = 'http://phnompenhsuperstore.com/api/api_dev.php/supplyrecord'; 
+                  var URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord'; 
                   var xmlhttp = new XMLHttpRequest();
                   xmlhttp.onreadystatechange = function () 
                   {
