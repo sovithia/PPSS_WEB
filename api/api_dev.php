@@ -4304,9 +4304,6 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		else
 			$item["ISDEBT"] = "YES";
 
-		if($type == "RESTOCK")
-		  $item["ORDERSTATS"] = orderStatistics($item["PRODUCTID"]);
-
 		array_push($itemsNEW,$item);
 	}
 	
@@ -4537,9 +4534,9 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	if ($type == "RESTOCK")
 	{
-		$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ? AND COMMENT = COMMENT || ' ' || ? ";
+		$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ?,COMMENT =  ? WHERE PRODUCTID = ? AND LISTNAME = ? ";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"],$json["LISTNAME"],$json["COMMENT"]));	
+		$req->execute(array($json["REQUEST_QUANTITY"],$json["COMMENT"],$json["PRODUCTID"],$json["LISTNAME"]));	
 	}
 	else
 	{
