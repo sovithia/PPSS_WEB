@@ -455,4 +455,162 @@ function statisticsByItem($barcode, $start = '',$end = '')
   return $response;
 }
 
+function orderStatistics($barcode)
+{
+	$inDB = getInternalDatabase();
+	$db = getDatabase();
+
+	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));  
+	$res  = $req->fetch(PDO::FETCH_ASSOC); 
+	if($res == false){
+		$resp["message"] = "Product Not Found";
+		$resp["result"] = "KO";	
+		return $response->withJson($resp);
+	}
+	else{
+		$RCVDATE = $res["TRANDATE"];
+		$RCVQTY = $res["TRANQTY"]; //**	
+	}
+
+	$begin = $RCVDATE;
+	$end = date('Y-m-d', time()). " 23:59:59.999";
+
+	$sql = "SELECT SUM(QTY) AS 'COUNT' FROM POSDETAIL
+	  WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? GROUP BY PRODUCTID";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode,$begin,$end));  
+
+	$QTYSALE = $req->fetch(PDO::FETCH_ASSOC)["COUNT"]; // **
+
+	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
+
+	$sql = "SELECT ONHAND,PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$ONHAND = $res["ONHAND"]; //**	
+	$PRODUCTNAME = $res["PRODUCTNAME"]; //**
+	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
+
+	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
+					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
+					AND PRODUCTID = ? 
+					AND  (TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
+					 			TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
+					 			TYPE = 'CLEARANCETOOMUCHPROMOTION')
+					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+	$req = $inDB->prepare($sql);
+	$req->execute(array($barcode,$begin,$end));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$PROMO = 0;
+	if ($res != false)	
+		$PROMO = $res["QTY"] ?? 0; //**					
+
+	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM 
+					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID 
+					AND PRODUCTID = ? 
+					AND  (TYPE = 'DAMAGEWASTE' OR 
+					 			TYPE = 'EXPIREWASTE')
+					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+	$req = $inDB->prepare($sql);
+	$req->execute(array($barcode,$begin,$end));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$WASTE = 0;
+	if ($res != false)
+		$WASTE = $res["QTY"] ?? 0; //**
+
+	$stats["LASTRCVDATE"] = $begin;
+	$stats["TODAY"] = $end;
+
+	$stats["RCVQTY"] = $RCVQTY;
+	$stats["QTYSALE"] = $QTYSALE;
+	$stats["RATIOSALE"] = $RATIOSALE;
+	$stats["ONHAND"] = $ONHAND;
+	$stats["PRODUCTNAME"] = $PRODUCTNAME;
+	$stats["PRODUCTID"] = $barcode;
+	$stats["SALESPEED"] = $SALESPEED . " days";
+	$stats["PROMO"] = $PROMO;	
+	$stats["WASTE"] = $WASTE;
+	$stats["MULTIPLE"] = calculateMultiple($barcode);
+
+	if ($ONHAND < ($stats["RCVQTY"] - $stats["QTYSALE"])) 
+	{
+		$stats["FINALQTY"] = 0;
+		$stats["SUSPICIOUS"] = "YES";
+
+	}
+	else 
+	{
+		$stats["SUSPICIOUS"] = "NO";
+		if ($RATIOSALE >= 100) // Good Sale so speed matter
+		{
+			if($stats["SALESPEED"] < 30){
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,2);
+				$stats["DECISION"] = "INCREASEQTY";
+			}
+			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,1);
+				$stats["DECISION"] = "INCREASEQTY";
+			}
+			else if ($stats["SALESPEED"] > 60 && $stats["SALESPEED"] < 120){
+				$stats["FINALQTY"] = $RCVQTY;
+				$stats["DECISION"] = "SAMEQTY";
+			}
+		}
+		else if ($RATIOSALE > 70 && $RATIOSALE < 100) // Speed not important here
+		{
+			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
+			{
+					if ($WASTE >= 0.1 * $RCVQTY){
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
+						$stats["DECISION"] = "DECREASEQTY";
+				  }
+					else if ($PROMO >= 0.1 * $RCVQTY){
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,1);
+						$stats["DECISION"] = "DECREASEQTY";
+					}
+			}
+			else
+			{
+					$stats["FINALQTY"] = $RCVQTY;
+					$stats["DECISION"] = "SAMEQTY";	
+			}
+		}
+		else if ($RATIOSALE > 50 && $RATIOSALE < 70 ) // Normal Sale
+		{
+			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
+			{
+				if ($WASTE >= 0.1 * $RCVQTY){
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,4);
+					$stats["DECISION"] = "DECREASEQTY";
+				}
+				else if ($PROMO >= 0.1 * $RCVQTY){
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
+					$stats["DECISION"] = "DECREASEQTY";
+				}
+			}
+			else
+			{
+				
+					$stats["FINALQTY"] = $RCVQTY;
+					$stats["DECISION"] = "SAMEQTY";				
+			}							
+		}
+		else if ($ratiosale < 50)
+		{
+			if ($PROMO > 0 || $WASTE > 0){ // DIFFERENT TREATMENT		
+				$stats["FINALQTY"] = 0;
+				$stats["DECISION"] = "MANUALREVIEW";				
+			}
+			else{
+				$stats["FINALQTY"] = 0;
+				$stats["DECISION"] = "TOOEARLY";					
+			}	
+		}
+	}
+	return $stats;	
+}
+
 ?>
