@@ -749,8 +749,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	}
 	
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
-	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
-	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1'
+	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
 	$req=$conn->prepare($sql);
@@ -771,12 +770,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		if ($item1 != false){
 			$item["WH1"] = $item1["LOCONHAND"];
-			$item["STOREBIN1"] = $item1["STORBIN"];
-			$item["ORDERQTY"] = $item1["ORDERQTY"];
+			$item["STOREBIN1"] = $item1["STORBIN"];			
 		}else{
 			$item["WH1"] = "";
 			$item["STOREBIN1"] = "";
-			$item["ORDERQTY"] = "";
+			
 		}
 
 		$sql="
@@ -890,8 +888,7 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 	}
 	
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
-	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
-	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1'
+	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
 	$req=$conn->prepare($sql);
@@ -913,12 +910,15 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 		if ($item1 != false){
 			$item["WH1"] = $item1["LOCONHAND"];
 			$item["STOREBIN1"] = $item1["STORBIN"];
-			$item["ORDERQTY"] = $item1["ORDERQTY"];
+			
 		}else{
 			$item["WH1"] = "";
-			$item["STOREBIN1"] = "";
-			$item["ORDERQTY"] = "";
+			$item["STOREBIN1"] = "";			
 		}
+
+		$orderStats = orderStatistics($barcode);
+		$item["ORDERQTY"] = $orderStats["FINALQTY"];		
+		$item["DECISION"] = $orderStats["DECISION"];
 
 		$sql="
 		SELECT LOCONHAND,STORBIN 
@@ -4303,7 +4303,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 			$item["ISDEBT"] = "YES";
 
 		if($type == "RESTOCK")
-			$item["ITEMSTATS"] = statisticsByItem($item["PRODUCTID"]);
+		  $item["ORDERSTATS"] = orderStatistics($item["PRODUCTID"]);
 
 		array_push($itemsNEW,$item);
 	}
@@ -7551,159 +7551,8 @@ function decreaseQty($barcode,$lastorderqty,$unit = 1)
 
 $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
-	$inDB = getInternalDatabase();
-	$db = getDatabase();
 
-	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
-	$req = $db->prepare($sql);
-	$req->execute(array($barcode));  
-	$res  = $req->fetch(PDO::FETCH_ASSOC); 
-	if($res == false){
-		$resp["message"] = "Product Not Found";
-		$resp["result"] = "KO";	
-		return $response->withJson($resp);
-	}
-	else{
-		$RCVDATE = $res["TRANDATE"];
-		$RCVQTY = $res["TRANQTY"]; //**	
-	}
-
-	$begin = $RCVDATE;
-	$end = date('Y-m-d', time()). " 23:59:59.999";
-
-	$sql = "SELECT SUM(QTY) AS 'COUNT' FROM POSDETAIL
-	  WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? GROUP BY PRODUCTID";
-	$req = $db->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));  
-
-	$QTYSALE = $req->fetch(PDO::FETCH_ASSOC)["COUNT"]; // **
-
-	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
-
-	$sql = "SELECT ONHAND,PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($barcode));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$ONHAND = $res["ONHAND"]; //**	
-	$PRODUCTNAME = $res["PRODUCTNAME"]; //**
-	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
-
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
-					AND PRODUCTID = ? 
-					AND  (TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-					 			TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-					 			TYPE = 'CLEARANCETOOMUCHPROMOTION')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
-	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$PROMO = 0;
-	if ($res != false)	
-		$PROMO = $res["QTY"] ?? 0; //**					
-
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM 
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID 
-					AND PRODUCTID = ? 
-					AND  (TYPE = 'DAMAGEWASTE' OR 
-					 			TYPE = 'EXPIREWASTE')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
-	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$WASTE = 0;
-	if ($res != false)
-		$WASTE = $res["QTY"] ?? 0; //**
-
-	$stats["LASTRCVDATE"] = $begin;
-	$stats["TODAY"] = $end;
-
-	$stats["RCVQTY"] = $RCVQTY;
-	$stats["QTYSALE"] = $QTYSALE;
-	$stats["RATIOSALE"] = $RATIOSALE;
-	$stats["ONHAND"] = $ONHAND;
-	$stats["PRODUCTNAME"] = $PRODUCTNAME;
-	$stats["PRODUCTID"] = $barcode;
-	$stats["SALESPEED"] = $SALESPEED . " days";
-	$stats["PROMO"] = $PROMO;	
-	$stats["WASTE"] = $WASTE;
-	$stats["MULTIPLE"] = calculateMultiple($barcode);
-
-	if ($ONHAND < ($stats["RCVQTY"] - $stats["QTYSALE"])) 
-	{
-		$stats["FINALQTY"] = 0;
-		$stats["SUSPICIOUS"] = "YES";
-
-	}
-	else 
-	{
-		$stats["SUSPICIOUS"] = "NO";
-		if ($RATIOSALE >= 100) // Good Sale so speed matter
-		{
-			if($stats["SALESPEED"] < 30){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,2);
-				$stats["DECISION"] = "INCREASE";
-			}
-			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,1);
-				$stats["DECISION"] = "INCREASE";
-			}
-			else if ($stats["SALESPEED"] > 60 && $stats["SALESPEED"] < 120){
-				$stats["FINALQTY"] = $RCVQTY;
-				$stats["DECISION"] = "KEEP";
-			}
-		}
-		else if ($RATIOSALE > 70 && $RATIOSALE < 100) // Speed not important here
-		{
-			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
-			{
-					if ($WASTE >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
-						$stats["DECISION"] = "DECREASE";
-				  }
-					else if ($PROMO >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,1);
-						$stats["DECISION"] = "DECREASE";
-					}
-			}
-			else
-			{
-					$stats["FINALQTY"] = $RCVQTY;
-					$stats["DECISION"] = "KEEP";	
-			}
-		}
-		else if ($RATIOSALE > 50 && $RATIOSALE < 70 ) // Normal Sale
-		{
-			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
-			{
-				if ($WASTE >= 0.1 * $RCVQTY){
-					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,4);
-					$stats["DECISION"] = "DECREASEQTY";
-				}
-				else if ($PROMO >= 0.1 * $RCVQTY){
-					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
-					$stats["DECISION"] = "DECREASEQTY";
-				}
-			}
-			else
-			{
-				
-					$stats["FINALQTY"] = $RCVQTY;
-					$stats["DECISION"] = "SAMEQTY";				
-			}							
-		}
-		else if ($ratiosale < 50)
-		{
-			if ($PROMO > 0 || $WASTE > 0){ // DIFFERENT TREATMENT		
-				$stats["FINALQTY"] = 0;
-				$stats["DECISION"] = "MANUAL REVIEW";				
-			}
-			else{
-				$stats["FINALQTY"] = 0;
-				$stats["DECISION"] = "TOOEARLY";					
-			}	
-		}
-	}
+	$stats = orderStatistics($barcode);
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $stats;
