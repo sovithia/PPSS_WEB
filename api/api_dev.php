@@ -2393,6 +2393,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 		} 
 	}
 
+	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3253,6 +3254,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}	
 	}
+	$sql .= " ORDER BY REQUEST_TIME DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);

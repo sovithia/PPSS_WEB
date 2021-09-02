@@ -635,14 +635,17 @@ function orderStatistics($barcode)
 	$stats["PRODUCTNAME"] = $PRODUCTNAME;
 	$stats["PRODUCTID"] = $barcode;
 	$stats["SALESPEED"] = $SALESPEED . " days";
+	$stats["LASTSALEDAY"] = date('Y-m-d', strtotime($begin. ' + '.$SALESPEED.' days')); 
 	$stats["PROMO"] = $PROMO;	
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
 
-	if ($ONHAND < ($stats["RCVQTY"] - $stats["QTYSALE"])) 
+	$MARGIN = (int)$RCVQTY * 0.05;
+	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 
 	{
 		$stats["FINALQTY"] = 0;
 		$stats["SUSPICIOUS"] = "YES";
+		$stats["DECISION"] = "INQUIRE"
 
 	}
 	else 
@@ -702,7 +705,7 @@ function orderStatistics($barcode)
 					$stats["DECISION"] = "SAMEQTY";				
 			}							
 		}
-		else if ($ratiosale < 50)
+		else if ($RATIOSALE < 50)
 		{
 			if ($PROMO > 0 || $WASTE > 0){ // DIFFERENT TREATMENT		
 				$stats["FINALQTY"] = 0;
