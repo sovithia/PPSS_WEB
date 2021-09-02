@@ -2369,7 +2369,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 			$sql .= ")"; 	
 		} 
 	}
-
+	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2467,7 +2467,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	{
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
-			WHERE (STATUS = 'RECEIVED' OR STATUS = 'PAID')
+			WHERE (STATUS = 'RECEIVED')
 			AND TYPE = 'PO' 
 			ORDER BY LAST_UPDATED DESC";	
 			$req = $db->prepare($sql);
@@ -2539,8 +2539,10 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req = $db2->prepare($sql);
 		$req->execute(array($oneNOPOData["PONUMBER"]));
 		$oneRes = $req->fetch();
-		if ($oneRes != false)
+		if ($oneRes != false){
 			$oneNOPOData["VENDNAME"] = $oneRes["VENDNAME"];
+			$oneNOPOData["VENDID"] = $oneRes["VENDID"];
+		}
 
 
 		// COUNT INVOICES
@@ -3212,6 +3214,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}	
 	}
+	$sql .= " ORDER BY REQUEST_TIME DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);

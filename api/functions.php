@@ -504,9 +504,10 @@ function calculateMultiple($barcode){
 	// Faut virer les espaces
 	if ($res == false) 		
 		return 1;	
-	if (str_contains($res["PACKINGNOTE"],'x'))
+
+	if (strpos($res["PACKINGNOTE"], 'x') !== false)) 
 		$left = explode('x',$res["PACKINGNOTE"])[0];
-	else if (str_contains($res["PACKINGNOTE"],'X'))
+	else if (strpos($res["PACKINGNOTE"], 'X') !== false)) 
 		$left = explode('X',$res["PACKINGNOTE"])[0];
 	else 
 		$left = 1;
