@@ -455,6 +455,110 @@ function statisticsByItem($barcode, $start = '',$end = '')
   return $response;
 }
 
+// Todo disable quantity on APP
+// V1 only based on ratio sale 
+// < 30 FAST
+// > 30 < 60 // Medium
+// > 60 Slow
+function calculateSaleSpeed($barcode,$begin,$end,$qty){
+	$db = getDatabase();
+	$sql = "SELECT QTY,POSDATE FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode,$begin,$end));
+	$qtyToReach = $qty * 0.7;
+	$results = $req->fetchAll(PDO::FETCH_ASSOC);
+	$currentQty = 0;
+	$day = 0;
+	foreach($results as $result)
+	{
+				$currentQty += $result["QTY"];
+				if($currentQty >= $qtyToReach)
+				{
+					$datetime1 = date_create($result["POSDATE"]);	
+    			$datetime2 = date_create($begin);
+    			$interval = date_diff($datetime1, $datetime2);    
+    			return $interval->format('%a');    					
+				}
+	}
+	return -1;
+}
+
+
+// TOOEARLY
+// STOP SELL
+// KEEP
+// INCREASE
+// DECREASE
+
+function calculateMultiple($barcode){
+	$db = getDatabase();
+	$sql = "SELECT TOP(1) QTY_ORDER, PACKINGNOTE,TRANDATE FROM PORECEIVEDETAIL,ICPRODUCT 
+					WHERE PORECEIVEDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID 
+					AND  PORECEIVEDETAIL.PRODUCTID =?
+					ORDER BY TRANDATE DESC";
+
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	// Faut virer les espaces
+	if ($res == false) 		
+		return 1;	
+	if (str_contains($res["PACKINGNOTE"],'x'))
+		$left = explode('x',$res["PACKINGNOTE"])[0];
+	else if (str_contains($res["PACKINGNOTE"],'X'))
+		$left = explode('X',$res["PACKINGNOTE"])[0];
+	else 
+		$left = 1;
+	return $left;
+}
+
+function increaseQty($barcode,$lastorderqty,$unit = 1) // Unit will always be 1 for increase
+{
+
+	$increasedQty = (int)$lastorderqty * (1 + (0.1 * $unit));
+	$multiple = calculateMultiple($barcode);
+
+	if ($multiple == 1){
+		return $increasedQty;
+	}
+	else{
+		$remains = $increasedQty % $multiple;
+ 		if ($remains == 0)	
+			return $increasedQty;
+		else{
+			if ($remains > ($multiple / 2))
+				return $increasedQty + $remains;
+			else if ($remains < ($multiple / 2))
+				return $increasedQty - $remains;
+		}
+
+	}
+
+}
+
+function decreaseQty($barcode,$lastorderqty,$unit = 1)
+{
+	$decreasedQty = (int)$lastorderqty * (1 - (0.1 * $unit));
+	$multiple = calculateMultiple($barcode);
+	if ($multiple == 1){
+		return $increasedQty;
+	}
+	else
+	{
+		$remains = $increasedQty % $multiple;
+ 		if ($remains == 0)	
+			return $decreasedQty;
+		else
+		{
+			if ($remains > ($multiple / 2))
+				return $decreasedQty - $remains;
+			else if ($remains < ($multiple / 2))
+				return $decreasedQty + $remains;
+		}
+	}
+}
+
 function orderStatistics($barcode)
 {
 	$inDB = getInternalDatabase();
