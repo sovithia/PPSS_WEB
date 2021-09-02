@@ -505,9 +505,9 @@ function calculateMultiple($barcode){
 	if ($res == false) 		
 		return 1;	
 
-	if (strpos($res["PACKINGNOTE"], 'x') !== false)) 
+	if (strpos($res["PACKINGNOTE"], 'x') !== false) 
 		$left = explode('x',$res["PACKINGNOTE"])[0];
-	else if (strpos($res["PACKINGNOTE"], 'X') !== false)) 
+	else if (strpos($res["PACKINGNOTE"], 'X') !== false) 
 		$left = explode('X',$res["PACKINGNOTE"])[0];
 	else 
 		$left = 1;
@@ -646,8 +646,7 @@ function orderStatistics($barcode)
 	{
 		$stats["FINALQTY"] = 0;
 		$stats["SUSPICIOUS"] = "YES";
-		$stats["DECISION"] = "INQUIRE"
-
+		$stats["DECISION"] = "INQUIRE";
 	}
 	else 
 	{
