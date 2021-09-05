@@ -2783,10 +2783,7 @@ function splitPOWithItems($ponumber,$items)
 
 $app->put('/supplyrecord', function(Request $request,Response $response) {
 	$json = json_decode($request->getBody(),true);	
-	
-	error_log("coucou");	
-	error_log($json["ACTIONTYPE"]);	
-
+		
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
 
@@ -2814,6 +2811,24 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 		}
 		$data["result"] = "OK";
+	}
+	else if ($json["ACTIONTYPE"] == "TR")
+	{
+
+		
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
+				LINKEDPO = :linkedpo WHERE ID = :identifier";			
+		$req = $db->prepare($sql);
+
+		$req->bindParam(':status',$status,PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
+		$req->execute();
+		
+		pictureRecord($json["SIGNATURE"],"TR",$json["IDENTIFIER"]);
+		$data["result"] = "OK";
+
 	}
 	else if ($json["ACTIONTYPE"] == "PCH")
 	{			
@@ -2946,10 +2961,22 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}
 		$data["ressult"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
+
+		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PONUMBER"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res["LOCID"] == "WH1")
+			$status = 'RECEIVED';
+		else if ($res["LOCID"] == "WH2")
+			$status = 'RECEIVEDFORTRANSFER';
+
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
 				LINKEDPO = :linkedpo WHERE ID = :identifier";			
 		$req = $db->prepare($sql);
 
+		$req->bindParam(':status',$status,PDO::PARAM_STR);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
@@ -2957,7 +2984,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
 		$data["result"] = "OK";
-
 	}else if ($json["ACTIONTYPE"] == "ACC"){
 		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
@@ -6304,35 +6330,91 @@ $app->get('/depreciationpool/{type}', function($request,Response $response){
 	return $response;
 });
 
-$app->post('/depreciationpool', function($request,Response $response){
+
+
+
+$app->post('/depreciationpromopool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
 
-	$sql = "INSERT INTO DEPRECIATIONPOOL (PRODUCTID,QUANTITY,EXPIRATION) VALUES (?,?,?)";	
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"]));
+	// TODO : On OLd items, retrieve all info 
 
-	$result["result"] = "OK";
+	$sql = "SELECT TYPE FROM DEPRECIATIONPROMOPOOL LIMIT 1";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != false){
+		if($res["TYPE"] != $json["TYPE"])
+			$ok = false;					
+		else if ($res["TYPE"] == $json["TYPE"])
+			$ok = true;	
+	}
+	else 
+		$ok = true;
+
+	if ($ok == true){
+		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE) VALUES (?,?,?,?,?,?,?,?)";	
+			$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
+		$json["ENDTYPE"],$json["LINKTYPE"],$json["NEEDLABEL"]));	
+		$result["result"] = "OK";
+	}
+	else
+		$ok = false;
 	$response = $response->withJson($result);
+	return $response;
 });
 
-$app->put('/depreciationpool/', function($request,Response $response){
+
+$app->post('/depreciationwastepool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
 
-	$sql = "UPDATE DEPRECIATIONPOOL SET QUANTITY = ?, EXPIRATION =? WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["QUANTITY"],$json["EXPIRATION"],$json["PRODUCTID"]));
+	$sql = "SELECT TYPE FROM DEPRECIATIONWASTEPOOL LIMIT 1";
 
-	$result["result"] = "OK";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != false){
+		if($res["TYPE"] != $json["TYPE"])
+			$ok = false;					
+		else if ($res["TYPE"] == $json["TYPE"])
+			$ok = true;	
+	}
+	else 
+		$ok = true;
+
+	if ($ok == true){
+		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE) VALUES (?,?,?,?)";	
+			$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"]));	
+		$result["result"] = "OK";
+	}
+	else
+		$ok = false;
+	
 	$response = $response->withJson($result);
 });
 
-$app->delete('/depreciationpool{id}', function($request,Response $response){	
+$app->delete('/depreciationpromopool/{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
 
-	$sql = "DELETE FROM DEPRECIATIONPOOL WHERE PRODUCTID = ?";
+	$sql = "DELETE FROM DEPRECIATIONPROMOPOOL WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+});
+
+$app->delete('/depreciationwastepool/{id}', function($request,Response $response){	
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+
+	$sql = "DELETE FROM DEPRECIATIONWASTEPOOL WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
