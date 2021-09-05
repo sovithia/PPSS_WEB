@@ -2497,7 +2497,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	{
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
-			WHERE (STATUS = 'RECEIVED' OR STATUS = 'PAID')
+			WHERE STATUS = 'RECEIVED'
 			AND TYPE = 'PO' 
 			ORDER BY LAST_UPDATED DESC";	
 			$req = $db->prepare($sql);
