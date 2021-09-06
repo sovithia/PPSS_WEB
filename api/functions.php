@@ -665,6 +665,16 @@ function orderStatistics($barcode)
 				$stats["FINALQTY"] = $RCVQTY;
 				$stats["DECISION"] = "SAMEQTY";
 			}
+		  else if ($ONHAND < ($RCVQTY * 0.5) )
+			{
+						$stats["FINALQTY"] = $RCVQTY;
+						$stats["DECISION"] = "SAMEQTY";	
+			}
+			else
+			{
+						$stats["FINALQTY"] = 0;
+						$stats["DECISION"] = "TOOEARLY";	
+			}
 		}
 		else if ($RATIOSALE > 70 && $RATIOSALE < 100) // Speed not important here
 		{
@@ -681,8 +691,16 @@ function orderStatistics($barcode)
 			}
 			else
 			{
-					$stats["FINALQTY"] = $RCVQTY;
-					$stats["DECISION"] = "SAMEQTY";	
+				if ($ONHAND < ($RCVQTY * 0.5) )
+				{
+						$stats["FINALQTY"] = $RCVQTY;
+						$stats["DECISION"] = "SAMEQTY";	
+				}
+				else{
+						$stats["FINALQTY"] = 0;
+						$stats["DECISION"] = "TOOEARLY";	
+				}
+				
 			}
 		}
 		else if ($RATIOSALE > 50 && $RATIOSALE < 70 ) // Normal Sale

@@ -6524,6 +6524,7 @@ $app->get('/returnrecord/{status}',function($request,Response $response) {
 });
 
 $app->get('/returnrecordsearch',function($request,Response $response) {
+	$db = getInternalDatabase();
 	$start = $request->getParam('start','');
 	$end =  $request->getParam('end','');
 	$status = $request->getParam('status','');
