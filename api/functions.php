@@ -322,7 +322,12 @@ function loadPicture($barcode,$base64 = false)
 	$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:
 	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
-	$file = smbclient_open($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg','r');
+	try{
+		$file = smbclient_open($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg','r');	
+	}
+	catch (Exception $e) {
+		return null;
+	}
 
 	$error = smbclient_state_errno($state);
 	if ($error == 1 || $error == 2 || $error == 9)
@@ -514,7 +519,7 @@ function calculateMultiple($barcode){
 	return $left;
 }
 
-function increaseQty($barcode,$lastorderqty,$unit = 1) // Unit will always be 1 for increase
+function increaseQty($barcode,$lastorderqty,$unit = 1,$price) // Unit will always be 1 for increase
 {
 
 	$increasedQty = (int)$lastorderqty * (1 + (0.1 * $unit));
@@ -523,22 +528,28 @@ function increaseQty($barcode,$lastorderqty,$unit = 1) // Unit will always be 1 
 	if ($multiple == 1){
 		return $increasedQty;
 	}
-	else{
+	else
+	{
 		$remains = $increasedQty % $multiple;
- 		if ($remains == 0)	
-			return $increasedQty;
-		else{
-			if ($remains > ($multiple / 2))
-				return $increasedQty + $remains;
-			else if ($remains < ($multiple / 2))
-				return $increasedQty - $remains;
+		if ($price < 5)
+		{
+			if ($remains == 0)	
+				return (int)$increasedQty;
+			else
+				return $lastorderqty + $multiple; 
 		}
-
+		else
+		{
+			if ($remains > ($multiple / 2))		
+				return (int) $lastorderqty + $multiple;
+			else if ($remains < ($multiple / 2))
+				return (int)$increasedQty - $remains;
+		}			
 	}
 
 }
 
-function decreaseQty($barcode,$lastorderqty,$unit = 1)
+function decreaseQty($barcode,$lastorderqty,$unit = 1,$price)
 {
 	$decreasedQty = (int)$lastorderqty * (1 - (0.1 * $unit));
 	$multiple = calculateMultiple($barcode);
@@ -549,13 +560,13 @@ function decreaseQty($barcode,$lastorderqty,$unit = 1)
 	{
 		$remains = $increasedQty % $multiple;
  		if ($remains == 0)	
-			return $decreasedQty;
+			return (int)$decreasedQty;
 		else
 		{
 			if ($remains > ($multiple / 2))
-				return $decreasedQty - $remains;
+				return (int)$decreasedQty - $remains;
 			else if ($remains < ($multiple / 2))
-				return $decreasedQty + $remains;
+				return (int)$decreasedQty + $remains;
 		}
 	}
 }
@@ -591,12 +602,13 @@ function orderStatistics($barcode)
 
 	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
 
-	$sql = "SELECT ONHAND,PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$sql = "SELECT ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$ONHAND = $res["ONHAND"]; //**	
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**
+	$PRICE = $res["PRICE"];
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
 
 	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
@@ -654,11 +666,11 @@ function orderStatistics($barcode)
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
 			if($stats["SALESPEED"] < 30){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,2);
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,3,$PRICE);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,1);
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,1,$PRICE);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if ($stats["SALESPEED"] > 60 && $stats["SALESPEED"] < 120){
@@ -681,11 +693,11 @@ function orderStatistics($barcode)
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 					if ($WASTE >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2,$PRICE);
 						$stats["DECISION"] = "DECREASEQTY";
 				  }
 					else if ($PROMO >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,1);
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,1,$PRICE);
 						$stats["DECISION"] = "DECREASEQTY";
 					}
 			}
@@ -708,11 +720,11 @@ function orderStatistics($barcode)
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 				if ($WASTE >= 0.1 * $RCVQTY){
-					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,4);
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,4,$PRICE);
 					$stats["DECISION"] = "DECREASEQTY";
 				}
 				else if ($PROMO >= 0.1 * $RCVQTY){
-					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2);
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2,$PRICE);
 					$stats["DECISION"] = "DECREASEQTY";
 				}
 			}

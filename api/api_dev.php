@@ -829,16 +829,16 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		if ($res1 < 1)
 		{
-			$resp["result"] = "KO";
+			//$resp["result"] = "KO";
 			$resp["message"] = "WH1 Location missing"; 
-			$response = $response->withJson($resp);
-			return $response;
+			//$response = $response->withJson($resp);
+			//return $response;
 		}
 		else if ($res2 < 1){
-			$resp["result"] = "KO";
+			//$resp["result"] = "KO";
 			$resp["message"] = "WH2 Location missing"; 	
-			$response = $response->withJson($resp);
-			return $response;
+			//$response = $response->withJson($resp);
+			//return $response;
 		}
 	}
 	else

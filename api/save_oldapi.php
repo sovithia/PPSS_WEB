@@ -92,14 +92,16 @@ $app = new \Slim\App;
 								   	  SETUP
 								   	  SETUP                               */
 
+
 function getModules($role)
 {
 	$db = getInternalDatabase();
 	$sql = "SELECT * FROM ROLE WHERE name = ?";
-	$req=$db->prepare($sql);
-	$req->execute(array($role) ); 
-	$role = $req->fetch(PDO::FETCH_ASSOC);
-	return $role["appmodules"];	
+	$getItems=$db->prepare($sql);
+	
+	$getItems->execute(array($role) ); 
+	$role = $getItems->fetch(PDO::FETCH_ASSOC);
+	return $role["modules"];	
 }
 
 function getUserSession($login,$password)
@@ -121,7 +123,7 @@ function getUserSession($login,$password)
         $stmt->execute(array($token,$expiration,$user["USERID"]));        
         $session["token"] = $token;
         $session["role"] = $user["ROLENAME"];	// name of the module
-        $session["appmodules"] = getModules($user["ROLENAME"]);  
+        $session["modules"] = getModules($user["ROLENAME"]);  
         $session["ID"] = $user["USERID"];
 
         return $session;  	
@@ -145,6 +147,7 @@ function getUserSession($login,$password)
 // WRAP
 $app->get('/image/{id}',function(Request $request,Response $response) { 
 	$id = $request->getAttribute('id');
+	//$result = RestEngine::GET("http://192.168.72.62/api/api.php/picture/".$id);	
 	$result["image"] = loadPicture($id,300,true);
 	$response = $response->withJson($result);
 	return $response;
@@ -160,14 +163,12 @@ $app->post('/login',function(Request $request,Response $response) {
 	
  	$session = getUserSession($username,$password); 
     if ($session != null)
-	{			
-			$data = array();
-			$data["role"] = $session["role"];
-			$data["appmodules"] = $session["appmodules"];
-			$data["token"] = $session["token"];
-			$data["ID"] = $session["ID"];
-			$result["data"] = $data;
+	{
 			$result["result"] = "OK";
+			$result["role"] = $session["role"];
+			$result["modules"] = $session["modules"];
+			$result["token"] = $session["token"];
+			$result["ID"] = $session["ID"];
 	}
     else
     	$result["result"] = "KO";
@@ -237,13 +238,11 @@ $app->get('/supplieritems/{id}',function(Request $request,Response $response) {
 	$req->execute(array($id));
 	$items=$req->fetchAll(PDO::FETCH_ASSOC);
 
+
 	$result = RestEngine::GET("http://phnompenhsuperstore.com/api/intrapi.php/supplier/".$id);
 	$result["items"] = $items;
 
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;   
 });
 
@@ -256,13 +255,11 @@ $app->get('/supplierpurchaseorders/{id}',function(Request $request,Response $res
 	$req->execute(array($id)); 
 	$pos = $req->fetchAll(PDO::FETCH_ASSOC);	
 
+
 	$result = RestEngine::GET("http://phnompenhsuperstore.com/api/intrapi.php/supplier/".$id);
 	$result["purchaseorders"] = $pos;
 
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -411,6 +408,52 @@ function itemLookup($barcode){
 }
 
 /************** ANALYSIS ***************/
+$app->get('/itemfull/{barcode}',function(Request $request,Response $response) {    
+	$conn=getDatabase();
+	$barcode = $request->getAttribute('barcode'); 
+	$packInfo = packLookup($barcode);
+
+	if ($packInfo != null) // IS  A PACK
+	{
+		$packcode = $barcode;		
+		$result = itemLookup($packInfo["PRODUCTID"]);
+		$result["BARCODE"] = $packcode;
+		//if (file_exists("img/packs/".$packcode.".jpg"))
+		//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
+		$result["PICTURE"] = $packInfo["PICTURE"];
+		$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
+		$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
+		$result["DISC"] = $packInfo["DISC"];
+		$result["PRODUCTNAMEPACK"] = $packInfo["DESCRIPTION1"];
+		$result["PRICE"] = $packInfo["SALEPRICE"];		
+		
+		// PICTURE PACK
+		$result["ISPACK"] = "PACK";
+		$result["result"] = "OK";
+	}
+	else
+	{
+		$result = itemLookup($barcode);
+		if ($result != null){
+			$result["ISPACK"] = "ITEM";
+			$result["result"] = "OK";
+		}					
+		else
+		{
+			$result = weightedItemLookup($barcode);
+			if ($result != null){
+				$result["ISPACK"] = "ITEM";
+				$result["result"] = "OK";
+			}					
+			else
+				$result["result"] = "KO";	
+		}
+	}	
+	$response = $response->withJson($result);
+	return $response;   
+});
+
+
 /*
                            ,,,,                   ,,,,,
                            ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
@@ -531,12 +574,11 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 			else
 			{
 				array_push($result,"ERROR");	
-			}		
+			}
+		
 		}		
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -568,9 +610,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 			array_push($result,$oneItem);
 		}		
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -693,17 +733,17 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 		}				
 			
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
 $app->post('/itemdetails', function(Request $request,Response $response) {    
 	$conn=getDatabase();
+
 	$json = json_decode($request->getBody(),true);	
 	$barcodes = $json["barcodes"];
 	
+
 	$result = array();
 	foreach($barcodes as $barcode){
 		$params = array($barcode);
@@ -728,9 +768,7 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 			array_push($result,$oneItem);
 		}		
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -749,16 +787,17 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	}
 	
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
-	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
+	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
+	(SELECT ORDERQTY FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1'
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
 
-	$resp = array();
 	if (isset($item["PRODUCTID"]))
-	{		
+	{
+			
 		$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
@@ -770,11 +809,13 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		if ($item1 != false){
 			$item["WH1"] = $item1["LOCONHAND"];
-			$item["STOREBIN1"] = $item1["STORBIN"];			
+			$item["STOREBIN1"] = $item1["STORBIN"];
+			$item["ORDERQTY"] = $item1["ORDERQTY"];
 		}else{
 			$item["WH1"] = "";
 			$item["STOREBIN1"] = "";
-			
+			$item["ORDERQTY"] = "";
+
 		}
 
 		$sql="
@@ -793,9 +834,12 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
 		}
-	
+		
+
 		$item["result"] = "OK";
+
 		$item["PICTURE"] = loadPicture($barcode,300,true);		
+
 		if ($check == "WH1" || $check == "WH2")
 		{							
 			$inDB = getInternalDatabase();
@@ -824,22 +868,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$req->execute(array($barcode));
 		$res2=$req->fetch()["CNT"];
 
-		$resp["result"] = "OK";
-		$resp["data"] = $item;
-
 		if ($res1 < 1)
-		{
-			//$resp["result"] = "KO";
-			$resp["message"] = "WH1 Location missing"; 
-			//$response = $response->withJson($resp);
-			//return $response;
-		}
-		else if ($res2 < 1){
-			//$resp["result"] = "KO";
-			$resp["message"] = "WH2 Location missing"; 	
-			//$response = $response->withJson($resp);
-			//return $response;
-		}
+			$item["WARNING"] = "WH1 Location missing"; 
+		else if ($res2 < 1)
+			$item["WARNING"] = "WH2 Location missing"; 	
+		
 	}
 	else
 	{
@@ -858,143 +891,30 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$result["PRODUCTNAME"] = $packInfo["DESCRIPTION1"];
 			$result["PRODUCTNAME1"] = $packInfo["DESCRIPTION2"];
 			$result["PRICE"] = $packInfo["SALEPRICE"];	
+
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
+			
 			// PICTURE PACK
 			$result["ISPACK"] = "PACK";
+			$result["result"] = "OK";
 			$item = $result; 
-
-			$resp["result"] = "OK";
-			$resp["data"] = $item;
 		}
 		else			
-			$resp["result"] = "KO";
+			$item["result"] = "KO";
 	}
-	
-	$response = $response->withJson($resp);
+
+
+	$response = $response->withJson($item);
 	return $response;
 });
 
-$app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {    
-	$conn=getDatabase();
-	$barcode = $request->getAttribute('barcode');	 
-	$check = "NO";
-	if (substr($barcode,0,1) == 'X'){
-		$barcode = substr($barcode, 1);
-		$check = "WH1";
-	}
-	if (substr($barcode,0,1) == 'Y'){
-		$barcode = substr($barcode, 1);
-		$check = "WH2";
-	}
-	
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
-	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
-		  FROM dbo.ICPRODUCT  
-	      WHERE BARCODE = ?";
-	$req=$conn->prepare($sql);
-	$req->execute(array($barcode));
-	$item =$req->fetch(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	if (isset($item["PRODUCTID"]))
-	{		
-		$sql="
-		SELECT LOCONHAND,STORBIN,ORDERQTY 
-		FROM dbo.ICLOCATION  
-		WHERE LOCID = 'WH1' AND PRODUCTID = ?";
-		$params = array($barcode);
-		$req=$conn->prepare($sql);
-		$req->execute($params);
-		$item1=$req->fetch();
-
-		if ($item1 != false){
-			$item["WH1"] = $item1["LOCONHAND"];
-			$item["STOREBIN1"] = $item1["STORBIN"];
-			
-		}else{
-			$item["WH1"] = "";
-			$item["STOREBIN1"] = "";			
-		}
-
-		$orderStats = orderStatistics($barcode);
-		$item["ORDERQTY"] = $orderStats["FINALQTY"];		
-		$item["DECISION"] = $orderStats["DECISION"];
-
-		$sql="
-		SELECT LOCONHAND,STORBIN 
-		FROM dbo.ICLOCATION  
-		WHERE LOCID = 'WH2' AND PRODUCTID = ?";
-		$params = array($barcode);
-		$req=$conn->prepare($sql);
-		$req->execute($params);
-		$item2=$req->fetch();
-
-		if ($item2 != false){
-			$item["WH2"] = $item2["LOCONHAND"];
-			$item["STOREBIN2"] = $item2["STORBIN"];	
-		}else{
-			$item["WH2"] = "";
-			$item["STOREBIN2"] = "";	
-		}
-	
-		$item["result"] = "OK";
-		$item["PICTURE"] = loadPicture($barcode,300,true);		
-		
 
 
-		$sql1 = "SELECT count(*) AS CNT FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
-		$req=$conn->prepare($sql1);
-		$req->execute(array($barcode));
-		$res1=$req->fetch()["CNT"];
-
-		$sql2 = "SELECT count(*) AS CNT FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH2'";
-		$req=$conn->prepare($sql2);
-		$req->execute(array($barcode));
-		$res2=$req->fetch()["CNT"];
-
-		if ($res1 < 1)
-		{
-			$resp["result"] = "KO";
-			$resp["message"] = "WH1 Location missing"; 
-		}
-		else if ($res2 < 1){
-			$resp["result"] = "KO";
-			$resp["message"] = "WH2 Location missing"; 	
-		}
-		$resp["result"] = "OK";
-		$resp["data"] = $item;	
-	}
-	else
-	{
-		$packInfo = packLookup($barcode);
-		if ($packInfo != null) // IS  A PACK
-		{
-			$packcode = $barcode;		
-			$result = itemLookup($packInfo["PRODUCTID"]);
-			$result["BARCODE"] = $packcode;
-			//if (file_exists("img/packs/".$packcode.".jpg"))
-			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
-			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
-			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
-			$result["DISC"] = $packInfo["DISC"];
-			$result["PRODUCTNAME"] = $packInfo["DESCRIPTION1"];
-			$result["PRODUCTNAME1"] = $packInfo["DESCRIPTION2"];
-			$result["PRICE"] = $packInfo["SALEPRICE"];	
-			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
-			// PICTURE PACK
-			$result["ISPACK"] = "PACK";
-			$item = $result; 
-
-			$resp["result"] = "OK";
-			$resp["data"] = $item;
-		}
-		else			
-			$resp["result"] = "KO";
-	}
-	
-
-	$response = $response->withJson($resp);
+$app->get('/picture/{barcode}',function(Request $request,Response $response) {
+	$barcode = $request->getAttribute('barcode');
+	$result["PICTURE"] = loadPicture($barcode,300,true);
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -1091,9 +1011,7 @@ $app->get('/KPIOneCategory',function(Request $request,Response $response) {
 			$data[$i] = $oneResponse;					
 		}		
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($data);
 	return $response;
 });
 
@@ -1187,9 +1105,7 @@ $app->get('/KPIRows',function(Request $request,Response $response) {
 		$data[$row] = $req->fetchAll(PDO::FETCH_ASSOC);			
 	}	
 	
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);	
+	$response = $response->withJson($data);
 	return $response;	
 });
 
@@ -1198,13 +1114,12 @@ $app->get('/KPICategories',function(Request $request,Response $response) {
 
 	$year = $request->getParam('year',date('Y'));		
 	$month = $request->getParam('month',null);		
-	$thedata = array();
+	$data = array();
+	$resp["year"] = $year;
+	if ($month != null){
+		$resp["month"] = $month;
 
-	$thedata["year"] = $year;
-	if ($month != null)
-	{
-		$thedata["month"] = $month;
-
+		
 		$oneMonthData = array();
 		$daysInMonth = cal_days_in_month(CAL_GREGORIAN,$month,$year);
 		for($j = 1; $j <= $daysInMonth;$j++)
@@ -1221,10 +1136,12 @@ $app->get('/KPICategories',function(Request $request,Response $response) {
 
 			$oneMonthData[$j] = $data;
 		}		
-		$thedata["data"] = $oneMonthData;	
+
+		$resp["data"] = $oneMonthData;	
+
 	}
-	else 
-	{
+	else {
+
 		$yearData = array();
 		$monthData = array();
 		$data = array();		
@@ -1245,12 +1162,8 @@ $app->get('/KPICategories',function(Request $request,Response $response) {
 
 			$yearData[$i] = $data;	
 		}
-		$thedata["data"] = $yearData;
+		$resp["data"] = $yearData;
 	}
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $thedata;
-
 	$response = $response->withJson($resp);
 	return $response;	
 });
@@ -1262,9 +1175,7 @@ $app->get('/KPISales',function(Request $request,Response $response) {
 	$conn=getDatabase();
 
 	$year = $request->getParam('year',date('Y'));			
-
-	$thedata = array();
-	$thedata["year"] = $year;
+	$resp["year"] = $year;
 	$data = array();
 	
 	$yearData = array();	
@@ -1320,14 +1231,8 @@ $app->get('/KPISales',function(Request $request,Response $response) {
 	}
 	$data["year"] = $yearData;
 	$data["months"] =  $monthData;
-	
 
-	$$thedata["data"] = $data;
-
-	$resp = array();
-	$resp["data"] = $thedata;
-	$resp["status"] = "OK";
-
+	$resp["data"] = $data;
 	$response = $response->withJson($resp);
 	return $response;	
 });
@@ -1425,11 +1330,7 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 
@@ -1481,11 +1382,7 @@ $app->get('/itemsearch3',function(Request $request,Response $response) {
 
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 /************** SEARCH   ***************/
@@ -1533,14 +1430,12 @@ $app->post('/itemget',function(Request $request,Response $response) {
   $sql .= ")";
   $sql .= " ORDER BY CATEGORYID";
 
+  
+	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;		
 }); 
 /************** SEARCH   ***************/
@@ -1565,10 +1460,7 @@ $app->get('/tinyitemsearch',function(Request $request,Response $response) {
 	$req = $conn->prepare($sql);	
 	$req->execute(array($barcode));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 
@@ -1637,6 +1529,10 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 			WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID
 			AND dbo.ICPRODUCT.PRODUCTID = dbo.ICLOCATION.PRODUCTID 
 			".$IN1." ".$IN2;
+			
+
+
+
 
 	if ($barcode != ""){
 
@@ -1683,10 +1579,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 
@@ -1748,10 +1641,7 @@ $app->get('/itemall',function(Request $request,Response $response) {
 	$result["NBPAGES"] = ceil($result2["NB"] / 100);
 	$result["NBITEMS"] = $result2["NB"];
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;		
 });
 
@@ -1793,9 +1683,8 @@ $app->put('/itempromo/{barcode}', function(Request $request,Response $response) 
 			$sql = "UPDATE dbo.ICNEWPROMOTION  set DATEFROM = ?,DATETO = ?, DISCOUNT_VALUE = ? WHERE PRODUCTID = ?";			
 			$stmt = $conn->prepare($sql);		
 			$stmt->execute($params);		
+
 		}
-		$result["result"] = "OK";
-		$response = $response->withJson($result);
 	}		
 	return $response;
 });
@@ -1879,6 +1768,105 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	return $response;
 });
 
+
+// DEPRECATED
+$app->post('/itemupdate/{barcode}',function(Request $request,Response $response) {   
+	$conn=getDatabase();	
+	$json = json_decode($request->getBody(),true);	
+
+	$field = $json["field"];
+	$value = isset($json["value"]) ? $json["value"] : null;
+
+
+	$barcode = $request->getAttribute('barcode'); 
+
+	
+	$stmt = null;
+	if ($field == "PRODUCTNAME"){
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set PRODUCTNAME = :value WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+	if ($field == "PRODUCTNAME1"){
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set PRODUCTNAME1 = :value WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+	else if ($field == "CATEGORY") {	
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set CATEGORYNEWID = :value WHERE BARCODE = :barcode");
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+	else if ($field == "PACKINGNOTE") {	
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set PACKINGNOTE = :value WHERE BARCODE = :barcode");
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+
+	else if ($field == "PACKNAME")
+	{
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT_SALEUNIT set DESCRIPTION1 = :value WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+	else if ($field == "PRICE")	{
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set PRICE = :value WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}	
+	else if ($field == "PACKPRICE") {
+		$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT_SALEUNIT set SALEPRICE = :value WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':value',$value,PDO::PARAM_STR);
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+	}
+	else if ($field == "ACTIVE")
+	{
+		$stmt = $conn->prepare("SELECT ACTIVE FROM dbo.ICPRODUCT WHERE BARCODE = :barcode");	
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);
+		$stmt->execute();
+		$result = $stmt->fetch(PDO::FETCH_ASSOC);			
+
+		if ($result["ACTIVE"] == 0)	
+		{
+			$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set ACTIVE = 1 WHERE BARCODE = :barcode");	
+			$result["active"] = 1;
+		}		
+		
+		else 
+		{
+			$stmt = $conn->prepare("UPDATE dbo.ICPRODUCT set ACTIVE = 0 WHERE BARCODE = :barcode");	
+			$result["active"] = 0;
+		}
+		$stmt->bindValue(':barcode',$barcode,PDO::PARAM_STR);	
+	}
+	
+	else if ($field == "PICTURE"){
+		$data["image"] = $value;
+		writePicture($barcode,$value);		
+	}	
+	else if ($field == "PACKPICTURE")	{
+		$data["image"] = $value;
+		writePicture($barcode,$value);		
+	}
+	else {
+		$sql = "";
+	}
+
+	if ($stmt != null){
+		$stmt->execute();	
+		$result["result"] = "OK";	
+	}
+	else{
+		$result["result"] = "KO";
+	}
+
+	$response = $response->withJson($result);
+	return $response
+			->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+});
+
 $app->get('/allwaitingpo', function(Request $request,Response $response) { 
 
 	$login = $request->getAttribute('login');
@@ -1890,7 +1878,6 @@ $app->get('/allwaitingpo', function(Request $request,Response $response) {
 	$req->execute(array($cvUser));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$response = $response->withJson($result);
-
 	return $response;
 });
 
@@ -1902,11 +1889,7 @@ $app->get('/podetail/{ponumber}', function(Request $request,Response $response) 
 	$req = $conn->prepare($sql);
 	$req->execute(array($id));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -1947,11 +1930,7 @@ $app->get('/posearch', function(Request $request,Response $response) {
 	$req = $conn->prepare($sql);
 	$req->execute($params);	
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -1972,11 +1951,7 @@ $app->get('/myreceivedpo/{login}', function(Request $request,Response $response)
 	$req = $conn->prepare($sql);
 	$req->execute(array($cvUser));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -1990,12 +1965,7 @@ $app->get('/receivedposearch', function(Request $request,Response $response) {
 	$req = $conn->prepare($sql);	
 	$req->execute(array($userreceive));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -2007,14 +1977,29 @@ $app->get('/receivedpodetail/{poreceivenumber}', function(Request $request,Respo
 	$req = $conn->prepare($sql);
 	$req->execute(array($id));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
+$app->post('/products',function(Request $request,Response $response) {
+	$json = json_decode($request->getBody(),true);
+	$products = $json["products"];
+	foreach($products as $product)
+	{
+		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $conn->prepare($sql);
+		$req->execute(array($product["PRODUCTID"]));
+		$result = $req->fetchAll(PDO::FETCH_ASSOC);
+		if (count($result) == 0) // INSERT
+		{
+			$sql = "INSERT INTO ICPRODUCT ()";
+		} // UPDATE
+		else 
+		{
+
+		}
+	}
+});
 
 $app->get('/orderedCategories',function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -2024,15 +2009,11 @@ $app->get('/orderedCategories',function(Request $request,Response $response) {
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
 	
-	$data = array();
-	foreach ($result as $category) 	
-		array_push($data,$category["CATEGORYNAME"]);
-	
 	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
+	foreach ($result as $category) 	
+		array_push($resp,$category["CATEGORYNAME"]);
+	
 	$response = $response->withJson($resp);
-
 	return $response;
 });
 
@@ -2043,11 +2024,12 @@ $app->get('/classifiedCategories',function(Request $request,Response $response) 
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
 	
+	/*
 	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-
+	foreach ($result as $category) 	
+		array_push($resp,$category["CATEGORYNAME"]);
+	*/
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -2084,23 +2066,18 @@ $app->get('/calculatePrice',function(Request $request,Response $response) {
 			$selectedPriceClass = $priceclass;			
 		}		
 	}	
-	$data = array();
+	$resp = array();
 	if ($selectedPriceClass != null){
-		$data["MIN"] = $selectedPriceClass["CLASS".$min];
-		$data["AVG"] = $selectedPriceClass["CLASS".$avg];
-		$data["MAX"] = $selectedPriceClass["CLASS".$max];
-		$data["CLASSMIN"] = $min;
-		$data["CLASSAVG"] = $avg;
-		$data["CLASSMAX"] = $max;
-		$data["DATA"] = $selectedPriceClass;
-
-		$resp = array();
-		$resp["result"] = "OK";
-		$resp["data"] = $data;
-		$response = $response->withJson($resp);
-	}else
-		$resp["result"] = "KO";
-
+		$resp["MIN"] = $selectedPriceClass["CLASS".$min];
+		$resp["AVG"] = $selectedPriceClass["CLASS".$avg];
+		$resp["MAX"] = $selectedPriceClass["CLASS".$max];
+		$resp["CLASSMIN"] = $min;
+		$resp["CLASSAVG"] = $avg;
+		$resp["CLASSMAX"] = $max;
+		$resp["DATA"] = $selectedPriceClass;
+	}	
+	
+	$response = $response->withJson($resp);
 	return $response;
 });
 
@@ -2392,7 +2369,6 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 			$sql .= ")"; 	
 		} 
 	}
-
 	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -2422,13 +2398,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 		$oneData["NBINVOICES"] = $nbinvoices;
 		array_push($newData,$oneData);
 	}
-	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $newData;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($newData);
 	return $response;
 });
 
@@ -2497,7 +2467,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	{
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
-			WHERE STATUS = 'RECEIVED'
+			WHERE (STATUS = 'RECEIVED')
 			AND TYPE = 'PO' 
 			ORDER BY LAST_UPDATED DESC";	
 			$req = $db->prepare($sql);
@@ -2569,8 +2539,10 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req = $db2->prepare($sql);
 		$req->execute(array($oneNOPOData["PONUMBER"]));
 		$oneRes = $req->fetch();
-		if ($oneRes != false)
+		if ($oneRes != false){
 			$oneNOPOData["VENDNAME"] = $oneRes["VENDNAME"];
+			$oneNOPOData["VENDID"] = $oneRes["VENDID"];
+		}
 
 
 		// COUNT INVOICES
@@ -2588,11 +2560,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	$mixData["NOPO"] = $newNOPOData;
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $mixData;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($mixData);
 	return $response;
 });
 
@@ -2613,11 +2581,13 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		
 		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
 		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
-		$result["result"] = "OK";
+		$result["RESULT"] = "OK";
 	}
 	else
-		$result["result"] = "KO";
+		$result["RESULT"] = "KO";
 	
+	
+
 	$response = $response->withJson($result);
 	return $response;
 });
@@ -2783,7 +2753,10 @@ function splitPOWithItems($ponumber,$items)
 
 $app->put('/supplyrecord', function(Request $request,Response $response) {
 	$json = json_decode($request->getBody(),true);	
-		
+	
+	error_log("coucou");	
+	error_log($json["ACTIONTYPE"]);	
+
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
 
@@ -2810,25 +2783,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$req->execute(array($key,$json["PONUMBER"]) );	 						
 			}
 		}
-		$data["result"] = "OK";
-	}
-	else if ($json["ACTIONTYPE"] == "TR")
-	{
-
-		
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
-				LINKEDPO = :linkedpo WHERE ID = :identifier";			
-		$req = $db->prepare($sql);
-
-		$req->bindParam(':status',$status,PDO::PARAM_STR);
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
-		$req->execute();
-		
-		pictureRecord($json["SIGNATURE"],"TR",$json["IDENTIFIER"]);
-		$data["result"] = "OK";
-
+		$data["RESULT"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "PCH")
 	{			
@@ -2859,7 +2814,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]));
 
-		$data["result"] = "OK";	
+		$data["RESULT"] = "OK";	
 
 	}// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
 	else if ($json["ACTIONTYPE"] == "WH"){
@@ -2959,31 +2914,20 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req->execute(array($totalAMT,$json["PONUMBER"]));
 
 		}
-		$data["ressult"] = "OK";
+		$data["RESULT"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
-
-		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PONUMBER"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res["LOCID"] == "WH1")
-			$status = 'RECEIVED';
-		else if ($res["LOCID"] == "WH2")
-			$status = 'RECEIVEDFORTRANSFER';
-
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
 				LINKEDPO = :linkedpo WHERE ID = :identifier";			
 		$req = $db->prepare($sql);
 
-		$req->bindParam(':status',$status,PDO::PARAM_STR);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
 		$req->execute();
 		
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
-		$data["result"] = "OK";
+		$data["RESULT"] = "OK";
+
 	}else if ($json["ACTIONTYPE"] == "ACC"){
 		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
@@ -3027,7 +2971,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]) );	
 
-		$data["result"] = "OK";	 			
+		$data["RESULT"] = "OK";	 			
 	}
 	else if ($json["ACTIONTYPE"] == "PCHCANCEL")
 	{
@@ -3041,11 +2985,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();
 		if(file_exists("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png"))
 			unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
-		$data["result"] = "OK";	
+		$data["RESULT"] = "OK";	
 	}
 	else
 	{
-		$data["result"] = "KO";
+		$data["RESULT"] = "KO";
 	}	
 
 	$response = $response->withJson($data);
@@ -3121,12 +3065,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	}
 	$rr["items"] = $tmpItems;
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $rr;
-	$response = $response->withJson($resp);
-
-
+	$response = $response->withJson($rr);
 	return $response;
 });
 
@@ -3158,7 +3097,7 @@ $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Re
 		}		
 	}
 
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);	
 	return $response;
 });
@@ -3169,12 +3108,7 @@ $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$end =  $request->getParam('end','');
 
 	$stats = statisticsByItem($id,$start,$end);
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $stats;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($stats);
 	return $response;
 });
 
@@ -3285,11 +3219,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($data);
 	return $response;
 });
 
@@ -3514,10 +3444,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 					$req->execute(array($day));
 					$data[$day] =  $req->fetchAll(PDO::FETCH_ASSOC);						
 				}			
-		$resp = array();
-		$resp["result"] = "OK";
-		$resp["data"] = $data;	
-		$response = $response->withJson($resp);
+		$response = $response->withJson($data);
 		return $response;		
 	}
 	else
@@ -3560,12 +3487,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$req = $db->prepare($sql);
 		$req->execute(array($type));
 		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
-		
-
-		$resp = array();
-		$resp["result"] = "OK";
-		$resp["data"] = $actions;
-		$response = $response->withJson($resp);
+		$response = $response->withJson($actions);
 		return $response;
 	}	
 });
@@ -3733,7 +3655,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$req->execute(array($newQty,$item["PRODUCTID"]));								
 		}									
 	}		
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -4108,7 +4030,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 	// 
 	
 
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -4147,6 +4069,8 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 	$newData = array();
 	foreach($items as $item){
 		$itemID = $item["PRODUCTID"];
+
+		
 
 		// TYPE
 		$item["TYPE"] = $type;
@@ -4268,11 +4192,8 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		}							
 		array_push($newData,$item);
 	}	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $newData;
-	$response = $response->withJson($resp);
 
+	$response = $response->withJson($newData);
 	return $response;
 });
 
@@ -4330,15 +4251,13 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		else
 			$item["ISDEBT"] = "YES";
 
+		if($type == "RESTOCK")
+			$item["ITEMSTATS"] = statisticsByItem($item["PRODUCTID"]);
+
 		array_push($itemsNEW,$item);
 	}
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $itemsNEW;
-	$response = $response->withJson($resp);
-
-	return $response;	
+	$items = $response->withJson($itemsNEW);
+	return $items;	
 });
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
@@ -4443,7 +4362,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			}
 		}	
 	}	
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -4483,7 +4402,7 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));	
 	}
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -4499,7 +4418,7 @@ $app->put('/itemrequestrestockpool/{id}', function(Request $request,Response $re
 	$req = $db->prepare($sql);
 	$req->execute(array($listname,$id));
 
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -4535,8 +4454,8 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if (floatval($res["LOCONHAND"]) < floatval($json["REQUEST_QUANTITY"]))
 		{
-			$data["result"] = "KO";
-			$data["message"] = "Update Qty greather than onHand (" . $res["LOCONHAND"] . ")" ;
+			$data["RESULT"] = "KO";
+			$data["MSG"] = $res["LOCONHAND"];
 			$response = $response->withJson($data);
 			return $response;
 		}
@@ -4551,8 +4470,8 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if (floatval($res["LOCONHAND"]) < floatval($json["REQUEST_QUANTITY"]))
 		{
-			$data["result"] = "KO";
-			$data["message"] = "Update Qty greather than onHand (" . $res["LOCONHAND"] . ")" ;
+			$data["RESULT"] = "KO";
+			$data["MSG"] = $res["LOCONHAND"];
 			$response = $response->withJson($data);
 			return $response;
 		}
@@ -4560,22 +4479,286 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	if ($type == "RESTOCK")
 	{
-		$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ?,COMMENT =  ? WHERE PRODUCTID = ? AND LISTNAME = ? ";
+		$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["REQUEST_QUANTITY"],$json["COMMENT"],$json["PRODUCTID"],$json["LISTNAME"]));	
+		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"],$json["LISTNAME"]));	
 	}
 	else
 	{
-		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ?,COMMENT = COMMENT || ' ' || ? WHERE PRODUCTID = ?".$suffix;
+		$sql = "UPDATE ".$tableName." SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ?".$suffix;
 		$req = $db->prepare($sql);
-		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"],$json["COMMENT"]));	
+		$req->execute(array($json["REQUEST_QUANTITY"],$json["PRODUCTID"]));	
 	}
 	
-	$data["result"] = "OK";
+	$data["RESULT"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
 });
 
+
+
+/*
+                           ,,,,                   ,,,,,
+                           ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
+                    ,╓▄▄▄▄▄▄▄▄▓▓▓▓╬▓▓▓▓▓█▓▓▓▓▓▀╣▓▓▓▌▄▄▄▄▄▄▄µ,
+                ,▄▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▌▄
+              ╔▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╬▀▓▌╣╣╣╣╣╣╣╣╣╣▓▀╬╬╣╣╣╣╣╣╣╣╣╬╣▓▓▓▓▓▄
+            ╓▓▓▓▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▀▓▓▓▓▓▓▓▓▄
+             ,▄▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+           ,▓▓▓▓▀╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+          ▄▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▓
+         ▓▓▓▓╣╣╣╣╣▓▓▓░░░░▀▀▀▓▓▀░░░░░░░░░▀░░░░░░░░░░▀▓▓▀▀░░░░▀▓▓▓╣╣╣╣╣▓▓▓▄
+        ▓▓▓▓╣╣╣╣╣╣▓▓▌░░▒▌▄░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▄▄▓░░░▓▓▓╣╣╣╣╣╣▓▓▓▄
+       ╟▓▓▓╣╣╣╣╣╣╣▓▓▓▄░░▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▀░░▓▓▓╬╣╣╣╣╣╣╣▓▓▓
+       ▓▓▓╣╣▓▓▓╣╣╣╣╣▓▓▓▓▓▓▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓╬╣╣╣╣▓▓▓╣╣▓▓▌
+      ▐▓▓▓▓▓▓▓╣╣╣╣╣╣╣╬╬▓▓▓░░░░▓▓▓▄░░░░░░░░░░░░░░▄▓▓▌░░░║▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓
+      ╟▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓░░░░░╚▓▓▓▓▓▄░░░░░░░░▓▓▓▓▓▀░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓
+      ╙▀^╟▓▓▌╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░▀▀▓▌░░░░░░▓▓▀░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓ ▀▀
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░▀░░░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓b
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╣▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▌
+        ]▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▒░░░░█▓▓▓▓▓▓░░░░░█▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+        ╫▓▓▓╣╣╣▓▓╬╣╣╣╣╣╣╣╣▀▓▓▓▓▀░░░░░░░▀▓▓▀░░░░░░░▓▓▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+      ╔▓▓▓▓╣▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░║▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓╬╣▓▓▓▄
+    "▀▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░╟▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▀
+             ║▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓▌▄▄░░▄▄▓▓▓▓▓▓▄░░░▄▄▓▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓
+             ╘▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▀▀░░░░▀▓▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+              ▀▓▓▓╣╣╣▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░╣▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+               ▀▓▓▓╣▓▓▓▓╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣▓▓▓Γ
+                ╙▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╬▀▓▓▓▓▓▓▒╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▀
+                  ▀▓▓▓▌▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▀▓▓▓▓`
+                    ╙█▌ ▀▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓` ▓▀`
+                          ▀█▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▀
+                             ^▀▀▓▓▓▓▓╬╣╣╣╣╣╣▓▓▓▓▓▓▀╙ 
+									ITEM WASTE 
+									ITEM WASTE
+									ITEM WASTE                               */
+
+
+//CREATED
+//VALIDATED
+//RECORDED
+$app->get('/itemwaste/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMWASTE WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$response = $response->withJson($records);
+	return $response;
+});
+$app->post('/itemwaste', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itemwaste_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	$items = $json["ITEMS"];
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMWASTE (BARCODE,QUANTITY,REASON,NAME,SIGNATURE_CREATOR,CREATOR) 
+				VALUES (:barcode,:quantity,:reason,:name,:signature,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);	
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);
+		$req->bindParam(':name',$item["NAME"],PDO::PARAM_STR);	
+		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);						
+		$req->bindParam(':creator',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->execute();
+
+		if ($item["IMAGE"] != null)
+		{
+			$imageData = base64_decode($item["IMAGE"]);
+			$filename = "./img/itemwaste_pictures/".$item["ID"].".png";	
+			file_put_contents($filename, $imageData);
+		}				
+	}	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+$app->put('/itemwaste', function(Request $request, Response $response){ 
+	// VALIDATE
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itemwaste_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	foreach($items as $item){
+
+		if ($item["STATUS"] == "VALIDATED"){
+			$fieldname = "VALIDATOR"; 
+			$signatureField = "SIGNATURE_VALIDATOR";
+		}
+		else if ($item["STATUS"] == "RECORDED"){
+			$fieldname = "RECORDER";	
+			$signatureField = "SIGNATURE_RECORDER";	
+		}
+
+		$sql = "UPDATE ITEMWASTE SET QUANTITY_MODIFIED = ?, 
+									   COMMENT = ?,			   
+									   ".$fieldname." = ?,
+									   ".$signatureField." = ?,	
+									   STATUS = ? 									  
+									   WHERE ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["QUANTITY_MODIFIED"],$item["COMMENT"],$json["AUTHOR"],$sigID,$item["STATUS"],$item["ID"]));
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+/*
+                           ,,,,                   ,,,,,
+                           ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
+                    ,╓▄▄▄▄▄▄▄▄▓▓▓▓╬▓▓▓▓▓█▓▓▓▓▓▀╣▓▓▓▌▄▄▄▄▄▄▄µ,
+                ,▄▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▌▄
+              ╔▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╬▀▓▌╣╣╣╣╣╣╣╣╣╣▓▀╬╬╣╣╣╣╣╣╣╣╣╬╣▓▓▓▓▓▄
+            ╓▓▓▓▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▀▓▓▓▓▓▓▓▓▄
+             ,▄▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+           ,▓▓▓▓▀╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+          ▄▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▓
+         ▓▓▓▓╣╣╣╣╣▓▓▓░░░░▀▀▀▓▓▀░░░░░░░░░▀░░░░░░░░░░▀▓▓▀▀░░░░▀▓▓▓╣╣╣╣╣▓▓▓▄
+        ▓▓▓▓╣╣╣╣╣╣▓▓▌░░▒▌▄░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▄▄▓░░░▓▓▓╣╣╣╣╣╣▓▓▓▄
+       ╟▓▓▓╣╣╣╣╣╣╣▓▓▓▄░░▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▀░░▓▓▓╬╣╣╣╣╣╣╣▓▓▓
+       ▓▓▓╣╣▓▓▓╣╣╣╣╣▓▓▓▓▓▓▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓╬╣╣╣╣▓▓▓╣╣▓▓▌
+      ▐▓▓▓▓▓▓▓╣╣╣╣╣╣╣╬╬▓▓▓░░░░▓▓▓▄░░░░░░░░░░░░░░▄▓▓▌░░░║▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓
+      ╟▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓░░░░░╚▓▓▓▓▓▄░░░░░░░░▓▓▓▓▓▀░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓
+      ╙▀^╟▓▓▌╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░▀▀▓▌░░░░░░▓▓▀░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓ ▀▀
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░▀░░░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓b
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╣▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▌
+        ]▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▒░░░░█▓▓▓▓▓▓░░░░░█▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+        ╫▓▓▓╣╣╣▓▓╬╣╣╣╣╣╣╣╣▀▓▓▓▓▀░░░░░░░▀▓▓▀░░░░░░░▓▓▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+      ╔▓▓▓▓╣▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░║▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓╬╣▓▓▓▄
+    "▀▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░╟▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▀
+             ║▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓▌▄▄░░▄▄▓▓▓▓▓▓▄░░░▄▄▓▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓
+             ╘▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▀▀░░░░▀▓▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+              ▀▓▓▓╣╣╣▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░╣▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+               ▀▓▓▓╣▓▓▓▓╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣▓▓▓Γ
+                ╙▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╬▀▓▓▓▓▓▓▒╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▀
+                  ▀▓▓▓▌▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▀▓▓▓▓`
+                    ╙█▌ ▀▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓` ▓▀`
+                          ▀█▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▀
+                             ^▀▀▓▓▓▓▓╬╣╣╣╣╣╣▓▓▓▓▓▓▀╙ 
+							ITEMPROMOTIONREQUESTINTERNAL		
+							ITEMPROMOTIONREQUESTINTERNAL 
+							ITEMPROMOTIONREQUESTINTERNAL                       */
+
+//CREATED
+//VALIDATED
+//LINKING
+//DESIGNING
+//FORSALE
+$app->get('/itempromotionrequestinternal/{status}', function(Request $request, Response $response){ 
+
+	$status = $request->getAttribute('status','');
+	$db=getInternalDatabase();
+	$sql = "SELECT * FROM ITEMPROMOTIONREQUESTINTERNAL WHERE STATUS = ? ORDER BY DATECREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$response = $response->withJson($records);
+	return $response;
+});
+
+$app->post('/itempromotionrequestinternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+
+	$items = $json["ITEMS"];
+	
+	// Signature
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	foreach($items as $item)
+	{
+		$sql = "INSERT INTO ITEMPROMOTIONREQUESTINTERNAL (BARCODE,QUANTITY,DISCOUNT,REASON,SIGNATURE_CREATOR,CREATOR) 
+				VALUES (:barcode,:name,:quantity,:discount,:reason,:signature,:creator)";
+		$req = $db->prepare($sql);
+		$req->bindParam(':barcode',$item["BARCODE"],PDO::PARAM_STR);		
+		$req->bindParam(':quantity',$item["QUANTITY"],PDO::PARAM_STR);		
+		$req->bindParam(':discount',$item["DISCOUNT"],PDO::PARAM_STR);		
+		$req->bindParam(':reason',$item["REASON"],PDO::PARAM_STR);	
+		$req->bindParam(':signature',$sigID,PDO::PARAM_STR);
+		$req->bindParam(':creator',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->execute();
+
+		if ($item["IMAGE"] != null)
+		{
+			$imageData = base64_decode($item["IMAGE"]);
+			$filename = "./img/itempromotionrequestinternal/".$item["ID"].".png";	
+			file_put_contents($filename, $imageData);
+		}	
+	}
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->put('/itempromotionrequestinternal', function(Request $request, Response $response){ 
+	$json = json_decode($request->getBody(),true);
+	$db=getInternalDatabase();
+	$now = time();
+	$items = $json["ITEMS"]; 
+
+	$signatureData = base64_decode($json["SIGNATURE"]);
+	$sigID = time() ."_". rand(1,100);	
+	$signatureFilename = "./img/itempromotionrequestinternal_signatures/".$sigID.".png";
+	$signature = $json["SIGNATURE"];
+	file_put_contents($signatureFilename, $signatureData);
+
+	foreach($items as $item){
+		if ($item["STATUS"] == "VALIDATED"){
+			$fieldname = "VALIDATOR"; 
+			$signatureField = "SIGNATURE_VALIDATOR";
+		}
+		else if ($item["STATUS"] == "LINKING"){
+			$fieldname = "LINKER";
+			$signatureField = "SIGNATURE_LINKER";
+		}
+		else if ($item["STATUS"] == "DESIGNING"){
+			$fieldname = "DESIGNER";
+			$signatureField = "SIGNATURE_DESIGNER";
+		}						
+		else if ($item["STATUS"] == "DISPLAYED"){
+			$fieldname = "DISPLAYER";
+			$signatureField = "SIGNATURE_DISPLAYER";
+		}		
+
+		$sql = "UPDATE ITEMPROMOTIONREQUESTINTERNAL 
+										SET STATUS = ?,
+									   	".$fieldname." = ?,
+									   	".$signatureField." = ?									   									   	
+									   	WHERE ID = ?";
+		$req = $db->prepare($sql);	
+		$req->execute(array($item["STATUS"],$json["AUTHOR"],$sigID,$item["ID"]));
+	}
+	$result["result"] = "OK";
+	return $response;
+});
 
 /*
                            ,,,,                   ,,,,,
@@ -4626,12 +4809,7 @@ $app->get('/itempromotionrequestexternal/{status}', function(Request $request, R
 	$req->execute(array($status));
 	$records = $req->fetchAll(PDO::FETCH_ASSOC);	
 	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $records;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($records);
 	return $response;
 });
 
@@ -4771,11 +4949,7 @@ $app->get('/costzero',function(Request $request,Response $response) {
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;				
 
 });
@@ -4822,11 +4996,7 @@ $app->get('/zerosale',function(Request $request,Response $response) {
 	$result["NBPAGES"] = ceil($result2["NB"] / 100);
 	$result["NBITEMS"] = $result2["NB"];
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 });
 
@@ -4872,11 +5042,7 @@ $app->get('/itemzerostock',function(Request $request,Response $response) {
 	$result["NBPAGES"] = ceil($result2["NB"] / 100);
 	$result["NBITEMS"] = $result2["NB"];
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 
@@ -4923,11 +5089,8 @@ $app->get('/itemnegative',function(Request $request,Response $response) {
 	$result["NBPAGES"] = ceil($result2["NB"] / 100);
 	$result["NBITEMS"] = $result2["NB"];
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
 
+	$response = $response->withJson($result);
 	return $response;		
 }); 
 
@@ -4955,12 +5118,7 @@ $app->get('/lowprofit',function($request,Response $response) {
 	$req = $conn->prepare($sql);
 	$req->execute();
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);	
 	return $response;	
 });
 
@@ -4999,11 +5157,7 @@ $app->get('/lowseller',function($request,Response $response) {
 	$req = $conn->prepare($sql);
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);		
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 
 	return $response;
 });
@@ -5111,11 +5265,7 @@ $app->get('/priceprogression',function(Request $request,Response $response) {
 		array_push($newResult,$oneproduct);
 	}
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $newResult;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($newResult);
 	return $response;	
 }); 
  
@@ -5136,10 +5286,7 @@ $app->get('/custombarcodes', function(Request $request,Response $response){
 	$req->execute(array($category));
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -5163,6 +5310,7 @@ $app->get('/averagebasket', function(Request $request, Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($begin,$end));
 	$result =$req->fetch(PDO::FETCH_ASSOC);
+
 
 	return $result["BASKET"];
 });
@@ -5204,15 +5352,11 @@ $app->get('/vendormargin', function(Request $request, Response $response){
 	$result =$req->fetch(PDO::FETCH_ASSOC);
 	$saleAMT = $result["SALE_AMT"];
 	
-	$data["SPENDING"] = $paidAMT;
-	$data["SALE_AMT"] = $saleAMT;
-	$data["MARGIN"] = $saleAMT - $paidAMT;
+	$resp["SPENDING"] = $paidAMT;
+	$resp["SALE_AMT"] = $saleAMT;
+	$resp["MARGIN"] = $saleAMT - $paidAMT;
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
 	$response = $response->withJson($resp);
-
 	return $response;
 });
 
@@ -5253,15 +5397,11 @@ $app->get('/productmargin', function(Request $request, Response $response){
 	$result =$req->fetch(PDO::FETCH_ASSOC);
 	$saleAMT = $result["SALE_AMT"];
 	
-	$data["SPENDING"] = $paidAMT;
-	$data["SALE_AMT"] = $saleAMT;
-	$data["MARGIN"] = $saleAMT - $paidAMT;
+	$resp["SPENDING"] = $paidAMT;
+	$resp["SALE_AMT"] = $saleAMT;
+	$resp["MARGIN"] = $saleAMT - $paidAMT;
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
 	$response = $response->withJson($resp);
-
 	return $response;
 });
 
@@ -5272,11 +5412,7 @@ $app->get('/bank', function(Request $request, Response $response){
 	$req->execute(array());
 	$result =$req->fetchAll(PDO::FETCH_ASSOC);
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -5303,12 +5439,7 @@ $app->get('/itemthrown', function(Request $request, Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
 	$result =$req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -5323,6 +5454,7 @@ $app->get('/itemreceived', function(Request $request,Response $response) {
 	$req->execute(array());
 	$receivedpos = $req->fetchAll(PDO::FETCH_ASSOC);	
 
+
 	$result = array();
 	foreach($receivedpos as $receivedpo){
 
@@ -5331,14 +5463,12 @@ $app->get('/itemreceived', function(Request $request,Response $response) {
 		$req->execute(array($receivedpo["RECEIVENO"]));
 		$receivedDetail = $req->fetchAll(PDO::FETCH_ASSOC);	
 
+
 		$receivedpo["detail"] = $receivedDetail;
 		array_push($result,$receivedpo);
-	}
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
 
+	}
+	$response = $response->withJson($result);
 	return $response;
 });
 
@@ -5363,12 +5493,9 @@ $app->get('/master',function(Request $request,Response $response) {
 		
 		$item["PACKS"] = $items2;
 		array_push($data,$item);
-	}	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-
+	}
+	
+	$response = $response->withJson($data);
 	return $response;
 });
 
@@ -5397,11 +5524,7 @@ $app->get('/sale/{date}',function(Request $request,Response $response) {
 	$right = explode('.',$result["SALE"])[1];
 	$result["SALE"] = $left.".".substr($right, 0,2);
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 });
 
@@ -5439,11 +5562,7 @@ $app->get('/adjusteditems', function(Request $request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute($params);	
 	$result=$req->fetchAll(PDO::FETCH_ASSOC);
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
 
 	return $response;	
 });  
@@ -5645,12 +5764,7 @@ $app->get('/traffic/{date}',function($request,Response $response) {
 		$resp["amount"] = $result["SUM".$i];
 		array_push($totalresp,$resp);
 	}
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $totalresp;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($totalresp);
 	return $response;	
 });
 
@@ -5681,15 +5795,11 @@ $app->get('/freshsales',function(Request $request,Response $response) {
 
 	$params = array();
 
+
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 }); 
 
@@ -5723,11 +5833,7 @@ $app->get('/itemsale',function($request,Response $response) {
 	else
 		$result["PRODUCTNAME"] = "N/A";
 	$result["PRODUCTID"] = $barcode;	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);	
 
 	return $response;	
 });
@@ -5793,10 +5899,8 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	}
 	$result = $tmp;
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($result);
+
 
 	return $response;	
 });
@@ -5828,12 +5932,7 @@ $app->get('/bestsellerpromotion',function($request,Response $response) {
 	//$req = $conn->prepare($sql);
 	//$req->execute(array());
 	//$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);  
 	return $response;	
 });
 
@@ -5871,11 +5970,7 @@ $app->get('/selection',function($request,Response $response) {
 		"; 
 	$result = SELECTALL($sql);	
 	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 });
 
@@ -5916,12 +6011,7 @@ $app->get('/bestseller',function($request,Response $response) {
 	$req = $conn->prepare($sql);	
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($result);
 	return $response;	
 });
 
@@ -5932,7 +6022,6 @@ $app->get('/info',function(Request $request,Response $response){
 	$req->execute(array());
 	$item = $req->fetch();
 	$response = $response->withJson($item);
-	
 	return $response;
 });
 
@@ -5954,12 +6043,7 @@ $app->get('/depleteditems', function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $items;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($items);
 	return $response;
 });
 
@@ -6086,7 +6170,7 @@ $app->get('/depreciation', function($request,Response $response) {
 
 	$db = getInternalDatabase();	
 	$params = array();	
-	$sql = "SELECT * FROM DEPRECIATION WHERE 1 = 1 ";
+	$sql = "SELECT * FROM DEPRECIATION WHERE 1 = 1";
 
 	if ($type != ''){		
 		$sql .= "AND TYPE = ? ";
@@ -6099,12 +6183,7 @@ $app->get('/depreciation', function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($item);
 	return $response;
 });
 
@@ -6116,15 +6195,9 @@ $app->get('depreciationdetails/{id}',function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute(array($id,$id,$id,$id));																			     
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $items;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($items);
 	return $response;
 });
-
 
 $app->post('/depreciation', function($request,Response $response) {
 	$json = json_decode($request->getBody(),true);
@@ -6189,11 +6262,6 @@ $app->post('/depreciation', function($request,Response $response) {
 			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$percentpenalty,$penalty["percent"],$PRODUCTID,$EXPIRATION));		
 		}
 	}
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$response = $response->withJson($resp);
-	return $response;
 });
 // CREATED (GECKMEY) VALIDATED (GECKMEY) CLEARED (ACC) 
 $app->put('/depreciation', function($request,Response $response) {
@@ -6211,7 +6279,7 @@ $app->put('/depreciation', function($request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($status,$id,$author));		
 
-	$response["result"] = "OK";
+	$response["response"] = "OK";
 	$response = $response->withJson($response);
 	return $response;																			 
 });
@@ -6219,27 +6287,16 @@ $app->put('/depreciation', function($request,Response $response) {
 $app->get('/depreciationalert',function($request,Response $response) {
 
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM DEPRECIATIONITEM 
-					WHERE
-					( 
-					((JULIANDAY(ENDTIME1) - DATETIME('now')) < 2 AND STARTTIME2 = '')
-					OR 
-					((JULIANDAY(ENDTIME2) - DATETIME('now')) < 2 AND STARTTIME3 = '')
-					OR 	
-					((JULIANDAY(ENDTIME3) - DATETIME('now')) < 2 AND STARTTIME4 = '')
-					)
-					AND PRODUCTID NOT IN (SELECT PRODUCTID FROM DEPRECIATIONPROMOTIONPOOL)";
+	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE ( (DATETIME('now') - JULIANDAY(ENDTIME1)) < 2 AND STARTTIME2 = '') OR
+																								 (DATETIME('now') - JULIANDAY(ENDTIME2)) < 2 AND STARTTIME3 = '') OR
+																								 (DATETIME('now') - JULIANDAY(ENDTIME4)) < 2 AND STARTTIME4 = '') )
+																								 AND PRODUCTID NOT IN (SELECT PRODUCTID FROM DEPRECIATIONPOOL)";
 
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $items;
-	$response = $response->withJson($resp);
-	return $response;
+	$response = $response->withJson($items);
+	return $response;																			 
 });
 
 $app->get('/depreciationsearch',function($request,Response $response) {
@@ -6287,15 +6344,12 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}
 	}	
+	
 
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
+	$response = $response->withJson($item);
 	return $response;
 });
 
@@ -6310,111 +6364,52 @@ $app->get('/depreciationpool/{type}', function($request,Response $response){
 	else if ($type == "PROMOTION")
 		$sql = "SELECT * FROM DEPRECIATIONPROMOTIONPOOL";	
 
+	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
-	$newItems = array();
+	$tmp = array();
 	foreach($pool as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$res = $req->execute(array($item["PRODUCTID"]));
 		if ($res != null)
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		array_push($newItems,$item);
+		array_push();
 	}
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $newItems;
-	$response = $response->withJson($resp);
-	return $response;
+	$response = $response->withJson($items);
 });
 
-
-
-
-$app->post('/depreciationpromopool', function($request,Response $response){
+$app->post('/depreciationpool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
 
-	// TODO : On OLd items, retrieve all info 
-
-	$sql = "SELECT TYPE FROM DEPRECIATIONPROMOPOOL LIMIT 1";
+	$sql = "INSERT INTO DEPRECIATIONPOOL (PRODUCTID,QUANTITY,EXPIRATION) VALUES (?,?,?)";	
 	$req = $db->prepare($sql);
-	$req->execute(array());
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-
-	if ($res != false){
-		if($res["TYPE"] != $json["TYPE"])
-			$ok = false;					
-		else if ($res["TYPE"] == $json["TYPE"])
-			$ok = true;	
-	}
-	else 
-		$ok = true;
-
-	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE) VALUES (?,?,?,?,?,?,?,?)";	
-			$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
-		$json["ENDTYPE"],$json["LINKTYPE"],$json["NEEDLABEL"]));	
-		$result["result"] = "OK";
-	}
-	else
-		$ok = false;
-	$response = $response->withJson($result);
-	return $response;
-});
-
-
-$app->post('/depreciationwastepool', function($request,Response $response){
-	$json = json_decode($request->getBody(),true);
-	$db = getInternalDatabase();
-
-	$sql = "SELECT TYPE FROM DEPRECIATIONWASTEPOOL LIMIT 1";
-
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-
-	if ($res != false){
-		if($res["TYPE"] != $json["TYPE"])
-			$ok = false;					
-		else if ($res["TYPE"] == $json["TYPE"])
-			$ok = true;	
-	}
-	else 
-		$ok = true;
-
-	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE) VALUES (?,?,?,?)";	
-			$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"]));	
-		$result["result"] = "OK";
-	}
-	else
-		$ok = false;
-	
-	$response = $response->withJson($result);
-});
-
-$app->delete('/depreciationpromopool/{id}', function($request,Response $response){	
-	$id = $request->getAttribute('id');
-	$db = getInternalDatabase();
-
-	$sql = "DELETE FROM DEPRECIATIONPROMOPOOL WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($id));	
+	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"]));
 
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
 });
 
-$app->delete('/depreciationwastepool/{id}', function($request,Response $response){	
+$app->put('/depreciationpool/', function($request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+
+	$sql = "UPDATE DEPRECIATIONPOOL SET QUANTITY = ?, EXPIRATION =? WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["QUANTITY"],$json["EXPIRATION"],$json["PRODUCTID"]));
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+});
+
+$app->delete('/depreciationpool{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
 
-	$sql = "DELETE FROM DEPRECIATIONWASTEPOOL WHERE PRODUCTID = ?";
+	$sql = "DELETE FROM DEPRECIATIONPOOL WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
@@ -6485,6 +6480,7 @@ $app->post('/returnrecord',function($request,Response $response) {
 	$req->execute(array($VENDID,$VENDNAME,'CREATED',$AUTHOR));
 	$lastId = $db->lastInsertId();
 
+
 	$items = $json["ITEMS"];
 	foreach($items as $item){
 
@@ -6499,11 +6495,8 @@ $app->post('/returnrecord',function($request,Response $response) {
 		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$penaltypercent,$lastId));
 	}
 
-	$resp = array();
-	$resp["result"] = "OK";
-	$response = $response->withJson($resp);
-	return $response;
-
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$response = $response->withJson($items);
 });
 
 // CREATED VALIDATED CLEARED 
@@ -6515,16 +6508,10 @@ $app->get('/returnrecord/{status}',function($request,Response $response) {
 	$req = $db->prepare($sql);
 
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $items;
-	$response = $response->withJson($resp);
-	return $response;
+	$response = $response->withJson($items);
 });
 
 $app->get('/returnrecordsearch',function($request,Response $response) {
-	$db = getInternalDatabase();
 	$start = $request->getParam('start','');
 	$end =  $request->getParam('end','');
 	$status = $request->getParam('status','');
@@ -6580,12 +6567,7 @@ $app->get('/returnrecordsearch',function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-
+	$response = $response->withJson($item);
 	return $response;
 });
 
@@ -6594,13 +6576,9 @@ $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
 		$id = $request->getAttribute('id');
 		$sql = "SELECT * FROM RETURNRECORDITEM WHERE RETUTNRECORD_ID = ?";
 		$req = $db->prepare($sql);
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);		
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$response = $response->withJson($items);
 
-		$resp = array();
-		$resp["result"] = "OK";
-		$resp["data"] = $items;
-		$response = $response->withJson($resp);
-		return $response;
 });
 
 $app->get('/returnrecordalert',function($request,Response $response) {
@@ -6614,13 +6592,9 @@ $app->get('/returnrecordalert',function($request,Response $response) {
 					AND DATEDIFF(GETDATE(), PPSS_EXPIRE) > substring(SIZE,1,3) )";
 	$req = $db->prepare($sql);
 	$req->execute(array());				  				 
-	$result = $req->fetchAll(PDO::FETCH_ASSOC);
-	
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-	return $response;
+	$req->fetchAll(PDO::FETCH_ASSOC);
+	$response = $response->withJson($result);
+	       
 });
 
 $app->get('/returnrecordpool', function($request,Response $response){
@@ -6629,13 +6603,7 @@ $app->get('/returnrecordpool', function($request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
-	
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $pool;
-	$response = $response->withJson($resp);
-	return $response;
+	$response = $response->withJson($items);
 });
 
 $app->post('/returnrecordpool', function($request,Response $response){
@@ -6664,7 +6632,7 @@ $app->post('/returnrecordpool', function($request,Response $response){
 	}
 	
 	$response = $response->withJson($result);
-	return $response;
+
 });
 
 $app->put('/returnrecordpool', function($request,Response $response){
@@ -7488,6 +7456,7 @@ function createCreditNote($items){
 }
 
 function receiveItems($items){
+
 }
 
 $app->put('/returnrecord',function($request,Response $response) {
@@ -7515,28 +7484,11 @@ $app->put('/returnrecord',function($request,Response $response) {
 	$creditNoteId = createCreditNote($tocreditnote);
 	exchangeItems($toexchange);
 	$data["CREDITNOTE"] = $creditNoteId;
-
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-
-	$response = $response->withJson($resp);
+	$response = $response->withJson($data);
 	return $response;
 });
 
 
-
-
-$app->get('/orderstats/{barcode}',function($request,Response $response) {
-	$barcode = $request->getAttribute('barcode');
-
-	$stats = orderStatistics($barcode);
-	$resp = array();
-	$resp["result"] = "OK";
-	$resp["data"] = $stats;
-	$response = $response->withJson($resp);
-	return $response;
-});
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
