@@ -314,9 +314,7 @@ function renderLeftSidebar()
   $sectionADMIN = '<li class="li-hover"><div class="divider"></div></li>
                    <li class="li-hover"><p class="ultra-small margin more-text">ADMIN</p></li>
                    </li>            
-                   <li '.hoverColor("itemupdate").' class="bold"><a href="?display=itemupdate&page=0&entity=itemupdate" class="waves-effect waves-cyan"><img src="images/items.png" width="30px" height="30px">Item Update</a></li>                                  
-                  
-
+                   
                   <li '.hoverColor("KPISales").' class="bold"><a href="?display=KPISales&entity=KPISales" class="waves-effect waves-cyan">
                     <img src="images/sale.png" width="30px" height="30px">Sales</a></li>
                   <li '.hoverColor("KPICategory").'><a href="?display=KPICategory&action=no&entity=KPICategory"><img src="images/categorysales.png" width="30px" height="30px">Sales By Category</a></li>

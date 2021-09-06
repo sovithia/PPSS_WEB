@@ -166,17 +166,6 @@ function getData($display,$entity,$param)
     $params .= (strlen($param["barcode"]) > 0)  ? "&barcode=".$param["barcode"] : "";
     return Service::ListEntity($entity,$params);
   }
-  else if ($display == "itemupdate" && isset($param["keyword"]))
-  {    
-    $params = "?a=1";
-    $params .= (strlen($param["barcode"]) > 0)  ? "&barcode=".$param["barcode"] : "";
-    $params .= (strlen($param["keyword"]) > 0)  ? "&keyword=".urlencode($param["keyword"]) : "";
-    $params .= ($param["country"] != "ALL")  ? "&country=".urlencode($param["country"]) : "";
-    $params .= ($param["vendor"] != "ALL")  ? "&vendor=".urlencode($param["vendor"]) : "";
-    $params .= (strlen($param["vendorid"]) > 0) ? "&vendorid=".urlencode($param["vendorid"]) : "";
-    $params .= ($param["category"] != "ALL") ? "&category=".urlencode($param["category"]) : "";            
-    return Service::ListEntity($entity,$params);    
-  }
   else if ($display == "itemthrown")
   {
     $params = "?a=1"; 
@@ -267,7 +256,7 @@ function getData($display,$entity,$param)
     return Service::ListEntity($entity,$params);
   }
   else if ($display == "itemzerostock" || $display == "zerosale" || 
-           $display == "itemnegative" || $display == "itemupdate" || 
+           $display == "itemnegative" || 
            $display == "itemcategorize")
   {
     $params = "?page=".$param["page"];
@@ -424,10 +413,6 @@ function renderBody()
     return renderItemSearch2($data); // FORM
 else if ($display == "itemsearch3")
     return renderItemSearch3($data); // FORM
-
-  else if ($display == "itemupdate")
-    return renderItemUpdate($data);
-
   else if ($display == "itemthrown")
     return renderItemThrown($data); 
 

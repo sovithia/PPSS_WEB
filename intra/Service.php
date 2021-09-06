@@ -179,7 +179,6 @@ class Service
 						 	  "itemsearch2" => Service::ResourceItemSearch2,
 						 	  "itemsearch3" => Service::ResourceItemSearch3,
 						 	  "itemsearch" => Service::ResourceItemSearch,
-						 	  "itemupdate" => Service::ResourceItemUpdate,  
 						 	  "promotionlist" => Service::ResourcePromotionList,
 						 	  "bestseller" => Service::ResourceBestSeller,
 						 	  "itemsale" => Service::ResourceItemSale,
@@ -300,9 +299,8 @@ class Service
 			$header["TOKEN"] = $_SESSION["TOKEN"];		
 
 		if ($option != "" && (substr($option,0,1) != "?"))
-			$option = "/".$option;				
-		error_log(Service::modelRoute[$model] . $option);
-		return RestEngine::GET(Service::modelRoute[$model] . $option,$header);				
+			$option = "/".$option;						
+		return RestEngine::GET(Service::modelRoute[$model] . $option,$header)["data"];				
 	}
 
 	static function CreateEntity($model,$data,$option = ""){
@@ -313,8 +311,7 @@ class Service
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
 
 		if ($option != "" && (substr($option,0,1) != "?"))
-			$option = "/".$option;				
-		//var_dump(Service::modelRoute[$model] . $option);					
+			$option = "/".$option;						
 		return RestEngine::POST(Service::modelRoute[$model] . $option,$data,$header);						
 	}
 
