@@ -11,7 +11,7 @@ class RestEngine
 				->addHeaders($headers)
 				->send();	
 		$json = json_decode(json_encode($response->body), TRUE);
-		return $json;
+		return $json["data"];
 	}
 
 	static function POST($uri, $data, $headers = array())

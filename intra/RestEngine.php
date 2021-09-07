@@ -49,8 +49,7 @@ class RestEngine
 				->expectsJson()
 				->addHeaders($headers)
 				->send();
-		$json = json_decode(json_encode($response->body), TRUE);
-		//var_dump($json);
+		$json = json_decode(json_encode($response->body), TRUE);		
 		return $json;
 	}
 }

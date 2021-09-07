@@ -2963,8 +2963,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	}else if ($json["ACTIONTYPE"] == "RCV"){
 
 		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PONUMBER"]));
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($json["LINKEDPO"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res["LOCID"] == "WH1")
@@ -6228,7 +6228,7 @@ $app->get('/depreciationalert',function($request,Response $response) {
 					OR 	
 					((JULIANDAY(ENDTIME3) - DATETIME('now')) < 2 AND STARTTIME4 = '')
 					)
-					AND PRODUCTID NOT IN (SELECT PRODUCTID FROM DEPRECIATIONPROMOTIONPOOL)";
+					AND PRODUCTID NOT IN (SELECT PRODUCTID FROM DEPRECIATIONPROMOPOOL)";
 
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -6303,12 +6303,13 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 $app->get('/depreciationpool/{type}', function($request,Response $response){
 	
 	$db = getInternalDatabase();
+	$blueDB = getDatabase();
 	$type = $request->getAttribute('type');
 
 	if ($type == "WASTE")
 		$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL";				
 	else if ($type == "PROMOTION")
-		$sql = "SELECT * FROM DEPRECIATIONPROMOTIONPOOL";	
+		$sql = "SELECT * FROM DEPRECIATIONPROMOPOOL";	
 
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -6316,7 +6317,7 @@ $app->get('/depreciationpool/{type}', function($request,Response $response){
 	$newItems = array();
 	foreach($pool as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
+		$req = $blueDB->prepare($sql);
 		$res = $req->execute(array($item["PRODUCTID"]));
 		if ($res != null)
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
@@ -6357,11 +6358,12 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE) VALUES (?,?,?,?,?,?,?,?)";	
 			$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
-		$json["ENDTYPE"],$json["LINKTYPE"],$json["NEEDLABEL"]));	
+		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"]));	
 		$result["result"] = "OK";
 	}
-	else
-		$ok = false;
+	else{
+		$result["result"] = "KO";
+	}
 	$response = $response->withJson($result);
 	return $response;
 });
@@ -6611,7 +6613,7 @@ $app->get('/returnrecordalert',function($request,Response $response) {
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID				
 					AND SIZE IS NOT NULL
 					AND PPSS_EXPIRE IS NOT NULL
-					AND DATEDIFF(GETDATE(), PPSS_EXPIRE) > substring(SIZE,1,3) )";
+					AND DATEDIFF(day,GETDATE(), PPSS_EXPIRE) > substring(SIZE,1,3) )";
 	$req = $db->prepare($sql);
 	$req->execute(array());				  				 
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);

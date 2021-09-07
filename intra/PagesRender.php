@@ -4504,6 +4504,7 @@ function renderSupplyRecordList($data,$action){
                   <th>PCH</th>
                   <th>WH</th>
                   <th>RCV</th>
+                  <th>TR</th>
                   <th>ACC</th>   
                   <th>CANCEL</th>
                </tr></thead>
@@ -4518,6 +4519,7 @@ function renderSupplyRecordList($data,$action){
                   <th>PCH</th>
                   <th>WH</th>
                   <th>RCV</th>
+                  <th>TR</th>
                   <th>ACC</th>   
                   <th>CANCEL</th>
                </tr></tfoot>
@@ -4540,6 +4542,7 @@ function renderSupplyRecordList($data,$action){
         $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["PURCHASER_USER"];
         $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["WAREHOUSE_USER"];
         $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
+        $TR = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."TR_".$ID.".png")) ? $base."TR_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["TRANSFERER_USER"];
         $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
          $dataSet1 .= 
@@ -4554,6 +4557,7 @@ function renderSupplyRecordList($data,$action){
           '".$PCH."',
           '".$WH."',
           '".$RCV."',
+          '".$TR."',
           '".$ACC."',      
           '<button ".$show." onclick=cancelSupplyRecord(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\",\"".$action."\") >Cancel</button>',
           
@@ -4590,6 +4594,7 @@ function renderSupplyRecordList($data,$action){
                   <th>PCH</th>
                   <th>WH</th>
                   <th>RCV</th>
+                  <th>TR</th>
                   <th>ACC</th>                  
                   
                   <th>CANCEL</th>
@@ -4605,6 +4610,7 @@ function renderSupplyRecordList($data,$action){
                   <th>PCH</th>
                   <th>WH</th>
                   <th>RCV</th>
+                  <th>TR</th>
                   <th>ACC</th>   
                </tr></tfoot>
                </table>
@@ -4616,10 +4622,11 @@ function renderSupplyRecordList($data,$action){
           $base = "../api/img/supplyrecords_signatures/";
           $ID = $item["ID"];
           $VAL = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."VAL_".$ID.".png")) ? $base."VAL_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["VALIDATOR_USER"];
-        $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["PURCHASER_USER"];
-        $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["WAREHOUSE_USER"];
-        $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
-        $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
+          $PCH = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."PCH_".$ID.".png")) ? $base."PCH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["PURCHASER_USER"];
+          $WH  = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."WH_".$ID.".png")) ? $base."WH_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["WAREHOUSE_USER"];
+          $RCV = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."RCV_".$ID.".png")) ? $base."RCV_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["RECEIVER_USER"];
+          $TR = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."TR_".$ID.".png")) ? $base."TR_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["TRANSFERER_USER"];
+          $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
           $dataSet2 .= "[    
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
@@ -4631,6 +4638,7 @@ function renderSupplyRecordList($data,$action){
           '".$PCH."',
           '".$WH."',
           '".$RCV."',
+          '".$TR."',
           '".$ACC."',                                      
           '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>'
           ],";
