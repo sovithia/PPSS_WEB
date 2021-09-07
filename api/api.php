@@ -2814,16 +2814,41 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	}
 	else if ($json["ACTIONTYPE"] == "TR")
 	{
-
-		
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', RECEIVER_USER = :author, 
-				LINKEDPO = :linkedpo WHERE ID = :identifier";			
+		// AUTO TRANSFER ITEMS TO TRANSFERPOOL
+		$sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ID = ?";
 		$req = $db->prepare($sql);
+		$req->execute(array($json["IDENTIFIER"]));
+		$ponumber = $req->fetch(PDO::FETCH_ASSOC)["PONUMBER"];
+	
 
-		$req->bindParam(':status',$status,PDO::PARAM_STR);
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
+		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber));
+
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($items as $item)
+		{
+			$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);		
+
+			if ($res["CNT"] == 0){
+				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
+			}else{
+				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
+			}
+		}	
+	
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
+				WHERE ID = :identifier";			
+		$req = $db->prepare($sql);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);					
 		$req->execute();
 		
 		pictureRecord($json["SIGNATURE"],"TR",$json["IDENTIFIER"]);

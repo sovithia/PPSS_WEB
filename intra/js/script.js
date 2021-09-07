@@ -272,20 +272,19 @@ var zkSignature = (function () {
 							var identifier = document.getElementById('identifier').value;
 							if (type == 'RCV')
 							{																													
-								linkedponumber = "";
-								if (document.getElementById('linkedponumber') != null){
-									var linkedponumber = document.getElementById('linkedponumber').value;
-									if (linkedponumber == null || linkedponumber == "") // if still null
-										linkedponumber = document.getElementById('ponumber')
+								var linkedponumber = "";								
 
-
-									if (linkedponumber == null || linkedponumber == "")
-									{
+								if (document.getElementById('linkedponumber') != null)
+									linkedponumber = document.getElementById('linkedponumber').value;
+								else 
+									linkedponumber = document.getElementById('ponumber').value;
+																									
+								alert(linkedponumber);
+								if (linkedponumber == null || linkedponumber == "")
+								{
 										alert('Please input PO Number');
 										return;
-									}
-
-								}						
+								}													
 								
 							}
 							
@@ -331,13 +330,18 @@ var zkSignature = (function () {
 	   					 					  "SIGNATURE" :  b64,	   					 					  
 	   					 					 "ACTIONTYPE" : type,
 	   					 					 "PONUMBER" : ponumber}; 	
-	   					 	}   					 	    				      				    
-	   						var	URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord'; 
-	   						var xmlhttp = new XMLHttpRequest();
-	    					xmlhttp.onreadystatechange = callbackFunction(xmlhttp);
-	    					xmlhttp.open("PUT", URL,false);
-	    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-	    					xmlhttp.send(JSON.stringify(ItemJSON)); 
+	   					 	}   	
+
+		   					 	if (ItemJSON != "")
+		   					 	{
+		   					 		var	URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord'; 
+		   							var xmlhttp = new XMLHttpRequest();
+		    						xmlhttp.onreadystatechange = callbackFunction(xmlhttp);
+		    						xmlhttp.open("PUT", URL,false);
+		    						xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+		    						xmlhttp.send(JSON.stringify(ItemJSON)); 
+		   					 	}				 	    				      				    
+	   						
 							}						
     					
 						},
