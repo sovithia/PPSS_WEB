@@ -6427,26 +6427,32 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 
 $app->delete('/depreciationpromopool/{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
+
+  $date = $request->getAttribute('date');
+
 	$db = getInternalDatabase();
 
-	$sql = "DELETE FROM DEPRECIATIONPROMOPOOL WHERE PRODUCTID = ?";
+	error_log($id);
+	$sql = "DELETE FROM DEPRECIATIONPROMOPOOL WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
+	return $response;
 });
 
 $app->delete('/depreciationwastepool/{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
 
-	$sql = "DELETE FROM DEPRECIATIONWASTEPOOL WHERE PRODUCTID = ?";
+	$sql = "DELETE FROM DEPRECIATIONWASTEPOOL WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
+	return $response;
 });
 
 /*
