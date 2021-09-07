@@ -275,11 +275,16 @@ var zkSignature = (function () {
 								linkedponumber = "";
 								if (document.getElementById('linkedponumber') != null){
 									var linkedponumber = document.getElementById('linkedponumber').value;
+									if (linkedponumber == null || linkedponumber == "") // if still null
+										linkedponumber = document.getElementById('ponumber')
+
+
 									if (linkedponumber == null || linkedponumber == "")
 									{
 										alert('Please input PO Number');
 										return;
-									}	
+									}
+
 								}						
 								
 							}
