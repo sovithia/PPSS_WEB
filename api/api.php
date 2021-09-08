@@ -2888,15 +2888,15 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 	}// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
 	else if ($json["ACTIONTYPE"] == "WH"){
-			$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
-			$req = $db->prepare($sql);							
-			$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-			$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);			
-			$req->execute();			
+		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
+		$req = $db->prepare($sql);							
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);			
+		$req->execute();			
 
-			if(isset($json["INVOICEJSONDATA"]))
-				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
-			pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
+		if(isset($json["INVOICEJSONDATA"]))
+			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
+		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
 
 		if (isset($json["ITEMS"]))
 		{
@@ -2984,7 +2984,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req->execute(array($totalAMT,$json["PONUMBER"]));
 
 		}
-		$data["ressult"] = "OK";
+		$data["result"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
 
 		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
@@ -3020,7 +3020,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
 		$req->execute();
 		pictureRecord($json["SIGNATURE"],"ACC",$json["IDENTIFIER"]);
-		$data["RESULT"] = "OK";
+		$data["result"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "WHCANCEL"){
 		$sql = "UPDATE SUPPLY_RECORD  
@@ -3056,7 +3056,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	}
 	else if ($json["ACTIONTYPE"] == "PCHCANCEL")
 	{
-			$sql = "UPDATE SUPPLY_RECORD 
+		$sql = "UPDATE SUPPLY_RECORD 
 					SET PURCHASER_USER = null ,
 					STATUS = 'VALIDATED',
 					CANCELER = :author  
