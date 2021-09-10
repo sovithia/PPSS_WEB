@@ -2992,10 +2992,13 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute(array($json["LINKEDPO"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
+		error_log("PO NUMBNER" . $json["LINKEDPO"]);			
+
 		if ($res["LOCID"] == "WH1")
 			$status = 'RECEIVED';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
+
 
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
 				LINKEDPO = :linkedpo WHERE ID = :identifier";			
@@ -6028,7 +6031,7 @@ $app->get('/depleteditems', function($request,Response $response) {
 
 
 function calculatePenalty($barcode, $expiration){
-		$db=getDatabase();
+		$db=getDatabase();		
 		$indb = getInternalDatabase();
 		$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -6049,7 +6052,7 @@ function calculatePenalty($barcode, $expiration){
 				return $data;
 			}		
 			$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
-			$req = $db->prepare($sql);	
+			$req = $indb->prepare($sql);	
 			$req->execute(array($res["SIZE"]));
 			$rules = $req->fetchAll(PDO::FETCH_ASSOC);
 			foreach($rules as $rule)
@@ -6076,7 +6079,7 @@ function calculatePenalty($barcode, $expiration){
 	else // WITH RETURN POLICY 
 	{
 		$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
-		$req = $db->prepare($sql);	
+		$req = $indb->prepare($sql);	
 		$req->execute(array($res["SIZE"]));
 		$rules = $req->fetchAll(PDO::FETCH_ASSOC);
 		
@@ -6113,9 +6116,20 @@ $app->get('/depreciation', function($request,Response $response) {
 	$params = array();	
 	$sql = "SELECT * FROM DEPRECIATION WHERE 1 = 1 ";
 
-	if ($type != ''){		
-		$sql .= "AND TYPE = ? ";
-		array_push($params,$type);
+	if ($type != '')
+	{
+		if ($type == "WASTE"){
+			$sql .= "AND (TYPE = ? OR TYPE = ?)";
+			array_push($params,"EXPIREWASTE");
+			array_push($params,"DAMAGEWASTE");
+		}else if ($type == ""){
+			$sql .= "AND (TYPE = ? OR TYPE = ? OR TYPE = ?)";
+			array_push($params,"EXPIREPROMOTION");
+			array_push($params,"CLEARANCEDAMAGEDPROMOTION");
+			array_push($params,"CLEARANCELOWSELLPROMOTION");
+			array_push($params,"CLEARANCETOOMUCHPROMOTION");
+		}		
+		
 	}
 	if ($status != ''){		
 		$sql .= "AND STATUS = ? ";
@@ -6133,7 +6147,7 @@ $app->get('/depreciation', function($request,Response $response) {
 	return $response;
 });
 
-$app->get('depreciationdetails/{id}',function($request,Response $response) {
+$app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
 	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE   DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? 
@@ -6159,9 +6173,9 @@ $app->post('/depreciation', function($request,Response $response) {
 	$type = $json["TYPE"];
 	$author = $json["AUTHOR"];
 
-	$sql = "INSERT INTO DEPRECIATION (TYPE,CREATOR) VALUES (?,?)";
+	$sql = "INSERT INTO DEPRECIATION (TYPE,CREATOR,STATUS) VALUES (?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute(array($type,$author));
+	$req->execute(array($type,$author,"CREATED"));
 	$lastId = $db->lastInsertId();
 
 	foreach($items as $item)
@@ -6194,8 +6208,8 @@ $app->post('/depreciation', function($request,Response $response) {
 
 		if ($res == false)
 		{							
-				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY,PERCENTPROMO1,DEPRECIATION_ID1) 
-							  VALUES (?,?,?,?,?,?,?,?)";
+				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,DEPRECIATION_ID1) 
+							  VALUES (?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$percentpenalty,$penalty["percent"],$lastId));			
 		}
@@ -6207,7 +6221,7 @@ $app->post('/depreciation', function($request,Response $response) {
 				$cnt = "3";				
 			else if($res["DEPRECIATION_ID1"] != "")			
 				$cnt = "2";								
-			$sql = "UPDATE DEPRECIATIONITEM SET QUANTITY".$cnt." = ?, STARTTIME".$cnt." = ?, ENDTIME".$cnd." = ?, DEPRECIATION_ID".$cnt." = ?  
+			$sql = "UPDATE DEPRECIATIONITEM SET QUANTITY".$cnt." = ?, STARTTIME".$cnt." = ?, ENDTIME".$cnt." = ?, DEPRECIATION_ID".$cnt." = ?,  
 							LINKTYPE".$cnt." = ?, PERCENTPENALTY".$cnt." = ?, PERCENTPROMO".$cnt." = ?  
 							WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
@@ -6216,6 +6230,15 @@ $app->post('/depreciation', function($request,Response $response) {
 	}
 
 	$resp = array();
+
+	if ($type == "DAMAGEWASTE" || $type == "EXPIREWASTE")
+		$sql = "DELETE FROM DEPRECIATIONWASTEPOOL";		
+	else
+		$sql = "DELETE FROM DEPRECIATIONPROMOPOOL";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+
+
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;
@@ -6343,7 +6366,8 @@ $app->get('/depreciationpool/{type}', function($request,Response $response){
 	foreach($pool as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
-		$res = $req->execute(array($item["PRODUCTID"]));
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != null)
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		array_push($newItems,$item);
@@ -6419,10 +6443,13 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"]));	
 		$result["result"] = "OK";
 	}
-	else
-		$ok = false;
+	else{
+		$result["message"] = "Waste needs to be of same type";
+		$result["result"] = "KO";
+	}
 	
 	$response = $response->withJson($result);
+	return $response;
 });
 
 $app->delete('/depreciationpromopool/{id}', function($request,Response $response){	
