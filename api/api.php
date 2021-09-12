@@ -6183,15 +6183,15 @@ $app->get('/depreciation', function($request,Response $response) {
 	if ($type != '')
 	{
 		if ($type == "WASTE"){
-			$sql .= "AND (TYPE = ? OR TYPE = ?)";
+			$sql .= " AND (TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREWASTE");
 			array_push($params,"DAMAGEWASTE");
 		}else if ($type == ""){
-			$sql .= "AND (TYPE = ? OR TYPE = ? OR TYPE = ?)";
+			$sql .= " AND (TYPE = ? OR TYPE = ? OR TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREPROMOTION");
-			array_push($params,"CLEARANCEDAMAGEDPROMOTION");
-			array_push($params,"CLEARANCELOWSELLPROMOTION");
-			array_push($params,"CLEARANCETOOMUCHPROMOTION");
+			array_push($params,"DAMAGEDPROMOTION");
+			array_push($params,"LOWSELLPROMOTION");
+			array_push($params,"TOOMUCHPROMOTION");
 		}		
 		
 	}
@@ -6220,9 +6220,21 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	$req->execute(array($id,$id,$id,$id));																			     
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	$newItems = array();
+	foreach($items as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null)
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newItems,$item);
+	}
+
+
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"] = $items;
+	$resp["data"] = $newItems;
 	$response = $response->withJson($resp);
 
 	return $response;
@@ -6320,7 +6332,7 @@ $app->put('/depreciation', function($request,Response $response) {
 			$sql = "UPDATE DEPRECIATION SET STATUS = ?, CLEARER = ? WHERE ID = ?";
 			
 		$req = $db->prepare($sql);
-		$req->execute(array($status,$id,$author));		
+		$req->execute(array($status,$author,$id));		
 
 	$response["result"] = "OK";
 	$response = $response->withJson($response);
