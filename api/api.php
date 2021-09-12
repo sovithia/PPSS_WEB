@@ -6154,7 +6154,19 @@ function calculatePenalty($barcode, $expiration){
 		}		
 }
 // TODO
-function attachPromotion($productid,$percent,$start,$end){
+function attachPromotion($productid,$percent,$start,$end,$author){
+
+	$PRODUCTNAME = "";
+	$today = date("Y-m-d");
+	$db=getDatabase();
+	$sql = "INSERT INTO ICNEWPROMOTION 
+				(DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,
+				SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,
+	1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
+
 }
 // CREATED
   
@@ -6216,7 +6228,6 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	return $response;
 });
 
-
 $app->post('/depreciation', function($request,Response $response) {
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
@@ -6255,8 +6266,8 @@ $app->post('/depreciation', function($request,Response $response) {
 		else 
 			$percentpenalty = $penalty["percent"];
 
-		if ($LINKTYPE == "BLUE")				
-			attachPromotion($PRODUCTID,$penalty["percent"],$STARTTIME,$ENDTIME);
+		if ($LINKTYPE == "SYSTEMLINK")				
+			attachPromotion($PRODUCTID,$penalty["percent"],$STARTTIME,$ENDTIME,$author);
 
 		if ($res == false)
 		{							
