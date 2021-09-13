@@ -750,4 +750,133 @@ function orderStatistics($barcode)
 	return $stats;	
 }
 
+function calculatePenalty($barcode, $expiration){
+		$db=getDatabase();		
+		$indb = getInternalDatabase();
+		$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if (!isset($res["SIZE"]))
+			return null;
+		$data["cost"] = $res["COST"];
+		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
+		
+		if (new DateTime($expiration) < new DateTime('NOW'))
+		{
+					$data["status"] = "PENALTY";
+					$data["percent"] = "100";
+					return $data;	
+		}
+
+		if (substr($res["SIZE"],0,2) == "NR") // WITHOUT RETURN POLICY
+		{			
+			if (($res["SIZE"] == "NR90" && $diffDays > 90) || ($res["SIZE"] == "NR60" && $diffDays > 60) || ($res["SIZE"] == "NR30" && $diffDays > 30))
+			{
+					$data["status"] = "EARLY";
+					return $data;
+			}		
+			else 
+			{			
+				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
+				$req = $indb->prepare($sql);	
+				$req->execute(array($res["SIZE"]));
+				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+				foreach($rules as $rule)
+				{		
+						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
+						{
+							$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+							$req = $indb->prepare($sql);
+							$req->execute(array($barcode, $expiration)); 
+							$res = $req->fetch(PDO::FETCH_ASSOC);
+							
+
+							if ($res == false){
+								$occurence = 0;
+							}
+							else 
+							{
+								if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
+									$occurence++;
+								if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
+									$occurence++;
+								if($res["QUANTITY3"] != "" && $res["QUANTITY3"] != null)
+									$occurence++;
+								if($res["QUANTITY4"] != "" && $res["QUANTITY4"] != null)
+									$occurence++;
+							}
+
+							if ($rule["REQUIREDSTEPS"] == null)
+							{
+									$data["status"] = "PENALTY";																		
+									$data["percent"] = $rule["PERCENTPENALTY"];
+							}
+							else if ($rule["REQUIREDSTEPS"] == 0){
+									$data["status"] = "OK";
+									$data["percent"] = $rule["PERCENTOK"];
+							}
+							else if($occurence == $rule["REQUIREDSTEP"]){
+									$data["status"] = "OK";
+									$data["percent"] = $rule["PERCENTOK"];
+							}
+							else if ($occurence == $rule["REQUIREDSTEP"]){
+									$data["status"] = "OK";
+									$data["percent"] = $rule["PERCENTOK"];	
+							}
+							else if ($occurence < $rule["REQUIREDSTEP"]){
+									$data["status"] = "PENALTY";																		
+									$data["percent"] = $rule["PERCENTPENALTY"];	
+							}
+							break;			
+						}
+				}	
+				return $data;	
+			}												
+		}
+		else // WITH RETURN POLICY 
+		{
+				if (($res["SIZE"] == "R90" && $diffDays > 90) || ($res["SIZE"] == "R60" && $diffDays > 60) || ($res["SIZE"] == "R30" && $diffDays > 30)){
+						$data["status"] = "EARLY";
+						return $data;
+				}		
+				else 
+				{
+					$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
+					$req = $indb->prepare($sql);	
+					$req->execute(array($res["SIZE"]));
+					$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+					foreach($rules as $rule)
+					{
+							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
+							{										
+								if( $rule["PENALTYPERCENT"] == "0")
+									$data["status"] = "OK";
+								else 									
+									$data["status"] = "PENALTY";								
+								$data["percent"] = $rule["PENALTYPERCENT"];									
+								break;
+							}
+					}
+					return $data;
+				}	
+		}		
+}
+// TODO
+function attachPromotion($productid,$percent,$start,$end,$author){
+
+	$PRODUCTNAME = "";
+	$today = date("Y-m-d");
+	$db=getDatabase();
+	$sql = "INSERT INTO ICNEWPROMOTION 
+				(DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,
+				SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,
+	1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
+
+}
+
 ?>

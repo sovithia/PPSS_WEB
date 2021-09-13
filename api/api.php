@@ -874,19 +874,17 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	return $response;
 });
 
-$app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {    
-	$conn=getDatabase();
-	$barcode = $request->getAttribute('barcode');	 
-	$check = "NO";
-	if (substr($barcode,0,1) == 'X'){
-		$barcode = substr($barcode, 1);
-		$check = "WH1";
-	}
-	if (substr($barcode,0,1) == 'Y'){
-		$barcode = substr($barcode, 1);
-		$check = "WH2";
-	}
+
+
+$app->get('/itemwithstats',function(Request $request,Response $response) {    
+	$conn=getDatabase();	 
 	
+	$item = null;
+	$barcode = $request->getParam('barcode','');
+	$type = $request->getParam('type','');
+	$expiration = $request->getParam('expiration','');
+
+	error_log($barcode);
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
@@ -896,8 +894,7 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 	$item =$req->fetch(PDO::FETCH_ASSOC);
 
 	$resp = array();
-	if (isset($item["PRODUCTID"]))
-	{		
+	if (isset($item["PRODUCTID"])){		
 		$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
@@ -916,9 +913,6 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 			$item["STOREBIN1"] = "";			
 		}
 
-		$orderStats = orderStatistics($barcode);
-		$item["ORDERQTY"] = $orderStats["FINALQTY"];		
-		$item["DECISION"] = $orderStats["DECISION"];
 
 		$sql="
 		SELECT LOCONHAND,STORBIN 
@@ -936,36 +930,9 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
 		}
-	
-		$item["result"] = "OK";
 		$item["PICTURE"] = loadPicture($barcode,300,true);		
-		
-
-
-		$sql1 = "SELECT count(*) AS CNT FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
-		$req=$conn->prepare($sql1);
-		$req->execute(array($barcode));
-		$res1=$req->fetch()["CNT"];
-
-		$sql2 = "SELECT count(*) AS CNT FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH2'";
-		$req=$conn->prepare($sql2);
-		$req->execute(array($barcode));
-		$res2=$req->fetch()["CNT"];
-
-		if ($res1 < 1)
-		{
-			$resp["result"] = "KO";
-			$resp["message"] = "WH1 Location missing"; 
-		}
-		else if ($res2 < 1){
-			$resp["result"] = "KO";
-			$resp["message"] = "WH2 Location missing"; 	
-		}
-		$resp["result"] = "OK";
-		$resp["data"] = $item;	
 	}
-	else
-	{
+	else{
 		$packInfo = packLookup($barcode);
 		if ($packInfo != null) // IS  A PACK
 		{
@@ -989,14 +956,33 @@ $app->get('/itemWOS/{barcode}',function(Request $request,Response $response) {
 			$resp["result"] = "OK";
 			$resp["data"] = $item;
 		}
-		else			
+		else{
 			$resp["result"] = "KO";
+		}			
+			
 	}
-	
+
+	if ($item != null)
+	{
+		if ($type == "ORDERSTATS"){
+			$stats = orderStatistics($barcode);
+			$item["ORDERQTY"] = $stats["FINALQTY"];		
+			$item["DECISION"] = $stats["DECISION"];
+		}else if ($type == "PROMOSTATS"){
+			$stats = calculatePenalty($barcode,$expiration);
+			$items["STATUS"] = $stats["status"];
+			$items["PERCENT"] = $stats["percent"];	
+		}
+		$resp["result"] = "OK";
+		$resp["data"] = $item;
+	}
 
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+
+
 
 /**************SALE ***************/
 /*
@@ -6040,134 +6026,7 @@ $app->get('/penalty',function($request,Response $response) {
 
 });
 
-function calculatePenalty($barcode, $expiration){
-		$db=getDatabase();		
-		$indb = getInternalDatabase();
-		$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($barcode));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		if (!isset($res["SIZE"]))
-			return null;
-		$data["cost"] = $res["COST"];
-		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
-		
-		if (new DateTime($expiration) < new DateTime('NOW'))
-		{
-					$data["status"] = "PENALTY";
-					$data["percent"] = "100";
-					return $data;	
-		}
-
-		if (substr($res["SIZE"],0,2) == "NR") // WITHOUT RETURN POLICY
-		{			
-			if (($res["SIZE"] == "NR90" && $diffDays > 90) || ($res["SIZE"] == "NR60" && $diffDays > 60) || ($res["SIZE"] == "NR30" && $diffDays > 30))
-			{
-					$data["status"] = "EARLY";
-					return $data;
-			}		
-			else 
-			{			
-				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
-				$req = $indb->prepare($sql);	
-				$req->execute(array($res["SIZE"]));
-				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
-				foreach($rules as $rule)
-				{		
-						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
-						{
-							$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
-							$req = $indb->prepare($sql);
-							$req->execute(array($barcode, $expiration)); 
-							$res = $req->fetch(PDO::FETCH_ASSOC);
-							
-
-							if ($res == false){
-								$occurence = 0;
-							}
-							else 
-							{
-								if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
-									$occurence++;
-								if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
-									$occurence++;
-								if($res["QUANTITY3"] != "" && $res["QUANTITY3"] != null)
-									$occurence++;
-								if($res["QUANTITY4"] != "" && $res["QUANTITY4"] != null)
-									$occurence++;
-							}
-
-							if ($rule["REQUIREDSTEPS"] == null)
-							{
-									$data["status"] = "PENALTY";																		
-									$data["percent"] = $rule["PERCENTPENALTY"];
-							}
-							else if ($rule["REQUIREDSTEPS"] == 0){
-									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];
-							}
-							else if($occurence == $rule["REQUIREDSTEP"]){
-									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];
-							}
-							else if ($occurence == $rule["REQUIREDSTEP"]){
-									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];	
-							}
-							else if ($occurence < $rule["REQUIREDSTEP"]){
-									$data["status"] = "PENALTY";																		
-									$data["percent"] = $rule["PERCENTPENALTY"];	
-							}
-							break;			
-						}
-				}	
-				return $data;	
-			}												
-		}
-		else // WITH RETURN POLICY 
-		{
-				if (($res["SIZE"] == "R90" && $diffDays > 90) || ($res["SIZE"] == "R60" && $diffDays > 60) || ($res["SIZE"] == "R30" && $diffDays > 30)){
-						$data["status"] = "EARLY";
-						return $data;
-				}		
-				else 
-				{
-					$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
-					$req = $indb->prepare($sql);	
-					$req->execute(array($res["SIZE"]));
-					$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
-					foreach($rules as $rule)
-					{
-							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
-							{										
-								if( $rule["PENALTYPERCENT"] == "0")
-									$data["status"] = "OK";
-								else 									
-									$data["status"] = "PENALTY";								
-								$data["percent"] = $rule["PENALTYPERCENT"];									
-								break;
-							}
-					}
-					return $data;
-				}	
-		}		
-}
-// TODO
-function attachPromotion($productid,$percent,$start,$end,$author){
-
-	$PRODUCTNAME = "";
-	$today = date("Y-m-d");
-	$db=getDatabase();
-	$sql = "INSERT INTO ICNEWPROMOTION 
-				(DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,
-				SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-	$req = $db->prepare($sql);
-	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,
-	1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
-
-}
 // CREATED
   
 //CLEARANCETOOMUCH,CLEARANCELOWSELL,CLEARANCEDAMAGED, EXPIREPROMOTION, DAMAGEWASTE EXPIREWASTE
