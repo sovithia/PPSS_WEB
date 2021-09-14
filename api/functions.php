@@ -519,7 +519,7 @@ function calculateMultiple($barcode){
 	return $left;
 }
 
-function increaseQty($barcode,$lastorderqty,$unit = 1,$price) // Unit will always be 1 for increase
+function increaseQty($barcode,$lastorderqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 
 	$increasedQty = (int)$lastorderqty * (1 + (0.1 * $unit));
@@ -549,7 +549,7 @@ function increaseQty($barcode,$lastorderqty,$unit = 1,$price) // Unit will alway
 
 }
 
-function decreaseQty($barcode,$lastorderqty,$unit = 1,$price)
+function decreaseQty($barcode,$lastorderqty,$price,$unit = 1)
 {
 	$decreasedQty = (int)$lastorderqty * (1 - (0.1 * $unit));
 	$multiple = calculateMultiple($barcode);
@@ -666,11 +666,11 @@ function orderStatistics($barcode)
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
 			if($stats["SALESPEED"] < 30){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,3,$PRICE);
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,1,$PRICE);
+				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if ($stats["SALESPEED"] > 60 && $stats["SALESPEED"] < 120){
@@ -693,11 +693,11 @@ function orderStatistics($barcode)
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 					if ($WASTE >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,2,$PRICE);
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,2);
 						$stats["DECISION"] = "DECREASEQTY";
 				  }
 					else if ($PROMO >= 0.1 * $RCVQTY){
-						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,1,$PRICE);
+						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,1);
 						$stats["DECISION"] = "DECREASEQTY";
 					}
 			}
@@ -760,6 +760,7 @@ function calculatePenalty($barcode, $expiration){
 
 		if (!isset($res["SIZE"]))
 			return null;
+		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
 		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
 		
@@ -779,10 +780,7 @@ function calculatePenalty($barcode, $expiration){
 			}		
 			else 
 			{		
-				
-				
-
-
+							
 				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
@@ -838,9 +836,9 @@ function calculatePenalty($barcode, $expiration){
 
 							$duration = abs($rule["NEXTPROMOSTEP"] - $diffDays);
 							$today = new DateTime('NOW');
-							$data["start"] = $date->format('Y-m-d');
+							$data["start"] = $today->format('Y-m-d');
 							$today->add(new DateInterval('P'.$duration.'D'));
-							$data["end"] = $date->format('Y-m-d');
+							$data["end"] = $today->format('Y-m-d');
 							$data["duration"] = $duration;
 
 							break;			
