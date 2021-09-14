@@ -884,7 +884,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$type = $request->getParam('type','');
 	$expiration = $request->getParam('expiration','');
 
-	error_log($barcode);
+	
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
