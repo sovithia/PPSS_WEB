@@ -778,13 +778,18 @@ function calculatePenalty($barcode, $expiration){
 					return $data;
 			}		
 			else 
-			{			
+			{		
+				
+				
+
+
 				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
 				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+
 				foreach($rules as $rule)
-				{		
+				{							
 						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 						{
 							$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
@@ -792,7 +797,6 @@ function calculatePenalty($barcode, $expiration){
 							$req->execute(array($barcode, $expiration)); 
 							$res = $req->fetch(PDO::FETCH_ASSOC);
 							
-
 							if ($res == false){
 								$occurence = 0;
 							}
@@ -812,23 +816,33 @@ function calculatePenalty($barcode, $expiration){
 							{
 									$data["status"] = "PENALTY";																		
 									$data["percent"] = $rule["PERCENTPENALTY"];
+
 							}
-							else if ($rule["REQUIREDSTEPS"] == 0){
+							else 
+							{
+								if ($rule["REQUIREDSTEPS"] == 0){
 									$data["status"] = "OK";
 									$data["percent"] = $rule["PERCENTOK"];
-							}
-							else if($occurence == $rule["REQUIREDSTEP"]){
+									
+								}
+								else if($occurence == $rule["REQUIREDSTEP"]){
 									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];
-							}
-							else if ($occurence == $rule["REQUIREDSTEP"]){
-									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];	
-							}
-							else if ($occurence < $rule["REQUIREDSTEP"]){
+									$data["percent"] = $rule["PERCENTOK"];									
+								}							
+								else if ($occurence < $rule["REQUIREDSTEP"]){
 									$data["status"] = "PENALTY";																		
 									$data["percent"] = $rule["PERCENTPENALTY"];	
-							}
+									$data["duration"] = abs($rule["NEXTPROMOSTEP"] - $diffDays);
+								}
+							}					
+
+							$duration = abs($rule["NEXTPROMOSTEP"] - $diffDays);
+							$today = new DateTime('NOW');
+							$data["start"] = $date->format('Y-m-d');
+							$today->add(new DateInterval('P'.$duration.'D'));
+							$data["end"] = $date->format('Y-m-d');
+							$data["duration"] = $duration;
+
 							break;			
 						}
 				}	
