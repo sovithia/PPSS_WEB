@@ -884,7 +884,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$type = $request->getParam('type','');
 	$expiration = $request->getParam('expiration','');
 
-	
+
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
@@ -3803,8 +3803,11 @@ function transferItems($items, $author,$type = "TRANSFER"){
 						"TR", $PCNAME, $USERADD, $APPLID,$TOTAL_AMT, $CURRENCY_AMOUNT));
 
 	$count = 1;
+	$message = "";
 	foreach($items as $item)
 	{
+
+
 		$psql = "SELECT CATEGORYID,CLASSID,PRODUCTNAME,PRODUCTNAME1,SALEFACTOR,BIG_UNIT_FACTOR,STKFACTOR,COST,PRICE,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($psql);
 		$req->execute(array($item["PRODUCTID"]));	
@@ -3819,6 +3822,22 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		$req = $db->prepare($osql);
 		$req->execute(array($item["PRODUCTID"],"WH2"));
 		$ONHANDWH2 = $req->fetch()["LOCONHAND"];
+
+
+		if ($type == "TRANSFER")
+		{
+			if ($item["REQUEST_QUANTITY"] > $ONHANDWH2){				
+				$message .= " ".$item["PRODUCTID"];
+				continue;
+			}
+		}
+		else
+		{
+			if ($item["REQUEST_QUANTITY"] > $ONHANDWH1){				
+				$message .= " ".$item["PRODUCTID"];
+				continue;
+			}
+		}  
 
 		$DOCNUM = $identifier;
 		$PRODUCTID = $item["PRODUCTID"];
@@ -3932,6 +3951,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 
 		$count++;
 	}
+	return $message;
 }
 
 // TODO DEMAND (NO(AUTO on REQUEST))
@@ -4057,7 +4077,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		}
 		else if ($ira["TYPE"] == "TRANSFER")
 		{ 
-			transferItems($items,$ira["REQUESTER"],$ira["TYPE"]);	
+			$msg = transferItems($items,$ira["REQUESTER"],$ira["TYPE"]);
+			if ($msg != "")
+				$data["message"] = $msg;  	
 			// STORE SUPERVISOR VALIDATE TRANSFER AND UPDATE DEBT POOL
 			foreach($items as $item)
 			{
@@ -4096,7 +4118,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		}
 		else if ($ira["TYPE"] == "TRANSFERBACK")
 		{
-			transferItems($items,$ira["REQUESTER"],$ira["TYPE"]);
+			$msg = transferItems($items,$ira["REQUESTER"],$ira["TYPE"]);
+			if ($msg != "")
+				$data["message"] = $msg;			
 		}
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
 		}			
