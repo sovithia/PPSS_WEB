@@ -581,9 +581,7 @@ function orderStatistics($barcode)
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC); 
 	if($res == false){
-		$resp["message"] = "Product Not Found";
-		$resp["result"] = "KO";	
-		return $response->withJson($resp);
+		return null;	
 	}
 	else{
 		$RCVDATE = $res["TRANDATE"];

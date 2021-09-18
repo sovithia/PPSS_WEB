@@ -4141,6 +4141,7 @@ function renderItemRequestRestockCreate($data)
     $items = $data;
 
   
+  
   $body = "            
      <div class='col s12 m8 l9'>
               <div class='row margin'>
@@ -4153,6 +4154,20 @@ function renderItemRequestRestockCreate($data)
                     <label for='productid' class='center-align'>Product ID</label>               
                   </div>
               </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='productid' name='SPECIALQTY' type='text' >
+                    <label for='productid' class='center-align'>Quantity (For Special Order)</label>               
+                  </div>
+              </div>
+
+              <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='productid' name='REASON' type='text' >
+                    <label for='productid' class='center-align'>Reason (For Special Order)</label>               
+                  </div>
+              </div>
               
 
               <div class='row'>    
@@ -4161,6 +4176,7 @@ function renderItemRequestRestockCreate($data)
                        <input type='hidden' name='display' value='".$_GET["display"]."'>
                        <input type='hidden' name='entity' value='".$_GET["entity"]."'>
                        <input type='hidden' name='type' value='".$_GET["type"]."'>
+                       <input type='hidden' name='author' value='".$author."'>
                        <table>
                        <tr>
                           <td><input type='submit'  name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add (A)'></td>
@@ -4196,7 +4212,8 @@ function renderItemRequestRestockCreate($data)
                        <input type='hidden' name='display' value='".$_GET["display"]."'>
                        <input type='hidden' name='entity' value='".$_GET["entity"]."'>
                        <input type='hidden' name='type' value='".$_GET["type"]."'>
-                       <table>
+                       <input type='hidden' name='author' value='".$author."'>
+                      <table>
                         <tr>
                           <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(A)'></td>
                           <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(B)'></td>
@@ -4219,6 +4236,9 @@ function renderItemRequestRestockCreate($data)
               $body .= "<center><span style='color:red'>ERRORS</span><center><table><tr><th>PRODUCTID</th><th>PRODUCTNAME</th><th>VENDOR</th><th>DECISION</th><tr>";
               foreach($errors as $error)
               {
+                if (!isset($error["PRODUCTID"]))
+                  continue;
+
                 $body .= "<tr><td>".$error["PRODUCTID"]."</td><td>".$error["PRODUCTNAME"]."</td><td>".$error["VENDNAME"]."</td><td>".$error["DECISION"]."</td></tr>";
               } 
               $body .= "</table>";
