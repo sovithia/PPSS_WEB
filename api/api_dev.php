@@ -929,8 +929,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		}else{
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
-		}
-		$item["PICTURE"] = loadPicture($barcode,300,true);		
+		}		
 	}
 	else{
 		$packInfo = packLookup($barcode);
@@ -938,10 +937,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		{
 			$packcode = $barcode;		
 			$result = itemLookup($packInfo["PRODUCTID"]);
-			$result["BARCODE"] = $packcode;
-			//if (file_exists("img/packs/".$packcode.".jpg"))
-			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
+			$result["BARCODE"] = $packcode;			
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
 			$result["DISC"] = $packInfo["DISC"];
@@ -970,8 +966,19 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["DECISION"] = $stats["DECISION"];
 		}else if ($type == "PROMOSTATS"){
 			$stats = calculatePenalty($barcode,$expiration);
-			$items["STATUS"] = $stats["status"];
-			$items["PERCENT"] = $stats["percent"];	
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
+			$item["PERCENTPROMO"] = $stats["percentpromo"];	
+			$item["START"] = $stats["start"];
+			$item["END"] = $stats["end"];
+			$item["DURATION"] = $stats["duration"];
+			$item["POLICY"]	= $stats["policy"];
+			$item["COST"] = $stats["cost"];			
+		}
+		else if ($type == "WASTESTATS"){
+			$stats = wasteStatistics($barcode,$expiration);
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];
 		}
 		$resp["result"] = "OK";
 		$resp["data"] = $item;
@@ -6345,19 +6352,44 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 });
 
 
-$app->get('/depreciationpool/{type}', function($request,Response $response){
-	
+
+$app->get('/depreciationwastepool/{userid}', function($request,Response $response){
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
-	$type = $request->getAttribute('type');
-
-	if ($type == "WASTE")
-		$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL";				
-	else if ($type == "PROMOTION")
-		$sql = "SELECT * FROM DEPRECIATIONPROMOPOOL";	
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL WHERE USERID = ?";		
 
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($userid));
+
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
+	$newItems = array();
+	foreach($pool as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null)
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newItems,$item);
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newItems;
+	$response = $response->withJson($resp);
+	return $response;
+
+});
+
+$app->get('/depreciationpromopool/{userid}', function($request,Response $response){
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM DEPRECIATIONPROMOPOOL WHERE USERID = ?";	
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
 	$newItems = array();
 	foreach($pool as $item){
@@ -6401,10 +6433,10 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 		$ok = true;
 
 	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE) VALUES (?,?,?,?,?,?,?,?)";	
+		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";	
 			$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
-		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"]));	
+		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"]));	
 		$result["result"] = "OK";
 	}
 	else{
@@ -6435,9 +6467,9 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 		$ok = true;
 
 	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE) VALUES (?,?,?,?)";	
+		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE,USERID) VALUES (?,?,?,?,?)";	
 			$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"]));	
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
 		$result["result"] = "OK";
 	}
 	else{
