@@ -750,6 +750,26 @@ function orderStatistics($barcode)
 	return $stats;	
 }
 
+function wasteStatistics($barcode,$expiration)
+{
+	$indb = getDatabase();
+	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ? AND PERCENTPROMO1 IS NOT NULL";
+
+	$req = $indb->prepare($sql);
+	$req->execute(array($barcode,$expiration)); 
+
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	$data = array();
+	if ($res == false){
+			$data["status"] = "OK";
+			$data["percentpenalty"] = "0";
+ 	}else {
+ 			$data["status"] = "PENALTY";
+			$data["percentpenalty"] = "50";
+	}
+	return $data;
+}
 function calculatePenalty($barcode, $expiration){
 		$db=getDatabase();		
 		$indb = getInternalDatabase();
