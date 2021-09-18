@@ -325,16 +325,17 @@ function getData($display,$entity,$param)
        } 
 
       if ($_POST["action"] == 'Template Add(A)')
-        $data["LISTNAME"] = "A";
+        $datasend["LISTNAME"] = "A";
       else if ($_POST["action"] == 'Template Add(B)')
-        $data["LISTNAME"] = "B";
+        $datasend["LISTNAME"] = "B";
       else if ($_POST["action"] == 'Template Add(C)')
-        $data["LISTNAME"] = "C";
+        $datasend["LISTNAME"] = "C";
 
-       $data["ITEMS"] = $allData;            
-       $data = Service::CreateEntity($entity,$data,$type);                
+       $datasend["ITEMS"] = $allData;  
+       $datasend["AUTHOR"] =  $_SESSION["USER"]["firstname"].' '.$_SESSION["USER"]["lastname"];          
+       $data = Service::CreateEntity($entity,$datasend,$type);                
      }
-    else if (isset($param["PRODUCTID"]))
+    else if (isset($param["PRODUCTID"]) && $_GET["action"] != "DELETE")
     {  
       $datasend["PRODUCTID"] = $_GET["PRODUCTID"];          
       if ($_GET["action"] == 'Single Add (A)')
@@ -343,18 +344,20 @@ function getData($display,$entity,$param)
         $datasend["LISTNAME"] = "B";
       if ($_GET["action"] == 'Single Add (C)')
         $datasend["LISTNAME"] = "C";
-      $datasend["REASON"] = $_POST["REASON"];
-      $datasend["SPECIALQTY"] = $_POST["SPECIALQTY"];
+      if (isset ($_GET["REASON"]))
+        $datasend["REASON"] = $_GET["REASON"];
+      if (isset($_GET["SPECIALQTY"]))
+        $datasend["SPECIALQTY"] = $_GET["SPECIALQTY"];
 
+      $datasend["AUTHOR"] =  $_SESSION["USER"]["firstname"].' '.$_SESSION["USER"]["lastname"];          
       $data = Service::CreateEntity($entity,$datasend,$type);    
-
     }
-     else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
+    else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
        $data = array();
        $data["PRODUCTID"] = $_GET["PRODUCTID"];  
        $data["LISTNAME"] = $_GET["LISTNAME"];            
        Service::DeleteEntity($entity,$type,$data);
-     }
+    }
 
     $response = Service::ListEntity($entity,$param["type"]);
     if($data != null){

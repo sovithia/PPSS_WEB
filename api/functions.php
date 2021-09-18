@@ -595,8 +595,11 @@ function orderStatistics($barcode)
 	  WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? GROUP BY PRODUCTID";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode,$begin,$end));  
-
-	$QTYSALE = $req->fetch(PDO::FETCH_ASSOC)["COUNT"]; // **
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res != null)
+		$QTYSALE = ["COUNT"]; // **
+	else 
+		$QTYSALE = 0;
 
 	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
 
