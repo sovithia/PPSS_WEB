@@ -36,7 +36,8 @@ function go()
 {	
 	$db = getDatabase();
 
-	$sql = "SELECT PRODUCTNAME,PRODUCTID,CATEGORYID,SIZE,PACKINGNOTE FROM ICPRODUCT WHERE SIZE NOT LIKE 'R%'";
+	$sql = "SELECT PRODUCTNAME,PRODUCTID,CATEGORYID,SIZE,PACKINGNOTE FROM ICPRODUCT WHERE SIZE NOT LIKE 'R%' 
+			AND SIZE <> 'NR90' AND SIZE <> 'NR60' AND SIZE <> 'NR30' AND SIZE <> 'NR120' AND SIZE <> 'NOEXPIRE' AND SIZE <> 'NOEXPIRATION' AND SIZE <> 'N/A'";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$products = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -347,9 +348,9 @@ function go()
 	$NRDATA["VODKA"] = "NR60";
 	$NRDATA["WOMEN CLOTHES"] = "NOEXPIRE";
 
-	echo count($products);
-	exit;
-	foreach($product as $products)
+	echo "CNT:" .count($products)."\n";
+	//exit;	
+	foreach($products as $product)
 	{
 		if($product["PACKINGNOTE"] == null || $product["PACKINGNOTE"] == ""){
 			$sql = "UPDATE ICPRODUCT SET PACKINGNOTE = ? WHERE PRODUCTID = ?";
@@ -360,7 +361,7 @@ function go()
 		$req = $db->prepare($sql);
 		$req->execute(array($NRDATA[$product["CATEGORYID"]],$product["PRODUCTID"])); 
 
-		echo $product["PRODUCTID"].\n;
+		echo $product["PRODUCTID"]."\n";
 		usleep(100000);
 	}
 	
