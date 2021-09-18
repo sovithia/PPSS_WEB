@@ -315,7 +315,11 @@ function getData($display,$entity,$param)
         foreach ($cellIterator as $cell) 
           {        
               if ($cell->getColumn() == "A")
-                  $data["PRODUCTID"] = $cell->getValue();              
+                  $data["PRODUCTID"] = $cell->getValue();   
+              if ($cell->getColumn() == "B")
+                  $data["SPECIALQTY"] = $cell->getValue();   
+              if ($cell->getColumn() == "C")
+                   $data["REASON"] = $cell->getValue();   
           }
           array_push($allData,$data);
        } 
@@ -327,21 +331,23 @@ function getData($display,$entity,$param)
       else if ($_POST["action"] == 'Template Add(C)')
         $data["LISTNAME"] = "C";
 
-       $data["ITEMS"] = $allData;
+       $data["ITEMS"] = $allData;            
        $data = Service::CreateEntity($entity,$data,$type);                
      }
     else if (isset($param["PRODUCTID"]))
-    {      
-      $data["PRODUCTID"] = $_GET["PRODUCTID"];    
-      
+    {  
+      $datasend["PRODUCTID"] = $_GET["PRODUCTID"];          
       if ($_GET["action"] == 'Single Add (A)')
-        $data["LISTNAME"] = "A";
+        $datasend["LISTNAME"] = "A";
       if ($_GET["action"] == 'Single Add (B)')
-        $data["LISTNAME"] = "B";
+        $datasend["LISTNAME"] = "B";
       if ($_GET["action"] == 'Single Add (C)')
-        $data["LISTNAME"] = "C";
+        $datasend["LISTNAME"] = "C";
+      $datasend["REASON"] = $_POST["REASON"];
+      $datasend["SPECIALQTY"] = $_POST["SPECIALQTY"];
 
-      $data = Service::CreateEntity($entity,$data,$type);    
+      $data = Service::CreateEntity($entity,$datasend,$type);    
+
     }
      else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
        $data = array();
@@ -350,7 +356,7 @@ function getData($display,$entity,$param)
        Service::DeleteEntity($entity,$type,$data);
      }
 
-    $response = Service::ListEntity($entity,$param["type"]);          
+    $response = Service::ListEntity($entity,$param["type"]);
     if($data != null){
       $tmp = $response;
       $response["errors"] = $data;

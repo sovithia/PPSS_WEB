@@ -4418,13 +4418,25 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	}
 
 	$errors = array();
+	$AUTHOR = "";
+	if(isset($json["AUTHOR"]))
+		$AUTHOR = $json["AUTHOR"];
+
 	if (!isset($json["ITEMS"]))
 	{
-		$item["PRODUCTID"] = $json["PRODUCTID"];		
-		$items = array($item);
-	}else{
 
+		$item["PRODUCTID"] = $json["PRODUCTID"];		
+		if(isset($json["SPECIALQUANTITY"])){
+			$item["SPECIALQUANTITY"] = $json["SPECIALQUANTITY"];
+			$item["REASON"] = $json["reason"];
+			
+		}
+
+		$items = array($item);
+		}
+	}else{
 		$items = $json["ITEMS"];
+
 	}
 
 	foreach($items as $item)
@@ -4432,36 +4444,46 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 			continue;
 
-		if ($type == "RESTOCK"){
-			
-			$orderstats = orderStatistics($item["PRODUCTID"]);
-			
+		if ($type == "RESTOCK")
+		{			
+				$orderstats = orderStatistics($item["PRODUCTID"]);
 
-				if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats["DECISION"] == "INCREASEQTY")			
-					$allow = true;
+				if($item["SPECIALQTY"] != null && $item["SPECIALQTY"] != ""  && $item["REASON"] != null && $item["REASON"] != "")
+				{
+						$allow = true;			
+						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,QUANTITY,REASON,USER) VALUES (?,?,?,?)";
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$item["SPECIALQUANTITY"],$item["REASON"],$AUTHOR));						
+				}
+				else if ($orderstats == null){
+
+						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+						$itemerror["PRODUCTNAME"] = "N/A";
+						$itemerror["PACKINGNOTE"] = "N/A";
+						$itemerror["VENDNAME"] = "N/A";
+						$itemerror["DECISION"] = "PRODUCT NOT FOUND";
+						$errors[$item["PRODUCTID"]] = $itemerror;		
+						$allow = false;			
+				}
+				else if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats["DECISION"] == "INCREASEQTY")			
+					$allow = true;				
 				else
 				{
-				$allow = false;	
+					$allow = false;	
+					$sql = "SELECT PACKINGNOTE,VENDNAME,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
+					FROM ICPRODUCT,APVENDOR 
+					WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+					AND BARCODE = ?";
+				  $req = $dbBlue->prepare($sql);
+					$req->execute(array($item["PRODUCTID"]));
+					$res = $req->fetch(PDO::FETCH_ASSOC);
 
-				if ($allow)
-					error_log("ALLOW");
-				else 
-					error_log("NOT ALLOW");
-
-				$sql = "SELECT PACKINGNOTE,VENDNAME,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
-				FROM ICPRODUCT,APVENDOR 
-				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
-				AND BARCODE = ?";
-			  $req = $dbBlue->prepare($sql);
-				$req->execute(array($item["PRODUCTID"]));
-				$res = $req->fetch(PDO::FETCH_ASSOC);
-
-				$itemerror["PRODUCTID"] = $item["PRODUCTID"];
-				$itemerror["PRODUCTNAME"] = $res["PRODUCTNAME"];
-				$itemerror["PACKINGNOTE"] = $res["PACKINGNOTE"];
-				$itemerror["VENDNAME"] = $res["VENDNAME"];
-				$itemerror["DECISION"] = $orderstats["DECISION"];
-				$errors[$item["PRODUCTID"]] = $itemerror;
+					$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+					$itemerror["PRODUCTNAME"] = $res["PRODUCTNAME"];
+					$itemerror["PACKINGNOTE"] = $res["PACKINGNOTE"];
+					$itemerror["VENDNAME"] = $res["VENDNAME"];
+					$itemerror["DECISION"] = $orderstats["DECISION"];
+					$errors[$item["PRODUCTID"]] = $itemerror;
 				}
 
 			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ? AND LISTNAME = ?";
@@ -4518,9 +4540,10 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				$req = $db->prepare($sql);
 				$req->execute(array($newQty,$item["PRODUCTID"]));		
 			}
-			else if ($type == "RESTOCK"){							
+			else if ($type == "RESTOCK")
+			{										
 				if ($allow == true)
-					{
+					{						
 						$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
 						$req = $db->prepare($sql);
 						$req->execute(array($orderstats["FINALQTY"],$item["PRODUCTID"],$json["LISTNAME"]));		
@@ -4533,7 +4556,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				$req = $db->prepare($sql);
 				$req->execute(array($newQty,$item["PRODUCTID"]));
 			}
-		}	
+		}
+
 	}	
 	if (count($errors) > 0)
 		$data["data"] = $errors;

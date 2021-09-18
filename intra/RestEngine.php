@@ -24,8 +24,8 @@ class RestEngine
 				->body($data)
 				->expectsJson()
 				->addHeaders($headers)
-				->send();					
-				$json = json_decode(json_encode($response->body), TRUE);
+				->send();								
+				$json = json_decode(json_encode($response->body), TRUE);				
 		return $json;
 	}
 
