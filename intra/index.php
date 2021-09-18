@@ -90,6 +90,7 @@ function getItemsFromExcel($inputFileName)
 
 function getData($display,$entity,$param)
 {     
+  $data = null;
   if ($display == "sales" && isset($param["date"]))
     return Service::ListEntity($entity,$param["date"]);
   else if ($display == "itemrequestactionsearch" && isset($param["START"]))
@@ -314,9 +315,7 @@ function getData($display,$entity,$param)
         foreach ($cellIterator as $cell) 
           {        
               if ($cell->getColumn() == "A")
-                  $data["PRODUCTID"] = $cell->getValue();
-              if ($cell->getColumn() == "B")
-                  $data["REQUEST_QUANTITY"] = $cell->getValue();                           
+                  $data["PRODUCTID"] = $cell->getValue();              
           }
           array_push($allData,$data);
        } 
@@ -329,13 +328,12 @@ function getData($display,$entity,$param)
         $data["LISTNAME"] = "C";
 
        $data["ITEMS"] = $allData;
-       Service::CreateEntity($entity,$data,$type);                
+       $data = Service::CreateEntity($entity,$data,$type);                
      }
-    else if (isset($param["PRODUCTID"]) && isset($param["REQUEST_QUANTITY"]))
-    {
-      $data["PRODUCTID"] = $_GET["PRODUCTID"];
-      $data["REQUEST_QUANTITY"] = $_GET["REQUEST_QUANTITY"];
-    
+    else if (isset($param["PRODUCTID"]))
+    {      
+      $data["PRODUCTID"] = $_GET["PRODUCTID"];    
+      
       if ($_GET["action"] == 'Single Add (A)')
         $data["LISTNAME"] = "A";
       if ($_GET["action"] == 'Single Add (B)')
@@ -343,7 +341,7 @@ function getData($display,$entity,$param)
       if ($_GET["action"] == 'Single Add (C)')
         $data["LISTNAME"] = "C";
 
-      Service::CreateEntity($entity,$data,$type);    
+      $data = Service::CreateEntity($entity,$data,$type);    
     }
      else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
        $data = array();
@@ -352,7 +350,13 @@ function getData($display,$entity,$param)
        Service::DeleteEntity($entity,$type,$data);
      }
 
-    return Service::ListEntity($entity,$param["type"]);          
+    $response = Service::ListEntity($entity,$param["type"]);          
+    if($data != null){
+      $tmp = $response;
+      $response["errors"] = $data;
+      $response["data"] = $tmp;
+    }
+    return $response;
   }
   else if ($display == "scheduleAll" || $display == "trombi" || $display == "supplierlist" || 
            $display == "salarylist" || $display == "restdaylist" || $display == "lowprofit" || 

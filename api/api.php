@@ -970,8 +970,19 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["DECISION"] = $stats["DECISION"];
 		}else if ($type == "PROMOSTATS"){
 			$stats = calculatePenalty($barcode,$expiration);
-			$items["STATUS"] = $stats["status"];
-			$items["PERCENT"] = $stats["percent"];	
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
+			$item["PERCENTPROMO"] = $stats["percentpromo"];	
+			$item["START"] = $stats["start"];
+			$item["END"] = $stats["end"];
+			$item["DURATION"] = $stats["duration"];
+			$item["POLICY"]	= $stats["policy"];
+			$item["COST"] = $stats["cost"];
+		}
+		else if ($type == "WASTESTATS"){
+			$stats = wasteStatistics($barcode,$expiration);
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];
 		}
 		$resp["result"] = "OK";
 		$resp["data"] = $item;
@@ -2237,8 +2248,16 @@ function pictureRecord($base64Str,$type,$id){
 		else if ($type == "ACC")
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
 
-		else if ($type == "")
-			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";			
+		else if ($type == "PROMO_LEFT")
+			$filename = "./img/promo_signatures/LEFT_".$id.".png";
+		else if ($type == "PROMO_RIGHT")
+			$filename = "./img/promo_signatures/RIGHT_".$id.".png";
+		
+		else if ($type == "WASTE_LEFT")
+			$filename = "./img/waste_signatures/LEFT_".$id.".png";
+		else if ($type == "WASTE_RIGHT")
+			$filename = "./img/waste_signatures/RIGHT_".$id.".png";
+		
 		file_put_contents($filename, $imageData);
 	}	
 }
@@ -4380,7 +4399,9 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 });
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
+	error_log("LA");
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
 
@@ -4399,10 +4420,10 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$suffix = " AND USERID = ".$userid;
 	}
 
+	$errors = array();
 	if (!isset($json["ITEMS"]))
 	{
-		$item["PRODUCTID"] = $json["PRODUCTID"];
-		$item["REQUEST_QUANTITY"] = $json["REQUEST_QUANTITY"];		
+		$item["PRODUCTID"] = $json["PRODUCTID"];		
 		$items = array($item);
 	}else{
 
@@ -4415,6 +4436,35 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			continue;
 
 		if ($type == "RESTOCK"){
+			
+			$orderstats = orderStatistics($item["PRODUCTID"]);
+			
+				if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats == "INCREASEQTY")			
+					$allow = true;
+				else{
+				$allow = false;	
+
+				if ($allow)
+					error_log("ALLOW");
+				else 
+					error_log("NOT ALLOW");
+
+				$sql = "SELECT PACKINGNOTE,VENDNAME,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
+				FROM ICPRODUCT,APVENDOR 
+				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+				AND BARCODE = ?";
+			  $req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+
+				$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+				$itemerror["PRODUCTNAME"] = $res["PRODUCTNAME"];
+				$itemerror["PACKINGNOTE"] = $res["PACKINGNOTE"];
+				$itemerror["VENDNAME"] = $res["VENDNAME"];
+				$itemerror["DECISION"] = $orderstats["DECISION"];
+				$errors[$item["PRODUCTID"]] = $itemerror;
+			}
+
 			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);	
 			$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));
@@ -4439,9 +4489,12 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				}
 				else if ($type == "RESTOCK"){
 
+					if ($allow == true)
+					{
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
-					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$json["LISTNAME"]));		
+						$req = $db->prepare($sql);
+						$req->execute(array($item["PRODUCTID"],$orderstats["FINALQTY"],$json["LISTNAME"]));		
+					}					
 				}
 				else 
 				{
@@ -4466,11 +4519,13 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				$req = $db->prepare($sql);
 				$req->execute(array($newQty,$item["PRODUCTID"]));		
 			}
-			else if ($type == "RESTOCK"){
-				$newQty = $item["REQUEST_QUANTITY"]; // NO MORE ADD 
-				$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($newQty,$item["PRODUCTID"],$json["LISTNAME"]));		
+			else if ($type == "RESTOCK"){							
+				if ($allow == true)
+					{
+						$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
+						$req = $db->prepare($sql);
+						$req->execute(array($orderstats["FINALQTY"],$item["PRODUCTID"],$json["LISTNAME"]));		
+					}
 			}
 			else
 			{		
@@ -4481,6 +4536,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			}
 		}	
 	}	
+	if (count($errors) > 0)
+		$data["data"] = $errors;
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
@@ -6096,6 +6153,7 @@ $app->get('/depreciation', function($request,Response $response) {
 
 $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	$db = getInternalDatabase();
+	$blueDB = getDatabase();
 	$id = $request->getAttribute('id');
 	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE   DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? 
 																				    OR   DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
@@ -6204,21 +6262,21 @@ $app->post('/depreciation', function($request,Response $response) {
 // CREATED (GECKMEY) VALIDATED (GECKMEY) CLEARED (ACC) 
 $app->put('/depreciation', function($request,Response $response) {
 		
-		$json = json_decode($request->getBody(),true);
-		$db = getInternalDatabase();
-		$id = $json["ID"];
-		$status = $json["STATUS"];
-		$author = $json["AUTHOR"];	
-		if ($status == "VALIDATED")
-			$sql = "UPDATE DEPRECIATION SET STATUS = ?, VALIDATOR = ? WHERE ID = ?";
-		else if ($status == "CLEARED")		
-			$sql = "UPDATE DEPRECIATION SET STATUS = ?, CLEARER = ? WHERE ID = ?";
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+	$id = $json["ID"];
+	$status = $json["STATUS"];
+	$author = $json["AUTHOR"];	
+	if ($status == "VALIDATED")
+		$sql = "UPDATE DEPRECIATION SET STATUS = ?, VALIDATOR = ? WHERE ID = ?";
+	else if ($status == "CLEARED")		
+		$sql = "UPDATE DEPRECIATION SET STATUS = ?, CLEARER = ? WHERE ID = ?";
 			
-		$req = $db->prepare($sql);
-		$req->execute(array($status,$author,$id));		
+	$req = $db->prepare($sql);
+	$req->execute(array($status,$author,$id));		
 
-	$response["result"] = "OK";
-	$response = $response->withJson($response);
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
 	return $response;																			 
 });
 
@@ -6306,19 +6364,43 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 });
 
 
-$app->get('/depreciationpool/{type}', function($request,Response $response){
-	
+$app->get('/depreciationwastepool/{userid}', function($request,Response $response){
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
-	$type = $request->getAttribute('type');
-
-	if ($type == "WASTE")
-		$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL";				
-	else if ($type == "PROMOTION")
-		$sql = "SELECT * FROM DEPRECIATIONPROMOPOOL";	
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL WHERE USERID = ?";		
 
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($userid));
+
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
+	$newItems = array();
+	foreach($pool as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null)
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newItems,$item);
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newItems;
+	$response = $response->withJson($resp);
+	return $response;
+
+});
+
+$app->get('/depreciationpromopool/{userid}', function($request,Response $response){
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM DEPRECIATIONPROMOPOOL WHERE USERID = ?";	
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
 	$newItems = array();
 	foreach($pool as $item){
@@ -6362,10 +6444,10 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 		$ok = true;
 
 	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE) VALUES (?,?,?,?,?,?,?,?)";	
+		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";	
 			$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
-		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"]));	
+		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"]));	
 		$result["result"] = "OK";
 	}
 	else{
@@ -6396,9 +6478,9 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 		$ok = true;
 
 	if ($ok == true){
-		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE) VALUES (?,?,?,?)";	
+		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE,USERID) VALUES (?,?,?,?,?)";	
 			$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"]));	
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
 		$result["result"] = "OK";
 	}
 	else{

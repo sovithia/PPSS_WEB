@@ -764,10 +764,16 @@ function calculatePenalty($barcode, $expiration){
 		$data["cost"] = $res["COST"];
 		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
 		
+		$data["start"] = "N/A";
+		$data["end"] = "N/A";
+		$data["duration"] = "N/A";
+		$data["percentpromo"] = "N/A";
+		$data["percentpenalty"] = "N/A";
+
 		if (new DateTime($expiration) < new DateTime('NOW'))
 		{
 					$data["status"] = "PENALTY";
-					$data["percent"] = "100";
+					$data["percentpenalty"] = "100";
 					return $data;	
 		}
 
@@ -813,23 +819,23 @@ function calculatePenalty($barcode, $expiration){
 							if ($rule["REQUIREDSTEPS"] == null)
 							{
 									$data["status"] = "PENALTY";																		
-									$data["percent"] = $rule["PERCENTPENALTY"];
+									$data["percentpenalty"] = $rule["PERCENTPENALTY"];
 
 							}
 							else 
 							{
 								if ($rule["REQUIREDSTEPS"] == 0){
 									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];
+									$data["percentpromo"] = $rule["PERCENTOK"];
 									
 								}
 								else if($occurence == $rule["REQUIREDSTEP"]){
 									$data["status"] = "OK";
-									$data["percent"] = $rule["PERCENTOK"];									
+									$data["percentpromo"] = $rule["PERCENTOK"];									
 								}							
 								else if ($occurence < $rule["REQUIREDSTEP"]){
 									$data["status"] = "PENALTY";																		
-									$data["percent"] = $rule["PERCENTPENALTY"];	
+									$data["percentpenalty"] = $rule["PERCENTPENALTY"];	
 									$data["duration"] = abs($rule["NEXTPROMOSTEP"] - $diffDays);
 								}
 							}					

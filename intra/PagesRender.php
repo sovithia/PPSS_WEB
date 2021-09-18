@@ -4131,8 +4131,16 @@ function renderItemRequestActionSearch($data){
 
 
 function renderItemRequestRestockCreate($data)
-{
-  $items = $data; 
+{  
+  $errors = array();
+  if (isset($data["errors"])){
+    $items = $data["data"];   
+    $errors = $data["errors"];
+  }
+  else
+    $items = $data;
+
+  
   $body = "            
      <div class='col s12 m8 l9'>
               <div class='row margin'>
@@ -4145,13 +4153,7 @@ function renderItemRequestRestockCreate($data)
                     <label for='productid' class='center-align'>Product ID</label>               
                   </div>
               </div>
-
-              <div class='row'>
-                  <div class='input-field col s12'>                   
-                    <input id='quantity' name='REQUEST_QUANTITY' type='text' >
-                    <label for='quantity' class='center-align'>Quantity</label>               
-                  </div>
-              </div>
+              
 
               <div class='row'>    
 
@@ -4210,6 +4212,21 @@ function renderItemRequestRestockCreate($data)
              </div> 
 
              <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
+
+             <div id='errordiv' style='border:1px solid black' >";
+             if (count($errors) > 0)
+             {
+              $body .= "<center><span style='color:red'>ERRORS</span><center><table><tr><th>PRODUCTID</th><th>PRODUCTNAME</th><th>VENDOR</th><th>DECISION</th><tr>";
+              foreach($errors as $error)
+              {
+                $body .= "<tr><td>".$error["PRODUCTID"]."</td><td>".$error["PRODUCTNAME"]."</td><td>".$error["VENDNAME"]."</td><td>".$error["DECISION"]."</td></tr>";
+              } 
+              $body .= "</table>";
+             }
+             
+              
+$body .=  "</div>
+             <br>
 
             <table>
             <tr>

@@ -311,8 +311,14 @@ class Service
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
 
 		if ($option != "" && (substr($option,0,1) != "?"))
-			$option = "/".$option;						
-		return RestEngine::POST(Service::modelRoute[$model] . $option,$data,$header);						
+			$option = "/".$option;
+	
+		$resp = RestEngine::POST(Service::modelRoute[$model] . $option,$data,$header);
+		if (isset($resp["data"])) 
+			return $resp["data"];
+		else
+			return $resp;
+							
 	}
 
 	static function UpdateEntity($model,$data){			
@@ -322,7 +328,7 @@ class Service
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
-		$response = RestEngine::PUT(Service::modelRoute[$model]."/".$id,$data,$header);		
+		$response = RestEngine::PUT(Service::modelRoute[$model]."/".$id,$data,$header)["data"];		
 		return $response;
 	}
 
@@ -332,7 +338,7 @@ class Service
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))	
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
-		$response = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$data,$header);		
+		$response = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$data,$header)["data"];		
 		return $response;
 	}		
 }

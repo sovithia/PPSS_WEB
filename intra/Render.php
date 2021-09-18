@@ -65,7 +65,7 @@ function renderLoadAnimation()
   	</div>';  
 }
 function renderHeader()
-{
+{  
   $averageBasket = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/averagebasket");  
   $averageBasket = "Avg Basket ". date('F, Y') .": ".$averageBasket;
 	return ' 
@@ -905,8 +905,7 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             else if ($field == "REQUEST_QUANTITY"){
 
               $dataSet .= "'<input name=\"idfield\" value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
-                            <input  style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" ><br>\
-                            <button type=\"button\" onclick=updatePoolQty(\"".$item["TYPE"]."\",\"".$item["PRODUCTID"]."\")>Update</button>',";
+                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
             }
             else if ($field == "ACTION"){
               if ($name == "listA")
