@@ -544,9 +544,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	$conn=getDatabase();
 	$barcodes = $request->getAttribute('barcodes'); 		
 	$barcodes = explode("|",$barcodes);	
-
 	$result = array();
-	error_log("LA");
 	foreach($barcodes as $barcode){
 		error_log($barcode);
 		$params = array($barcode);
@@ -4398,8 +4396,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	return $response;	
 });
 
-$app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
-	error_log("LA");
+$app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
@@ -4439,9 +4436,11 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			
 			$orderstats = orderStatistics($item["PRODUCTID"]);
 			
-				if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats == "INCREASEQTY")			
+
+				if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats["DECISION"] == "INCREASEQTY")			
 					$allow = true;
-				else{
+				else
+				{
 				$allow = false;	
 
 				if ($allow)
@@ -4463,7 +4462,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 				$itemerror["VENDNAME"] = $res["VENDNAME"];
 				$itemerror["DECISION"] = $orderstats["DECISION"];
 				$errors[$item["PRODUCTID"]] = $itemerror;
-			}
+				}
 
 			$sql = "SELECT REQUEST_QUANTITY,count(*) as OCU FROM ".$tableName." where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);	
