@@ -4175,8 +4175,7 @@ function renderItemRequestRestockCreate($data)
                      <div class='input-field col s12'>             
                        <input type='hidden' name='display' value='".$_GET["display"]."'>
                        <input type='hidden' name='entity' value='".$_GET["entity"]."'>
-                       <input type='hidden' name='type' value='".$_GET["type"]."'>
-                       <input type='hidden' name='author' value='".$author."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>                       
                        <table>
                        <tr>
                           <td><input type='submit'  name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Single Add (A)'></td>
@@ -4211,8 +4210,7 @@ function renderItemRequestRestockCreate($data)
                      <div class='input-field col s12'>             
                        <input type='hidden' name='display' value='".$_GET["display"]."'>
                        <input type='hidden' name='entity' value='".$_GET["entity"]."'>
-                       <input type='hidden' name='type' value='".$_GET["type"]."'>
-                       <input type='hidden' name='author' value='".$author."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>                       
                       <table>
                         <tr>
                           <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Template Add(A)'></td>

@@ -4426,14 +4426,11 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	{
 
 		$item["PRODUCTID"] = $json["PRODUCTID"];		
-		if(isset($json["SPECIALQUANTITY"])){
-			$item["SPECIALQUANTITY"] = $json["SPECIALQUANTITY"];
-			$item["REASON"] = $json["reason"];
-			
+		if(isset($json["SPECIALQTY"])){
+			$item["SPECIALQTY"] = $json["SPECIALQTY"];
+			$item["REASON"] = $json["REASON"];		
 		}
-
-		$items = array($item);
-		}
+		$items = array($item);		
 	}else{
 		$items = $json["ITEMS"];
 
@@ -4448,12 +4445,13 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		{			
 				$orderstats = orderStatistics($item["PRODUCTID"]);
 
-				if($item["SPECIALQTY"] != null && $item["SPECIALQTY"] != ""  && $item["REASON"] != null && $item["REASON"] != "")
+				if(isset($item["SPECIALQTY"]) && isset($item["REASON"]) && $item["SPECIALQTY"] != null && $item["SPECIALQTY"] != ""  && $item["REASON"] != null && $item["REASON"] != "")
 				{
 						$allow = true;			
 						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,QUANTITY,REASON,USER) VALUES (?,?,?,?)";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["SPECIALQUANTITY"],$item["REASON"],$AUTHOR));						
+						$req->execute(array($item["PRODUCTID"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
+						$orderstats["FINALQTY"] = $item["SPECIALQTY"];
 				}
 				else if ($orderstats == null){
 

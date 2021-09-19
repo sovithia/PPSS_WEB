@@ -328,8 +328,12 @@ class Service
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
-		$response = RestEngine::PUT(Service::modelRoute[$model]."/".$id,$data,$header)["data"];		
-		return $response;
+		$resp = RestEngine::PUT(Service::modelRoute[$model]."/".$id,$data,$header);
+
+		if (isset($resp["data"])) 
+			return $resp["data"];
+		else
+			return $resp;
 	}
 
 	static function DeleteEntity($model,$id,$data = ""){
@@ -338,8 +342,11 @@ class Service
 			$header["IDENTIFIER"] = $_SESSION["IDENTIFIER"];
 		if (isset($_SESSION["TOKEN"]))	
 			$header["TOKEN"] = $_SESSION["TOKEN"];	
-		$response = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$data,$header)["data"];		
-		return $response;
+		$resp = RestEngine::DELETE(Service::modelRoute[$model]."/".$id,$data,$header);		
+		if (isset($resp["data"])) 
+			return $resp["data"];
+		else
+			return $resp;
 	}		
 }
 
