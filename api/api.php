@@ -881,6 +881,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$barcode = $request->getParam('barcode','');
 	$type = $request->getParam('type','');
 	$expiration = $request->getParam('expiration','');
+	$depreciationtype = $request->getParam('depreciationtype','');
 
 
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
@@ -967,7 +968,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
 		}else if ($type == "PROMOSTATS"){
-			$stats = calculatePenalty($barcode,$expiration);
+			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
 			$item["STATUS"] = $stats["status"];
 			$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
 			$item["PERCENTPROMO"] = $stats["percentpromo"];	
@@ -6234,11 +6235,10 @@ $app->post('/depreciation', function($request,Response $response) {
 		$STARTTIME = isset($item["STARTTIME"]) ? $item["STARTTIME"] : ""; // CALCULATED IN APP PHASE 2
 		$ENDTIME = isset($item["ENDTIME"]) ? $item["ENDTIME"] : ""; // CALCULATED IN APP PHASE 2
 
-		$penalty = calculatePenalty($PRODUCTID,$EXPIRATION);
-		if ($penalty["status"] == "OK")
-			$percentpenalty = "0";
-		else 
-			$percentpenalty = $penalty["percent"];
+	
+		$PERCENTPENALTY = isset($item["PERCENTPENALTY"]) ? $item["PERCENTPENALTY"] : "";
+		$PERCENTPROMO = isset($item["PERCENTPROMO"]) ? $item["PERCENTPROMO"] : "";
+
 
 		if ($LINKTYPE == "SYSTEMLINK")				
 			attachPromotion($PRODUCTID,$penalty["percent"],$STARTTIME,$ENDTIME,$author);
@@ -6248,7 +6248,7 @@ $app->post('/depreciation', function($request,Response $response) {
 				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,DEPRECIATION_ID1) 
 							  VALUES (?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$percentpenalty,$penalty["percent"],$lastId));			
+				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$lastId));			
 		}
 		else
 		{
@@ -6262,7 +6262,7 @@ $app->post('/depreciation', function($request,Response $response) {
 							LINKTYPE".$cnt." = ?, PERCENTPENALTY".$cnt." = ?, PERCENTPROMO".$cnt." = ?  
 							WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$percentpenalty,$penalty["percent"],$PRODUCTID,$EXPIRATION));		
+			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$PRODUCTID,$EXPIRATION));		
 		}
 	}
 

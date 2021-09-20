@@ -693,11 +693,16 @@ function orderStatistics($barcode)
 		{
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
-					if ($WASTE >= 0.1 * $RCVQTY){
+				if ($WASTE >= 0.1 * $RCVQTY && $PROMO >= 0.1 * $RCVQTY){
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,3);
+						$stats["DECISION"] = "DECREASEQTY";
+				}
+
+				else if ($WASTE >= 0.1 * $RCVQTY){
 						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,2);
 						$stats["DECISION"] = "DECREASEQTY";
-				  }
-					else if ($PROMO >= 0.1 * $RCVQTY){
+				 }
+				else if ($PROMO >= 0.1 * $RCVQTY){
 						$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,1);
 						$stats["DECISION"] = "DECREASEQTY";
 					}
@@ -720,7 +725,12 @@ function orderStatistics($barcode)
 		{
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
-				if ($WASTE >= 0.1 * $RCVQTY){
+
+				if ($WASTE >= 0.1 * $RCVQTY && $PROMO >= 0.1 * $RCVQTY){
+					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,$PRICE,6);
+						$stats["DECISION"] = "DECREASEQTY";
+				}
+				else if ($WASTE >= 0.1 * $RCVQTY){
 					$stats["FINALQTY"] = decreaseQty($barcode,$RCVQTY,4,$PRICE);
 					$stats["DECISION"] = "DECREASEQTY";
 				}
@@ -771,136 +781,195 @@ function wasteStatistics($barcode,$expiration)
 	}
 	return $data;
 }
-function calculatePenalty($barcode, $expiration){
+function calculatePenalty($barcode, $expiration,$type = null){
 		$db=getDatabase();		
 		$indb = getInternalDatabase();
-		$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($barcode));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if (!isset($res["SIZE"]))
-			return null;
-		$data["policy"] = $res["SIZE"];
-		$data["cost"] = $res["COST"];
-		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
-		
 		$data["start"] = "N/A";
 		$data["end"] = "N/A";
 		$data["duration"] = "N/A";
 		$data["percentpromo"] = "N/A";
 		$data["percentpenalty"] = "N/A";
 
-		if (new DateTime($expiration) < new DateTime('NOW'))
+		if ($type == null || $type == "EXPIREMOTION")
 		{
-					$data["status"] = "PENALTY";
-					$data["percentpenalty"] = "100";
-					return $data;	
-		}
+			$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($barcode));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		if (substr($res["SIZE"],0,2) == "NR") // WITHOUT RETURN POLICY
-		{			
-			if (($res["SIZE"] == "NR90" && $diffDays > 90) || ($res["SIZE"] == "NR60" && $diffDays > 60) || ($res["SIZE"] == "NR30" && $diffDays > 30))
-			{
-					$data["status"] = "EARLY";
-					return $data;
-			}		
-			else 
-			{		
-							
-				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
-				$req = $indb->prepare($sql);	
-				$req->execute(array($res["SIZE"]));
-				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+			if (!isset($res["SIZE"]))
+				return null;
+			$data["policy"] = $res["SIZE"];
+			$data["cost"] = $res["COST"];
+			$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;		
+		
+			if (new DateTime($expiration) < new DateTime('NOW')){
+						$data["status"] = "PENALTY";
+						$data["percentpenalty"] = "100";
+						return $data;	
+			}
 
-				foreach($rules as $rule)
-				{							
-						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
-						{
-							$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
-							$req = $indb->prepare($sql);
-							$req->execute(array($barcode, $expiration)); 
-							$res = $req->fetch(PDO::FETCH_ASSOC);
-							
-							if ($res == false){
-								$occurence = 0;
-							}
-							else 
-							{
-								if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
-									$occurence++;
-								if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
-									$occurence++;
-								if($res["QUANTITY3"] != "" && $res["QUANTITY3"] != null)
-									$occurence++;
-								if($res["QUANTITY4"] != "" && $res["QUANTITY4"] != null)
-									$occurence++;
-							}
-
-							if ($rule["REQUIREDSTEPS"] == null)
-							{
-									$data["status"] = "PENALTY";																		
-									$data["percentpenalty"] = $rule["PERCENTPENALTY"];
-
-							}
-							else 
-							{
-								if ($rule["REQUIREDSTEPS"] == 0){
-									$data["status"] = "OK";
-									$data["percentpromo"] = $rule["PERCENTOK"];
-									
-								}
-								else if($occurence == $rule["REQUIREDSTEP"]){
-									$data["status"] = "OK";
-									$data["percentpromo"] = $rule["PERCENTOK"];									
-								}							
-								else if ($occurence < $rule["REQUIREDSTEP"]){
-									$data["status"] = "PENALTY";																		
-									$data["percentpenalty"] = $rule["PERCENTPENALTY"];	
-									$data["duration"] = abs($rule["NEXTPROMOSTEP"] - $diffDays);
-								}
-							}					
-
-							$duration = abs($rule["NEXTPROMOSTEP"] - $diffDays);
-							$today = new DateTime('NOW');
-							$data["start"] = $today->format('Y-m-d');
-							$today->add(new DateInterval('P'.$duration.'D'));
-							$data["end"] = $today->format('Y-m-d');
-							$data["duration"] = $duration;
-
-							break;			
-						}
-				}	
-				return $data;	
-			}												
-		}
-		else // WITH RETURN POLICY 
-		{
-				if (($res["SIZE"] == "R90" && $diffDays > 90) || ($res["SIZE"] == "R60" && $diffDays > 60) || ($res["SIZE"] == "R30" && $diffDays > 30)){
+			if (substr($res["SIZE"],0,2) == "NR") // WITHOUT RETURN POLICY
+			{			
+				if (($res["SIZE"] == "NR90" && $diffDays > 90) || ($res["SIZE"] == "NR60" && $diffDays > 60) || ($res["SIZE"] == "NR30" && $diffDays > 30))
+				{
 						$data["status"] = "EARLY";
 						return $data;
 				}		
 				else 
-				{
-					$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
+				{		
+								
+					$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
 					$req = $indb->prepare($sql);	
 					$req->execute(array($res["SIZE"]));
 					$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+
 					foreach($rules as $rule)
-					{
+					{							
 							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
-							{										
-								if( $rule["PENALTYPERCENT"] == "0")
-									$data["status"] = "OK";
-								else 									
-									$data["status"] = "PENALTY";								
-								$data["percent"] = $rule["PENALTYPERCENT"];									
-								break;
+							{
+								$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+								$req = $indb->prepare($sql);
+								$req->execute(array($barcode, $expiration)); 
+								$res = $req->fetch(PDO::FETCH_ASSOC);
+								
+								if ($res == false){
+									$occurence = 0;
+								}
+								else 
+								{
+									if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
+										$occurence++;
+									if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
+										$occurence++;
+									if($res["QUANTITY3"] != "" && $res["QUANTITY3"] != null)
+										$occurence++;
+									if($res["QUANTITY4"] != "" && $res["QUANTITY4"] != null)
+										$occurence++;
+								}
+
+								if ($rule["REQUIREDSTEPS"] == null)
+								{
+										$data["status"] = "PENALTY";																		
+										$data["percentpenalty"] = $rule["PERCENTPENALTY"];
+
+								}
+								else 
+								{
+									if ($rule["REQUIREDSTEPS"] == 0){
+										$data["status"] = "OK";
+										$data["percentpromo"] = $rule["PERCENTPROMO"];
+										
+									}
+									else if($occurence == $rule["REQUIREDSTEP"]){
+										$data["status"] = "OK";
+										$data["percentpromo"] = $rule["PERCENTPROMO"];									
+									}							
+									else if ($occurence < $rule["REQUIREDSTEP"]){
+										$data["status"] = "PENALTY";																		
+										$data["percentpenalty"] = $rule["PERCENTPENALTY"];	
+										$data["duration"] = abs($rule["NEXTPROMOSTEP"] - $diffDays);
+									}
+								}					
+
+								$duration = abs($rule["NEXTPROMOSTEP"] - $diffDays);
+								$today = new DateTime('NOW');
+								$data["start"] = $today->format('Y-m-d');
+								$today->add(new DateInterval('P'.$duration.'D'));
+								$data["end"] = $today->format('Y-m-d');
+								$data["duration"] = $duration;
+
+								break;			
 							}
-					}
-					return $data;
-				}	
-		}		
+					}	
+					return $data;	
+				}												
+			}
+			else // WITH RETURN POLICY 
+			{
+					if (($res["SIZE"] == "R90" && $diffDays > 90) || ($res["SIZE"] == "R60" && $diffDays > 60) || ($res["SIZE"] == "R30" && $diffDays > 30)){
+							$data["status"] = "EARLY";
+							return $data;
+					}		
+					else 
+					{
+						$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
+						$req = $indb->prepare($sql);	
+						$req->execute(array($res["SIZE"]));
+						$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+						foreach($rules as $rule)
+						{
+								if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
+								{										
+									if( $rule["PENALTYPERCENT"] == "0")
+										$data["status"] = "OK";
+									else 									
+										$data["status"] = "PENALTY";								
+									$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
+									$data["percentpromo"] = $rule["PERCENTPROMO"];									
+
+									break;
+								}
+						}
+						return $data;
+					}	
+			}	
+		}
+		else if ($type == "LATERETURNPROMOTION")
+		{
+				$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
+				$req = $indb->prepare($sql);	
+				$req->execute(array($res["SIZE"]));
+				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+				foreach($rules as $rule)
+				{
+						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
+						{										
+							if( $rule["PENALTYPERCENT"] == "0")
+								$data["status"] = "OK";
+							else 									
+								$data["status"] = "PENALTY";								
+							$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
+							$data["percentpromo"] = $rule["PERCENTPROMO"];									
+							break;
+						}
+				}
+
+			$sql = "SELECT COUNT(*) AS CNT FROM RETURNRECORDITEM FROM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+			$req = $indb->prepare($sql);
+			$req->execute(array($barcode, $expiration));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+			{
+				$data["percentpenalty"] = "0";				
+				$data["status"] = "PENALTYONRETURN";						
+			}
+			
+			return $data;
+		}
+		else 
+		{
+			$today = new DateTime('NOW');
+			$data["start"] = $today->format('Y-m-d');
+			$today->add(new DateInterval('P30D'));
+			$data["end"] = $today->format('Y-m-d');
+			$data["duration"] = "30";
+			$data["status"] = "OK";
+			if ($type == "CLEARANCELOWDAMAGEDPROMOTION")			
+				$data["percentpromo"] = "20";
+			else if($type == "CLEARANCEMEDIUMDAMAGEDPROMOTION")					
+				$data["percentpromo"] = "50";
+			else if($type == "CLEARANCEHIGHDAMAGEDPROMOTION")		
+				$data["percentpromo"] = "70";
+			else if ($type == "CLEARANCETOOMUCHPROMOTION")
+				$data["percentpromo"] = "20";
+			else if ($type == "CLEARANCELOWSELLPROMOTION")
+				$data["percentpromo"] = "50";
+			else if ($type == "CLEARANCEDESTOCKPROMOTION")
+				$data["percentpromo"] = "70";	 		
+	 		return $data;
+		}
+	
 }
 // TODO
 function attachPromotion($productid,$percent,$start,$end,$author){
