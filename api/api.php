@@ -2041,7 +2041,7 @@ $app->get('/classifiedCategories',function(Request $request,Response $response) 
 	
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"] = $data;
+	$resp["data"] = $result;
 	$response = $response->withJson($resp);
 
 	return $response;
@@ -3080,6 +3080,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["result"] = "KO";
 	}	
 
+	$response = $response->withJson($data);
+	return $response;
+});
+
+$app->delete('/supplyrecord/{id}',function(Request $request,Response $response) {
+	$id = $request->getAttribute('id');
+	$json = json_decode($request->getBody(),true);	
+
+	$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'ARCHIVED', ARCHIVER = ? WHERE ID = ?";
+	$db = getInternalDatabase();
+	$req = $db->prepare($sql);
+	$req->execute(array($json["AUTHOR"],$id));
+	$data["result"] = "OK";	
 	$response = $response->withJson($data);
 	return $response;
 });

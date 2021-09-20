@@ -4516,11 +4516,31 @@ function renderSupplyRecordList($data,$action){
                   xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
                   xmlhttp.send(JSON.stringify(ItemJSON)); 
                 }                                                                                            
-                else
+                
+              }
+
+              function archiveSupplyRecord(author,identifier){
+                var result = confirm('Are you sure you want to archive?');
+                if (result) 
                 {
-                  alert('canceled');
-                }
-              }                           
+                  var ItemJSON = '';                  
+                  ItemJSON = {'AUTHOR'     : author};   
+                  var URL = 'http://phnompenhsuperstore.com/api/api.php/supplyrecord/' + identifier; 
+                  var xmlhttp = new XMLHttpRequest();
+                  xmlhttp.onreadystatechange = function () 
+                  {
+                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) 
+                     {                      
+                        document.getElementById('status_' + identifier).innerHTML = 'ARCHIVED';
+                        alert('Supply Record status changed')
+                      }
+                  }
+                  xmlhttp.open('DELETE', URL,false);
+                  xmlhttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+                  xmlhttp.send(JSON.stringify(ItemJSON)); 
+                }                                                                                                            
+              }          
+
             </script>
             <center><button onclick='showPO()'>PO</button> 
             <button onclick='showNOPO()' >NO PO</button><center>";
@@ -4542,6 +4562,7 @@ function renderSupplyRecordList($data,$action){
                   <th>TR</th>
                   <th>ACC</th>   
                   <th>CANCEL</th>
+                  <th>ARCHIVE</th>
                </tr></thead>
 
                <tfoot><tr>
@@ -4557,6 +4578,7 @@ function renderSupplyRecordList($data,$action){
                   <th>TR</th>
                   <th>ACC</th>   
                   <th>CANCEL</th>
+                  <th>ARCHIVE</th>
                </tr></tfoot>
                </table>
                ";  
@@ -4566,6 +4588,7 @@ function renderSupplyRecordList($data,$action){
       $show = "";  
     else
       $show = "style=\"display:none\"";
+
 
     foreach($itemsPO as $item)
     {   
@@ -4595,7 +4618,7 @@ function renderSupplyRecordList($data,$action){
           '".$TR."',
           '".$ACC."',      
           '<button ".$show." onclick=cancelSupplyRecord(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\",\"".$action."\") >Cancel</button>',
-          
+          '<button ".$show." onclick=archiveSupplyRecord(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\",\"".$action."\") >Archive</button>'
 
           ],";
     }
@@ -4675,7 +4698,8 @@ function renderSupplyRecordList($data,$action){
           '".$RCV."',
           '".$TR."',
           '".$ACC."',                                      
-          '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>'
+          '<button ".$show." onclick=cancelReception(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\") >Cancel</button>',
+          '<button ".$show." onclick=archiveSupplyRecord(\"".$_SESSION["USER"]["login"]."\",\"".$item["ID"]."\",\"".$item["PONUMBER"]."\",\"".$action."\") >Archive</button>'
           ],";
     }
     $dataSet2 = rtrim($dataSet2,",");        
