@@ -3522,7 +3522,6 @@ function createGroupedPurchases()
 	}	
 }
 
-
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 
@@ -3625,7 +3624,6 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
 	$items = json_decode($json["ITEMS"],true);
-	
 	$suffix = "";
 	$suffix2 = "";
 	$tableName = "";
@@ -4398,6 +4396,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 });
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
+	
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
@@ -4418,6 +4417,9 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$suffix = " AND USERID = ".$userid;
 	}
 
+
+
+
 	$errors = array();
 	$AUTHOR = "";
 	if(isset($json["AUTHOR"]))
@@ -4427,7 +4429,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	{
 
 		$item["PRODUCTID"] = $json["PRODUCTID"];		
-		if(isset($json["SPECIALQTY"])){
+		if(isset($json["SPECIALQTY"]) && $json["SPECIALQTY"] != ""){
 			$item["SPECIALQTY"] = $json["SPECIALQTY"];
 			$item["REASON"] = $json["REASON"];		
 		}
@@ -4441,6 +4443,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	{		
 		if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 			continue;
+
 
 		if ($type == "RESTOCK")
 		{			
@@ -4558,6 +4561,9 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		}
 
 	}	
+
+
+
 	if (count($errors) > 0)
 		$data["data"] = $errors;
 	$data["result"] = "OK";
