@@ -964,14 +964,13 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($item != null)
 	{
 		if ($type == "ORDERSTATS"){
-			$stats = orderStatistics($barcode,,"PURCHASE");
+			$stats = orderStatistics($barcode,"PURCHASE");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
-		else if ($type == "RESTOCKSTATS"){
+		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode,"RESTOCK");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
-			$item["DECISION"] = $stats["DECISION"];
-		}
+			$item["DECISION"] = $stats["DECISION"];		
 		}else if ($type == "PROMOSTATS"){
 			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
 			$item["STATUS"] = $stats["status"];
