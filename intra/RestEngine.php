@@ -18,7 +18,8 @@ class RestEngine
 	}
 
 	static function POST($uri, $data, $headers = array())
-	{			
+	{		
+		;
 		$response = \Httpful\Request::post($uri)
 				->sendsJson()
 				->body($data)
