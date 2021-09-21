@@ -964,9 +964,14 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($item != null)
 	{
 		if ($type == "ORDERSTATS"){
-			$stats = orderStatistics($barcode);
+			$stats = orderStatistics($barcode,,"PURCHASE");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
+		else if ($type == "RESTOCKSTATS"){
+			$stats = orderStatistics($barcode,"RESTOCK");
+			$item["ORDERQTY"] = $stats["FINALQTY"];		
+			$item["DECISION"] = $stats["DECISION"];
+		}
 		}else if ($type == "PROMOSTATS"){
 			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
 			$item["STATUS"] = $stats["status"];
@@ -4460,7 +4465,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 		if ($type == "RESTOCK")
 		{			
-				$orderstats = orderStatistics($item["PRODUCTID"]);
+				$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");
 
 				if(isset($item["SPECIALQTY"]) && isset($item["REASON"]) && $item["SPECIALQTY"] != null && $item["SPECIALQTY"] != ""  && $item["REASON"] != null && $item["REASON"] != "")
 				{
@@ -7670,7 +7675,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
 
-	$stats = orderStatistics($barcode);
+	$stats = orderStatistics($barcode,"PURCHASE");
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $stats;
