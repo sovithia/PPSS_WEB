@@ -6154,6 +6154,40 @@ $app->get('/penalty',function($request,Response $response) {
 
 
 // CREATED
+$app->get('/depreciationlabelneed', function($request,Response $response) {  
+	$db = getInternalDatabase();	
+	$blueDB = getDatabase();
+
+	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE NEEDLABEL <> 'NO'";
+	$req = $db->prepare($sql);
+
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$tmp = array();
+	foreach($items as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->prepare($req);
+		$res = $req->fetch(PDO::FETCH_ASSOC);		
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($tmp,$item);
+	} 
+
+	$resp["result"] = "OK";
+	$resp["data"] = $tmp;
+	$response = $response->withJson($resp);
+	return $response;
+
+});
+
+$app->put('/depreciationlabelneed/{id}', function($request,Response $response) {  
+	$db = getInternalDatabase();	
+	$sql = "UPDATE DEPRECIATIONITEM SET NEEDLABEL = 'NO' WHERE ID = ?";
+	$req = $db->prepare($sql);
+
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
   
 //CLEARANCETOOMUCH,CLEARANCELOWSELL,CLEARANCEDAMAGED, EXPIREPROMOTION, DAMAGEWASTE EXPIREWASTE
 $app->get('/depreciation', function($request,Response $response) {
