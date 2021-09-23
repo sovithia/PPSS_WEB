@@ -2219,49 +2219,6 @@ function GenerateCategoryNumberByName($category){
 								   SUPPLY RECORD
 								   SUPPLY RECORD                               */
 
-function pictureRecord($base64Str,$type,$id){
-	
-	if ($type == "INVOICES")
-	{
-		$filename = "./img/supplyrecords_invoices/";	
-		$invoices = json_decode($base64Str,true);			
-		$count = 1;
-		if ($invoices != null)
-		{
-			foreach($invoices as $invoice)
-			{
-				file_put_contents($filename."INV_".$id."_".$count.".png", base64_decode($invoice));	
-				$count++;
-			}			
-		}
-	}
-	else 
-	{
-		$imageData = base64_decode($base64Str);
-		if ($type == "VAL")
-			$filename = "./img/supplyrecords_signatures/VAL_".$id.".png";
-		else if ($type == "PCH")
-			$filename = "./img/supplyrecords_signatures/PCH_".$id.".png";
-		else if ($type == "WH")
-			$filename = "./img/supplyrecords_signatures/WH_".$id.".png";
-		else if ($type == "RCV")
-			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";
-		else if ($type == "ACC")
-			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
-
-		else if ($type == "PROMO_LEFT")
-			$filename = "./img/promo_signatures/LEFT_".$id.".png";
-		else if ($type == "PROMO_RIGHT")
-			$filename = "./img/promo_signatures/RIGHT_".$id.".png";
-		
-		else if ($type == "WASTE_LEFT")
-			$filename = "./img/waste_signatures/LEFT_".$id.".png";
-		else if ($type == "WASTE_RIGHT")
-			$filename = "./img/waste_signatures/RIGHT_".$id.".png";
-		
-		file_put_contents($filename, $imageData);
-	}	
-}
 
 function createSupplyRecordForPO(){
 	$db = getDatabase();		
@@ -6294,13 +6251,12 @@ $app->post('/depreciation', function($request,Response $response) {
 	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastID);
 	foreach($items as $item)
 	{
-		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE"){
+		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE")
 			$type = "WASTE";
-		}else
+		else
 			$type = "PROMO";
-		}
+		
 		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";
-
 		$req = $db->prepare($sql);
 		$req->execute(array($item["EXPIRATION"],$item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -6358,7 +6314,6 @@ $app->post('/depreciation', function($request,Response $response) {
 		$sql = "DELETE FROM DEPRECIATIONPROMOPOOL";
 	$req = $db->prepare($sql);
 	$req->execute(array());	
-
 
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
