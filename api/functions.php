@@ -2,6 +2,129 @@
 
 require_once 'RestEngine.php';
 
+function countOccurence($id,$type)
+{
+	if ($type == "WASTEPOOL")
+		$path = "./img/wastepool_proofs/";
+	else if ($type == "WASTE")
+		$path = "./img/waste_proofs/";
+	else if ($type == "PROMOPOOL")
+		$path = "./img/promopool_proofs/";
+	else if ($type == "PROMO")
+		$path = "./img/promo_proofs/";
+
+	$count = 1;
+	$nb = 0;
+
+	while(file_exists($path.$id."_".$count.".png")){
+		$nb++;
+		$count++;
+	}
+	return $nb;
+}
+
+function movePicture($depreciationItemId,$poolitemId,$type)
+{
+	if($type == "WASTE")
+	{	
+
+			$count = 1;			
+			$startnb = countOccurence("WASTE",$depreciationItemId) + 1;
+			while(file_exists("./img/wastepool_proofs/".$poolitemId."_".$count.".png"))
+	    {	        		       
+	       rename("./img/wastepool_proofs/".$poolitemId."_".$count.".png",
+	        		"./img/waste_proofs/".$depreciationItemId."_".$startnb.".png");		          
+	       $startnb++;	      	      	        
+	      $count++;        
+	    }
+			
+	}
+	else if ($type == "PROMO")
+	{
+		  $count = 1;		
+		  $startnb = countOccurence("PROMO",$depreciationItemId) + 1;	
+		  while(file_exists("./img/promopool_proofs/".$poolitemId."_".$count.".png"))
+	    {	        		       
+	       rename("./img/promopool_proofs/".$poolitemId."_".$count.".png",
+	        		"./img/promo_proofs/".$depreciationItemId."_".$startnb.".png");		          
+	       $startnb++;	      	      	        
+	      $count++;        
+	    }		
+	}
+}
+
+function pictureRecord($base64Str,$type,$id){
+	
+	if ($type == "INVOICES")
+	{
+		$filename = "./img/supplyrecords_invoices/";	
+		$invoices = json_decode($base64Str,true);			
+		$count = 1;
+		if ($invoices != null)
+		{
+			foreach($invoices as $invoice)
+			{
+				file_put_contents($filename.$id."_".$count.".png", base64_decode($invoice));	
+				$count++;
+			}			
+		}
+	}
+	else if ($type == "WASTEPOOLPROOFS")
+	{
+		$filename = "./img/wastepool_proofs/";	
+		$proofs = json_decode($base64Str,true);	
+		$count = 1;		
+		if ($proofs != null)
+		{
+			foreach($proofs as $proof)
+			{
+				file_put_contents($filename.$id."_".$count.".png", base64_decode($proof));	
+				$count++;
+			}			
+		}
+	}
+	else if ($type == "PROMOPOOLPROOFS")
+	{
+		$filename = "./img/promopool_proofs/";	
+		$proofs = json_decode($base64Str,true);			
+		$count = 1;
+		if ($proofs != null)
+		{
+			foreach($proofs as $proof)
+			{
+				file_put_contents($filename.$id."_".$count.".png", base64_decode($proof));	
+				$count++;
+			}			
+		}
+	}
+	else 
+	{
+		$imageData = base64_decode($base64Str);
+		if ($type == "VAL")
+			$filename = "./img/supplyrecords_signatures/VAL_".$id.".png";
+		else if ($type == "PCH")
+			$filename = "./img/supplyrecords_signatures/PCH_".$id.".png";
+		else if ($type == "WH")
+			$filename = "./img/supplyrecords_signatures/WH_".$id.".png";
+		else if ($type == "RCV")
+			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";
+		else if ($type == "ACC")
+			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
+
+		else if ($type == "DEPRECIATION_CREATOR")
+			$filename = "./img/depreciation_signatures/CRE_".$id.".png";
+		else if ($type == "DEPRECIATION_VALIDATOR")
+			$filename = "./img/depreciation_signatures/VAL_".$id.".png";
+		else if ($type == "DEPRECIATION_WITNESS")
+			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
+		else if ($type == "DEPRECIATION_CLEARER")
+			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
+		
+		file_put_contents($filename, $imageData);
+	}	
+}
+
+
 function SELECTALL($sql,$params = array(),$database = "MAIN")
 {
 	if (posix_uname()["machine"] == "x86_64")
@@ -579,18 +702,12 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
 	if($res == false)
-		return "NOT FOUND";	
+		return null;	
+	else{
+		$RCVDATE = $res["TRANDATE"];
+		$RCVQTY = $res["TRANQTY"]; //**	
+	}
 
-	$sql = "SELECT ACTIVE FROM ICPRODUCT WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($barcode));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res == null || $res["ACTIVE"] == 0)
-		return "INACTIVE";
-	
-	$RCVDATE = $res["TRANDATE"];
-	$RCVQTY = $res["TRANQTY"]; //**	
-	
 	 
 
 	$begin = $RCVDATE;
@@ -850,7 +967,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if (!isset($res["SIZE"]))
-			return $data;
+			return null;
 
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];

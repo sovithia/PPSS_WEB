@@ -6249,6 +6249,17 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 
 	$newItems = array();
 	foreach($items as $item){
+				if($item["TYPE"] == "EXPIREWASTE" || $item["TYPE"] == "DAMAGEWASTE")
+			$imgfolder = "./img/wastepool_proofs/";		
+		else
+			$imgfolder = "./img/promopool_proofs/";		
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists($imgfolder.$item["ID"]."_".$count.".png")){
+	      $nbproofs++;
+	      $count++;        	    
+	  }
+	  $item["NBPROOFS"] = $nbproofs;
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -6280,8 +6291,14 @@ $app->post('/depreciation', function($request,Response $response) {
 	$req->execute(array($type,$author,"CREATED"));
 	$lastId = $db->lastInsertId();
 
+	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastID);
 	foreach($items as $item)
 	{
+		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE"){
+			$type = "WASTE";
+		}else
+			$type = "PROMO";
+		}
 		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";
 
 		$req = $db->prepare($sql);
@@ -6313,6 +6330,7 @@ $app->post('/depreciation', function($request,Response $response) {
 							  VALUES (?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$lastId));			
+				$depreciationItemId =  $db->lastInsertId();
 		}
 		else
 		{
@@ -6327,7 +6345,9 @@ $app->post('/depreciation', function($request,Response $response) {
 							WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$PRODUCTID,$EXPIRATION));		
+			$depreciationItemId =  $res["ID"];
 		}
+		movePicture($depreciationItemId,$item["ID"],$type);
 	}
 
 	$resp = array();
@@ -6352,10 +6372,16 @@ $app->put('/depreciation', function($request,Response $response) {
 	$id = $json["ID"];
 	$status = $json["STATUS"];
 	$author = $json["AUTHOR"];	
-	if ($status == "VALIDATED")
+	if ($status == "VALIDATED"){
 		$sql = "UPDATE DEPRECIATION SET STATUS = ?, VALIDATOR = ? WHERE ID = ?";
-	else if ($status == "CLEARED")		
+		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);
+	  pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
+	}
+	else if ($status == "CLEARED"){
 		$sql = "UPDATE DEPRECIATION SET STATUS = ?, CLEARER = ? WHERE ID = ?";
+		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
+	}		
+		
 			
 	$req = $db->prepare($sql);
 	$req->execute(array($status,$author,$id));		
@@ -6461,6 +6487,13 @@ $app->get('/depreciationwastepool/{userid}', function($request,Response $respons
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
 	$newItems = array();
 	foreach($pool as $item){
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists("./img/wastepool_proofs/".$item["ID"]."_".$count.".png")){       							     
+	      $nbproofs++;
+	      $count++;        	    
+	  }
+	  $item["NBPROOFS"] = $nbproofs;
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -6489,6 +6522,13 @@ $app->get('/depreciationpromopool/{userid}', function($request,Response $respons
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
 	$newItems = array();
 	foreach($pool as $item){
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists("./img/wastepool_proofs/".$item["ID"]."_".$count.".png")){       							     
+	      $nbproofs++;
+	      $count++;        	    
+	  }
+	  $item["NBPROOFS"] = $nbproofs;
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -6534,6 +6574,8 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
 		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"]));	
 		$result["result"] = "OK";
+		if (isset($json["PROOFS"]))
+			pictureRecord($json["PROOFS"],"PROMO",$db->lastInsertId());
 	}
 	else{
 		$result["result"] = "KO";
@@ -6567,6 +6609,8 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 			$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
 		$result["result"] = "OK";
+		if (isset($json["PROOFS"]))
+			pictureRecord($json["PROOFS"],"WASTE",$db->lastInsertId());
 	}
 	else{
 		$result["message"] = "Waste needs to be of same type";
