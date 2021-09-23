@@ -792,8 +792,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$item["STOREBIN2"] = "";	
 		}
 	
-		$item["result"] = "OK";
-		$item["PICTURE"] = loadPicture($barcode,300,true);		
+		$item["result"] = "OK";		
 		if ($check == "WH1" || $check == "WH2")
 		{							
 			$inDB = getInternalDatabase();
@@ -928,8 +927,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		}else{
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
-		}
-		$item["PICTURE"] = loadPicture($barcode,300,true);		
+		}		
 	}
 	else{
 		$packInfo = packLookup($barcode);
@@ -4474,7 +4472,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 						$req->execute(array($item["PRODUCTID"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
 						$orderstats["FINALQTY"] = $item["SPECIALQTY"];
 				}
-				else if ($orderstats == null){
+				else if ($orderstats == "NOT FOUND"){
 
 						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
 						$itemerror["PRODUCTNAME"] = "N/A";
@@ -4483,6 +4481,15 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 						$itemerror["DECISION"] = "PRODUCT NOT FOUND";
 						$errors[$item["PRODUCTID"]] = $itemerror;		
 						$allow = false;			
+				}
+				else if ($orderstats == "INACTIVE"){
+						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+						$itemerror["PRODUCTNAME"] = "N/A";
+						$itemerror["PACKINGNOTE"] = "N/A";
+						$itemerror["VENDNAME"] = "N/A";
+						$itemerror["DECISION"] = "PRODUCT INACTIVE";
+						$errors[$item["PRODUCTID"]] = $itemerror;		
+						$allow = false;		
 				}
 				else if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats["DECISION"] == "INCREASEQTY")			
 					$allow = true;				

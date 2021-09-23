@@ -579,12 +579,18 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
 	if($res == false)
-		return null;	
-	else{
-		$RCVDATE = $res["TRANDATE"];
-		$RCVQTY = $res["TRANQTY"]; //**	
-	}
+		return "NOT FOUND";	
 
+	$sql = "SELECT ACTIVE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == null || $res["ACTIVE"] == 0)
+		return "INACTIVE";
+	
+	$RCVDATE = $res["TRANDATE"];
+	$RCVQTY = $res["TRANQTY"]; //**	
+	
 	 
 
 	$begin = $RCVDATE;
@@ -844,7 +850,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if (!isset($res["SIZE"]))
-			return null;
+			return $data;
 
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
