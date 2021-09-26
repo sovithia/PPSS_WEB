@@ -8,13 +8,6 @@ api/img/.DS_Store
 api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
 api/img/requestaction/*
-api/img/depreciation_signatures/*
-api/img/promo_proofs/*
-api/img/promo_signatures/*
-api/img/promopool_proofs/*
-api/img/waste_proofs/*
-api/img/waste_signatures/*
-api/img/wastepool_proofs/*
 intra/data.xlsx
 intra/data.xlsx
 api/tmp.png
