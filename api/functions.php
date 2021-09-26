@@ -2,7 +2,7 @@
 
 require_once 'RestEngine.php';
 
-function countOccurence($id,$type)
+function countOccurence($type,$id)
 {
 	if ($type == "WASTEPOOL")
 		$path = "./img/wastepool_proofs/";
@@ -593,7 +593,7 @@ function calculateSaleSpeed($barcode,$begin,$end,$qty){
 	$sql = "SELECT QTY,POSDATE FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode,$begin,$end));
-	$qtyToReach = $qty * 0.7;
+	$qtyToReach = $qty * 0.75;
 	$results = $req->fetchAll(PDO::FETCH_ASSOC);
 	$currentQty = 0;
 	$day = 0;
@@ -1133,13 +1133,10 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 	$PRODUCTNAME = "";
 	$today = date("Y-m-d");
 	$db=getDatabase();
-	$sql = "INSERT INTO ICNEWPROMOTION 
-				(DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,
-				SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,
-	1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
+	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
 
 }
 

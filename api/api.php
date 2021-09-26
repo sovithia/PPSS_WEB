@@ -6248,7 +6248,7 @@ $app->post('/depreciation', function($request,Response $response) {
 	$req->execute(array($type,$author,"CREATED"));
 	$lastId = $db->lastInsertId();
 
-	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastID);
+	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
 	foreach($items as $item)
 	{
 		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE")
@@ -6277,8 +6277,9 @@ $app->post('/depreciation', function($request,Response $response) {
 		$PERCENTPROMO = isset($item["PERCENTPROMO"]) ? $item["PERCENTPROMO"] : "";
 
 
-		if ($LINKTYPE == "SYSTEMLINK")				
-			attachPromotion($PRODUCTID,$penalty["percent"],$STARTTIME,$ENDTIME,$author);
+		if ($LINKTYPE == "SYSTEMLINK" && $STARTTIME != "N/A" && $ENDTIME != "N/A")				
+			attachPromotion($PRODUCTID,$PERCENTPROMO,$STARTTIME,$ENDTIME,$author);
+
 
 		if ($res == false)
 		{							
