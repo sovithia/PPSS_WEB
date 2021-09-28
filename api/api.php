@@ -965,10 +965,12 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$stats = orderStatistics($barcode,"PURCHASE");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
+			$item["LASTRCVQTY"] = $stats["RCVQTY"];
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode,"RESTOCK");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
-			$item["DECISION"] = $stats["DECISION"];		
+			$item["DECISION"] = $stats["DECISION"];	
+			$item["LASTRCVQTY"] = $stats["RCVQTY"];	
 		}else if ($type == "PROMOSTATS"){
 			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
 			$item["STATUS"] = $stats["status"];

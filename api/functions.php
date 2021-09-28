@@ -64,7 +64,7 @@ function pictureRecord($base64Str,$type,$id){
 		{
 			foreach($invoices as $invoice)
 			{
-				file_put_contents($filename.$id."_".$count.".png", base64_decode($invoice));	
+				file_put_contents($filename."INV_".$id."_".$count.".png", base64_decode($invoice));	
 				$count++;
 			}			
 		}
@@ -701,8 +701,11 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
-	if($res == false)
-		return null;	
+	if($res == false){
+			$stats["FINALQTY"] = 0;		
+			$stats["DECISION"] = "NOTFOUND";
+		return $stats;
+	}
 	else{
 		$RCVDATE = $res["TRANDATE"];
 		$RCVQTY = $res["TRANQTY"]; //**	
@@ -790,16 +793,11 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
 
-	$MARGIN = (int)$RCVQTY * 0.05;
+	$MARGIN = (int)$RCVQTY * 0.2;
 
-	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 
-	{
-		$stats["FINALQTY"] = 0;
-		$stats["SUSPICIOUS"] = "YES";
-		$stats["DECISION"] = "INQUIRE";
-	}
-	else 
-	{		
+	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		
+		$stats["SUSPICIOUS"] = "YES";		
+	
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
 			if($stats["SALESPEED"] < 30){
@@ -928,7 +926,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 				$stats["DECISION"] = "TOOEARLY";					
 			}	
 		}
-	}
+	
 	return $stats;	
 }
 
