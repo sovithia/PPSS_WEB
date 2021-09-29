@@ -3742,6 +3742,35 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	return $response;
 });
 
+$app->put('/itemrequest/{id}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$id = $request->getAttribute('id');
+
+	$qty = $json["SPECIALQTY"];
+	$reason = $json["REASON"];
+	$author = $json["AUTHOR"];
+
+	if (isset($json["SPECIALQTY"]) && isset($json["REASON"]))
+	{
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$res = $req->execute(array($id));
+
+
+		$oldqty = $res["REQUEST_QUANTITY"];
+		$qtychangehistory = $res["QTYCHANGEHISTORY"] . "|" . $oldqty ;
+		$qtychangereason = $res["QTYCHANGEREASON"] . "|" . $author . " " . $reason;
+
+		$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = ?, QTYCHANGE_REASON = ?, QTYCHANGE_HISTORY = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$res->execute(array($qty,$qtychangehistory,$qtychangereason,$id));
+	}
+	$data["result"] = "OK";
+	$response = $response->withJson($data);
+	return $response;
+});
+
 function transferItems($items, $author,$type = "TRANSFER"){	
 	$db = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -4609,7 +4638,6 @@ $app->put('/itemrequestrestockpool/{id}', function(Request $request,Response $re
 	$response = $response->withJson($data);
 	return $response;
 });
-
 
 // UPDATE
 $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
