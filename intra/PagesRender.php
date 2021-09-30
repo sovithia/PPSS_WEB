@@ -4193,14 +4193,45 @@ function renderItemRequestRestockCreate($data)
 
             <div class='col s12 m8 l9'>
               <div class='row margin'>
-              <form class='col s12' method='POST' enctype=multipart/form-data>
-                
-              
+              <form class='col s12' method='POST' action='pretemplate.php' enctype=multipart/form-data>                              
+              <div class='row'>
+                  <div class='input-field col s12'>     
+                    <center>              
+                      <input id='productid' name='filename' type='file' >                      
+                      <center><a href='./Resources/PreTemplate.xlsx' target='_blank'>Download pre-template</a></center><br>
+                    </center>                    
+                  </div>
+              </div>
+
+
+             
+              <div class='row'>    
+                     <div class='input-field col s12'>             
+                       <input type='hidden' name='display' value='".$_GET["display"]."'>
+                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
+                       <input type='hidden' name='type' value='".$_GET["type"]."'>                       
+                      <table>
+                        <tr>                          
+                          <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Phase 1 Template'></td>
+                        </tr>
+                       </table>
+                      <br><br>
+                     </div>
+                     
+                </div>
+            </form>
+              </div>
+             </div> 
+
+
+            <div class='col s12 m8 l9'>
+              <div class='row margin'>
+              <form class='col s12' method='POST' enctype=multipart/form-data>                              
               <div class='row'>
                   <div class='input-field col s12'>     
                     <center>              
                       <input id='productid' name='filename' type='file' >
-                      <label for='productid' class='center-align'>Template upload</label>               
+                      <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
                     </center>
                   </div>
               </div>
@@ -4226,7 +4257,7 @@ function renderItemRequestRestockCreate($data)
               </div>
              </div> 
 
-             <center><a href='./Resources/Template.xlsx' target='_blank'>Download template</a></center><br>
+             
 
              <div id='errordiv' style='border:1px solid black' >";
              if (count($errors) > 0)

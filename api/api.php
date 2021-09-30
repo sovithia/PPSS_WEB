@@ -3764,7 +3764,7 @@ $app->put('/itemrequest/{id}', function(Request $request,Response $response) {
 
 		$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = ?, QTYCHANGE_REASON = ?, QTYCHANGE_HISTORY = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
-		$res->execute(array($qty,$qtychangehistory,$qtychangereason,$id));
+		$req->execute(array($qty,$qtychangehistory,$qtychangereason,$id));
 	}
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
@@ -4420,9 +4420,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$suffix = " AND USERID = ".$userid;
 	}
 
-
-
-
 	$errors = array();
 	$AUTHOR = "";
 	if(isset($json["AUTHOR"]))
@@ -4460,6 +4457,16 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 						$req->execute(array($item["PRODUCTID"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
 						$orderstats["FINALQTY"] = $item["SPECIALQTY"];
 				}
+				else if ($item["REQUESTQTY"] > $orderstats["FINALQTY"])
+				{
+						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+						$itemerror["PRODUCTNAME"] = "N/A";
+						$itemerror["PACKINGNOTE"] = "N/A";
+						$itemerror["VENDNAME"] = "N/A";
+						$itemerror["DECISION"] = "MAXIMUM EXCEEDED";
+						$errors[$item["PRODUCTID"]] = $itemerror;		
+						$allow = false;	
+				}
 				else if ($orderstats == "NOT FOUND"){
 
 						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
@@ -4478,7 +4485,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 						$itemerror["DECISION"] = "PRODUCT INACTIVE";
 						$errors[$item["PRODUCTID"]] = $itemerror;		
 						$allow = false;		
-				}
+				}				
 				else if ($orderstats["DECISION"] == "SAMEQTY" || $orderstats["DECISION"] == "DECREASEQTY" ||  $orderstats["DECISION"] == "INCREASEQTY")			
 					$allow = true;				
 				else
@@ -4522,13 +4529,13 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					$req = $db->prepare($sql);
 					$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
 				}
-				else if ($type == "RESTOCK"){
-
+				else if ($type == "RESTOCK")
+				{
 					if ($allow == true)
 					{
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$orderstats["FINALQTY"],$json["LISTNAME"]));		
+						$req->execute(array($item["PRODUCTID"],$item["REQUESTQTY"],$json["LISTNAME"]));		
 					}					
 				}
 				else 
@@ -4560,7 +4567,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					{						
 						$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
 						$req = $db->prepare($sql);
-						$req->execute(array($orderstats["FINALQTY"],$item["PRODUCTID"],$json["LISTNAME"]));		
+						$req->execute(array($orderstats["REQUESTQTY"],$item["PRODUCTID"],$json["LISTNAME"]));		
 					}
 			}
 			else

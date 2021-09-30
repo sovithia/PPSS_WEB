@@ -1,5 +1,3 @@
-
-
 <?php 
 ini_set('memory_limit', '-1');
 ini_set('post_max_size','1000M');
@@ -304,10 +302,10 @@ function getData($display,$entity,$param)
       $count = 0;
       foreach ($worksheet->getRowIterator() AS $row) 
       {
-          if ($count == 0){
-              $count++;
-              continue;
-          }
+        if ($count == 0){
+            $count++;
+            continue;
+        }
         $data = array();            
         $cellIterator = $row->getCellIterator();
         $cellIterator->setIterateOnlyExistingCells(FALSE); // This loops through all cells,
@@ -316,13 +314,18 @@ function getData($display,$entity,$param)
           {        
               if ($cell->getColumn() == "A")
                   $data["PRODUCTID"] = $cell->getValue();   
-              if ($cell->getColumn() == "B")
-                  $data["SPECIALQTY"] = $cell->getValue();   
               if ($cell->getColumn() == "C")
-                   $data["REASON"] = $cell->getValue();   
+                  $data["MAXQTY"] = $cell->getValue();   
+              if ($cell->getColumn() == "D")
+                  $data["REQUESTQTY"] = $cell->getValue();   
+              if ($cell->getColumn() == "E")
+                  $data["SPECIALQTY"] = $cell->getValue();   
+              if ($cell->getColumn() == "F")
+                   $data["REASON"] = $cell->getValue();                 
           }
+
           array_push($allData,$data);
-       } 
+      } 
 
       if ($_POST["action"] == 'Template Add(A)')
         $datasend["LISTNAME"] = "A";
