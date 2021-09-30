@@ -2,6 +2,16 @@
 
 require_once 'RestEngine.php';
 
+function isset2($variable)
+{
+	if ($variable == null)
+		return false;
+	if ($variable == "")
+		return false;
+
+	return true;
+}
+
 function countOccurence($type,$id)
 {
 	if ($type == "WASTEPOOL")
@@ -696,14 +706,23 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
+
 	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
 	if($res == false){
-			$stats["FINALQTY"] = 0;		
-			$stats["DECISION"] = "NOTFOUND";
+
+		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$res = $req->execute(array($barcode));
+		$stats["FINALQTY"] = 0;		
+		if ($res == false)
+			$stats["DECISION"] = "NOTFOUND";			
+		else 
+			$stats["DECISION"] = "NEVER RECEIVED";
+			
 		return $stats;
 	}
 	else{
@@ -733,18 +752,20 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$sql = "SELECT ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
+
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
+	$PRICE = $res["PRICE"];
 	if($type == "RESTOCK"){
-		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE WHERE PRODUCTID = ? AND LOCID = 'WH1'";
+		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
 		$req = $db->prepare($sql);
-		$req->execute(PDO::FETCH_ASSOC);
+		$req->execute(array($barcode));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$ONHAND = $res["LOCONHAND"];
 	}
 	else 
 		$ONHAND = $res["ONHAND"]; //**	
-	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
-	$PRICE = $res["PRICE"];
+	
 
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**

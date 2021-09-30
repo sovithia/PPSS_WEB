@@ -313,7 +313,8 @@ class Service
 		if ($option != "" && (substr($option,0,1) != "?"))
 			$option = "/".$option;
 	
-		
+		error_log(Service::modelRoute[$model] . $option);
+
 		$resp = RestEngine::POST(Service::modelRoute[$model] . $option,$data,$header);	
 			
 		if (isset($resp["data"])) 

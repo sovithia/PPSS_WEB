@@ -311,20 +311,17 @@ function getData($display,$entity,$param)
         $cellIterator->setIterateOnlyExistingCells(FALSE); // This loops through all cells,
         $cells = [];    
         foreach ($cellIterator as $cell) 
-          {        
-              if ($cell->getColumn() == "A")
-                  $data["PRODUCTID"] = $cell->getValue();   
-              if ($cell->getColumn() == "C")
-                  $data["MAXQTY"] = $cell->getValue();   
-              if ($cell->getColumn() == "D")
+        {        
+              if ($cell->getColumn() == "A" && $cell->getValue() != "")
+                  $data["PRODUCTID"] = $cell->getValue();                             
+              if ($cell->getColumn() == "C" && $cell->getValue() != "")                  
                   $data["REQUESTQTY"] = $cell->getValue();   
-              if ($cell->getColumn() == "E")
+              if ($cell->getColumn() == "E" && $cell->getValue() != "")
                   $data["SPECIALQTY"] = $cell->getValue();   
-              if ($cell->getColumn() == "F")
+              if ($cell->getColumn() == "F" && $cell->getValue() != "")
                    $data["REASON"] = $cell->getValue();                 
-          }
-
-          array_push($allData,$data);
+        }
+        array_push($allData,$data);
       } 
 
       if ($_POST["action"] == 'Template Add(A)')

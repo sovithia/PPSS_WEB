@@ -4400,6 +4400,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	
+
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
@@ -4424,10 +4425,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$AUTHOR = "";
 	if(isset($json["AUTHOR"]))
 		$AUTHOR = $json["AUTHOR"];
-
 	if (!isset($json["ITEMS"]))
 	{
-
 		$item["PRODUCTID"] = $json["PRODUCTID"];		
 		if(isset($json["SPECIALQTY"]) && $json["SPECIALQTY"] != ""){
 			$item["SPECIALQTY"] = $json["SPECIALQTY"];
@@ -4441,21 +4440,32 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	foreach($items as $item)
 	{		
+
 		if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 			continue;
-
 
 		if ($type == "RESTOCK")
 		{			
 				$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");
 
-				if(isset($item["SPECIALQTY"]) && isset($item["REASON"]) && $item["SPECIALQTY"] != null && $item["SPECIALQTY"] != ""  && $item["REASON"] != null && $item["REASON"] != "")
+				if(isset($item["SPECIALQTY"]) && isset($item["REASON"]))
 				{
 						$allow = true;			
 						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,QUANTITY,REASON,USER) VALUES (?,?,?,?)";
 						$req = $db->prepare($sql);
 						$req->execute(array($item["PRODUCTID"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
 						$orderstats["FINALQTY"] = $item["SPECIALQTY"];
+				}
+				else if(isset($item["SPECIALQTY"]) &&  !isset($item["REASON"]))
+				{
+						$itemerror["PRODUCTID"] = $item["PRODUCTID"];
+						$itemerror["PRODUCTNAME"] = "N/A";
+						$itemerror["PACKINGNOTE"] = "N/A";
+						$itemerror["VENDNAME"] = "N/A";
+						$itemerror["DECISION"] = "MISSING REASON";
+						$errors[$item["PRODUCTID"]] = $itemerror;		
+						$allow = false;	
+
 				}
 				else if ($item["REQUESTQTY"] > $orderstats["FINALQTY"])
 				{
@@ -4535,7 +4545,11 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 					{
 						$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,LISTNAME) values(?,?,?)";
 						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["REQUESTQTY"],$json["LISTNAME"]));		
+						if (isset($item["SPECIALQTY"]))
+							$theQty = $item["SPECIALQTY"];						
+						else
+							$theQty = $item["REQUESTQTY"];
+						$req->execute(array($item["PRODUCTID"],$theQty,$json["LISTNAME"]));		
 					}					
 				}
 				else 
@@ -4564,11 +4578,15 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			else if ($type == "RESTOCK")
 			{										
 				if ($allow == true)
-					{						
-						$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
-						$req = $db->prepare($sql);
-						$req->execute(array($orderstats["REQUESTQTY"],$item["PRODUCTID"],$json["LISTNAME"]));		
-					}
+				{						
+					$sql = "UPDATE ITEMREQUESTRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE PRODUCTID = ? AND LISTNAME = ?";
+					$req = $db->prepare($sql);
+					if (isset($item["SPECIALQTY"]))
+						$theQty = $item["SPECIALQTY"];						
+					else
+						$theQty = $item["REQUESTQTY"];
+					$req->execute(array($theQty,$item["PRODUCTID"],$json["LISTNAME"]));		
+				}
 			}
 			else
 			{		
@@ -4580,8 +4598,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		}
 
 	}	
-
-
 
 	if (count($errors) > 0)
 		$data["data"] = $errors;
@@ -7745,8 +7761,6 @@ $app->put('/returnrecord',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
-
 
 
 $app->get('/orderstats/{barcode}',function($request,Response $response) {
