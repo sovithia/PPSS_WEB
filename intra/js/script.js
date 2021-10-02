@@ -228,7 +228,7 @@ var zkSignature = (function () {
 							else if (action == "create") // POST ITEMREQUESTACTION
 							{															
 								var type = document.getElementById('type').value;
-								
+								var nb = 0;
 								for(var i=0;i<fields.length;i++)
 			              		{ 			              		
 					                if (fields[i].name == 'idfield')
@@ -237,20 +237,25 @@ var zkSignature = (function () {
 					                  oneItem['PRODUCTID'] = fields[i].value;  							                  								
 					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;		
 
-					                  alert('coucou');	
-					                  if (oneItem['REQUEST_QUANTITY'] > document.getElementById('decisionqty_' + fields[i].value).value)
-					                  {
-					                  	alert("Quantity for " + oneItem['REQUEST_QUANTITY'] + "exceed maximum, ignored")
-					                  	continue;
-					                  }
-					                  
 					                  if (document.getElementById('specialqty_' + fields[i].value) != null && document.getElementById('specialqty_' + fields[i].value).value != null)
 					                  	oneItem['SPECIALQTY'] = document.getElementById('specialqty_' + fields[i].value).value;					                  					                  
 					                  if (document.getElementById('reason_' + fields[i].value) != null && document.getElementById('reason_' + fields[i].value).value != null)
 					                  	oneItem['REASON'] = document.getElementById('reason_' + fields[i].value).value;
 
-					                  allItems[fields[i].value] = oneItem; 
+					                  if (oneItem['SPECIALQTY'] != "" && oneItem["REASON"] == ""){
+					                  	alert("Reason for " + oneItem['PRODUCTID'] + " missing, ignored");
+					                  	continue;
+					                  }						                  
+									  if ((oneItem['SPECIALQTY'] == "" || oneItem["REASON"] == "") &&
+									  	 (oneItem['REQUEST_QUANTITY'] > document.getElementById('decisionqty_' + fields[i].value).value ||  oneItem['REQUEST_QUANTITY'] == "0"))
+									  {
+					                  	alert("Quantity for " + oneItem['PRODUCTID'] + " invalid, ignored");
+					                  	continue;
+					                  }						                  	
+					                  					                 
 
+					                  allItems[fields[i].value] = oneItem; 
+					                  nb++;
 					                }
 			             		}  
 			             										
@@ -264,20 +269,28 @@ var zkSignature = (function () {
 		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "TYPE" : type,
 		   					 	  			  "LISTNAME" : listname }; 
-
 								
-								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction'; 
-		   						var xmlhttp = new XMLHttpRequest();	    						    					
-		    					xmlhttp.onreadystatechange = function () {
-				                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
-				                        alert('ItemRequest created')
-				                        document.getElementById('sendBtn').style.display = 'none';
-				                        
-				                      }
-				                 }
-								xmlhttp.open("POST", URL,false);
-		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
+								alert(nb);
+								
+								if(nb == 0){
+									alert("No valid items, request ignored");
+									document.getElementById('sendBtn').disabled = true;
+								}
+								else{
+									var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction'; 
+			   						var xmlhttp = new XMLHttpRequest();	    						    					
+			    					xmlhttp.onreadystatechange = function () {
+					                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
+					                        alert('ItemRequest created')
+					                        document.getElementById('sendBtn').style.display = 'none';
+					                        
+					                      }
+					                 }
+									xmlhttp.open("POST", URL,false);
+			    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+			    					xmlhttp.send(JSON.stringify(ItemJSON)); 			
+								}
+								
 							}
 	   					 				
 						}

@@ -3171,10 +3171,8 @@ $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Re
 
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
-  $start =  $request->getParam('start','');
-	$end =  $request->getParam('end','');
-
-	$stats = statisticsByItem($id,$start,$end);
+  
+	$stats = orderStatistics($id);
 	
 	$resp = array();
 	$resp["result"] = "OK";
@@ -3711,7 +3709,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				
 				if (isset($item["SPECIALQTY"]) && isset($item["REASON"])) // SPECIAL QTY AFTER SUBMIT FOR RESTOCK
 				{
-						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?)";
+						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?,?)";
 						$req = $db->prepare($sql);
 						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
 						$theQty = $item["SPECIALQTY"];
@@ -4424,6 +4422,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 
 $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $response) {	
+
 		$db = getInternalDatabase();
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
@@ -4449,8 +4448,7 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		{		
 			if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 				continue;			
-			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");
-			
+			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");			
 			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));								
@@ -4464,13 +4462,13 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res == false){
 				$vendname = $res["VENDNAME"];
-				$packingnote = $packingnote["PACKINGNOTE"];
+				$packingnote = $res["PACKINGNOTE"];
 			}
 			else {				
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISION_QUANTITY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);				
 			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																								
 		}		
@@ -4512,6 +4510,8 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	
+	error_log("ABSTRACT");
+
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');

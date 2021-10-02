@@ -4230,7 +4230,7 @@ function renderItemRequestRestockCreate($data)
 
 
 
-   $fields = ["IMAGE","ISDEBT","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","DECISION","DECISION_QUANTITY","REQUEST_QUANTITY","SPECIALQTY","REASON","ACTION"];
+   $fields = ["IMAGE","ISDEBT","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","DECISION","DECISIONQTY","REQUEST_QUANTITY","SPECIALQTY","REASON","ACTION"];
 
    $itemsA = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "A");} );
    $itemsB = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "B");});

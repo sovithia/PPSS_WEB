@@ -740,9 +740,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			$RCVQTY = $res["TRANQTY"]; //**		
 		}	
 	}
-
 	 
-
 	$begin = $RCVDATE;
 	$end = date('Y-m-d', time()). " 23:59:59.999";
 
@@ -780,7 +778,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
-
+	
 
 
 	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
