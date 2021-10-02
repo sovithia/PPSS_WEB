@@ -4157,18 +4157,10 @@ function renderItemRequestRestockCreate($data)
 
               <div class='row'>
                   <div class='input-field col s12'>                   
-                    <input id='productid' name='SPECIALQTY' type='text' >
-                    <label for='productid' class='center-align'>Quantity (For Special Order)</label>               
+                    <input id='quantity' name='REQUEST_QUANTITY' type='text' >
+                    <label for='quantity' class='center-align'>Quantity</label>               
                   </div>
               </div>
-
-              <div class='row'>
-                  <div class='input-field col s12'>                   
-                    <input id='productid' name='REASON' type='text' >
-                    <label for='productid' class='center-align'>Reason (For Special Order)</label>               
-                  </div>
-              </div>
-              
 
               <div class='row'>    
 
@@ -4190,39 +4182,7 @@ function renderItemRequestRestockCreate($data)
               </div>
              </div> 
 
-
-            <div class='col s12 m8 l9'>
-              <div class='row margin'>
-              <form class='col s12' method='POST' action='pretemplate.php' enctype=multipart/form-data>                              
-              <div class='row'>
-                  <div class='input-field col s12'>     
-                    <center>              
-                      <input id='productid' name='filename' type='file' >                      
-                      <center><a href='./Resources/PreTemplate.xlsx' target='_blank'>Download pre-template</a></center><br>
-                    </center>                    
-                  </div>
-              </div>
-
-
-             
-              <div class='row'>    
-                     <div class='input-field col s12'>             
-                       <input type='hidden' name='display' value='".$_GET["display"]."'>
-                       <input type='hidden' name='entity' value='".$_GET["entity"]."'>
-                       <input type='hidden' name='type' value='".$_GET["type"]."'>                       
-                      <table>
-                        <tr>                          
-                          <td><input type='submit' name='action' class='btn waves-effect waves-light col s12 grey darken-2' value='Phase 1 Template'></td>
-                        </tr>
-                       </table>
-                      <br><br>
-                     </div>
-                     
-                </div>
-            </form>
-              </div>
-             </div> 
-
+          
 
             <div class='col s12 m8 l9'>
               <div class='row margin'>
@@ -4256,26 +4216,8 @@ function renderItemRequestRestockCreate($data)
             </form>
               </div>
              </div> 
-
-             
-
-             <div id='errordiv' style='border:1px solid black' >";
-             if (count($errors) > 0)
-             {
-              $body .= "<center><span style='color:red'>ERRORS</span><center><table><tr><th>PRODUCTID</th><th>PRODUCTNAME</th><th>VENDOR</th><th>DECISION</th><tr>";
-              foreach($errors as $error)
-              {
-                if (!isset($error["PRODUCTID"]))
-                  continue;
-
-                $body .= "<tr><td>".$error["PRODUCTID"]."</td><td>".$error["PRODUCTNAME"]."</td><td>".$error["VENDNAME"]."</td><td>".$error["DECISION"]."</td></tr>";
-              } 
-              $body .= "</table>";
-             }
-             
-              
-$body .=  "</div>
-             <br>
+                      
+            <br>
 
             <table>
             <tr>
@@ -4288,7 +4230,7 @@ $body .=  "</div>
 
 
 
-   $fields = ["IMAGE","ISDEBT","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY","ACTION"];
+   $fields = ["IMAGE","ISDEBT","PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","DECISION","DECISION_QUANTITY","REQUEST_QUANTITY","SPECIALQTY","REASON","ACTION"];
 
    $itemsA = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "A");} );
    $itemsB = array_filter($items,function ($obj){return ($obj["LISTNAME"] == "B");});

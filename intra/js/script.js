@@ -195,7 +195,7 @@ var zkSignature = (function () {
 							var action = document.getElementById('action').value; 													
 							var fields = document.getElementsByTagName('input');  
 							var allItems = {};
-							if (action == "update")
+							if (action == "update") 
 							{	
 								var status = document.getElementById('status').value;     
 								var identifier = document.getElementById('identifier').value;								      		
@@ -214,6 +214,7 @@ var zkSignature = (function () {
 		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "STATUS" : status }; 
 								var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction/' + identifier; 
+
 		   						var xmlhttp = new XMLHttpRequest();	    						    					
 		    					xmlhttp.onreadystatechange = function () {
 				                     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {			                       
@@ -224,7 +225,7 @@ var zkSignature = (function () {
 		    					xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
 		    					xmlhttp.send(JSON.stringify(ItemJSON)); 		
 							}
-							else if (action == "create")
+							else if (action == "create") // POST ITEMREQUESTACTION
 							{															
 								var type = document.getElementById('type').value;
 								
@@ -234,7 +235,20 @@ var zkSignature = (function () {
 					                {					                                						                  					                					                	
 					                  var oneItem = {};
 					                  oneItem['PRODUCTID'] = fields[i].value;  							                  								
-					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;					                  
+					                  oneItem['REQUEST_QUANTITY'] = document.getElementById('quantity_' + fields[i].value).value;		
+
+					                  alert('coucou');	
+					                  if (oneItem['REQUEST_QUANTITY'] > document.getElementById('decisionqty_' + fields[i].value).value)
+					                  {
+					                  	alert("Quantity for " + oneItem['REQUEST_QUANTITY'] + "exceed maximum, ignored")
+					                  	continue;
+					                  }
+					                  
+					                  if (document.getElementById('specialqty_' + fields[i].value) != null && document.getElementById('specialqty_' + fields[i].value).value != null)
+					                  	oneItem['SPECIALQTY'] = document.getElementById('specialqty_' + fields[i].value).value;					                  					                  
+					                  if (document.getElementById('reason_' + fields[i].value) != null && document.getElementById('reason_' + fields[i].value).value != null)
+					                  	oneItem['REASON'] = document.getElementById('reason_' + fields[i].value).value;
+
 					                  allItems[fields[i].value] = oneItem; 
 
 					                }

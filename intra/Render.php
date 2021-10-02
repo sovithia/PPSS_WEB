@@ -903,9 +903,17 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             }
 
             else if ($field == "REQUEST_QUANTITY"){
-
               $dataSet .= "'<input name=\"idfield\" value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
                             <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
+            }
+            else if ($field == "SPECIALQTY"){
+              $dataSet .= "'<input style=\"text-align:center\" type=\"text\" id=\"specialqty_".$item["PRODUCTID"]."\"  >',";
+            }
+            else if ($field == "REASON"){
+              $dataSet .= "'<input style=\"text-align:center\" type=\"text\" id=\"reason_".$item["PRODUCTID"]."\"  >',";
+            }
+            else if ($field == "DECISIONQTY"){
+             $dataSet .= "'<input style=\"text-align:center\" type=\"text\" id=\"decisionqty_".$item["PRODUCTID"]."\" value=\"DECISIONQTY\" >',";
             }
             else if ($field == "ACTION"){
               if ($name == "listA")

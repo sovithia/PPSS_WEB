@@ -314,12 +314,8 @@ function getData($display,$entity,$param)
         {        
               if ($cell->getColumn() == "A" && $cell->getValue() != "")
                   $data["PRODUCTID"] = $cell->getValue();                             
-              if ($cell->getColumn() == "C" && $cell->getValue() != "")                  
-                  $data["REQUESTQTY"] = $cell->getValue();   
-              if ($cell->getColumn() == "E" && $cell->getValue() != "")
-                  $data["SPECIALQTY"] = $cell->getValue();   
-              if ($cell->getColumn() == "F" && $cell->getValue() != "")
-                   $data["REASON"] = $cell->getValue();                 
+              if ($cell->getColumn() == "B" && $cell->getValue() != "")                  
+                  $data["REQUESTQTY"] = $cell->getValue();                 
         }
         array_push($allData,$data);
       } 
@@ -344,12 +340,8 @@ function getData($display,$entity,$param)
         $datasend["LISTNAME"] = "B";
       if ($_GET["action"] == 'Single Add (C)')
         $datasend["LISTNAME"] = "C";
-      if (isset ($_GET["REASON"]))
-        $datasend["REASON"] = $_GET["REASON"];
-      if (isset($_GET["SPECIALQTY"]))
-        $datasend["SPECIALQTY"] = $_GET["SPECIALQTY"];
-
-      $datasend["AUTHOR"] =  $_SESSION["USER"]["firstname"].' '.$_SESSION["USER"]["lastname"];          
+                    
+      $datasend["REQUEST_QUANTITY"] = $param["REQUEST_QUANTITY"];          
       $data = Service::CreateEntity($entity,$datasend,$type);    
     }
     else if (isset($_GET["action"]) && $_GET["action"] == "DELETE"){       
@@ -598,8 +590,6 @@ else if ($display == "itemsearch3")
 
   else if ($display == "depleteditems")
     return renderDepletedItemList($data);
-
-
 
 
   // DEPRECATION

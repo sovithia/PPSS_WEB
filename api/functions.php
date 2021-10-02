@@ -713,21 +713,32 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
 	if($res == false){
-
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$res = $req->execute(array($barcode));
-		$stats["FINALQTY"] = 0;		
+		$stats["FINALQTY"] = 0;				
 		if ($res == false)
-			$stats["DECISION"] = "NOTFOUND";			
+			$stats["DECISION"] = "NOT FOUND";			
 		else 
-			$stats["DECISION"] = "NEVER RECEIVED";
-			
+			$stats["DECISION"] = "NEVER RECEIVED";			
 		return $stats;
 	}
-	else{
-		$RCVDATE = $res["TRANDATE"];
-		$RCVQTY = $res["TRANQTY"]; //**	
+	else
+	{
+		$sql = "SELECT ACTIVE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode));  
+		$res2  = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res2["ACTIVE"] == 0){
+			$stats["FINALQTY"] = 0;		
+			$stats["DECISION"] = "INACTIVE";			
+			return $stats;
+		}
+		else{
+			$RCVDATE = $res["TRANDATE"];
+			$RCVQTY = $res["TRANQTY"]; //**		
+		}	
 	}
 
 	 
@@ -1156,6 +1167,203 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 				VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
+
+}
+
+function createPOWithSupplyRecord($author,$vendorid,$items)
+{
+	$dbBLUE = getDatabase();
+	$now = date("Y-m-d H:i:s");
+
+	$sql = "SELECT VENDNAME,VENDNAME1,TAX FROM APVENDOR WHERE VENDID = ?";
+	$req = $dbBLUE->prepare($sql); 
+	$req->execute(array($vendorid));
+	$vendor = $req->fetch(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT num1 FROM SYSDATA where sysid = 'PO'";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array());	
+	$num1 = $req->fetch(PDO::FETCH_ASSOC)["num1"];
+	$newID = intval($num1);
+	$identifier = sprintf("PO%013d",$newID);
+
+	// Increment gen ID for Next	
+	$incremented = $newID + 1;
+	$sql = "UPDATE SYSDATA set num1 = ? where sysid = 'PO'"; 
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array($incremented));
+
+	$PONUMBER = $identifier;
+	$VENDID = $vendorid;
+	$VENDNAME = $vendor["VENDNAME"];
+	$VENDNAME1 = $vendor["VENDNAME1"];
+	$PODATE = $now;
+	$LOCID = 'WH2';
+	$USERADD = $author;
+	$DATEADD = $now;
+	$VAT_PERCENT = $vendor["TAX"];
+	$PCNAME = "APPLICATION";
+	$CURR_RATE = "1";
+	$CURRID = "USD";
+	$EST_ARRIVAL = $now;
+	$REQUIRE_DATE = $now;
+	$DISC_PERCENT = $header["DISC_PERCENT"];
+	$BASECURR_ID = "USD";
+	$PURCHASE_AMT = 0;
+	$VAT_AMT = 0;
+			
+
+	foreach($items as $item)
+	{
+		$sql = "SELECT TOP(1) TRANCOST,TRANDISC,DATEADD FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber,$item["ID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res != false){
+			$TRANDISC = $res["TRANDISC"];
+			$TRANCOST = $res["TRANCOST"];	
+		}else{
+			$sql = "SELECT COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($item["ID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			$TRANCOST = $res["TRANCOST"];	
+			$TRANDISC = $res["TRANDISC"];
+		}
+
+		if ($TRANDISC != null && $TRANDISC != "0")
+			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
+		else 
+			$calculatedCost =  $TRANCOST;
+
+		$vat = $calculatedCost * ($VAT_PERCENT / 100);
+		$price =   $calculatedCost - ($calculatedCost * ($TRANDISC / 100)); 
+		$PURCHASE_AMT += $price;
+		$VAT_AMT += $vat;
+	}
+	$CURRENCY_VATAMOUNT = $VAT_AMT;
+
+	$sql = "INSERT POHEADER (
+		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
+		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
+		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
+		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
+		NOTES,REFERENCE,POSTATUS) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+	$req =$dbBLUE->prepare($sql);	
+
+
+	$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
+					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
+					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
+					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT,"AUTOVALIDATED",
+					"SPLIT FROM ".$ponumber,"");
+	$req->execute($params);
+
+	$line = 1;
+	foreach($items as $item)
+	{
+		$sql = "SELECT * FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($item["ID"],$ponumber));		
+		$itemdetail =  $req->fetch(PDO::FETCH_ASSOC);
+
+		$PURCHASE_DATE = $now;
+		$PRODUCTID = $item["ID"];
+		$ORDER_QTY = $item["ORDER_QTY"];
+		$DATEADD = $now;
+
+		$sql = "SELECT COST,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($item["ID"])); 
+		$newitem = $req->fetch(PDO::FETCH_ASSOC);
+
+
+		$CURRENTONHAND = $newitem["ONHAND"];
+		$USERADD = $author;
+		if ($itemdetail != false)
+		{
+		
+			$PRODUCTNAME = $itemdetail["PRODUCTNAME"];
+			$PRODUCTNAME1 = $itemdetail["PRODUCTNAME1"];
+			
+			$TRANUNIT = $itemdetail["TRANUNIT"];	
+			$TRANFACTOR = $itemdetail["TRANFACTOR"];
+			$STKUNIT = $itemdetail["STKUNIT"];
+			$STKFACTOR = $itemdetail["STKFACTOR"];
+			$TRANDISC = $itemdetail["TRANDISC"];
+			$TRANCOST = $itemdetail["TRANCOST"];
+			$EXTCOST = $itemdetail["EXTCOST"];
+			
+			$CURRID = $itemdetail["CURRID"];
+			$CURR_RATE = $itemdetail["CURR_RATE"];
+			$WEIGHT = $itemdetail["WEIGHT"];
+			$OLDWEIGHT = $itemdetail["OLDWEIGHT"];
+			
+			$VATABLE = $itemdetail["VATABLE"];
+			$VAT_PERCENT = $itemdetail["VAT_PERCENT"];
+			$BASECURR_ID = $itemdetail["BASECURR_ID"];
+			$CURRENCY_AMOUNT = $itemdetail["CURRENCY_AMOUNT"];
+			$CURRENCY_COST = $itemdetail["CURRENCY_COST"];	
+		}
+		else
+		{
+			
+
+			$TRANUNIT = "UNIT";
+			$TRANFACTOR = "1.00000";
+			$STKUNIT = "UNIT";
+			$STKFACTOR = "1.00000";
+			$TRANDISC = "";
+			$TRANCOST = $newitem["COST"];
+			$EXTCOST = $TRANCOST * $item["ORDER_QTY"];
+			$CURRID = "USD";
+			$CURR_RATE = "1";
+			$WEIGHT = "1.00000";
+			$OLDWEIGHT = "1.00000";
+			
+			$VATABLE = "Y";
+			$VAT_PERCENT = "";
+			$BASECURR_ID = "";
+			$CURRENCY_AMOUNT = "";
+			$CURRENCY_COST = "";
+		}
+
+		
+
+		$sql = "INSERT INTO PODETAIL (
+		PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
+		PRODUCTID,LOCID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY, 	
+		TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,TRANDISC,
+		TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
+		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
+		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
+
+		$req = $dbBLUE->prepare($sql);
+		$params = array(
+		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
+		$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
+		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
+		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
+		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
+		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST);
+
+		$req->execute($params);				
+		$line++;
+	}
+
+	$indb = getInternalDatabase();
+	$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+	$req = $indb->prepare($sql);
+	$req->execute(array($PONUMBER, $USERADD, $VENDID, $VENDNAME, $DATEADD));
+
+	$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array($PONUMBER));
 
 }
 
