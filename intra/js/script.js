@@ -245,9 +245,11 @@ var zkSignature = (function () {
 					                  if (oneItem['SPECIALQTY'] != "" && oneItem["REASON"] == ""){
 					                  	alert("Reason for " + oneItem['PRODUCTID'] + " missing, ignored");
 					                  	continue;
-					                  }						                  
+					                  }			
+					                  									  
 									  if ((oneItem['SPECIALQTY'] == "" || oneItem["REASON"] == "") &&
-									  	 (oneItem['REQUEST_QUANTITY'] > document.getElementById('decisionqty_' + fields[i].value).value ||  oneItem['REQUEST_QUANTITY'] == "0"))
+									  	  (parseFloat(oneItem['REQUEST_QUANTITY']) > parseFloat(document.getElementById('decisionqty_' + fields[i].value).value) ||  
+									  	   oneItem['REQUEST_QUANTITY'] == "0"))
 									  {
 					                  	alert("Quantity for " + oneItem['PRODUCTID'] + " invalid, ignored");
 					                  	continue;
@@ -268,13 +270,12 @@ var zkSignature = (function () {
 		   					 				  "REQUESTERSIGNATURE" :  b64,	   					 					  
 		   					 				  "ITEMS" : JSON.stringify(allItems),
 		   					 	  			  "TYPE" : type,
-		   					 	  			  "LISTNAME" : listname }; 
-								
-								alert(nb);
+		   					 	  			  "LISTNAME" : listname }; 															
 								
 								if(nb == 0){
 									alert("No valid items, request ignored");
-									document.getElementById('sendBtn').disabled = true;
+									document.getElementById('sendBtn').disabled = false;
+									document.getElementById('sendBtn').style.backgroundColor = '#009183';
 								}
 								else{
 									var	URL = 'http://phnompenhsuperstore.com/api/api.php/itemrequestaction'; 

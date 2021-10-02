@@ -3172,7 +3172,7 @@ $app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Re
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
   
-	$stats = orderStatistics($id);
+	$stats = orderStatistics($id,"RESTOCK");
 	
 	$resp = array();
 	$resp["result"] = "OK";

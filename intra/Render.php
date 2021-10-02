@@ -903,8 +903,12 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             }
 
             else if ($field == "REQUEST_QUANTITY"){
+              if ($item["REQUEST_QUANTITY"] > $item["DECISIONQTY"])
+                $red = "color:red";
+              else
+                $red = "";
               $dataSet .= "'<input name=\"idfield\" value=\"".$item["PRODUCTID"]."\" type=\"hidden\">\
-                            <input style=\"text-align:center\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
+                            <input style=\"text-align:center;".$red."\" type=\"text\" id=\"quantity_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
             }
             else if ($field == "SPECIALQTY"){
               $dataSet .= "'<input style=\"text-align:center\" type=\"text\" id=\"specialqty_".$item["PRODUCTID"]."\"  >',";

@@ -315,7 +315,7 @@ function getData($display,$entity,$param)
               if ($cell->getColumn() == "A" && $cell->getValue() != "")
                   $data["PRODUCTID"] = $cell->getValue();                             
               if ($cell->getColumn() == "B" && $cell->getValue() != "")                  
-                  $data["REQUESTQTY"] = $cell->getValue();                 
+                  $data["REQUEST_QUANTITY"] = $cell->getValue();                 
         }
         array_push($allData,$data);
       } 
