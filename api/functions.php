@@ -706,7 +706,6 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
-
 	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
@@ -849,7 +848,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 						$stats["DECISION"] = "TOOEARLY";	
 			}
 		}
-		else if ($RATIOSALE > 70 && $RATIOSALE < 100) // Speed not important here
+		else if ($RATIOSALE => 70 && $RATIOSALE < 100) // Speed not important here
 		{
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
@@ -889,7 +888,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 				
 			}
 		}
-		else if ($RATIOSALE > 50 && $RATIOSALE < 70 ) // Normal Sale
+		else if ($RATIOSALE => 50 && $RATIOSALE < 70 ) // Normal Sale
 		{
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
