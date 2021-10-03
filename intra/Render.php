@@ -917,7 +917,7 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
               $dataSet .= "'<input style=\"text-align:center\" type=\"text\" id=\"reason_".$item["PRODUCTID"]."\"  >',";
             }
             else if ($field == "DECISIONQTY"){
-             $dataSet .= "'<input disabled style=\"text-align:center\" type=\"text\" id=\"decisionqty_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
+             $dataSet .= "'<input disabled style=\"text-align:center;color:black\" type=\"text\" id=\"decisionqty_".$item["PRODUCTID"]."\" value=\"".$item[$field]."\" >',";
             }
             else if ($field == "ACTION"){
               if ($name == "listA")
