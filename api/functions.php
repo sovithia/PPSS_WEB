@@ -1167,7 +1167,7 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 
 }
 
-function createPOWithSupplyRecord($author,$vendorid,$items)
+function createPO($author,$vendorid,$items)
 {
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -1352,15 +1352,7 @@ function createPOWithSupplyRecord($author,$vendorid,$items)
 		$req->execute($params);				
 		$line++;
 	}
-
-	$indb = getInternalDatabase();
-	$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
-	$req = $indb->prepare($sql);
-	$req->execute(array($PONUMBER, $USERADD, $VENDID, $VENDNAME, $DATEADD));
-
-	$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-	$req = $dbBLUE->prepare($sql);
-	$req->execute(array($PONUMBER));
+	return $PONUMBER;
 
 }
 

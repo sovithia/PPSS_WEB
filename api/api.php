@@ -2565,7 +2565,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
-	if (isset($json["TYPE"]) == "NOPO") // NOPO, the only possible case 
+	if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "NOPO") 
 	{
 			$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
 			VALUES (:author,:noponote,'DELIVERED','NOPO')";
@@ -2580,10 +2580,115 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
 		$result["result"] = "OK";
 	}
-	else
-		$result["result"] = "KO";
-	
+	else if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "PO") 
+	{
+		$author = $json["AUTHOR"];
+		$vendorid = $json["VENDORID"];
+		$items = $json["ITEMS"];
+		$now = date("Y-m-d H:i:s");
+		$vendname = "";
+
+		$ponumber = createPO($author,$vendorid,$items);
+
+		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+		$req = $db->prepare($sql);
+		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
+
+		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber));
+
+		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
+			VALUES (:author,:noponote,'DELIVERED','PO')";
+	}	
 	$response = $response->withJson($result);
+	return $response;
+});
+
+
+$app->post('/groupedpurchasetosupplyrecordpool', function(Request $request,Response $response) {
+	$db = getInternalDatabase();	
+	$json = json_decode($request->getBody(),true);	
+
+	$userID =  $json["USERID"];
+	$ID = $json["ID"];
+
+
+	$id = $request->getAttribute('userid');
+	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($ID));
+	$items = $req->fetchAll();
+
+	foreach($item as $items){
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";	
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$userID));
+	}
+});
+
+$app->post('/supplyrecordpool', function(Request $request,Response $response) {
+	// CHECK IF ITEM IS SAME VENDOR
+
+	$json = json_decode($request->getBody(),true);	
+	$sql = "SELECT TOP(1) PRODUCTID FROM SUPPLYRECORDPOOL";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false) // NO RECORD
+	{
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
+	}
+	else
+	{
+		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+		$res2 = $req->fetch(PDO::FETCH_ASSOC);
+
+		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($res["PRODUCTID"]));
+		$res3 = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res2["VENDID"] != $res3["VENDID"]){
+			$data["result"] = "KO";	
+			$data["message"] = "Product from different vendor";
+			$response = $response->withJson($data);
+			return $response;
+		}
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
+	}
+	$data["result"] = "OK";				
+	$response = $response->withJson($data);
+	return $response;
+
+});
+
+$app->get('/supplyrecordpool/{userid}', function(Request $request,Response $response) {
+	$id = $request->getAttribute('userid');
+	$sql = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$response = $response->withJson($data);
+	return $response;
+});
+
+
+$app->delete('/supplyrecordpool/{id}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();	
+	$id = $request->getAttribute('userid');
+	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$data["result"] = "OK";	
+	$response = $response->withJson($data);
 	return $response;
 });
 
@@ -3046,6 +3151,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 });
 
 $app->delete('/supplyrecord/{id}',function(Request $request,Response $response) {
+	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
 	$json = json_decode($request->getBody(),true);	
 
