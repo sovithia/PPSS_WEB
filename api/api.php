@@ -2612,19 +2612,24 @@ $app->post('/groupedpurchasetosupplyrecordpool', function(Request $request,Respo
 
 	$userID =  $json["USERID"];
 	$ID = $json["ID"];
-
-
-	$id = $request->getAttribute('userid');
 	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ID));
-	$items = $req->fetchAll();
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	foreach($item as $items){
+	if ($items != false){
+
+		foreach($items as $item){
+			error_log($item["PRODUCTID"]);
 		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";	
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$userID));
+		}	
 	}
+	$data["result"] = "OK";				
+	$response = $response->withJson($data);
+	return $response;
+
 });
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
@@ -2666,16 +2671,17 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
 	return $response;
-
 });
 
 $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
 	$id = $request->getAttribute('userid');
-	$sql = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+	$userid = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($userid));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
+	$data["result"] = "OK";				
+	$data["data"] = $items;
 	$response = $response->withJson($data);
 	return $response;
 });
@@ -3765,7 +3771,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				
 				if (isset($item["SPECIALQTY"]) && isset($item["REASON"])) // SPECIAL QTY AFTER SUBMIT FOR RESTOCK
 				{
-						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?)";
+						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?,?)";
 						$req = $db->prepare($sql);
 						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
 						$theQty = $item["SPECIALQTY"];
@@ -4591,21 +4597,22 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
 	
-		$orderstats = orderStatistics($item["PRODUCTID"],"PURCHASE");			
+		$orderstats = orderStatistics($json["PRODUCTID"],"PURCHASE");			
 		
 		$sql = "DELETE FROM ITEMREQUESTPURCHASEPOOL where PRODUCTID =  ?";
-		$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));								
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));								
 
-		if(isset($item["SPECIALQTY"]) && isset($item["REASON"]))
+		if(isset($json["SPECIALQTY"]) && isset($json["REASON"]))
 		{
 				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,SPECIALQTY,REASON) values(?,?,?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$item["SPECIALQTY"],$item["REASON"]));
+				$req->execute(array($json["PRODUCTID"],$json["SPECIALQTY"],$json["SPECIALQTY"],$json["REASON"]));
 		}
 		else{
 				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));																	
+				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));																	
 		}	
 		$data["result"] = "OK";
 		$response = $response->withJson($data);
@@ -4616,7 +4623,6 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	
-	error_log("ABSTRACT");
 
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -4642,12 +4648,12 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	if ($suffix == ""){
 		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"]));		
+		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
 	}
 	else{
 		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$userid));		
+		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));		
 	}	
 	
 	$data["result"] = "OK";
@@ -5976,7 +5982,8 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	ISNULL( (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1' ) ,'N/A') 
 	as 'STOREBIN1',
 	ISNULL( (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH2' ) ,'N/A') 
-	as 'STOREBIN2'
+	as 'STOREBIN2',
+	(SELECT VENDNAME FROM APVENDOR WHERE VENDID =  dbo.ICPRODUCT.VENDID) as 'VENDNAME'
   		
 	FROM dbo.ICPRODUCT 	
 	WHERE PRODUCTID in (SELECT PRODUCTID FROM [PhnomPenhSuperStore2019].[dbo].[ICPROMOTION] WHERE DATESTART <= '$begin 00:00:00.000' AND DATEEND >= '$begin 23:59:59.999' ) 
@@ -6309,9 +6316,9 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	$newItems = array();
 	foreach($items as $item){
 				if($item["TYPE"] == "EXPIREWASTE" || $item["TYPE"] == "DAMAGEWASTE")
-			$imgfolder = "./img/wastepool_proofs/";		
+			$imgfolder = "./img/waste_proofs/";		
 		else
-			$imgfolder = "./img/promopool_proofs/";		
+			$imgfolder = "./img/promo_proofs/";		
 		$nbproofs = 0;
 		$count = 1;
 		while(file_exists($imgfolder.$item["ID"]."_".$count.".png")){
@@ -6385,10 +6392,10 @@ $app->post('/depreciation', function($request,Response $response) {
 
 		if ($res == false)
 		{							
-				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,DEPRECIATION_ID1) 
-							  VALUES (?,?,?,?,?,?,?,?,?,?)";
+				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1) 
+							  VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$lastId));			
+				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$item["TYPE"],$lastId));			
 				$depreciationItemId =  $db->lastInsertId();
 		}
 		else
@@ -6582,7 +6589,7 @@ $app->get('/depreciationpromopool/{userid}', function($request,Response $respons
 	foreach($pool as $item){
 		$nbproofs = 0;
 		$count = 1;
-		while(file_exists("./img/wastepool_proofs/".$item["ID"]."_".$count.".png")){       							     
+		while(file_exists("./img/promopool_proofs/".$item["ID"]."_".$count.".png")){       							     
 	      $nbproofs++;
 	      $count++;        	    
 	  }
@@ -6611,7 +6618,6 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 	$db = getInternalDatabase();
 
 	// TODO : On OLd items, retrieve all info 
-
 	$sql = "SELECT TYPE FROM DEPRECIATIONPROMOPOOL LIMIT 1";
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -6633,7 +6639,7 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"]));	
 		$result["result"] = "OK";
 		if (isset($json["PROOFS"]))
-			pictureRecord($json["PROOFS"],"PROMO",$db->lastInsertId());
+			pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$db->lastInsertId());
 	}
 	else{
 		$result["result"] = "KO";
@@ -6668,7 +6674,7 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
 		$result["result"] = "OK";
 		if (isset($json["PROOFS"]))
-			pictureRecord($json["PROOFS"],"WASTE",$db->lastInsertId());
+			pictureRecord($json["PROOFS"],"WASTEPOOLPROOFS",$db->lastInsertId());
 	}
 	else{
 		$result["message"] = "Waste needs to be of same type";
