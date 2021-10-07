@@ -6350,7 +6350,9 @@ $app->post('/depreciation', function($request,Response $response) {
 
 	$items = $json["ITEMS"];
 	$type = $json["TYPE"];
+	error_log($type);
 	$author = $json["AUTHOR"];
+	$userid = $json["USERID"];
 
 	$sql = "INSERT INTO DEPRECIATION (TYPE,CREATOR,STATUS) VALUES (?,?,?)";
 	$req = $db->prepare($sql);
@@ -6359,12 +6361,7 @@ $app->post('/depreciation', function($request,Response $response) {
 
 	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
 	foreach($items as $item)
-	{
-		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE")
-			$type = "WASTE";
-		else
-			$type = "PROMO";
-		
+	{			
 		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["EXPIRATION"],$item["PRODUCTID"]));
@@ -6413,17 +6410,19 @@ $app->post('/depreciation', function($request,Response $response) {
 			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$PRODUCTID,$EXPIRATION));		
 			$depreciationItemId =  $res["ID"];
 		}
-		movePicture($depreciationItemId,$item["ID"],$type);
+		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE")
+			movePicture($depreciationItemId,$item["ID"],"WASTE");			
+		else
+			movePicture($depreciationItemId,$item["ID"],"PROMO");					
 	}
 
-	$resp = array();
-
+	$resp = array();	
 	if ($type == "DAMAGEWASTE" || $type == "EXPIREWASTE")
-		$sql = "DELETE FROM DEPRECIATIONWASTEPOOL";		
+		$sql = "DELETE FROM DEPRECIATIONWASTEPOOL where USERID = ?";		
 	else
-		$sql = "DELETE FROM DEPRECIATIONPROMOPOOL";
+		$sql = "DELETE FROM DEPRECIATIONPROMOPOOL where USERID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array());	
+	$req->execute(array($userid));	
 
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
