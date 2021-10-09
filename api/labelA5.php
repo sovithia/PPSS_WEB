@@ -254,7 +254,7 @@ require_once('functions.php');
   
   if (isset($_GET["barcodes"]))
   {  
-    $barcodes = split("|",$_GET["barcodes"]);
+    $barcodes = explode("|",$_GET["barcodes"]);
     $newString = "";
     foreach($barcodes as $barcode){
       $newString .= str_replace(" ","%20",$barcode). "|";

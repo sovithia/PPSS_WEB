@@ -254,6 +254,8 @@ function blueUser($author){
 		return "PHEAK";
 	else if ($author == "chea_s")
 		return "SOPHAL";
+	else if ($author == "meng_g")
+		return "GECKMEY";
 	else 
 		return $author;
 
@@ -1160,6 +1162,7 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 	$PRODUCTNAME = "";
 	$today = date("Y-m-d");
 	$db=getDatabase();
+	$author = blueUser($author);
 	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
 				VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);

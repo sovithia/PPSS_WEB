@@ -464,10 +464,10 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 	$result = array();
 	foreach($barcodes as $barcode){
 
-		$params = array($barcode);
-		$sql="SELECT PRODUCTID,BARCODE,SALEFACTOR,PRODUCTNAME,PRODUCTNAME1,STKUM,SIZE,COLOR,PRICE,PACKINGNOTE,STORE
+		$params = array($barcode,$barcode);
+		$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,SALEFACTOR,PRODUCTNAME,PRODUCTNAME1,STKUM,SIZE,COLOR,PRICE,PACKINGNOTE,STORE
 		FROM dbo.ICPRODUCT  
-		WHERE BARCODE = ?";
+		WHERE BARCODE = ? OR OTHERCODE = ?";
 		$getItems=$conn->prepare($sql);
 		$getItems->execute($params);
 		$items=$getItems->fetchAll(PDO::FETCH_ASSOC);
@@ -478,9 +478,9 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 			$oneItem["dollarPrice"] = "$". truncateDollarPrice($item["PRICE"]);
 			$oneItem["nameEN"] = $item["PRODUCTNAME"];
 			$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-			$oneItem["productImg"] = loadPicture($barcode,300,true);
+			$oneItem["productImg"] = loadPicture($item["PRODUCTID"],300,true);
 			$oneItem["barcodeNumber"] = $barcode;
-			$oneItem["barcodeImage"] = generateBarcodeImage($barcode);
+			$oneItem["barcodeImage"] = generateBarcodeImage($item["PRODUCTID"]);
 			$oneItem["packing"] = $item["PACKINGNOTE"];
 			$oneItem["return"] = $item["SIZE"];
 			$oneItem["country"] = $item["COLOR"];
@@ -576,26 +576,29 @@ function itemLookupLabel($barcode)
 {
 	$conn=getDatabase();	
 	$begin = date("m-d-y");
-	$params = array($barcode);
-	$sql="SELECT PRODUCTID,						
-		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 
-					
+	$params = array($barcode,$barcode);
+	$sql="SELECT PRODUCTID,OTHERCODE,						
+		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 					
 		  (SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', 
 					
 		   BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
-						FROM dbo.ICPRODUCT WHERE BARCODE = ?";
+						FROM dbo.ICPRODUCT WHERE BARCODE = ? OR OTHERCODE = ?";
 	$getItems=$conn->prepare($sql);
 	$getItems->execute($params);
 	$items=$getItems->fetchAll(PDO::FETCH_ASSOC);
 
+
 	if (count($items) > 0)
 	{
-		$item = $items[0];				
-		$oneItem["barcode"] = $item["BARCODE"];						
+		$item = $items[0];	
+		if ($item["OTHERCODE"] != null)
+			$item["BARCODE"] = $item["OTHERCODE"]; 
+			
+		$oneItem["barcode"] = $item["BARCODE"];
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-		$oneItem["productImg"] = loadPicture($barcode,300,true);			
+		$oneItem["productImg"] = loadPicture($item["PRODUCTID"],300,true);			
 		$oneItem["country"] = $item["COLOR"];
 		$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
 
@@ -746,13 +749,15 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
+	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
-	      WHERE BARCODE = ?";
+	      WHERE BARCODE = ? OR OTHERCODE = ?";
 	$req=$conn->prepare($sql);
-	$req->execute(array($barcode));
+	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
+	if ($item["OTHERCODE"] != null)
+		$item["PRODUCTID"] = $item["OTHERCODE"];
 
 	$resp = array();
 	if (isset($item["PRODUCTID"]))
@@ -891,6 +896,9 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
 
+
+	error_log(">>".$barcode);
+
 	$resp = array();
 	if (isset($item["PRODUCTID"])){		
 		$sql="
@@ -911,6 +919,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["STOREBIN1"] = "";			
 		}
 
+	
 
 		$sql="
 		SELECT LOCONHAND,STORBIN 
@@ -929,7 +938,8 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["STOREBIN2"] = "";	
 		}		
 	}
-	else{
+	else
+	{
 		$packInfo = packLookup($barcode);
 		if ($packInfo != null) // IS  A PACK
 		{
@@ -6615,21 +6625,24 @@ $app->get('/depreciationpromopool/{userid}', function($request,Response $respons
 $app->post('/depreciationpromopool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
-
 	// TODO : On OLd items, retrieve all info 
-	$sql = "SELECT TYPE FROM DEPRECIATIONPROMOPOOL LIMIT 1";
+	$sql = "SELECT TYPE FROM DEPRECIATIONPROMOPOOL WHERE USERID = ? LIMIT 1  ";
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
-	if ($res != false){
+	if ($res != false)
+	{
+		error_log("1");
 		if($res["TYPE"] != $json["TYPE"])
 			$ok = false;					
 		else if ($res["TYPE"] == $json["TYPE"])
 			$ok = true;	
 	}
-	else 
+	else {
+		error_log("2");
 		$ok = true;
+	}
 
 	if ($ok == true){
 		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";	
@@ -6652,10 +6665,10 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
 
-	$sql = "SELECT TYPE FROM DEPRECIATIONWASTEPOOL LIMIT 1";
+	$sql = "SELECT TYPE FROM DEPRECIATIONWASTEPOOL WHERE USERID = ? LIMIT 1 ";
 
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false){
