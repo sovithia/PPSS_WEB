@@ -4285,7 +4285,12 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				$data["message"] = $msg;			
 		}
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
-		}			
+		}		
+		else if ($ira["TYPE"] == "GROUPEDPURCHASE"){ // CREATE PO
+			$author = blueUser($json["AUTHOR"]);
+			$ponumber = createPO($items,$author);
+			$data["message"] = "PO Created with number ".$ponumber; 
+		}	
 	}
 	else if ($json["STATUS"] == "SUBMITTED")
 	{

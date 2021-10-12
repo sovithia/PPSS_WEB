@@ -1194,8 +1194,20 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 
 }
 
-function createPO($author,$vendorid,$items)
+function createPO($items,$author)
 {
+	if(count($items) == 0){
+		return null;
+	}
+
+	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$res = $req->execute(array($items[0]["PRODUCTID"]));
+	if ($res == false)
+		return null;
+	$vendorid = $res["VENDID"];
+
+
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
 
