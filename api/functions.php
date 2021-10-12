@@ -1163,10 +1163,34 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 	$today = date("Y-m-d");
 	$db=getDatabase();
 	$author = blueUser($author);
-	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
-				VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+
+	$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$today));
+	$res = $req->execute(array($productid)); 
+
+	if ($res == false){
+		$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,getdate())";
+		$req = $db->prepare($sql);
+		$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author));	
+	}
+	else{
+		$sql = "UPDATE ICNEWPROMOTION SET DATEFROM = ? , 
+																			DATETO = ?,
+																			PRO_TYPE = ?,
+																			PRO_DESCRIPTION = ?,
+																			SALE_QTY = ?,
+																			DISCOUNT_TYPE = ?,
+																			DISCOUNT_VALUE = ?,
+																			PCNAME = ?,
+																			USERADD = ?,
+																			DATEADD = getdate()
+						WHERE PRODUCTID = ?"; 
+		$req = $db->prepare($sql);
+		$req->execute(array($start,$end,'Per Item',$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$productid));
+	}
+
+	
 
 }
 

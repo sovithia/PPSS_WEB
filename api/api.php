@@ -2195,6 +2195,7 @@ function GenerateCategoryNumberByName($category){
 
 
 
+
 /*
                            ,,,,                   ,,,,,
                            ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
@@ -4600,8 +4601,6 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 });
 
 
-
-
 $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response $response) {			
 		$db = getInternalDatabase();
 		$dbBlue = getDatabase();		
@@ -4678,7 +4677,7 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
 
-
+	error_log($type);
 	$suffix = "";
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
