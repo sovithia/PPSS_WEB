@@ -2574,6 +2574,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);
 
 	if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "NOPO") 
@@ -2594,19 +2595,18 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	else if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "PO") 
 	{
 		$author = $json["AUTHOR"];
-		$vendorid = $json["VENDORID"];
 		$items = $json["ITEMS"];
 		$now = date("Y-m-d H:i:s");
 		$vendname = "";
 
-		$ponumber = createPO($author,$vendorid,$items);
+		$ponumber = createPO($items,$author);
 
 		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 		$req = $db->prepare($sql);
 		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
 
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-		$req = $dbBLUE->prepare($sql);
+		$req = $dbBlue->prepare($sql);
 		$req->execute(array($ponumber));
 
 		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
@@ -2645,12 +2645,15 @@ $app->post('/groupedpurchasetosupplyrecordpool', function(Request $request,Respo
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 
 	$json = json_decode($request->getBody(),true);	
-	$sql = "SELECT TOP(1) PRODUCTID FROM SUPPLYRECORDPOOL";
+	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+
 	if ($res == false) // NO RECORD
 	{
 		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
@@ -2660,14 +2663,16 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	else
 	{
 		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
+		$req = $dbBlue->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
 		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
+		$req = $dbBlue->prepare($sql);
 		$req->execute(array($res["PRODUCTID"]));
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
+
+		error_log($res2["VENDID"]. " ".$res3["VENDID"] );
 
 		if ($res2["VENDID"] != $res3["VENDID"]){
 			$data["result"] = "KO";	
@@ -2686,21 +2691,38 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+
 	$id = $request->getAttribute('userid');
-	$userid = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+	error_log($id);
+	$sql = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($userid));
+	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$newData = array();
+	foreach($items as $item){
+		$sql = "SELECT PRODUCTNAME,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		$item["VENDNAME"] = $res["VENDNAME"];
+		$item["PACKING"] = $res["PACKINGNOTE"];
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newData,$item);	
+
+	}
 	$data["result"] = "OK";				
-	$data["data"] = $items;
+	$data["data"] = $newData;
 	$response = $response->withJson($data);
 	return $response;
 });
 
 
-$app->delete('/supplyrecordpool/{id}', function(Request $request,Response $response) {
+$app->delete('/supplyrecordpool/{productid}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();	
-	$id = $request->getAttribute('userid');
+	$id = $request->getAttribute('productid');
 	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -4287,9 +4309,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
 		}		
 		else if ($ira["TYPE"] == "GROUPEDPURCHASE"){ // CREATE PO
-			$author = blueUser($json["AUTHOR"]);
-			$ponumber = createPO($items,$author);
-			$data["message"] = "PO Created with number ".$ponumber; 
+			//$author = blueUser($json["AUTHOR"]);
+			//$ponumber = createPO($items,$author);
+			//$data["message"] = "PO Created with number ".$ponumber; 
 		}	
 	}
 	else if ($json["STATUS"] == "SUBMITTED")
@@ -6397,10 +6419,6 @@ $app->post('/depreciation', function($request,Response $response) {
 		$PERCENTPROMO = isset($item["PERCENTPROMO"]) ? $item["PERCENTPROMO"] : "";
 
 
-		if ($LINKTYPE == "SYSTEMLINK" && $STARTTIME != "N/A" && $ENDTIME != "N/A")				
-			attachPromotion($PRODUCTID,$PERCENTPROMO,$STARTTIME,$ENDTIME,$author);
-
-
 		if ($res == false)
 		{							
 				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1) 
@@ -6451,14 +6469,37 @@ $app->put('/depreciation', function($request,Response $response) {
 	$status = $json["STATUS"];
 	$author = $json["AUTHOR"];	
 	if ($status == "VALIDATED"){
-		$sql = "UPDATE DEPRECIATION SET STATUS = ?, VALIDATOR = ? WHERE ID = ?";
+		$sql = "UPDATE DEPRECIATION SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($author,$id));
 		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);
-	  pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
+	  	pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
 	}
 	else if ($status == "CLEARED"){
-		$sql = "UPDATE DEPRECIATION SET STATUS = ?, CLEARER = ? WHERE ID = ?";
+		$sql = "UPDATE DEPRECIATION SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
 		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
+		$req = $db->prepare($sql);
+		$req->execute(array($author,$id));
 	}		
+
+	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? OR DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach ($items as $item) {
+			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){
+				error_log("HERE");
+				attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$item["STARTTIME1"],$item["ENDTIME1"],$author);
+			}									
+			if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
+			if ($item["DEPRECIATION_ID3"] == $id  && $item["LINKTYPE3"] == "SYSTEMLINK" && $item["STARTTIME3"] != null  && $item["ENDTIME3"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO3"],$item["STARTTIME3"],$item["ENDTIME3"],$author);
+			if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
+		
+			
+	}
+
+
+
 		
 			
 	$req = $db->prepare($sql);
@@ -6636,15 +6677,13 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false)
-	{
-		error_log("1");
+	{		
 		if($res["TYPE"] != $json["TYPE"])
 			$ok = false;					
 		else if ($res["TYPE"] == $json["TYPE"])
 			$ok = true;	
 	}
 	else {
-		error_log("2");
 		$ok = true;
 	}
 
@@ -6658,6 +6697,7 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 			pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$db->lastInsertId());
 	}
 	else{
+		$result["message"] = "Different promotion type";
 		$result["result"] = "KO";
 	}
 	$response = $response->withJson($result);
@@ -6704,17 +6744,21 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 $app->delete('/depreciationpromopool/{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
 
-  $date = $request->getAttribute('date');
+ 	$db = getInternalDatabase();
 
-	$db = getInternalDatabase();
-
-	error_log($id);
 	$sql = "DELETE FROM DEPRECIATIONPROMOPOOL WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
+	foreach( glob("./img/promopool_proofs/".$id."_*") as $file ){
+		error_log($file);
+		unlink($file);
+	}   
+    	
+  	
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
+
 	return $response;
 });
 
@@ -6725,6 +6769,8 @@ $app->delete('/depreciationwastepool/{id}', function($request,Response $response
 	$sql = "DELETE FROM DEPRECIATIONWASTEPOOL WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
+		foreach( glob("./img/wastepool_proofs/".$id."_*") as $file )   
+    	unlink($file);
 
 	$result["result"] = "OK";
 	$response = $response->withJson($result);

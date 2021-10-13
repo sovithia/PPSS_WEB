@@ -673,7 +673,7 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 		else
 		{
 			if ($remains > ($multiple / 2))		
-				return  $lastorderqty;
+				return  $lastrcvqty;
 			else if ($remains < ($multiple / 2))				
 				return $increasedQty + $remains; // +1
 		}			
@@ -681,9 +681,9 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 
 }
 
-function decreaseQty($barcode,$lastorderqty,$price,$unit = 1)
+function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 {
-	$decreasedQty = round($lastorderqty * (1 - (0.1 * $unit)));
+	$decreasedQty = round($lastrcvqty * (1 - (0.1 * $unit)));
 	$multiple = calculateMultiple($barcode);
 	if ($multiple == 1){
 		return $decreasedQty;
@@ -696,7 +696,7 @@ function decreaseQty($barcode,$lastorderqty,$price,$unit = 1)
 		}
 		else{
 			if ($remains > ($multiple / 2))		
-				return  $lastorderqty;
+				return  $lastrcvqty;
 			else if ($remains < ($multiple / 2))				
 				return $increasedQty + $remains; // -1
 		}		 		
@@ -1164,9 +1164,11 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 	$db=getDatabase();
 	$author = blueUser($author);
 
-	$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
+
+	$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ? ";
 	$req = $db->prepare($sql);
-	$res = $req->execute(array($productid)); 
+	$req->execute(array($productid)); 
+	$res = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	if ($res == false){
 		$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
