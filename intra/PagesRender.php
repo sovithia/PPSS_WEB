@@ -1188,6 +1188,7 @@ function renderItemSearch2($items)
 {
 
   $categories = getOrderedCategories();
+  
   array_unshift($categories, "ALL");
 
   $defaultstart = date('Y-m-d', strtotime('-30 days'));
@@ -1200,6 +1201,8 @@ function renderItemSearch2($items)
   $sellstart = isset($_GET["sellstart"]) ? $_GET["sellstart"] : $defaultstart;
   $sellend = isset($_GET["sellend"]) ? $_GET["sellend"] :  $defaultend ;
   $zerosale = isset($_GET["zerosale"]) ? $_GET["zerosale"] : "";
+  $vendid = isset($_GET["vendid"]) ? $_GET["vendid"] : "";   
+  $vendor = isset($_GET["vendor"]) ? $_GET["vendor"] : "";  
 
   $body = "";  
   $body .= "<div class='col s12 m8 l9'>
@@ -1211,6 +1214,21 @@ function renderItemSearch2($items)
                       ".elemSelect($categories,"category",12,$category)."
                    </div>
                 </div>
+
+                <div class='row'>
+                  <div class='input-field col s12'>                   
+                    <input id='vendid' name='vendid' type='text' value='".$vendid."'>
+                    <label for='vendid' class='center-align'>Vendor ID</label>               
+                  </div>
+                </div>  
+
+                <div class='row'>
+                    <div class='input-field col s12'>                   
+                      <input id='vendor' name='vendor' type='text' value='".$vendor."'>
+                      <label for='vendor' class='center-align'>Vendor</label>               
+                    </div>
+                </div>
+
 
                 <div class='row'>
                     <div class='input-field col s12'>                        
@@ -1364,7 +1382,6 @@ function renderItemSearch2($items)
 
         $item["COSTPROMO"] = percentConvert($item["COSTPROMO"]);
         $item["PRICEPROMO"] = percentConvert($item["PRICEPROMO"]);
-
           
         
         $item["LASTRECEIVEQTY"] = truncatePrice($item["LASTRECEIVEQTY"]);
@@ -1576,6 +1593,8 @@ function renderItemSearch($items)
   
    $storebin1 = isset($_GET["storebin1"]) ? $_GET["storebin1"] : "";
    $storebin2 = isset($_GET["storebin2"]) ? $_GET["storebin2"] : "";
+
+
 
    $body = "";	
    $body .= "<div class='col s12 m8 l9'>

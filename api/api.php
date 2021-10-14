@@ -1386,6 +1386,8 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 
  	$today = date("Y-m-d");
 	
+	$vendorname = $request->getParam('VENDORNAME','');
+	$vendid = $request->getParam('VENDID','');
 	$category = $request->getParam('category','ALL');
 	$thrownstart =  $request->getParam('thrownstart','2000-1-1');
 	$thrownend =  $request->getParam('thrownend','2050-1-1');
@@ -1416,7 +1418,17 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 		FROM dbo.ICPRODUCT,dbo.APVENDOR  
 		WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID";
 
-	$params = array($thrownstart, $thrownend, $sellstart, $sellend);
+		$params = array($thrownstart, $thrownend, $sellstart, $sellend);
+
+		if ($vendid != ''){
+			$sql .= " AND VENDID = ? ";
+			array_push($params,$vendid);
+		}
+
+		if ($vendorname != ''){
+			$sql .= " AND VENDNAME LIKE ? ";
+			array_push($params,'%'.$vendorname.'%');
+		}
 
 	if ($category != "ALL"){
 		$sql .=	" AND CATEGORYID = ?";
@@ -2595,7 +2607,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	else if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "PO") 
 	{
 		$author = $json["AUTHOR"];
-		$items = json_decode($json["ITEMS"],true);
+		$items = $json["ITEMS"];
 		$now = date("Y-m-d H:i:s");
 		$vendname = "";
 
@@ -2656,9 +2668,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$item["DISCOUNT"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
 	}
 	else
 	{

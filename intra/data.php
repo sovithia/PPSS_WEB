@@ -6,7 +6,7 @@ require_once("RestEngine.php");
 function getOrderedCategories()
 {
 	$categories = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/orderedCategories");      
-	return $categories;
+	return $categories["data"];
 }
 
 function getCategoryListJS()
