@@ -2595,7 +2595,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	else if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "PO") 
 	{
 		$author = $json["AUTHOR"];
-		$items = $json["ITEMS"];
+		$items = json_decode($json["ITEMS"],true);
 		$now = date("Y-m-d H:i:s");
 		$vendname = "";
 
@@ -2656,9 +2656,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$item["DISCOUNT"]));
 	}
 	else
 	{

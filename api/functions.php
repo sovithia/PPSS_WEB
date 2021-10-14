@@ -1198,17 +1198,19 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 
 function createPO($items,$author)
 {
+
 	if(count($items) == 0){
 		return null;
 	}
+	$db = getDatabase();
 
 	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
-	$res = $req->execute(array($items[0]["PRODUCTID"]));
+	$req->execute(array($items[0]["PRODUCTID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res == false)
 		return null;
 	$vendorid = $res["VENDID"];
-
 
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -1245,31 +1247,30 @@ function createPO($items,$author)
 	$CURRID = "USD";
 	$EST_ARRIVAL = $now;
 	$REQUIRE_DATE = $now;
-	$DISC_PERCENT = $header["DISC_PERCENT"];
+	$DISC_PERCENT = 0;
 	$BASECURR_ID = "USD";
 	$PURCHASE_AMT = 0;
 	$VAT_AMT = 0;
 			
-
 	foreach($items as $item)
 	{
-		$sql = "SELECT TOP(1) TRANCOST,TRANDISC,DATEADD FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
+		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($ponumber,$item["ID"]));
+		$req->execute(array($PONUMBER,$item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res != false){
-			$TRANDISC = $res["TRANDISC"];
+			
 			$TRANCOST = $res["TRANCOST"];	
 		}else{
-			$sql = "SELECT COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBLUE->prepare($sql);
-			$req->execute(array($item["ID"]));
+			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
-			$TRANCOST = $res["TRANCOST"];	
-			$TRANDISC = $res["TRANDISC"];
+			$TRANCOST = $res["LASTCOST"];				
 		}
+		$TRANDISC = $item["DISCOUNT"];
 
 		if ($TRANDISC != null && $TRANDISC != "0")
 			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
@@ -1298,7 +1299,7 @@ function createPO($items,$author)
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
 					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT,"AUTOVALIDATED",
-					"SPLIT FROM ".$ponumber,"");
+					"SPLIT FROM ".$PONUMBER,"");
 	$req->execute($params);
 
 	$line = 1;
@@ -1306,27 +1307,31 @@ function createPO($items,$author)
 	{
 		$sql = "SELECT * FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["ID"],$ponumber));		
+		$req->execute(array($item["PRODUCTID"],$PONUMBER));		
 		$itemdetail =  $req->fetch(PDO::FETCH_ASSOC);
 
 		$PURCHASE_DATE = $now;
-		$PRODUCTID = $item["ID"];
+		$PRODUCTID = $item["PRODUCTID"];
 		$ORDER_QTY = $item["ORDER_QTY"];
 		$DATEADD = $now;
 
-		$sql = "SELECT COST,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,COST,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["ID"])); 
+		$req->execute(array($item["PRODUCTID"])); 
 		$newitem = $req->fetch(PDO::FETCH_ASSOC);
 
+		$PRODUCTNAME = $newitem["PRODUCTNAME"];
+		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
 
 		$CURRENTONHAND = $newitem["ONHAND"];
+
+
+		$CURRENCY_COST = $newitem["COST"] *( (100 - $item["DISCOUNT"]) / 100);	
+		$CURRENCY_AMOUNT = $CURRENCY_COST * $item["ORDER_QTY"];
+
 		$USERADD = $author;
 		if ($itemdetail != false)
 		{
-		
-			$PRODUCTNAME = $itemdetail["PRODUCTNAME"];
-			$PRODUCTNAME1 = $itemdetail["PRODUCTNAME1"];
 			
 			$TRANUNIT = $itemdetail["TRANUNIT"];	
 			$TRANFACTOR = $itemdetail["TRANFACTOR"];
@@ -1335,22 +1340,16 @@ function createPO($items,$author)
 			$TRANDISC = $itemdetail["TRANDISC"];
 			$TRANCOST = $itemdetail["TRANCOST"];
 			$EXTCOST = $itemdetail["EXTCOST"];
-			
 			$CURRID = $itemdetail["CURRID"];
 			$CURR_RATE = $itemdetail["CURR_RATE"];
 			$WEIGHT = $itemdetail["WEIGHT"];
-			$OLDWEIGHT = $itemdetail["OLDWEIGHT"];
-			
+			$OLDWEIGHT = $itemdetail["OLDWEIGHT"];			
 			$VATABLE = $itemdetail["VATABLE"];
 			$VAT_PERCENT = $itemdetail["VAT_PERCENT"];
-			$BASECURR_ID = $itemdetail["BASECURR_ID"];
-			$CURRENCY_AMOUNT = $itemdetail["CURRENCY_AMOUNT"];
-			$CURRENCY_COST = $itemdetail["CURRENCY_COST"];	
+			$BASECURR_ID = $itemdetail["BASECURR_ID"];			
 		}
 		else
-		{
-			
-
+		{	
 			$TRANUNIT = "UNIT";
 			$TRANFACTOR = "1.00000";
 			$STKUNIT = "UNIT";
@@ -1361,13 +1360,10 @@ function createPO($items,$author)
 			$CURRID = "USD";
 			$CURR_RATE = "1";
 			$WEIGHT = "1.00000";
-			$OLDWEIGHT = "1.00000";
-			
+			$OLDWEIGHT = "1.00000";			
 			$VATABLE = "Y";
 			$VAT_PERCENT = "";
-			$BASECURR_ID = "";
-			$CURRENCY_AMOUNT = "";
-			$CURRENCY_COST = "";
+			$BASECURR_ID = "";			
 		}
 
 		
@@ -1389,6 +1385,9 @@ function createPO($items,$author)
 		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
 		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
 		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST);
+
+		$debug = var_export($params, true);
+		error_log($debug);
 
 		$req->execute($params);				
 		$line++;
