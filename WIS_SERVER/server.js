@@ -1,5 +1,4 @@
 var http = require('http');
-var sqlite3 = require('sqlite3').verbose();
 //var db = new sqlite3.Database('wis.sqlite');
 var express = require('express');
 var app = express();
