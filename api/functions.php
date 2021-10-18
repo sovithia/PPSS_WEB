@@ -1271,9 +1271,9 @@ function createPO($items,$author)
 			
 	foreach($items as $item)
 	{
-		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
+		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($PONUMBER,$item["PRODUCTID"]));
+		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res != false){
