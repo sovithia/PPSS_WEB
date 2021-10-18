@@ -1324,6 +1324,22 @@ function createPO($items,$author)
 	$line = 1;
 	foreach($items as $item)
 	{
+		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res != false){	
+			$TRANCOST = $res["TRANCOST"];	
+		}else{
+			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$TRANCOST = $res["LASTCOST"];				
+		}
+
+
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0")
 			$QUANTITY = $item["SPECIALQTY"];
@@ -1371,8 +1387,7 @@ function createPO($items,$author)
 			$TRANDISC = $item["DISCOUNT"];
 		else
 			$TRANDISC = 0;
-		$EXTCOST = $CURRENCY_AMOUNT;
-		$TRANCOST = $newitem["COST"];			
+		$EXTCOST = $CURRENCY_AMOUNT;		
 		
 		$RECEIVE_QTY = "0.0000";
 		$COMMENT = "";
