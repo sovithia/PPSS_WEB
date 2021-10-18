@@ -1386,8 +1386,8 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 
  	$today = date("Y-m-d");
 	
-	$vendorname = $request->getParam('VENDORNAME','');
-	$vendid = $request->getParam('VENDID','');
+	$vendorname = $request->getParam('vendor','');
+	$vendid = $request->getParam('vendid','');
 	$category = $request->getParam('category','ALL');
 	$thrownstart =  $request->getParam('thrownstart','2000-1-1');
 	$thrownend =  $request->getParam('thrownend','2050-1-1');
@@ -2604,14 +2604,22 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
 		$result["result"] = "OK";
 	}
-	else if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "PO") 
+	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) 
 	{
-		$author = $json["AUTHOR"];
-		$items = $json["ITEMS"];
+		$author = blueUser($json["AUTHOR"]);
+		$items = json_decode($json["ITEMS"],true);
 		$now = date("Y-m-d H:i:s");
-		$vendname = "";
 
+		$sql = "SELECT ICPRODUCT.VENDID,VENDNAME FROM ICPRODUCT,APVENDOR WHERE APVENDOR.VENDID = ICPRODUCT.VENDID AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($items[0]["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		
+		$vendorid = $res["VENDID"];
+		$vendname = $res["VENDNAME"];
+		
 		$ponumber = createPO($items,$author);
+		$resp["message"] = "Po created with number ".$ponumber;
 
 		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 		$req = $db->prepare($sql);
@@ -2623,8 +2631,15 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
 			VALUES (:author,:noponote,'DELIVERED','PO')";
+		if ($json["TYPE"] ==  "POPOOL"){
+			$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($json["USERID"]));	
+		}
 	}	
-	$response = $response->withJson($result);
+
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
 	return $response;
 });
 
@@ -2668,9 +2683,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"]));
 	}
 	else
 	{
@@ -2683,8 +2698,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($res["PRODUCTID"]));
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
-
-		error_log($res2["VENDID"]. " ".$res3["VENDID"] );
+		
 
 		if ($res2["VENDID"] != $res3["VENDID"]){
 			$data["result"] = "KO";	
@@ -2692,9 +2706,21 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$response = $response->withJson($data);
 			return $response;
 		}
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";
+
+		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"]));
+		$req->execute(array($json["PRODUCTID"]));
+		$res4 = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res4 != false){
+			$data["result"] = "KO";	
+			$data["message"] = "Product already in list";
+			$response = $response->withJson($data);
+			return $response;
+		} 
+
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DSICOUNT) values (?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -4321,9 +4347,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 		else if ($ira["TYPE"] == "PURCHASE"){// NOTHING}																
 		}		
 		else if ($ira["TYPE"] == "GROUPEDPURCHASE"){ // CREATE PO
-			//$author = blueUser($json["AUTHOR"]);
-			//$ponumber = createPO($items,$author);
-			//$data["message"] = "PO Created with number ".$ponumber; 
+			$author = blueUser($json["AUTHOR"]);
+			$ponumber = createPO($items,$author);
+			$data["message"] = "PO Created with number ".$ponumber; 
 		}	
 	}
 	else if ($json["STATUS"] == "SUBMITTED")

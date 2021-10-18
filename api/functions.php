@@ -248,15 +248,22 @@ function blueUser($author){
 		return "PONLEU";
 	else if ($author == "prom_r")
 		return "RETH";
-	else if ($author == "phorl_p")
-		return "PHARY";
-	else if ($author == "sin_p")
-		return "PHEAK";
+	
 	else if ($author == "chea_s")
 		return "SOPHAL";
 	else if ($author == "meng_g")
 		return "GECKMEY";
-	else 
+	else if ($author == "vireak_n")
+		return "NORIN";
+	else if ($author == "ith_p")
+		return "PUTHEAVY";
+	else if ($author == "ke_k")
+		return "KEARY";
+	else if ($author == "tieng_s")
+		return "SOPHEARITH";
+	else if ($author == "hong_v")
+		return "VICHET";
+
 		return $author;
 
 }	
@@ -1251,6 +1258,16 @@ function createPO($items,$author)
 	$BASECURR_ID = "USD";
 	$PURCHASE_AMT = 0;
 	$VAT_AMT = 0;
+	$CURRENCY_AMOUNT = 0;
+
+	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD,
+																	TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
+																	TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
+																 ) VALUES (?,?,?,getdate(),
+																 					'','','','','','','','','','','')";
+	$req = $db->prepare($sql);
+	$req->execute(array($PONUMBER,$vendorid,$USERADD)); 
+
 			
 	foreach($items as $item)
 	{
@@ -1279,18 +1296,20 @@ function createPO($items,$author)
 
 		$vat = $calculatedCost * ($VAT_PERCENT / 100);
 		$price =   $calculatedCost - ($calculatedCost * ($TRANDISC / 100)); 
-		$PURCHASE_AMT += $price;
+		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat;
 		$VAT_AMT += $vat;
+		
 	}
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
+	$CURRENCY_AMOUNT = $PURCHASE_AMT;
 
 	$sql = "INSERT POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
 		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-		NOTES,REFERENCE,POSTATUS) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	$req =$dbBLUE->prepare($sql);	
 
@@ -1298,75 +1317,76 @@ function createPO($items,$author)
 	$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
-					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$VAT_AMT,"AUTOVALIDATED",
-					"SPLIT FROM ".$PONUMBER,"");
+					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
+					"","",$CURRENCY_AMOUNT);
 	$req->execute($params);
 
 	$line = 1;
 	foreach($items as $item)
 	{
-		$sql = "SELECT * FROM PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$PONUMBER));		
-		$itemdetail =  $req->fetch(PDO::FETCH_ASSOC);
+		// PATCH SUPPLYRECORD WITH ITEMREQUEST
+		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0")
+			$QUANTITY = $item["SPECIALQTY"];
+		else if (isset($item["ORDER_QTY"]))
+			$QUANTITY = $item["ORDER_QTY"];
+		else
+			$QUANTITY = $item["REQUEST_QUANTITY"];
+		//
 
+
+	
 		$PURCHASE_DATE = $now;
 		$PRODUCTID = $item["PRODUCTID"];
-		$ORDER_QTY = $item["ORDER_QTY"];
+		$ORDER_QTY = $QUANTITY;
 		$DATEADD = $now;
 
-		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,COST,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,COST,ONHAND 
+						FROM ICPRODUCT  
+						WHERE PRODUCTID = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"])); 
 		$newitem = $req->fetch(PDO::FETCH_ASSOC);
 
 		$PRODUCTNAME = $newitem["PRODUCTNAME"];
 		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
-
 		$CURRENTONHAND = $newitem["ONHAND"];
+		$CURRENCY_COST = ($newitem["COST"] *( (100 - $item["DISCOUNT"]) / 100));
 
+		$CURRENCY_AMOUNT = $CURRENCY_COST * $QUANTITY;	
+		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * (1 +($VAT_PERCENT / 100)); 
 
-		$CURRENCY_COST = $newitem["COST"] *( (100 - $item["DISCOUNT"]) / 100);	
-		$CURRENCY_AMOUNT = $CURRENCY_COST * $item["ORDER_QTY"];
-
-		$USERADD = $author;
-		if ($itemdetail != false)
-		{
-			
-			$TRANUNIT = $itemdetail["TRANUNIT"];	
-			$TRANFACTOR = $itemdetail["TRANFACTOR"];
-			$STKUNIT = $itemdetail["STKUNIT"];
-			$STKFACTOR = $itemdetail["STKFACTOR"];
-			$TRANDISC = $itemdetail["TRANDISC"];
-			$TRANCOST = $itemdetail["TRANCOST"];
-			$EXTCOST = $itemdetail["EXTCOST"];
-			$CURRID = $itemdetail["CURRID"];
-			$CURR_RATE = $itemdetail["CURR_RATE"];
-			$WEIGHT = $itemdetail["WEIGHT"];
-			$OLDWEIGHT = $itemdetail["OLDWEIGHT"];			
-			$VATABLE = $itemdetail["VATABLE"];
-			$VAT_PERCENT = $itemdetail["VAT_PERCENT"];
-			$BASECURR_ID = $itemdetail["BASECURR_ID"];			
-		}
+		$STKFACTOR = "1.00000";
+		$BASECURR_ID = "USD";
+		$VATABLE = "Y";
+		$TRANUNIT = "UNIT";
+		$TRANFACTOR = "1.00000";
+		$STKUNIT = "UNIT";
+		$USERADD = blueUser($author);
+		$CURRID = "USD";
+		$CURR_RATE = "1";
+		$WEIGHT = "1.00000";
+		$OLDWEIGHT = "1.00000";
+		$RECEIVE_QTY = "0.00000";
+		if (isset($item["DISCOUNT"]))			
+			$TRANDISC = $item["DISCOUNT"];
 		else
-		{	
-			$TRANUNIT = "UNIT";
-			$TRANFACTOR = "1.00000";
-			$STKUNIT = "UNIT";
-			$STKFACTOR = "1.00000";
-			$TRANDISC = "";
-			$TRANCOST = $newitem["COST"];
-			$EXTCOST = $TRANCOST * $item["ORDER_QTY"];
-			$CURRID = "USD";
-			$CURR_RATE = "1";
-			$WEIGHT = "1.00000";
-			$OLDWEIGHT = "1.00000";			
-			$VATABLE = "Y";
-			$VAT_PERCENT = "";
-			$BASECURR_ID = "";			
-		}
-
+			$TRANDISC = 0;
+		$EXTCOST = $CURRENCY_AMOUNT;
+		$TRANCOST = $newitem["COST"];			
 		
+		$RECEIVE_QTY = "0.0000";
+		$COMMENT = "";
+		$POSTATUS = "";
+		$COST_ADD = "0.0000";
+		$DIMENSION = "0.0000";
+
+		$FILEID = "";
+		$COST_CENTER = "";
+		$INVENTORYACC = "";
+		$QTY_OVORORDER = "0.0000";
+		$FREIGHT_SG = "0.0000";
+
+
 
 		$sql = "INSERT INTO PODETAIL (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
@@ -1374,8 +1394,19 @@ function createPO($items,$author)
 		TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,TRANDISC,
 		TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
 		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
-		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
+		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
+		RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
+		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG) 
+		VALUES (?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?,?,
+
+						?,?,?,?,?,
+						?,?,?,?,?
+						)"; 
 
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
@@ -1384,7 +1415,10 @@ function createPO($items,$author)
 		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
 		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
 		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
-		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST);
+		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
+		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
+		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG 
+		);
 
 		$debug = var_export($params, true);
 		error_log($debug);

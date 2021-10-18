@@ -132,6 +132,8 @@ function getData($display,$entity,$param)
     $params = "?a=1";
     $params .= ($param["category"] != "ALL") ? "&category=".urlencode($param["category"]) : "";
     $params .= ($param["zerosale"] != "ALL") ? "&zerosale=".urlencode($param["zerosale"]) : "";
+    $params .= (strlen($param["vendor"])> 0)  ? "&vendor=".urlencode($param["vendor"]) : "";
+    $params .= (strlen($param["vendid"]) > 0) ? "&vendid=".urlencode($param["vendid"]) : "";
     $params .= (strlen($param["thrownstart"]) > 0) ? "&thrownstart=".urlencode($param["thrownstart"]) : "";
     $params .= (strlen($param["thrownend"]) > 0) ? "&thrownend=".urlencode($param["thrownend"]) : "";
     $params .= (strlen($param["sellstart"]) > 0) ? "&sellstart=".urlencode($param["sellstart"]) : "";
