@@ -782,13 +782,9 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	}
 	else 
 		$ONHAND = $res["ONHAND"]; //**	
-	
-
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
 	
-
-
 	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
 					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
 					AND PRODUCTID = ? 
@@ -988,6 +984,7 @@ function wasteStatistics($barcode,$expiration)
 	}
 	return $data;
 }
+
 function calculatePenalty($barcode, $expiration,$type = null){
 		$db=getDatabase();		
 		$indb = getInternalDatabase();
@@ -1160,9 +1157,9 @@ function calculatePenalty($barcode, $expiration,$type = null){
 			else if ($type == "CLEARANCEDESTOCKPROMOTION")
 				$data["percentpromo"] = "70";	 		
 	 		return $data;
-		}
-	
+		}	
 }
+
 // TODO
 function attachPromotion($productid,$percent,$start,$end,$author){
 
@@ -1198,9 +1195,89 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 		$req = $db->prepare($sql);
 		$req->execute(array($start,$end,'Per Item',$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$productid));
 	}
+}
 
-	
 
+
+function autoPromoForVendor($vendid){
+	$promo = array();
+
+	$promo["100-064"] = 5;
+	$promo["100-100"] = 5;
+	$promo["100-244"] = 5;
+	$promo["100-313"] = 5;
+	$promo["100-414"] = 5;
+	$promo["100-355"] = 3;
+	$promo["400-239"] = 5;
+	$promo["100-092"] = 2;
+	$promo["100-131"] = 5;
+	$promo["100-083"] = 5;
+	$promo["400-076"] = 5;
+	$promo["100-410"] = 5;
+	$promo["100-095"] = 5;
+	$promo["100-126"] = 5;
+	$promo["100-381"] = 5;
+	$promo["400-095"] = 3;
+	$promo["100-554"] = 5;
+	$promo["400-207"] = 8;
+	$promo["100-297"] = 3;
+	$promo["400-105"] = 5;
+	$promo["400-128"] = 5;
+	$promo["400-151"] = 5;
+	$promo["400-080"] = 5;
+	$promo["100-211"] = 5;
+	$promo["400-089"] = 3;
+	$promo["100-088"] = 2;
+	$promo["100-169"] = 25;
+	$promo["400-368"] = 5;
+	$promo["100-562"] = 2;
+	$promo["101-008"] = 5;
+	$promo["100-049"] = 5;
+	$promo["400-037"] = 3;
+	$promo["100-266"] = 3;
+	$promo["100-152"] = 3;
+	$promo["100-053"] = 5;
+	$promo["100-074"] = 5;
+	$promo["100-176"] = 3;
+	$promo["400-050"] = 4;
+	$promo["400-032"] = 3;
+	$promo["400-409"] = 2;
+	$promo["400-038"] = 5;
+	$promo["100-021"] = 5;
+	$promo["100-586"] = 5;
+	$promo["400-188"] = 5;
+	$promo["100-058"] = 5;
+	$promo["400-199"] = 5;
+	$promo["100-039"] = 5;
+	$promo["100-571"] = 5;
+	$promo["100-436"] = 4;
+	$promo["100-107"] = 5;
+	$promo["100-185"] = 5;
+	$promo["100-094"] = 5;
+	$promo["100-138"] = 10;
+	$promo["100-218"] = 3;
+	$promo["400-046"] = 20;
+	$promo["100-141"] = 5;
+	$promo["100-356"] = 2;
+	$promo["100-398"] = 5;
+	$promo["400-223"] = 2;
+	$promo["100-057"] = 5;
+	$promo["100-396"] = 5;
+	$promo["100-045"] = 5;
+	$promo["400-122"] = 3;
+	$promo["400-161"] = 3;
+	$promo["100-516"] = 5;
+	$promo["400-049"] = 5;
+	$promo["100-489"] = 5;
+	$promo["100-186"] = 3;
+	$promo["100-591"] = 10;
+	$promo["400-208"] = 5;
+	$promo["400-219"] = 10;
+
+	if (array_key_exists($vendid, $pomo)){
+		return $promo[$vendid]; 
+	}
+	return 0;
 }
 
 function createPO($items,$author)
@@ -1211,6 +1288,8 @@ function createPO($items,$author)
 	}
 	$db = getDatabase();
 
+
+
 	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($items[0]["PRODUCTID"]));
@@ -1218,6 +1297,8 @@ function createPO($items,$author)
 	if ($res == false)
 		return null;
 	$vendorid = $res["VENDID"];
+
+	$autoPromo = autoPromoForVendor($vendorid);
 
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -1329,16 +1410,18 @@ function createPO($items,$author)
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
+
+		$sql = "SELECT  LASTCOST,COST,DISCABLE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res2 = $req->fetch(PDO::FETCH_ASSOC);
+
 		if ($res != false){	
 			$TRANCOST = $res["TRANCOST"];	
-		}else{
-			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
-			$req = $dbBLUE->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$TRANCOST = $res["LASTCOST"];				
+		}else{			
+			$TRANCOST = $res2["LASTCOST"];		
 		}
-
+		$DISCABLE = $res["DISCABLE"];
 
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0")
@@ -1383,10 +1466,16 @@ function createPO($items,$author)
 		$WEIGHT = "1.00000";
 		$OLDWEIGHT = "1.00000";
 		$RECEIVE_QTY = "0.00000";
-		if (isset($item["DISCOUNT"]))			
-			$TRANDISC = $item["DISCOUNT"];
-		else
-			$TRANDISC = 0;
+
+		$TRANDISC = 0;
+		if ($DISCABLE == 1)
+		{
+			if (isset($item["DISCOUNT"]))			
+				$TRANDISC = $item["DISCOUNT"];
+			else if ($autoPromo != "0")
+				$TRANDISC = $autoPromo;	
+		}
+			
 		$EXTCOST = $CURRENCY_AMOUNT;		
 		
 		$RECEIVE_QTY = "0.0000";
