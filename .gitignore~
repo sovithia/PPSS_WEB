@@ -8,9 +8,16 @@ api/img/.DS_Store
 api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
 api/img/requestaction/*
+api/img/depreciation_signatures/*
+api/img/promo_proofs/*
+api/img/promo_signatures/*
+api/img/promopool_proofs/*
+api/img/waste_proofs/*
+api/img/waste_signatures/*
+api/img/wastepool_proofs/*
 intra/data.xlsx
 intra/data.xlsx
-api/tmp.png
+api/tmp.jpg
 intra/data.xlsx
 api/tmp.png
 intra/data.xlsx
@@ -21,8 +28,4 @@ intra/.DS_Store
 culture/Meeting_Culture.mov
 culture/Company_Culture_EN.pdf
 culture/Company_Culture _KH.pdf
-api/tmp.jpg
-api/tmp.jpg
 db/_SuperStore.sqlite
-api/tmp.jpg
-api/tmp.jpg

@@ -3,6 +3,7 @@
     "@types/node": "^16.10.9",
     "bluebird": "^3.7.2",
     "clicksend": "^5.0.37",
+    "express": "^4.17.1",
     "http": "^0.0.1-security",
     "mysql": "^2.18.1",
     "request": "^2.88.2",

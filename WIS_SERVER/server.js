@@ -167,6 +167,13 @@ function UserFromToken(token,callback){
 		}
 	});	
 }
+
+// forget password
+app.get('/info', function(req,res){
+	res.json({"result" : "OK"});		
+});
+
+
 // forget password
 app.post('/forgetpassword', function(req,res){
 	type = req.body["phone"];

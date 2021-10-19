@@ -1,6 +1,5 @@
 var http = require('http');
-var sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database('wis.sqlite');
+//var db = new sqlite3.Database('wis.sqlite');
 var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
@@ -8,10 +7,7 @@ app.use(bodyParser.json({limit:'50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb',extended: true}));
 var Buffer = require('buffer').Buffer;
 const fs = require('fs');
-
 var api = require('./node_modules/clicksend/api.js');
-
-//Loading the crypto module in node.js
 
 
 function sendSMS(from,to,message)
@@ -55,14 +51,7 @@ function getDatabase()
 	return connection;
 }
 
-app.get('/test',function(req,res){	
-connection.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
-  if (error) throw error;
-  console.log('The solution is: ', results[0].solution);
-	});
-	connection.end();
-});
-
+/*
 db.query = function (sql, params) {
   var that = this;
   return new Promise(function (resolve, reject) {
@@ -74,6 +63,7 @@ db.query = function (sql, params) {
     });
   });
 };
+*/
 
 function canSignup(type,identifier,phone,birthdate,callback)
 {
@@ -177,13 +167,29 @@ function UserFromToken(token,callback){
 		}
 	});	
 }
+
 // forget password
-app.post('/forgetpassword', function(req,res){
-	type = req.body["phone"];
-	// Use SMS Gateway to send password by phone (or reset link)
+app.post('/info', function(req,res){
 	res.json({"result" : "OK"});		
 });
 
+
+// forget password
+app.post('/forgetpassword', function(req,res){
+	type = req.body["phone"];
+
+	db = getDatabase();			
+	db.query("SELECT password from app_user where login = ?",[req.body["phone"]],function (error, results, fields) {
+		if (results.length > 0){
+			res.json({"result" : "OK"});	
+
+			targetPhone = "+855" + results[0]["password"].substring(1);		
+			sendSMS("WIS",targetPhone,"Password for account " + phone + "is " + results[0]["password"]);
+		}else{
+			res.json({"result" : "KO"});			
+		}
+	});	
+});
 
 // presignup 
 app.post('/presignup', function(req,res){
@@ -203,7 +209,6 @@ app.post('/presignup', function(req,res){
 		else if (result == "OK")
 			res.json({"result" : "OK","message" : "signup valid"});
 		});
-
 });
 
 function isAuthorizedRegistrar(id)
@@ -220,7 +225,7 @@ app.post('/signup', function(req,res){
 	phone = req.body["phone"];
 	phone = phone.replace(/\s+/g, ' ').trim();
 	birthdate = req.body["birthdate"];
-	password = hashString(req.body["password"]);
+	password = req.body["password"];
 
 	result = canSignup(type,identifier,phone,birthdate, (result) =>{
 		if (result == "ALREADY")
@@ -269,7 +274,7 @@ app.post('/signup', function(req,res){
 // login identifier from different type should not clash
 app.post('/login', function(req, res){	
 		db = getDatabase();
-    db.query("SELECT * FROM app_user WHERE login = ? and password = ?",[req.body["phone"],hashString(req.body["password"])],function (error, results, fields){
+    db.query("SELECT * FROM app_user WHERE login = ? and password = ?",[req.body["phone"],req.body["password"]],function (error, results, fields){
 			if (results.length > 0)
 			{
 				console.log(results[0]["usertype"]);
@@ -540,7 +545,6 @@ app.put('/attendance/:id', function(req, res){
 	});
 });
 
-
 app.get('/schedule', function(req, res){	 
 	UserFromToken(req.headers["token"],(user) => {	
 		db.get("SELECT * FROM SCHEDULE; WHERE startdate < strftime('%s', 'now') AND enddate > strftime('%s', 'now')",[],function(err,row){			
@@ -571,11 +575,9 @@ app.get('/schedule', function(req, res){
 //*** TODO : WAITING FOR AVAILABILITY ***//
 //***************************************//
 
+// VALIDATE INVOICE
+// SUBMIT INVOICE WITH PICTURE
+app.listen(3000);
 
-	// VALIDATE INVOICE
-	// SUBMIT INVOICE WITH PICTURE
-
-//app.listen(3000);
-//sendSMS("WIS","+855964222816","TEST MESSAGE");
 
 
