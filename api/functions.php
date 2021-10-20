@@ -766,11 +766,15 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
 
 
-	$sql = "SELECT ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($barcode));
-
+	$req->execute(array($barcode));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	
+	$vendorid = $res["VENDID"];
+
+
+
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
 	if($type == "RESTOCK"){
@@ -826,7 +830,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$stats["PROMO"] = $PROMO;	
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
-
+	$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
 	$MARGIN = (int)$RCVQTY * 0.2;
 
 	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		
@@ -961,6 +965,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}	
 		}
 	
+
 	return $stats;	
 }
 
@@ -1274,7 +1279,9 @@ function autoPromoForVendor($vendid){
 	$promo["400-208"] = 5;
 	$promo["400-219"] = 10;
 
-	if (array_key_exists($vendid, $pomo)){
+	$promo["100-999"] = 5;
+
+	if (array_key_exists($vendid, $promo)){
 		return $promo[$vendid]; 
 	}
 	return 0;
@@ -1299,6 +1306,7 @@ function createPO($items,$author)
 	$vendorid = $res["VENDID"];
 
 	$autoPromo = autoPromoForVendor($vendorid);
+	error_log($autoPromo);
 
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -1421,7 +1429,7 @@ function createPO($items,$author)
 		}else{			
 			$TRANCOST = $res2["LASTCOST"];		
 		}
-		$DISCABLE = $res["DISCABLE"];
+		$DISCABLE = $res2["DISCABLE"];
 
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0")
@@ -1475,6 +1483,7 @@ function createPO($items,$author)
 			else if ($autoPromo != "0")
 				$TRANDISC = $autoPromo;	
 		}
+		error_log($TRANDISC);
 			
 		$EXTCOST = $CURRENCY_AMOUNT;		
 		

@@ -70,6 +70,7 @@ function canSignup(type,identifier,phone,birthdate,callback)
 	db = getDatabase();
 	params = [identifier,phone,birthdate];	
 
+
 	db.query("SELECT * FROM app_user WHERE login = ? AND usertype = ?" , [phone,type], function (error, results, fields) {
 			if (error) 
 				throw error;
@@ -96,10 +97,10 @@ function canSignup(type,identifier,phone,birthdate,callback)
 					});
 				}
 				else if (type == "PARENT")
-				{
+				{				
 					db.query("SELECT * from students,student_contacts \
 										where students.uuid = student_contacts.student_uuid \
-										and students.uuid = ? \
+										and students.sid = ? \
 										and REPLACE(student_contacts.phone_1, ' ', '')  = ? \
 										and students.dob = ?",params,
 						function (error, results, fields) {
@@ -235,14 +236,13 @@ app.post('/signup', function(req,res){
 		else if (result == "OK"){
 			db = getDatabase();			
 		if(type == "PARENT")
-		{
-			db.query("SELECT students_contact.id as contactID FROM students_contact,students where students_contact.student_uuid = students.uuid and  phone_1 = ? and students.sid = ?",[phone,identifier],
+		{			
+			db.query("SELECT student_contacts.id as contactID FROM student_contacts,students where student_contacts.student_uuid = students.uuid and  REPLACE(student_contacts.phone_1, ' ', '') = ?  and students.sid = ?",[phone,identifier],
 				function (error, results, fields){   	
-					if (error) throw error;
-					db.end();					
-
+					if (error) throw error;						
+					console.log(results);
 					db.query("INSERT INTO app_user (identifier,login,password,usertype,activated,linked_identifier) values (?,?,?,?,?,?)",
-					[results[0].contactID,req.body["phone"],password,req.body["type"],"YES",req.body["identifier"]],
+					[results[0]["contactID"],req.body["phone"],password,req.body["type"],"YES",req.body["identifier"]],
 					function (error, results, fields){   	
 						if (error) throw error;
 						db.end();						
@@ -252,7 +252,7 @@ app.post('/signup', function(req,res){
 		}
 		else 
 		{
-			if (type == "REGISTRAR" && isAuthorizedRegistrar() == false){
+			if (type == "REGISTRAR" && isAuthorizedRegistrar(identifier) == false){
 					res.json({"result" : "KO","message" : "unauthorized signup"});	
 			}else{
 				db.query("INSERT INTO app_user (identifier,login,password,usertype,activated) values (?,?,?,?,?)",
@@ -276,37 +276,41 @@ app.post('/login', function(req, res){
 		db = getDatabase();
     db.query("SELECT * FROM app_user WHERE login = ? and password = ?",[req.body["phone"],req.body["password"]],function (error, results, fields){
 			if (results.length > 0)
-			{
-				console.log(results[0]["usertype"]);
+			{		
 				expiration = Date.now() + 86400;
 				token = generateAccessToken();
 				usertype = results[0]["usertype"];
 				identifier = results[0]["identifier"];
+				console.log(identifier);
+
 				db.query("UPDATE app_user SET access_token = ?, token_expiration = ? WHERE login = ?",[token,expiration,req.body["phone"]] ,function (error2, results2, fields2){
-					if (usertype == "STUDENT"){
-							db.query("SELECT firstname,lastname,dob,gender,credit,enrollment_date,phone_1,address_1 FROM students where sid = ?",[identifier],function (error3, results3, fields3){
-							console.log(JSON.stringify(results3)); 
+					if (usertype == "STUDENT"){							
+							db.query("SELECT firstname,lastname,dob,gender,credit,enrollment_date,phone_1,address_1 FROM students where sid = ?",[identifier],function (error3, results3, fields3){							
 							results3[0]["token"] = token;
 							results3[0]["usertype"] = usertype;
+							birthdate = results3[0]["dob"].toISOString().split('T')[0];							
+							results3[0]["dob"] = birthdate;
 							res.json({"result" : "OK", "data" : results3[0]});			
 						});
 					}
 					else if (usertype == "PARENT"){
-						db.query("SELECT firstname,lastname,relation,gender, phone_1,address_1 FROM students_contact,students \
-							where students_contact.student_uuid = students.uuid \
-							and students_contact.uuid = ?",[identifier],function (error3, results3, fields3){
+
+						db.query("SELECT firstname,lastname,relation,gender, phone_1,address_1 FROM student_contacts \
+							where student_contacts.id = ?",[identifier],function (error3, results3, fields3){
 							console.log(JSON.stringify(results3)); 
 							results3[0]["token"] = token;
-							results3[0]["usertype"] = usertype;
+							results3[0]["usertype"] = usertype;							
 							res.json({"result" : "OK", "data" : results3[0]});			
 						});
 					}
 					else if (usertype == "TEACHER" || usertype == "REGISTRAR") {
-						db.query("SELECT firstname,lastname,sex,phone_1 FROM staffs,staffs_profile where staffs.staff_profile_id = staffs_profile.id  and staffs.employee_number = ?",
+						db.query("SELECT staffs.firstname,staffs.lastname,sex,phone_1,dob FROM staffs,staffs_profile where staffs.staff_profile_id = staffs_profile.id  and staffs.employee_number = ?",
 							[identifier],function (error3, results3, fields3){
 							console.log(JSON.stringify(results3)); 
 							results3[0]["token"] = token;
 							results3[0]["usertype"] = usertype;
+							birthdate = results3[0]["dob"].toISOString().split('T')[0];							
+							results3[0]["dob"] = birthdate;							
 							res.json({"result" : "OK", "data" : results3[0]});			
 						});
 					}		

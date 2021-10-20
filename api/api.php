@@ -976,6 +976,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
 			$item["LASTRCVQTY"] = $stats["RCVQTY"];
+			$item["DISCOUNT"] = $stats["DISCOUNT"];
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode,"RESTOCK");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -3097,6 +3098,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
+					if ($value["PPSS_EXPIREDATE"] == "NO EXPIRE")
+						$value["PPSS_EXPIREDATE"] = null;
 					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
 										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );	
 				}					 						
