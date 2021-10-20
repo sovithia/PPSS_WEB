@@ -2948,9 +2948,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ?, PPSS_NOTE = ?, PPSS_EXPIRE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ?, PPSS_NOTE = ?, PPSS_EXPIREDATE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_VAL_COMMENT"],$value["PPSS_NOTE"],$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]));	 						
+				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_VAL_COMMENT"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]));	 						
 
 				$sql = "UPDATE PODETAIL SET EXTCOST = (ORDER_QTY * TRANCOST) WHERE  PRODUCTID = ? AND PONUMBER = ?";				
 				$req = $dbBLUE->prepare($sql);
@@ -3078,11 +3078,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$req->execute(array($json["PONUMBER"],$key));
 					$res = $req->fetch();
 					$TRANDISC = $res["TRANDISC"];
-
-					if (isset($value["PPSS_EXPIREDATE"]))
-						$expiredate = $value["PPSS_EXPIREDATE"].' 00:00:00.000';
-					else 
-						$expiredate = "";
+		
 
 					if (!isset($value["PPSS_INVOICE_PRICE"]) ||  $value["PPSS_INVOICE_PRICE"] == null)				
 						$value["PPSS_INVOICE_PRICE"] = "0";
@@ -3097,12 +3093,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 					$extcost = $value["PPSS_RECEPTION_QTY"] * $calculatedCost;
 					 
-					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?,PPSS_EXPIREDATE = ?,PPSS_EXPIRE = ? 
+					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?,PPSS_EXPIREDATE = ?
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
 					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
-										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$expiredate,$value["PPSS_EXPIRE"],$key,$json["PONUMBER"]) );	
+										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );	
 				}					 						
 			}
 	
@@ -3198,7 +3194,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
-		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0', PPSS_NOTE = null,PPSS_EXPIRE = null WHERE  PONUMBER = ? ";
+		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0', PPSS_NOTE = null,PPSS_EXPIREDATE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]) );	
 
@@ -7003,8 +6999,8 @@ $app->get('/returnrecordalert',function($request,Response $response) {
 					FROM PODETAIL,ICPRODUCT 
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID				
 					AND SIZE IS NOT NULL
-					AND PPSS_EXPIRE IS NOT NULL
-					AND DATEDIFF(day,GETDATE(), PPSS_EXPIRE) > substring(SIZE,1,3) )";
+					AND PPSS_EXPIREDATE IS NOT NULL
+					AND DATEDIFF(day,GETDATE(), PPSS_EXPIREDATE) > substring(SIZE,1,3) )";
 	$req = $db->prepare($sql);
 	$req->execute(array());				  				 
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
