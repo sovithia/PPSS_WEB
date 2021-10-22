@@ -1295,8 +1295,6 @@ function createPO($items,$author)
 	}
 	$db = getDatabase();
 
-
-
 	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($items[0]["PRODUCTID"]));
@@ -1306,7 +1304,6 @@ function createPO($items,$author)
 	$vendorid = $res["VENDID"];
 
 	$autoPromo = autoPromoForVendor($vendorid);
-	error_log($autoPromo);
 
 	$dbBLUE = getDatabase();
 	$now = date("Y-m-d H:i:s");
@@ -1365,8 +1362,7 @@ function createPO($items,$author)
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		if ($res != false){
-			
+		if ($res != false){	
 			$TRANCOST = $res["TRANCOST"];	
 		}else{
 			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -1378,19 +1374,33 @@ function createPO($items,$author)
 		}
 		$TRANDISC = $item["DISCOUNT"];
 
-		if ($TRANDISC != null && $TRANDISC != "0")
-			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
-		else 
-			$calculatedCost =  $TRANCOST;
+		error_log("TRANCOST:".$TRANCOST);
 
-		$vat = $calculatedCost * ($VAT_PERCENT / 100);
-		$price =   $calculatedCost - ($calculatedCost * ($TRANDISC / 100)); 
-		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat;
+		if ($TRANDISC != null && $TRANDISC != "0"){
+			error_log("a");
+			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
+		}			
+		else{
+			error_log("b");
+			$calculatedCost =  $TRANCOST;
+		} 
+			
+
+		error_log("calculatedCost:".$calculatedCost);
+		
+		$vat = ($calculatedCost * ($VAT_PERCENT / 100)) * $item["ORDER_QTY"];
+		error_log("vat:".$vat);
+
+		$price =   $calculatedCost; 
+		error_log("price:".$price);
+		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
+		error_log("PURCHASE_AMT:".$PURCHASE_AMT);
 		$VAT_AMT += $vat;
+		error_log("VAT_AMT:".$VAT_AMT);
 		
 	}
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
-	$CURRENCY_AMOUNT = $PURCHASE_AMT;
+	$CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
 
 	$sql = "INSERT POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
@@ -1439,8 +1449,6 @@ function createPO($items,$author)
 		else
 			$QUANTITY = $item["REQUEST_QUANTITY"];
 		//
-
-
 	
 		$PURCHASE_DATE = $now;
 		$PRODUCTID = $item["PRODUCTID"];
@@ -1457,10 +1465,9 @@ function createPO($items,$author)
 		$PRODUCTNAME = $newitem["PRODUCTNAME"];
 		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
 		$CURRENTONHAND = $newitem["ONHAND"];
-		$CURRENCY_COST = ($newitem["COST"] *( (100 - $item["DISCOUNT"]) / 100));
 
-		$CURRENCY_AMOUNT = $CURRENCY_COST * $QUANTITY;	
-		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * (1 +($VAT_PERCENT / 100)); 
+		$CURRENCY_COST = floatval($TRANCOST) *  floatval( (100 - $item["DISCOUNT"]) / 100);
+		$CURRENCY_AMOUNT = floatval($CURRENCY_COST) * floatval($QUANTITY);	
 
 		$STKFACTOR = "1.00000";
 		$BASECURR_ID = "USD";
@@ -1533,8 +1540,8 @@ function createPO($items,$author)
 		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG 
 		);
 
-		$debug = var_export($params, true);
-		error_log($debug);
+		//$debug = var_export($params, true);
+		//error_log($debug);
 
 		$req->execute($params);				
 		$line++;

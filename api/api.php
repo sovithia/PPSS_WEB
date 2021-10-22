@@ -2493,6 +2493,17 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$req->execute(array());
 			$POData = $req->fetchAll(PDO::FETCH_ASSOC);
 	}
+	else if ($status == "ORDERED")
+	{
+		$sql = "SELECT * FROM SUPPLY_RECORD 
+				WHERE STATUS = 'ORDERED'
+				AND TYPE = 'PO' 			
+				AND CREATED > date('now','-45 day') 
+				ORDER BY LAST_UPDATED DESC";	
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
+	}
 	else 
 	{
 		$sql = "SELECT *
@@ -2539,6 +2550,17 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
+	}
+	else if ($status == "ORDERED")
+	{
+		$sql = "SELECT * FROM SUPPLY_RECORD 
+				WHERE STATUS = 'ORDERED'
+				AND TYPE = 'NOPO' 			
+				AND CREATED > date('now','-45 day') 
+				ORDER BY LAST_UPDATED DESC";	
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
 	}
 	else {
 		$sql = "SELECT *
@@ -2719,7 +2741,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			return $response;
 		} 
 
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DSICOUNT) values (?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"]));
 	}
@@ -3197,7 +3219,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
-		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0', PPSS_NOTE = null,PPSS_EXPIREDATE = null WHERE  PONUMBER = ? ";
+		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0',PPSS_INVOICE_PRICE = '0',PPSS_ORDER_QTY = '0', PPSS_NOTE = null,PPSS_EXPIREDATE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]) );	
 

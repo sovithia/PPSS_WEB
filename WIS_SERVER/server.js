@@ -156,16 +156,14 @@ function UserFromToken(token,callback){
 	db = getDatabase();
 	db.query("SELECT * FROM app_user WHERE access_token = ?",[token],function (error, results, fields){   		
 		db.end();
-		if(results.length == 0 || results[0].token_expiration < Date.now())
-			return null;	
-		else {
-			if(results[0].usertype == "PARENT"){
-				db.query("SELECT sid FROM students app_user WHERE access_token = ?",[token],function (error, results, fields){   		
-					db.end();
-					callback(results[0].sid);
-				});
-			}			
+		if(results.length == 0 || results[0]["token_expiration"] < Date.now()){
+			callback(null);			
 		}
+		else{
+			callback(results[0]);
+		} 
+
+			
 	});	
 }
 
@@ -277,7 +275,7 @@ app.post('/login', function(req, res){
     db.query("SELECT * FROM app_user WHERE login = ? and password = ?",[req.body["phone"],req.body["password"]],function (error, results, fields){
 			if (results.length > 0)
 			{		
-				expiration = Date.now() + 86400;
+				expiration = Date.now() + 864000;
 				token = generateAccessToken();
 				usertype = results[0]["usertype"];
 				identifier = results[0]["identifier"];
@@ -286,7 +284,7 @@ app.post('/login', function(req, res){
 				db.query("UPDATE app_user SET access_token = ?, token_expiration = ? WHERE login = ?",[token,expiration,req.body["phone"]] ,function (error2, results2, fields2){
 					if (usertype == "STUDENT"){							
 							db.query("SELECT firstname,lastname,dob,gender,credit,enrollment_date,phone_1,address_1 FROM students where sid = ?",[identifier],function (error3, results3, fields3){							
-							results3[0]["token"] = token;
+							results3[0]["access_token"] = token;
 							results3[0]["usertype"] = usertype;
 							birthdate = results3[0]["dob"].toISOString().split('T')[0];							
 							results3[0]["dob"] = birthdate;
@@ -298,7 +296,7 @@ app.post('/login', function(req, res){
 						db.query("SELECT firstname,lastname,relation,gender, phone_1,address_1 FROM student_contacts \
 							where student_contacts.id = ?",[identifier],function (error3, results3, fields3){
 							console.log(JSON.stringify(results3)); 
-							results3[0]["token"] = token;
+							results3[0]["access_token"] = token;
 							results3[0]["usertype"] = usertype;							
 							res.json({"result" : "OK", "data" : results3[0]});			
 						});
@@ -307,7 +305,7 @@ app.post('/login', function(req, res){
 						db.query("SELECT staffs.firstname,staffs.lastname,sex,phone_1,dob FROM staffs,staffs_profile where staffs.staff_profile_id = staffs_profile.id  and staffs.employee_number = ?",
 							[identifier],function (error3, results3, fields3){
 							console.log(JSON.stringify(results3)); 
-							results3[0]["token"] = token;
+							results3[0]["access_token"] = token;
 							results3[0]["usertype"] = usertype;
 							birthdate = results3[0]["dob"].toISOString().split('T')[0];							
 							results3[0]["dob"] = birthdate;							
@@ -327,22 +325,22 @@ app.post('/login', function(req, res){
 //***************************************//
 
 app.get('/invoice',function(req, res){	 
-		UserFromToken(req.headers["token"],(user) => {
+		UserFromToken(req.headers["token"],(user) => {			
 			db = getDatabase();	
 			if (user == null){
 					res.json({"result" : "KO","message" : "session expired or unauthorized request"});										;			
 			}else
-			{
-				if (user["type"] == "PARENT")
+			{				
+				if (user["usertype"] == "PARENT")
 				{				
-					db.query("SELECT id,invoice_number,invoice_date FROM invoice where sid = ? and is_paid = 0",[user["linked_identifier"]],function (error, results, fields){	 
-						if (error) throw error;
+					db.query("SELECT id,invoice_number,firstname,lastname,tuition_description,tuition_price,DATE_FORMAT(invoice_date,'%M %d %Y') as invoice_date FROM invoice where sid = ? and is_paid = 0",[user["linked_identifier"]],function (error, results, fields){	 
+						if (error) throw error;							
 							res.json({"result" : "OK", "data" : results});															
 					});				  										
 				}
-				else if (user["type"] == "REGISTRAR") // TODO FILTER BY CAMPUS AND OTHER CRITERIA
+				else if (user["usertype"] == "REGISTRAR") // TODO FILTER BY CAMPUS AND OTHER CRITERIA
 				{
-					db.query("SELECT id,invoice_number,invoice_date FROM invoice where is_paid = 2",[],function (error, results, fields){	 
+					db.query("SELECT id,invoice_number,firstname,lastname,tuition_description,tuition_price,DATE_FORMAT(invoice_date,'%M %d %Y') as invoice_date FROM invoice WHERE is_paid = 1 LIMIT 10",[],function (error, results, fields){	 
 						if (error) throw error;
 							res.json({"result" : "OK", "data" : results});															
 					});				  										
@@ -355,7 +353,7 @@ app.get('/invoice',function(req, res){
 
 
 app.get('/invoicedetails/:id',function(req, res){	 
-	
+	console.log('invoicedetails');	
 	UserFromToken(req.headers["token"], (user) => {
 		db = getDatabase();		
 		if (user == null){
@@ -363,6 +361,7 @@ app.get('/invoicedetails/:id',function(req, res){
 		}	
 		else{
 			id = req.params["id"];
+			console.log(id);
 			var proof = "";
 			var sigparent = "";
 			var sigregistrar = "";
@@ -373,18 +372,18 @@ app.get('/invoicedetails/:id',function(req, res){
 			if (fs.existsSync('images/signatures/invoice/r_'+id+'.png'))
 				sigregistrar = fs.readFileSync('images/signatures/invoice/r_'+id+'.png', {encoding: 'base64'});
 			
+			var data = [];
 			db.query("SELECT id,uuid,invoice_number,invoice_date FROM invoice where id = ?",[id],function (error, results, fields){	 
 					if (error) throw error;
 					invoice = results[0];					
-					db.query("SELECT description, amount, FROM invoice_fees where invoice_uuid = ? and void_at is null " ,[results[0].uuid],function (error, results, fields){	 
-						fees = results;
-						data["invoice"] = invoice;
-						data["fees"] = fees;
-						data["proof"] = proof;
-						data["sigparent"] = sigparent
-						data["sigregistrar"] = sigregistrar;
-
-						res.json({"result" : "OK",  "data" : data});															
+					db.query("SELECT description, amount FROM invoice_fees where invoice_uuid = ? and void_at is null " ,[results[0].uuid],function (error2, results2, fields2){	 
+						if (error2) throw error2;
+						invoice["lines"] = results2;																		
+						invoice["proof"] = proof;
+						invoice["sigparent"] = sigparent
+						invoice["sigregistrar"] = sigregistrar;
+						console.log(invoice);
+						res.json({"result" : "OK",  "data" : invoice});															
 					});				 					
 				});				  										
 		}
