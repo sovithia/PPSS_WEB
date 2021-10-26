@@ -2668,31 +2668,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 });
 
 
-$app->post('/groupedpurchasetosupplyrecordpool', function(Request $request,Response $response) {
-	$db = getInternalDatabase();	
-	$json = json_decode($request->getBody(),true);	
 
-	$userID =  $json["USERID"];
-	$ID = $json["ID"];
-	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($ID));
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	if ($items != false){
-
-		foreach($items as $item){
-			error_log($item["PRODUCTID"]);
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID) values (?,?,?)";	
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$userID));
-		}	
-	}
-	$data["result"] = "OK";				
-	$response = $response->withJson($data);
-	return $response;
-
-});
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
@@ -2707,9 +2683,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY) values (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"]));
 	}
 	else
 	{
@@ -2742,9 +2718,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			return $response;
 		} 
 
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT) values (?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY) values (?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -2972,9 +2948,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?,PPSS_VAL_COMMENT = ?, PPSS_NOTE = ?, PPSS_EXPIREDATE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ?, PPSS_EXPIREDATE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_VAL_COMMENT"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]));	 						
+				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]));	 						
 
 				$sql = "UPDATE PODETAIL SET EXTCOST = (ORDER_QTY * TRANCOST) WHERE  PRODUCTID = ? AND PONUMBER = ?";				
 				$req = $dbBLUE->prepare($sql);
@@ -3040,9 +3016,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{				
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_PCH_COMMENT = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY =  WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($value["PPSS_ORDER_QTY"],$value["PPSS_PCH_COMMENT"],$key,$json["PONUMBER"]));	 		
+				$req->execute(array($value["PPSS_ORDER_QTY"],$key,$json["PONUMBER"]));	 		
 
 				$sql = "UPDATE PODETAIL SET EXTCOST = (ORDER_QTY * TRANCOST) WHERE  PRODUCTID = ? AND PONUMBER = ?";				
 				$req = $dbBLUE->prepare($sql);
@@ -3277,7 +3253,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,VAT_PERCENT,
 				   ORDER_QTY,(TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as TRANCOST,
-				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_VAL_COMMENT,PPSS_PCH_COMMENT,PPSS_ORDER_PRICE 
+				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ?";
 
 	if ($rr["TYPE"] == "NOPO")

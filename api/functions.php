@@ -1440,9 +1440,17 @@ function createPO($items,$author)
 		}
 		$DISCABLE = $res2["DISCABLE"];
 
+		if(isset($item["ALGOQTY"]))
+			$ALGOQTY = $item["ALGOQTY"]
+		else
+			$ALGOQTY = $item["REQUEST_QUANTITY"];
+		
+		$REASON = "";
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
-		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0")
+		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
 			$QUANTITY = $item["SPECIALQTY"];
+			$REASON = $item["REASON"];
+		}			
 		else if (isset($item["ORDER_QTY"]))
 			$QUANTITY = $item["ORDER_QTY"];
 		else
@@ -1489,7 +1497,7 @@ function createPO($items,$author)
 			else if ($autoPromo != "0")
 				$TRANDISC = $autoPromo;	
 		}
-		error_log($TRANDISC);
+		
 			
 		$EXTCOST = $CURRENCY_AMOUNT;		
 		
@@ -1515,17 +1523,17 @@ function createPO($items,$author)
 		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
 		RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
-		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG) 
+		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
+		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
 		VALUES (?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?,?,
-
 						?,?,?,?,?,
 						?,?,?,?,?
-						)"; 
+						?,?)"; 
 
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
@@ -1536,7 +1544,8 @@ function createPO($items,$author)
 		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
 		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
 		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
-		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG 
+		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
+		$ALGOQTY,$REASON 
 		);
 
 		//$debug = var_export($params, true);
