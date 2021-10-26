@@ -1221,7 +1221,6 @@ function autoPromoForVendor($vendid){
 	$promo["100-410"] = 5;
 	$promo["100-095"] = 5;
 	$promo["100-126"] = 5;
-	$promo["100-381"] = 5;
 	$promo["400-095"] = 3;
 	$promo["100-554"] = 5;
 	$promo["400-207"] = 8;

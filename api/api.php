@@ -2288,6 +2288,7 @@ function createSupplyRecordForPO(){
 			}
 			else 
 			{
+				// HERE WAITING WILL BECOME VALIDATED
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
 				$req = $indb->prepare($sql);
 				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
