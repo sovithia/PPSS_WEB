@@ -6599,10 +6599,11 @@ $app->get('/expiresearch',function($request,Response $response) {
 		array_push($params,$vendid);
 	}
 		
-	if ($category != ''){
+	if ($category != 'ALL'){
 		$sql .=	" AND CATEGORYID = ?" ;	 
 		array_push($params,$category);	
 	}
+	error_log($sql);
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
