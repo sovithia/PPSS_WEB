@@ -1373,35 +1373,22 @@ function createPO($items,$author)
 		}
 		$TRANDISC = $item["DISCOUNT"];
 
-		error_log("TRANCOST:".$TRANCOST);
-
 		if ($TRANDISC != null && $TRANDISC != "0"){
-			error_log("a");
 			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
 		}			
 		else{
-			error_log("b");
 			$calculatedCost =  $TRANCOST;
 		} 
 			
-
-		error_log("calculatedCost:".$calculatedCost);
-		
 		$vat = ($calculatedCost * ($VAT_PERCENT / 100)) * $item["ORDER_QTY"];
-		error_log("vat:".$vat);
-
 		$price =   $calculatedCost; 
-		error_log("price:".$price);
 		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
-		error_log("PURCHASE_AMT:".$PURCHASE_AMT);
 		$VAT_AMT += $vat;
-		error_log("VAT_AMT:".$VAT_AMT);
-		
 	}
-	$CURRENCY_VATAMOUNT = $VAT_AMT;
-	$CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
+	 $CURRENCY_VATAMOUNT = $VAT_AMT;
+	 $CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
 
-	$sql = "INSERT POHEADER (
+	 $sql = "INSERT POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
@@ -1441,11 +1428,16 @@ function createPO($items,$author)
 		$DISCABLE = $res2["DISCABLE"];
 
 		if(isset($item["ALGOQTY"]))
-			$ALGOQTY = $item["ALGOQTY"]
+			$ALGOQTY = $item["ALGOQTY"];
 		else
 			$ALGOQTY = $item["REQUEST_QUANTITY"];
 		
+
 		$REASON = "";
+		if (isset($item["REASON"]))
+			$REASON = $item["REASON"];
+
+		
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
 			$QUANTITY = $item["SPECIALQTY"];
