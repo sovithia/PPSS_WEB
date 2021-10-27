@@ -6528,18 +6528,90 @@ $app->put('/depreciation', function($request,Response $response) {
 			if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
 		
 			
-	}
-
-
-
-		
-			
+	}	
 	$req = $db->prepare($sql);
 	$req->execute(array($status,$author,$id));		
 
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;																			 
+});
+
+$app->get('/expiresearch',function($request,Response $response) {
+	$db = getDatabase();
+
+	$type = $request->getParam('type','NR'); // NR or R 
+	$vendorname = $request->getParam('vendorname','');
+	$vendid = $request->getParam('vendid','');
+	$storebin1 = $request->getParam('storebin1','');
+	$storebin2 = $request->getParam('storebin2','');
+	$category = $request->getParam('category','ALL');
+
+	if ($type == "NR"){
+		$sql = "SELECT ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_EXPIREDATE,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_EXPIREDATE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_EXPIREDATE IS NOT NULL
+					AND SUBSTRING(SIZE,1,2) = 'NR'
+					AND datediff(day,getdate(), PPSS_EXPIREDATE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+				  AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
+					AND PPSS_EXPIREDATE <> '1900-01-01'
+					AND PPSS_EXPIREDATE <> '2001-01-01'
+					AND ONHAND > 0";	
+	}else if ($type == "R"){
+			$sql = "SELECT ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_EXPIREDATE,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_EXPIREDATE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_EXPIREDATE IS NOT NULL
+					AND SUBSTRING(SIZE,1,1) = 'R'
+					AND datediff(day,getdate(), PPSS_EXPIREDATE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 5)
+				  AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
+					AND PPSS_EXPIREDATE <> '1900-01-01'
+					AND PPSS_EXPIREDATE <> '2001-01-01'
+					AND ONHAND > 0";	
+	}		
+
+	$params = array();
+	if($storebin1 != ''){
+		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND STORBIN LIKE ?)";
+		array_push($params,"%".$storebin1."%");
+	}
+	if($storebin2 != ''){
+		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND STORBIN LIKE ?)";
+		array_push($params,"%".$storebin2."%");
+	}
+
+	if($vendorname != ''){
+		$sql .=	" AND PODETAIL.VENDNAME LIKE ?" ;	 
+		array_push($params,"%".$vendorname."%");
+	}
+		
+	if($vendid != ''){
+		$sql .=	" AND ICPRODUCT.VENDID = ?" ;	 
+		array_push($params,$vendid);
+	}
+		
+	if ($category != ''){
+		$sql .=	" AND CATEGORYID = ?" ;	 
+		array_push($params,$category);	
+	}
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $items;
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 $app->get('/depreciationalert',function($request,Response $response) {
