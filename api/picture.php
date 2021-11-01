@@ -2,6 +2,7 @@
 
 function loadPicture($barcode,$scale = 150,$base64 = false)
 {
+	error_log($scale);
 	// Create new state:
 	$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:
@@ -43,8 +44,12 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 }
 
 $barcode = $_GET["barcode"];
+if (!isset($_GET["scale"]))
+	$scale = 150;
+else 
+	$scale = $_GET["scale"];
 $name = './tmp.png';
-$data = loadPicture($barcode);
+$data = loadPicture($barcode,$scale);
 file_put_contents($name,$data);
 
 $fp = fopen($name, 'rb');

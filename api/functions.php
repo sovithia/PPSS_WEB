@@ -397,7 +397,7 @@ function truncateDollarPrice($price){
 			return "0".substr($price,0,$pos + 3);
 	}
 	else
-		return substr($price,0,$pos + 3);
+		return number_format(substr($price,0,$pos + 3),2);
 }
 
 
@@ -405,40 +405,7 @@ function generateRielPrice($price){
 
 	$priceStr = strval(getCurrentRate() *$price);
 	$price = intval(getCurrentRate() * $price);
-	return ceil($price / 100) * 100;
-
-	$i = intval(substr($priceStr,strlen($priceStr) - 2,2));	
-
-	if ($i == 0)
-	{			
-		$str = strval($price);	
-		if (strlen($str) > 3)		
-		{
-			return substr($str,0,strlen($str) - 3) . "," . substr($str,strlen($str) - 3);
-		}	
-		return $price; 
-	}
-	
-	$centnum = intval(substr($priceStr,strlen($priceStr) - 3,1));
-	if ($i > 50)
-	{
-
-		$num = 	substr($priceStr,0,strlen($priceStr) - 2); 
-		$num .= "00";
-		$num = intval($num);
-		$num += 100;			
-	}else{		
-		$num = 	substr($priceStr,0,strlen($priceStr) - 2); 
-		$num .= "00";
-		$num = intval($num);		
-	}	
-	
-	$str = strval($num);	
-
-	if (strlen($str) > 3)		
-		return substr($str,0,strlen($str) - 3) . "," . substr($str,strlen($str) - 3);
-
-	return $num;
+	return number_format(ceil($price / 100) * 100,0);
 }
 
 function flagByCountry($flag){

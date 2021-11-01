@@ -597,8 +597,7 @@ function itemLookupLabel($barcode)
 			
 		$oneItem["barcode"] = $item["BARCODE"];
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
-		$oneItem["nameKH"] = $item["PRODUCTNAME1"];
-		$oneItem["productImg"] = loadPicture($item["PRODUCTID"],300,true);			
+		$oneItem["nameKH"] = $item["PRODUCTNAME1"];			
 		$oneItem["country"] = $item["COLOR"];
 		$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
 
@@ -645,6 +644,60 @@ function itemLookupLabel($barcode)
 	}
 	return null;
 }
+
+$app->get('/label/{barcodes}',function($request,Response $response) {	
+	$barcodes = $request->getAttribute('barcodes'); 		
+	$barcodes = explode("|",$barcodes);	
+
+	$result = array();
+	foreach($barcodes as $barcode)
+	{
+		if ($barcode == "")
+			continue;
+		$packInfo = packLookup($barcode);
+
+		if ($packInfo != null)		
+		{
+		
+			$packcode = $barcode;
+			$barcode = $packInfo["PRODUCTID"];									
+			$oneItem = itemLookupLabel($barcode);
+			$oneItem["barcode"] = $packcode;
+			$oneItem["oldPrice"] = 	truncateDollarPrice($packInfo["SALEPRICE"]);			
+
+			// CALCULATE PROMO
+			$oldPrice = floatval(truncateDollarPrice($packInfo["SALEPRICE"]));					
+			$percent = (100 - intval($oneItem["discpercent"])) ;		
+			if ($percent != 100)
+			{
+				$percent = floatval("0.".$percent);
+				$newPrice = $percent * $oldPrice; 				
+			}
+			else			
+				$newPrice = $oldPrice * 1; 	
+			
+			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
+			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
+
+
+			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
+			$oneItem["ISPACK"] = "PACK";
+			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
+
+
+			array_push($result,$oneItem);
+		}
+		else 	{
+
+			array_push($result,itemLookupLabel($barcode));					
+		}				
+			
+	}	
+	$resp["result"] = "OK";
+	$resp["data"] = $result;
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {	
 	$barcodes = $request->getAttribute('barcodes'); 		
@@ -6118,13 +6171,39 @@ $app->get('/bestsellerpromotion',function($request,Response $response) {
 	return $response;	
 });
 
+
+$app->get('/itemtest',function($request,Response $response) {
+	$db=getDatabase();
+	$sql = "
+		SELECT TOP (100)
+		 PRODUCTID
+		,PRODUCTNAME
+		,PRODUCTNAME1
+		,PRICE
+		,COST
+		,CATEGORYID
+		,COLOR
+		FROM ICPRODUCT 
+		";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $result;
+	$response = $response->withJson($resp);
+
+	return $response;	
+});
+
 // Best Seller Selection
 $app->get('/selection',function($request,Response $response) {
-	$conn=getDatabase();
+	$db=getDatabase();
 	$json = json_decode($request->getBody(),true);
 	
 	$sql = "
-		SELECT TOP (1000)
+		SELECT TOP (100)
 		 dbo.POSDETAIL.PRODUCTID
 		,dbo.POSDETAIL.PRODUCTNAME
 		,dbo.POSDETAIL.PRODUCTNAME1
@@ -6150,7 +6229,9 @@ $app->get('/selection',function($request,Response $response) {
 		HAVING (select ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID) * -1),0)  * 100 / ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID),0)) < 100
 		ORDER BY PERCENTSALE DESC
 		"; 
-	$result = SELECTALL($sql);	
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 	
 	$resp = array();
 	$resp["result"] = "OK";
@@ -6558,9 +6639,10 @@ $app->get('/expiresearch',function($request,Response $response) {
 					AND PPSS_EXPIREDATE IS NOT NULL
 					AND SUBSTRING(SIZE,1,2) = 'NR'
 					AND datediff(day,getdate(), PPSS_EXPIREDATE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
-				  AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
+				  	AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
 					AND PPSS_EXPIREDATE <> '1900-01-01'
 					AND PPSS_EXPIREDATE <> '2001-01-01'
+					AND PPSS_EXPIREDATE = (SELECT MAX(PPSS_EXPIREDATE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)
 					AND ONHAND > 0";	
 	}else if ($type == "R"){
 			$sql = "SELECT ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_EXPIREDATE,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_EXPIREDATE) as 'DIFF',
@@ -6573,9 +6655,10 @@ $app->get('/expiresearch',function($request,Response $response) {
 					AND PPSS_EXPIREDATE IS NOT NULL
 					AND SUBSTRING(SIZE,1,1) = 'R'
 					AND datediff(day,getdate(), PPSS_EXPIREDATE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 5)
-				  AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
+				  	AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
 					AND PPSS_EXPIREDATE <> '1900-01-01'
 					AND PPSS_EXPIREDATE <> '2001-01-01'
+					AND PPSS_EXPIREDATE = (SELECT MAX(PPSS_EXPIREDATE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)
 					AND ONHAND > 0";	
 	}		
 
