@@ -90,5 +90,9 @@ function updateAllQty()
 	$req->execute(array());
 }
 
+while(1){
+	updateAllQty()
+	sleep(60);
+}
 
 ?>
