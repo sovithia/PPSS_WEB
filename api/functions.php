@@ -129,7 +129,7 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
 		else if ($type == "DEPRECIATION_CLEARER")
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
-		
+		error_log($type);
 		file_put_contents($filename, $imageData);
 	}	
 }
