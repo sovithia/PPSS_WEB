@@ -117,9 +117,11 @@ function pictureRecord($base64Str,$type,$id){
 		else if ($type == "WH")
 			$filename = "./img/supplyrecords_signatures/WH_".$id.".png";
 		else if ($type == "RCV")
-			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";
+			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";		
 		else if ($type == "ACC")
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
+		else if ($type == "TR")
+			$filename = "./img/supplyrecords_signatures/TR_".$id.".png";
 
 		else if ($type == "DEPRECIATION_CREATOR")
 			$filename = "./img/depreciation_signatures/CRE_".$id.".png";
@@ -129,108 +131,10 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
 		else if ($type == "DEPRECIATION_CLEARER")
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
+		else
+			error_log("UNKNOWN TYPE :". $type);
 		
 		file_put_contents($filename, $imageData);
-	}	
-}
-
-
-function SELECTALL($sql,$params = array(),$database = "MAIN")
-{
-	if (posix_uname()["machine"] == "x86_64")
-	//if (0)
-	{
-		$db=getDatabase($database);
-		$req = $db->prepare($sql);		
-		$req->execute($params);
-		return $req->fetchAll(PDO::FETCH_ASSOC);
-	}
-	else 
-	{		
-		$data["SQL"] = $sql;
-		$data["PARAMS"] = json_encode($params);
-		$data["DATABASE"] = $database;
-		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/SELECT",$data);      
-		return $json["DATA"];
-	}
-}
-
-function SELECTONE($sql,$params = array(),$database = "MAIN")
-{
-	if (posix_uname()["machine"] == "x86_64")
-	{
-		$db=getDatabase($database);
-		$req = $db->prepare($sql);	
-		$req->execute($params);
-		return $req->fetch(PDO::FETCH_ASSOC);
-	}
-	else
-	{
-		$data["SQL"] = $sql;
-		$data["PARAMS"] = json_encode($params);
-		$data["DATABASE"] = $database;
-		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/SELECT",$data);
-		if (count($json["DATA"]) > 0)      
-			return $json["DATA"];
-		else
-			return null;
-	}	
-}
-
-function INSERT($sql,$params = array(),$database = "MAIN")
-{
-	if (posix_uname()["machine"] == "x86_64")
-	{
-		$db=getDatabase($database);
-		$req = $db->prepare($sql);	
-		$req->execute($params);
-		return $req->fetch(PDO::FETCH_ASSOC);
-	}
-	else
-	{
-		$data["SQL"] = $sql;
-		$data["PARAMS"] = json_encode($params);
-		$data["DATABASE"] = $database;
-		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/INSERT",$data);
-		return $json["RESULT"];
-	}	
-}
-
-function UPDATE($sql,$params = array(),$database = "MAIN")
-{
-	if (posix_uname()["machine"] == "x86_64")
-	{
-		$db=getDatabase($database);
-		$req = $db->prepare($sql);	
-		$req->execute($params);
-		return $req->fetch(PDO::FETCH_ASSOC);
-	}
-	else
-	{
-		$data["SQL"] = $sql;
-		$data["PARAMS"] = json_encode($params);
-		$data["DATABASE"] = $database;
-		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/UPDATE",$data);
-		return $json["RESULT"];
-	}	
-}
-
-function DELETE($sql,$params = array(),$database = "MAIN")
-{
-	if (posix_uname()["machine"] == "x86_64")
-	{
-		$db=getDatabase($database);
-		$req = $db->prepare($sql);	
-		$req->execute($params);
-		return $req->fetch(PDO::FETCH_ASSOC);
-	}
-	else
-	{
-		$data["SQL"] = $sql;
-		$data["PARAMS"] = json_encode($params);
-		$data["DATABASE"] = $database;
-		$json = RestEngine::POST("http://phnompenhsuperstore.com/api/wrap.php/DELETE",$data);
-		return $json["RESULT"];
 	}	
 }
 
@@ -486,10 +390,6 @@ function statisticsByItem($barcode, $start = '',$end = '')
 		ISNULL((SELECT TOP(1) DATEADD  FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND DATEADD between ? AND ? ORDER BY DATEADD DESC),0) as 'LASTORDERTIME',		
 		ONHAND FROM dbo.ICPRODUCT
 		WHERE PRODUCTID = ?";
-
-		error_log($sql);
-		error_log($start);
-		error_log($end);
 
 		$req = $db->prepare($sql);
 	  $req->execute(array($start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$start,$end,$barcode));			
@@ -1082,8 +982,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$rules = $req->fetchAll(PDO::FETCH_ASSOC);	
 						
 				foreach($rules as $rule)
-				{
-					error_log($rule["MINDAY"]." ".$rule["MAXDAY"]);	
+				{					
 						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 						{										
 							if( $rule["PENALTYPERCENT"] == "0")
@@ -1399,7 +1298,7 @@ function createPO($items,$author)
 		else
 			$ALGOQTY = $item["REQUEST_QUANTITY"];
 		
-
+		error_log("ALGO QTY: ". $ALGOQTY);
 		$REASON = "";
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];

@@ -307,8 +307,7 @@ function packLookup($barcode)
 {
 
 	$conn=getDatabase();
-	$params = array($barcode);
-	error_log($barcode);
+	$params = array($barcode);	
 	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,SALEUNIT FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
 	$req = $conn->prepare($sql);
 	$req->execute($params);
@@ -545,8 +544,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	$barcodes = $request->getAttribute('barcodes'); 		
 	$barcodes = explode("|",$barcodes);	
 	$result = array();
-	foreach($barcodes as $barcode){
-		error_log($barcode);
+	foreach($barcodes as $barcode){		
 		$params = array($barcode);
 		$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
 		FROM dbo.ICPRODUCT  
@@ -2610,7 +2608,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 				ORDER BY LAST_UPDATED DESC";	
 		$req = $db->prepare($sql);
 		$req->execute(array());
-		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
+		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);	
 	}
 	else {
 		$sql = "SELECT *
@@ -2780,8 +2778,7 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 
-	$id = $request->getAttribute('userid');
-	error_log($id);
+	$id = $request->getAttribute('userid');	
 	$sql = "SELECT * FROM SUPPLYRECORDPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -3185,8 +3182,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["LINKEDPO"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		error_log("PO NUMBNER" . $json["LINKEDPO"]);			
+			
 
 		if ($res["LOCID"] == "WH1")
 			$status = 'RECEIVED';
@@ -3225,8 +3221,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				STATUS = 'ORDERED', 
 				CANCELER = :author
 			   WHERE ID = :identifier";
-		$req = $db->prepare($sql);		
-		error_log($json["IDENTIFIER"]);				
+		$req = $db->prepare($sql);					
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
@@ -3301,7 +3296,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$rr["items"] = null;
 	
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,VAT_PERCENT,
-				   ORDER_QTY,TRANCOST,
+				   ORDER_QTY,TRANCOST,(SELECT  (TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ?";
 
@@ -3310,14 +3305,14 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		if ($rr["LINKEDPO"] != null)
 		{
 			$req = $db2->prepare($sql);
-			$req->execute(array($rr["LINKEDPO"]));
+			$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
 		}
 	}
 	else 
 	{
 		$req = $db2->prepare($sql);
-		$req->execute(array($rr["PONUMBER"]));
+		$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
 		$rr["items"] = $poitems;
 	}
@@ -3567,8 +3562,7 @@ function createGroupedRestocks()
 
 				
 				if ($irID != false)// JUST UPDATE
-				{
-						error_log($irID);
+				{						
 						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 						$req = $db->prepare($sql);
 						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$irID));
@@ -3639,8 +3633,7 @@ function patchGroupedPurchases()
 		if ($res != false)
 			$orderday = $res["orderday"];
 		else 
-			$orderday = null;
-		error_log($action["ID"]." ".$action["ARG1"]." ".$orderday);
+			$orderday = null;		
 		$sql = "UPDATE ITEMREQUESTACTION SET ARG3 = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($orderday,$action["ID"]));
@@ -4788,8 +4781,7 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
-
-	error_log($type);
+	
 	$suffix = "";
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
@@ -6498,8 +6490,7 @@ $app->post('/depreciation', function($request,Response $response) {
 	$db = getInternalDatabase();
 
 	$items = $json["ITEMS"];
-	$type = $json["TYPE"];
-	error_log($type);
+	$type = $json["TYPE"];	
 	$author = $json["AUTHOR"];
 	$userid = $json["USERID"];
 
@@ -6600,8 +6591,7 @@ $app->put('/depreciation', function($request,Response $response) {
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	foreach ($items as $item) {
-			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){
-				error_log("HERE");
+			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){				
 				attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$item["STARTTIME1"],$item["ENDTIME1"],$author);
 			}									
 			if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
@@ -6690,8 +6680,7 @@ $app->get('/expiresearch',function($request,Response $response) {
 		$sql .=	" AND CATEGORYID = ?" ;	 
 		array_push($params,$category);	
 	}
-	$sql .= " GROUP BY ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_EXPIREDATE,PODETAIL.VENDNAME,ONHAND,SIZE";
-	error_log($sql);
+	$sql .= " GROUP BY ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_EXPIREDATE,PODETAIL.VENDNAME,ONHAND,SIZE";	
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -6943,8 +6932,7 @@ $app->delete('/depreciationpromopool/{id}', function($request,Response $response
 	$req = $db->prepare($sql);
 	$req->execute(array($id));	
 
-	foreach( glob("./img/promopool_proofs/".$id."_*") as $file ){
-		error_log($file);
+	foreach( glob("./img/promopool_proofs/".$id."_*") as $file ){		
 		unlink($file);
 	}   
     	

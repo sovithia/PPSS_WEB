@@ -1,8 +1,7 @@
 <?php 
 
 function loadPicture($barcode,$scale = 150,$base64 = false)
-{
-	error_log($scale);
+{	
 	// Create new state:
 	$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:

@@ -179,8 +179,7 @@ $app->post('/supplier/{vendorid}',function(Request $request,Response $response) 
 	$internalDB=getInternalDatabase();	
 
 	$sql = "UPDATE SUPPLIER_NEW set ".$field." = '".$value."' WHERE ID = ".$vendorid;
-	$stmt = $internalDB->prepare($sql);				
-	error_log($sql);	
+	$stmt = $internalDB->prepare($sql);					
 
 	if ($stmt != null){
 		$stmt->execute();	
