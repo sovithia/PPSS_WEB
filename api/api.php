@@ -2540,7 +2540,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$req = $db->prepare($sql);
 			$req->execute(array());
 			$POData = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
+	}	
 	else if ($status == "ORDERED")
 	{
 		$sql = "SELECT * FROM SUPPLY_RECORD 
@@ -2557,8 +2557,9 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
 			WHERE STATUS = ?
-			AND TYPE = 'PO' 
-			ORDER BY LAST_UPDATED DESC";	
+			AND TYPE = 'PO' 			
+			ORDER BY LAST_UPDATED DESC
+			LIMIT 150";	
 		$req = $db->prepare($sql);
 		$req->execute(array($status));
 		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2594,7 +2595,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$sql = "SELECT *
 			FROM SUPPLY_RECORD 
 			WHERE TYPE = 'NOPO'
-			ORDER BY LAST_UPDATED DESC";
+			ORDER BY LAST_UPDATED DESC
+			LIMIT 150";
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2615,7 +2617,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		FROM SUPPLY_RECORD 
 		WHERE STATUS = ?
 		AND TYPE = 'NOPO' 
-		ORDER BY LAST_UPDATED DESC";	
+		ORDER BY LAST_UPDATED DESC
+		LIMIT 150";	
 		$req = $db->prepare($sql);
 		$req->execute(array($status));
 		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);			
@@ -4580,6 +4583,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 
 	return $response;
 });
+
 
 $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
