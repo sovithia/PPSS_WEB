@@ -2469,172 +2469,102 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	return $response;
 });
 
+
+
+
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
-	$db2 = getDatabase();
+	$dbBlue = getDatabase();
 
 	$status = $request->getAttribute('status');
+
+
 	if ($status == "WAITING")
 		createSupplyRecordForPO();
 
+	// ******************//
+	// ***** WITH PO ****//
+	// ******************//
+
+	$params = array($status); // DEFAULT STATUS
 	if ($status == "ALL"){
-		$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE TYPE = 'PO'
-			ORDER BY LAST_UPDATED DESC";
-		$req = $db->prepare($sql);
-		$req->execute(array());
-		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
-	else if ($status == "DELIVEREDAUTO")
-	{
-		$sql = "SELECT *
-		FROM SUPPLY_RECORD 
-		WHERE STATUS = ?
-		AND TYPE = 'PO' 
-		ORDER BY LAST_UPDATED DESC";	
-		$req = $db->prepare($sql);
-		$req->execute(array("DELIVERED"));
-		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-		$filter = array();
-		foreach($POData as $onePOData)
-		{
-			if ($onePOData["PONUMBER"] != null)
-			{
-				$sql = "SELECT *,(TRANCOST - (TRANCOST * (TRANDISC / 100)) ) as REALCOST
-						FROM PODETAIL WHERE PONUMBER = ?";
-				$req = $db2->prepare($sql);
-				$req->execute(array($onePOData["PONUMBER"]));
-				$details = $req->fetchAll(PDO::FETCH_ASSOC);
-
-				$isClean = true;
-				foreach($details as $detail)
-				{
-					$maxsql = "SELECT TOP(1) VENDNAME,(TRANCOST  - (TRANCOST * (TRANDISC / 100)) ) as COST
-							   FROM PORECEIVEDETAIL 
-							   WHERE PRODUCTID = ?
-							  ORDER BY TRANCOST DESC";
-					$req = $db2->prepare($maxsql); 
-	 				$req->execute(array($detail["PRODUCTID"]));
-	 				$maxcost = $req->fetch(PDO::FETCH_ASSOC)["COST"];	
-	 		 
-	 				if ($detail["REALCOST"]  > $maxcost){
-						$isClean = false;
-						break;
-	 				}		 		
-				}
-				if ($isClean == true)
-	 				array_push($filter,$onePOData);
-			} 					
-		}
-		$POData = $filter;
-	}
-	else if ($status == "RECEIVED")
-	{
-		$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE STATUS = 'RECEIVED'
-			AND TYPE = 'PO' 
-			ORDER BY LAST_UPDATED DESC";	
-			$req = $db->prepare($sql);
-			$req->execute(array());
-			$POData = $req->fetchAll(PDO::FETCH_ASSOC);
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
+			$params = array();
 	}	
 	else if ($status == "ORDERED")
-	{
-		$sql = "SELECT * FROM SUPPLY_RECORD 
-				WHERE STATUS = 'ORDERED'
-				AND TYPE = 'PO' 			
-				AND CREATED > date('now','-45 day') 
-				ORDER BY LAST_UPDATED DESC";	
-		$req = $db->prepare($sql);
-		$req->execute(array());
-		$POData = $req->fetchAll(PDO::FETCH_ASSOC);	
-	}
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 	else 
-	{
-		$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE STATUS = ?
-			AND TYPE = 'PO' 			
-			ORDER BY LAST_UPDATED DESC
-			LIMIT 150";	
-		$req = $db->prepare($sql);
-		$req->execute(array($status));
-		$POData = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
-	// ADD VENDNAME	
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$POData = $req->fetchAll(PDO::FETCH_ASSOC);
+	$IDS = extractIDS($POData,"PONUMBER");
+
+	$sql = "SELECT VENDNAME,PONUMBER FROM POHEADER WHERE PONUMBER in ".$IDS;
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array());		
+	$itemsWithDetails = $req->fetchAll(PDO::FETCH_ASSOC);
+	$INDEX = array();
+	foreach($itemsWithDetails as $item2)
+		$INDEX[$item2["PONUMBER"]] = $item2;
+	
+	// ADD VENDNAME	& COUNT INVOICES
 	$newPOData = array();
-	foreach($POData as $onePOData){
-		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
-		$req = $db2->prepare($sql);
-		$req->execute(array($onePOData["PONUMBER"]));
-		$oneRes = $req->fetch();
-		if ($oneRes != false)
-			$onePOData["VENDNAME"] = $oneRes["VENDNAME"];
-		
-		// COUNT INVOICES
+	foreach($POData as $onePOData)
+	{
+		if(!isset($INDEX[$onePOData["PONUMBER"]]))
+			continue;
+		$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
+			// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
 		do
 		{       
-
-	        if (file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png"))
+	     if (file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png"))
 	          $nbinvoices++;                
 	        $count++;        
 	        $go = file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png");
-    	}while($go);		
+    }while($go);		
 		$onePOData["NBINVOICES"] = $nbinvoices;
-		array_push($newPOData,$onePOData);
+		array_push($newPOData,$onePOData);					
 	}
 	$mixData["PO"] = $newPOData;
 
-	// NO PO
-	if ($status == "ALL"){
-		$sql = "SELECT *
-			FROM SUPPLY_RECORD 
-			WHERE TYPE = 'NOPO'
-			ORDER BY LAST_UPDATED DESC
-			LIMIT 150";
-		$req = $db->prepare($sql);
-		$req->execute(array());
-		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
-	else if ($status == "ORDERED")
-	{
-		$sql = "SELECT * FROM SUPPLY_RECORD 
-				WHERE STATUS = 'ORDERED'
-				AND TYPE = 'NOPO' 			
-				AND CREATED > date('now','-45 day') 
-				ORDER BY LAST_UPDATED DESC";	
-		$req = $db->prepare($sql);
-		$req->execute(array());
-		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);	
-	}
-	else {
-		$sql = "SELECT *
-		FROM SUPPLY_RECORD 
-		WHERE STATUS = ?
-		AND TYPE = 'NOPO' 
-		ORDER BY LAST_UPDATED DESC
-		LIMIT 150";	
-		$req = $db->prepare($sql);
-		$req->execute(array($status));
-		$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);			
-	}	
+	// ******************//
+	// ***** NO PO ******//
+	// ******************//
 
+	if ($status == "ALL"){
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' ORDER BY LAST_UPDATED DESC";
+			$params = array();
+	}	
+	else if ($status == "ORDERED")
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+	else 
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
+	
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
+	$IDS2 = extractIDS($NOPOData,"PONUMBER");
+	
+	$sql = "SELECT VENDNAME,PONUMBER FROM POHEADER WHERE PONUMBER in ".$IDS2;
+	$req = $dbBlue->prepare($sql);
+	
+	error_log($sql);	
+
+	$req->execute(array());		
+	$itemsWithDetailsNOPO = $req->fetchAll(PDO::FETCH_ASSOC);
+	$INDEXNOPO = array();
+	foreach($itemsWithDetailsNOPO as $itemNOPO)
+		$INDEXNOPO[$item2["PONUMBER"]] = $itemNOPO;
+
+	// ADD VENDNAME	& COUNT INVOICES
 	$newNOPOData = array();
 	foreach($NOPOData as $oneNOPOData){		
-
-		$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
-		$req = $db2->prepare($sql);
-		$req->execute(array($oneNOPOData["PONUMBER"]));
-		$oneRes = $req->fetch();
-		if ($oneRes != false)
-			$oneNOPOData["VENDNAME"] = $oneRes["VENDNAME"];
-
-
+		if(!isset($INDEXNOPO[$oneNOPOData["PONUMBER"]]))
+			continue;
+		$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["PONUMBER"]]["VENDNAME"];		
 		// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -2657,6 +2587,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 	return $response;
 });
+
+
 
 $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -4590,60 +4522,49 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
 
-	
 	$type = $request->getAttribute('type');
-	
 	if ($type == "RESTOCK")
-		$sql = "SELECT * FROM ITEMREQUESTRESTOCKPOOL";
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTRESTOCKPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTRESTOCKPOOL";
 	else if ($type == "PURCHASE")
-		$sql = "SELECT * FROM ITEMREQUESTPURCHASEPOOL";
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTPURCHASEPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTPURCHASEPOOL";
 	else if ($type == "TRANSFER")
-		$sql = "SELECT * FROM ITEMREQUESTTRANSFERPOOL";	
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTTRANSFERPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTTRANSFERPOOL";	
 	else if ($type == "TRANSFERBACK")
 		$sql = "SELECT * FROM ITEMREQUESTTRANSFERBACKPOOL";	
 	else if ($type == "DEBT")
 		$sql = "SELECT * FROM ITEMREQUESTDEBT";	
 	else if (substr($type,0,6) == "DEMAND"){		
 		$userid = substr($type,7);
-		$sql = "SELECT * FROM ITEMREQUESTDEMANDPOOL WHERE USERID = ".$userid;
-
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTDEMANDPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM  ITEMREQUESTDEMANDPOOL WHERE USERID = ".$userid;
 	}
 	$req = $db->prepare($sql);
 	$req->execute(array());
-
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	$itemsNEW = array();
-	foreach($items as $item)
-	{
-		$item["TYPE"] = $type;
 
-		$sql = "SELECT PACKINGNOTE,VENDNAME,
+	$IDS = extractIDS($items);
+
+	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
 				FROM ICPRODUCT,APVENDOR 
 				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
-				AND BARCODE = ?";
+				AND BARCODE in ".$IDS;	
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array());		
+	$itemsWithDetails = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$INDEX = array();
+	foreach($itemsWithDetails as $item2)
+		$INDEX[$item2["BARCODE"]] = $item2;
 
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$oneItem = $req->fetch(PDO::FETCH_ASSOC);
-		if ($oneItem != false){
-			$item["PACKINGNOTE"] = $oneItem["PACKINGNOTE"];
-			$item["VENDNAME"] = $oneItem["VENDNAME"];
-			$item["PRODUCTNAME"] = $oneItem["PRODUCTNAME"];	
-		}	
+	$itemsNEW = array();
+	foreach($items as $newItem){
+			if (!isset($INDEX[$newItem["PRODUCTID"]]))
+				continue;
+			$newItem["PACKINGNOTE"] = $INDEX[$newItem["PRODUCTID"]]["PACKINGNOTE"];
+			$newItem["VENDNAME"] = $INDEX[$newItem["PRODUCTID"]]["VENDNAME"];
+			$newItem["PRODUCTNAME"] = $INDEX[$newItem["PRODUCTID"]]["PRODUCTNAME"];		
 
-		$sql = "SELECT * FROM ITEMREQUESTDEBT WHERE PRODUCTID = ?"; 
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res == false)
-			$item["ISDEBT"] = "NO";
-		else
-			$item["ISDEBT"] = "YES";
-
-		array_push($itemsNEW,$item);
-	}
-	
+			array_push($itemsNEW,$newItem);
+	}	
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $itemsNEW;

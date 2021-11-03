@@ -2,6 +2,15 @@
 
 require_once 'RestEngine.php';
 
+function extractIDS($items,$keyname = "PRODUCTID"){
+	if (count($items) == 0)
+		return "('')";
+	$IDS = "(";
+	foreach($items as $item){$IDS .= "'".$item[$keyname] . "',";}
+	$IDS = substr($IDS,0,strlen($IDS) - 1) . ")";	
+	return $IDS;
+}
+
 function isset2($variable)
 {
 	if ($variable == null)
