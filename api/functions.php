@@ -1222,6 +1222,12 @@ function createPO($items,$author)
 			
 	foreach($items as $item)
 	{
+		if (!isset($item["DISCOUNT"])) // TO CLEAN 
+			$item["DISCOUNT"] = "0";
+		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
+			$item["ORDER_QTY"] = $item["ORDERQTY"];
+
+
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -1237,8 +1243,9 @@ function createPO($items,$author)
 
 			$TRANCOST = $res["LASTCOST"];				
 		}
+		
 		$TRANDISC = $item["DISCOUNT"];
-
+		
 		if ($TRANDISC != null && $TRANDISC != "0"){
 			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
 		}			
@@ -1275,6 +1282,11 @@ function createPO($items,$author)
 	$line = 1;
 	foreach($items as $item)
 	{
+		if (!isset($item["DISCOUNT"])) // TO CLEAN 
+			$item["DISCOUNT"] = "0";
+		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
+			$item["ORDER_QTY"] = $item["ORDERQTY"];
+
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -1390,7 +1402,7 @@ function createPO($items,$author)
 						?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?,?,
-						?,?,?,?,?
+						?,?,?,?,?,
 						?,?)"; 
 
 		$req = $dbBLUE->prepare($sql);
@@ -1406,8 +1418,8 @@ function createPO($items,$author)
 		$ALGOQTY,$REASON 
 		);
 
-		//$debug = var_export($params, true);
-		//error_log($debug);
+		$debug = var_export($params, true);
+		error_log($debug);
 
 		$req->execute($params);				
 		$line++;
