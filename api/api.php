@@ -570,7 +570,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	return $response;
 });
 
-function itemLookupLabel($barcode)
+function itemLookupLabel($barcode,$withImage = false)
 {
 	$conn=getDatabase();	
 	$begin = date("m-d-y");
@@ -582,14 +582,17 @@ function itemLookupLabel($barcode)
 					
 		   BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
 						FROM dbo.ICPRODUCT WHERE BARCODE = ? OR OTHERCODE = ?";
-	$getItems=$conn->prepare($sql);
-	$getItems->execute($params);
-	$items=$getItems->fetchAll(PDO::FETCH_ASSOC);
+	$req = $conn->prepare($sql);
+	$req->execute($params);
+	$item = $req->fetch(PDO::FETCH_ASSOC);
 
+	
 
-	if (count($items) > 0)
+	if ($item != false)
 	{
-		$item = $items[0];	
+		if ($withImage == true)
+			$oneItem["productImg"] = loadPicture($barcode,150,true);
+
 		if ($item["OTHERCODE"] != null)
 			$item["BARCODE"] = $item["OTHERCODE"]; 
 			
@@ -629,9 +632,7 @@ function itemLookupLabel($barcode)
 		if ($percent != 100)
 		{
 			$percent  /= 100;
-			$newPrice = $percent * $oldPrice; 	
-			//var_dump($newPrice);
-			//exit;			
+			$newPrice = $percent * $oldPrice; 				
 		}
 		else			
 			$newPrice = $oldPrice * 1; 	
@@ -659,7 +660,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
-			$oneItem = itemLookupLabel($barcode);
+			$oneItem = itemLookupLabel($barcode,true);
 			$oneItem["barcode"] = $packcode;
 			$oneItem["oldPrice"] = 	truncateDollarPrice($packInfo["SALEPRICE"]);			
 
@@ -687,7 +688,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		}
 		else 	{
 
-			array_push($result,itemLookupLabel($barcode));					
+			array_push($result,itemLookupLabel($barcode,true));					
 		}				
 			
 	}	
@@ -713,7 +714,7 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
-			$oneItem = itemLookupLabel($barcode);
+			$oneItem = itemLookupLabel($barcode,true);
 			$oneItem["barcode"] = $packcode;
 			$oneItem["oldPrice"] = 	"$". truncateDollarPrice($packInfo["SALEPRICE"]);			
 
@@ -741,9 +742,8 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 		}
 		else 	{
 
-			array_push($result,itemLookupLabel($barcode));					
-		}				
-			
+			array_push($result,itemLookupLabel($barcode,true));					
+		}										
 	}	
 	$resp["result"] = "OK";
 	$resp["data"] = $result;

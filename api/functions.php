@@ -329,37 +329,47 @@ function writePicture($barcode,$b64Image)
 }
 
 
-function loadPicture($barcode,$base64 = false)
-{
-	// Create new state:
-	$state = smbclient_state_new();
-	// Initialize the state with workgroup, username and password:
-	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
-	try{
-		$file = smbclient_open($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg','r');	
-	}
-	catch (Exception $e) {
-		return null;
-	}
+function getImage($path) {
+switch(mime_content_type($path)) {
+  case 'image/png':
+    $img = imagecreatefrompng($path);
+    break;
+  case 'image/gif':
+    $img = imagecreatefromgif($path);
+    break;
+  case 'image/jpeg':
+    $img = imagecreatefromjpeg($path);
+    break;
+  case 'image/bmp':
+    $img = imagecreatefrombmp($path);
+    break;
+  default:
+     $img = imagecreatefromjpeg($path);
+  }
+  return $img;
+}
 
-	$error = smbclient_state_errno($state);
-	if ($error == 1 || $error == 2 || $error == 9)
+function loadPicture($barcode,$scale = 150,$base64 = false)
+{
+	if (!file_exists("/Volumes/Image/".$barcode.".jpg"))
 	{
 		$path = "img/mystery.png";		
 		$final = file_get_contents($path);
 	}
-	else {
-		$tmp = "";
-		$final = "";
-		while (true) {	
-			$tmp = smbclient_read($state, $file, 500);
-			if ($tmp === false || strlen($tmp) === 0) {
-				break;
-			}
-			$final .= $tmp;
-		}
+	else 
+	{
+		
+		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
+		file_put_contents("./tmp.jpg",$final);		
+		$data = getImage("./tmp.jpg");
+		$data = imagescale($data,$scale);
+		ob_start();
+		imagejpeg($data);
+		$contents = ob_get_contents();
+		ob_end_clean();
+		$final = $contents;		
 	}
-	
+		
 	if ($base64 == true)
 		return base64_encode($final);
 	return $final;		
