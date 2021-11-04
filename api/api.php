@@ -2940,13 +2940,13 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	else if ($json["ACTIONTYPE"] == "TR")
 	{
 		// AUTO TRANSFER ITEMS TO TRANSFERPOOL
-		$sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ID = ?";
+		$sql = "SELECT PONUMBER,LINKEDPO FROM SUPPLY_RECORD WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["IDENTIFIER"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		if (isset($res["PONUMBER"])
-			$ponumber = $res["PONUMBER"]
+		if (isset($res["PONUMBER"]))
+			$ponumber = $res["PONUMBER"];
 		else 
 			$ponumber = $res["LINKEDPO"];
 
