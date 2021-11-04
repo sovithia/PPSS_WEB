@@ -9,6 +9,7 @@ include('Render.php');
 include('PagesRender.php');
 include('RenderCalendar.php');
 require 'vendor/autoload.php';
+include('.../style.css');
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -655,7 +656,7 @@ function renderPage()
   <div id='fullscreenimage' align='center' valign='center' style='visibility:hidden;position: absolute; top: 0; right: 0; bottom: 0; left: 0;
                                   padding-top: 200px;                                     
                                    height:150%;width:100%;z-index:1000;background-color:rgba(0,0,0,0.7)'>
-      <img id='imagefullscreen'>                                  
+      <img id='imagefullscreen'>                                 
   </div>
   <script type="text/javascript">
     

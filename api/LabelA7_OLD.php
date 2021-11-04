@@ -1,47 +1,302 @@
 <?php
 include('RestEngine.php');
 require_once('functions.php');
-
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(E_ALL); 
 ?>
 
 <html>
 
 <head>
-<!-- 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <script type="text/javascript" src="js/html2canvas.min.js"></script>
-  <script type="text/javascript" src="js/canvas-toBlob.js"></script>
-  <script type="text/javascript" src="js/FileSaver.js"></script> -->
-
-  <link rel="stylesheet" type="text/css" href="style.css">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Angkor&display=swap" rel="stylesheet">
-	<link rel="icon" type="image/png" sizes="16x16" href="img/Logo-text1.png">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Hammersmith+One&display=swap" rel="stylesheet">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Anton&family=Fjalla+One&display=swap" rel="stylesheet">
-
-  	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-	<link rel="stylesheet" type="text/css" href="icon/css/all.min.css">
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-	 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="js/html2canvas.min.js"></script>
     <script type="text/javascript" src="js/canvas-toBlob.js"></script>
     <script type="text/javascript" src="js/FileSaver.js"></script>
-  
 
+    <style> 
+
+      html{
+        font-family: Myriad Pro Bold;
+      }
+
+
+ .starburst {
+    background: #ffed00;  
+    
+    text-align: center;
+    color: #009183;
+    left: 75%;
+    transform: rotate(-45deg);
+  }
+
+  .starburst,
+  .starburst span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .starburst span {
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    transform: rotate(45deg);
+  }
+  .starburst:before,
+  .starburst:after ,
+  .starburst span:before,
+  .starburst span:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    z-index: -1;
+    transform: rotate(30deg);
+  }
+  .starburst:after {
+    transform: rotate(-30deg);
+  }
+  .starburst span:after {
+    transform: rotate(30deg);
+  }
+  .starburst span:before {
+    transform: rotate(-30deg);
+  }
+
+   .starburstOne{
+      width: 4.5em;
+      height: 4.5em;  
+    }
+
+    .starburstTwo{
+      width: 5em;
+      height: 5em;  
+    }
+
+    	.yellowreflect{
+    		box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-moz-box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-webkit-box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-o-box-shadow: 10px -10px rgba(255,237,0,0.6);
+    	}
+
+    	.whitecontour{ /* STYLE */
+    		border: 4px solid white;
+    	}
+
+      .greenbackground{                
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         padding: 5pt;
+         text-align: center;
+      }
+		.yellowcontour{ /* STYLE */
+    		border: 10px solid yellow;
+    	}
+    	.smallcircle { 
+    		width:100px;height:100px;  
+        background-color: rgba(0,145,131,0.8);     	
+        display: table-cell;
+        vertical-align: middle;          
+    		border-radius:200px;
+  			text-align: center;
+  			}
+    
+      .tinycircle {  /* LOGO DECORATION */
+        width:65px;height:65px;  
+        background-color: rgba(0,145,131,0.8);      
+        border-radius:200px; line-height: 100px;    
+        text-align: center;
+        }
+
+		  .bigcircle { /* LOGO DECORATION */
+        width:250px;height:250px; 			
+			  background-color: rgba(0,145,131,0.8);  
+        line-height: 250px;  			
+    		border-radius:380px;     		
+  			text-align: center;
+  			opacity: 1;
+  			filter: alpha(opacity=100);
+  		}
+
+		 #target{
+      background-image: url(img/bg<?=rand(1,4)?>.png);
+      height: 29.7cm;
+    	width: 21cm;
+    	display: flex;
+    	flex-direction: row;
+    	flex-wrap: wrap;
+    	justify-content: center;
+    	align-items: center;
+    	margin: auto;
+		}
+
+
+
+		#content{		 		 
+		 margin: 0px;
+		 padding: 0px;
+		background-color: rgba(255,255,255,0.6); 
+     border: solid white 1px;     		    
+		}
+
+		.strikeout {		 
+		  line-height: 1px;
+		  position: relative;
+		}
+		.strikeout::after {
+		  border-bottom: 0.100em solid red;
+		  content: "";
+		  left: 0;
+		  margin-top: calc(0.125em / 2 * -1);
+		  position: absolute;
+		  right: 0;
+		  top: 50%;
+		}
+
+    #save_image_locally{
+      background-color: #009183;
+      font-size: 30pt;
+      color:white;
+    }
+		
+		hr { display: block; height: 1px;
+    		border: 0; border-top: 3px solid #fff;
+    		margin: 1px 0; padding: 0; }
+
+
+    .title{
+      color:#ffed00;
+      font-size:80pt;
+      background-color: rgba(0,145,131,0.8);  
+      border-radius: 10px;      
+    }
+
+    .nopromotitle{
+      color:#ffed00;
+      font-size:40pt;
+      background-color: rgba(0,145,131,0.8);  
+      border-radius: 10px;      
+    }
+
+    .percent {
+      color: #ffed00;
+      font-size: 60pt;      
+      font-weight: bold;
+      }
+
+    .originpicture{
+        width:30px;
+        text-align: center;
+    }
+
+    .originpicturePromo{
+        width:100px;
+    }
+
+    .originNormal{
+         color:white;
+         font-size:10pt;
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         width: 340px;
+         padding: 5pt;
+         text-align: center;
+    }
+
+    .origin{
+         color:white;
+         font-size:10pt;
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         width: 100px;
+         padding: 5pt;
+         text-align: center;
+    }
+
+
+    .rielprice{
+      color:#ffed00;
+      font-size: 22pt;
+    }
+
+
+    .newprice{
+    color:white;
+    font-size: 22pt;    
+    } 
+
+    .oldprice {
+      color:#ffed00;      
+      font-size: 16pt;
+      text-align: right;
+    }
+
+  .productname{
+    color:white;
+    font-size: 12pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5);                            
+    }
+
+
+  .productnamePromo{
+    color:white;
+    font-size: 12pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5);                            
+    }
+
+    .productnameKH{
+    color:white;
+    font-size: 13pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5); 
+    font-family: "KH Content"                           
+    }
+
+
+  .productnamePromoKH{
+    color:white;
+    font-size: 13pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5);                            
+    font-family: "KH Content"                           
+    }
+
+
+
+    .product{
+      max-height: 150px;
+      width: 150px;      
+      border-radius: 10px;
+      }
+
+    .productPromo{
+      height: 230px;      
+      border-radius: 10px;
+      }
+
+    .till{
+      color:#ffed00;
+      font-weight: bold;      
+    }
+
+      .rounded{
+       border-radius: 10px;
+        background: rgba(0,145,131,0.7);
+        padding: 20px;
+        width: 140px;
+        height: 300px; 
+        
+    }
+    
+     .dollarprice{
+      color:#ffffff;
+      font-size: 40pt;
+    }
+
+    </style>
 </head>
 
 <body  >
@@ -60,7 +315,7 @@ error_reporting(E_ALL);
       $newString .= str_replace(" ","%20",$barcode). "|";
     }
     $newString = substr($newString,0,-1);
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $newString);                
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);                
     if (count($itemList) > 0)
       renderEightProduct($itemList);  
   } 
@@ -76,7 +331,7 @@ error_reporting(E_ALL);
     $b8 = str_replace(" ","%20",$_GET['barcode8']);
 
     $barcodes = implode("|",array($b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8));      
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);        
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes);        
     
     if (count($itemList) > 0)  
       renderEightProduct($itemList);    
@@ -180,13 +435,13 @@ function renderEightProduct($products)
     $percent8 = ($products[7]["discpercent"] != null) ? $products[7]["discpercent"] : "0";
 
   $render = 
-    "
-    <div class='A4_horizontal' id='A4_Image'>    
+    "<center><button id='save_image_locally'>Download</button></center>
+    <div id='target' style='height:29cm' >    
       <center>
-      <table>
+      <table border='0' cellspacing='0'>
         <tr>
-            <td>
-            <div>
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>
             ";
             if ($percent1 == "0")
               $render .= _renderProduct(isset($products[0]) ? $products[0] : null);
@@ -196,8 +451,8 @@ function renderEightProduct($products)
             "
             </div>
             </td>
-            <td>
-            <div>";
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>";
             if ($percent2 == "0")
               $render .= _renderProduct(isset($products[1]) ? $products[1] : null);
             else 
@@ -209,8 +464,8 @@ function renderEightProduct($products)
         </tr>
       
         <tr>
-            <td >
-            <div>
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>
             ";
             if ($percent3 == "0")
               $render .= _renderProduct(isset($products[2]) ? $products[2] : null);
@@ -220,8 +475,8 @@ function renderEightProduct($products)
             "
             </div>
             </td>
-            <td >
-            <div>";
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>";
             if ($percent4 == "0")
               $render .= _renderProduct(isset($products[3]) ? $products[3] : null);
             else 
@@ -233,8 +488,8 @@ function renderEightProduct($products)
         </tr>
 
          <tr>
-            <td>
-            <div>
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>
             ";
             if ($percent5 == "0")
               $render .= _renderProduct(isset($products[4]) ? $products[4] : null);
@@ -244,8 +499,8 @@ function renderEightProduct($products)
             "
             </div>
             </td>
-            <td>
-            <div>";
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>";
             if ($percent6 == "0")
               $render .= _renderProduct(isset($products[5]) ? $products[5] : null);
             else 
@@ -257,8 +512,8 @@ function renderEightProduct($products)
         </tr>
 
         <tr>
-            <td>
-            <div >
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>
             ";
             if ($percent7 == "0")
               $render .= _renderProduct(isset($products[6]) ? $products[6] : null);
@@ -268,8 +523,8 @@ function renderEightProduct($products)
             "
             </div>
             </td>
-            <td >
-            <div>";
+            <td width='50%' align='center'>
+            <div id='content' style='width:10.5cm;height:7.2cm'>";
             if ($percent8 == "0")
               $render .= _renderProduct(isset($products[7]) ? $products[7] : null);
             else 
@@ -280,11 +535,9 @@ function renderEightProduct($products)
             </td>
         </tr>
       </table>
-      </center>   
-      	</br>
-				<center><button class='btngenerate' id='save_image_locally'>Download</button></center>  
-     </div>
-     "; 
+      </center>     
+     </div>"; 
+
     echo $render;
 }
 
@@ -301,7 +554,7 @@ function _renderPromoProduct($product)
   $rielPrice = $product["rielPrice"];  
   $country = $product["country"];
   $image = $product["productImg"];  
-  $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
+    $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
   $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
@@ -312,99 +565,91 @@ function _renderPromoProduct($product)
   else 
     $percentSize = "20";
   return "
-  <div class='A7_box'>
-        <div class='A7_header'>
-          <img src='bg/bg-header.png'>
-          <div class='tag-wrap'>
-            <img src='img/logo-text1.png'>
-          </div>
-        </div>
-          <div class='A7_body'>
-          <div class='A7_box1'>
-            <div class='A7_text1'>
-              <p>$nameKH</p>
-            </div>
-            <div class='A7_text2'>
-              <p>$nameEN</p>
-            </div>
-            <div class='A7_code'>
-              <p>Code: $barcode</p>
-            </div>
-            <div class='A7_code'>
-              <p>Origin: $country</p>
-            </div>
-          </div>
-          <div class='A7_box2'>
+  <table >
+      <tr>        
+        <td colspan='2' align='center'>
+          <div class='productname whitecontour'>            
+
+            <table  width='100%'>
+            
+            <tr>
+              <td align='right'><span class='productname'>$nameEN</span></td>
+              <td rowspan='2' align='right'>
+                <img width='65px' src='img/biglogo.png'>
+              </td>
+
+            </tr>
+                
+            <tr>
+              <td align='right'><span class='productnameKH' style='color:#ffed00'>$nameKH</span></td>
+            </tr>
+
+            </table>
+          </div>                                                    
+        </td>
+              
+      </tr>
+
+      <tr valign='center'>
+         <td valign='top' >
+          <center>            
+            <div style='border-radius: 10px;height:150px;background-color:white;;vertical-align:middle;display:table-cell'>
             <img class='product whitecontour' src='data:image/jpeg;base64, $image' >
-          </div>
-          <div class='A7_box3'>
-            <div class='A7_box3_box1'>
-              <img src='bg/bg-sale.png'>
-              <div class='A7_promot'>
-                <div class='A7_promot1'>
-                  <div class='A7_promot2'>
-                    <p>$percent</p>
-                  </div>
-                  <div class='A7_promot3'>
-                    <div class='A7_percent'>
-                      <p>%</p>
-                    </div>
-                    <div class='A7_off'>
-                      <p>OFF</p>
-                    </div>
-                  </div>
-                </div>
-                <div class='A7_till'>
-                  <p>Promotion Till: $till</p>
-                </div>
-              </div>
             </div>
-            <div class='A7_box_price1'>
-              <div class='A7_box_price2'>
-                <div class='A7_box_price3'>
-                  <div class='A7_box_price4'>
-                    <div class='oldprice_symbool'>
-                      <p>$</p>
-                    </div>
-                    <div class='oldprice'>
-                      <div class='strikethrough'>
-                        <p>$oldPrice</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class='A7_box_price5'>
-                    <div class='A7_box_price6'>
-                      <div class='A7_promot_4'>
-                        <div class='A7_promot_unit'>
-                          <p>1 Unit</p>
-                        </div>
-                        <div class='A7_promot_price_en'>
-                          <div class='A7_promot_price_en1'>
-                            <p>$rielPrice</p>
-                          </div>
-                          <div class='A7_promot_price_symbool'>
-                            <p>៛</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class='A7_box_price7'>
-                      <div class='symbool_en'>
-                        <p>$</p>
-                      </div>
-                      <div class='A7_box_price_en'>
-                        <p>$dollarPrice</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <span style='color:white'>$barcode</span>
+          </center>
+        </td>    
+ 
+
+        <td align='center'  >
+          <div class='productname whitecontour'>                   
+            <table >
+              <tr height='100px'>
+                <td align='center'>
+                  <br>
+                  <span class='oldprice strikeout'>
+                    $oldPrice 
+                  </span><hr>
+
+                  <span class='dollarprice' style='font-size:20pt'>
+                  $dollarPrice</span><hr>
+
+                  <span class='rielprice' style='font-size:20pt'>$rielPrice ៛</span><br>
+                 
+                </td>   
+
+                <td width='100px' align='center'> 
+                  <div class='starburst starburstOne'> 
+                     <span style='font-size:".$percentSize."pt'>-$percent%</span></div>          
+                  </div>          
+                </td>
+              </tr>  
+              <tr>
+                <td  align='center'>
+                  <img class='originpicture' src=$flag /><br>
+                  <span style='font-size:8pt;color:white' >Origin:$country</span>
+                </td>
+
+                <td align='center'>
+                 <span style='font-size:10pt;color:#ffed00' >
+                    From : $from
+                  </span><br>
+                  <span style='font-size:10pt;color:#ffed00' >
+                    Till : $till
+                  </span>
+                  
+                </td>
+                
+
+              </tr>          
+            </table>
           </div>
-        </div>
-      </div>
+        </td>
+      </tr>
+  </table>
    ";
 }
+
 function _renderProduct($product)
 {
   if ($product == null)
@@ -422,85 +667,99 @@ function _renderProduct($product)
   $barcode = $product["barcode"];
 
   return "
+   <table >
+      <tr>        
+        <td colspan='2' align='center'>
+          <div class='productname whitecontour'>            
 
-    <div class='A7_box'>
-				<div class='A7_header'>
-					<img src='bg/bg-header.png'>
-					<div class='tag-wrap'>
-						<img src='img/logo-text1.png'>
-					</div>
-				</div>
-					<div class='A7_body'>
-					<div class='A7_box1'>
-						<div class='A7_text1'>
-							<p>$nameKH</p>
-						</div>
-						<div class='A7_text2'>
-							<p>$nameEN</p>
-						</div>
-						<div class='A7_code'>
-							<p>Code: $barcode</p>
-						</div>
-						<div class='A7_code'>
-							<p>Origin: $country</p>
-						</div>
-					</div>
-					<div class='A7_box2'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image' >
-					</div>
-					<div class='A7_box3'>
-						<div class='A7_box3_box1'>
-							<img src='bg/bg-sale.png'>
-							<div class='sale1'>
-									<p>SALE</p>
-								</div>
-						</div>
-						<div class='A7_box_price1'>
-							<div class='A7_box_price2'>
-								<div class='A7_box_price3'>
-									<div class='A7_box_price4'>
-										<div class='A7_price_kh'>
-											<p>$rielPrice</p>
-										</div>
-										<div class='symbool_kh'>
-											<p>៛</p>
-										</div>
-									</div>
-									<div class='A7_box_price5'>
-										<div class='A7_box_price6'>
-											<div class='flag'>
-												<img class='originpicture' src=$flag />
-											</div>
-											<div class='unit'>
-												<p>1 Unit</p>
-											</div>
-										</div>
-										<div class='A7_box_price7'>
-											<div class='symbool_en'>
-												<p>$</p>
-											</div>
-											<div class='A7_box_price_en'>
-												<p>$dollarPrice</p>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+            <table  width='100%'>
+            
+            <tr>
+              <td align='right'><span class='productname'>$nameEN</span></td>
+              <td rowspan='2' align='right'>
+                <img width='65px' src='img/logo.png'>
+              </td>
 
-   ";
+            </tr>
+                
+            <tr>
+              <td align='right'><span class='productnameKH' style='color:#ffed00'>$nameKH</span></td>
+            </tr>
+
+            </table>
+          </div>                                                    
+        </td>
+              
+      </tr>
+
+      <tr valign='top'>
+         <td valign='top' >
+          <center>
+            <div style='border-radius: 10px;height:150px;background-color:white;;vertical-align:middle;display:table-cell'>
+            <img class='product whitecontour' src='data:image/jpeg;base64, $image'><br>
+            </div>
+            <span style='color:white'>$barcode</span>
+          </center>
+        </td>    
+ 
+
+        <td align='center'  >
+          <div class='productname whitecontour'>                   
+            <table >
+              <tr height='100px'>
+                <td>
+                  <span class='rielprice'>$rielPrice ៛</span>      
+                </td>   
+
+                <td width='100px' align='center'> 
+                  <div class='starburst starburstOne'>
+                   <span style='font-size:25pt'>$dollarPrice</span></div>          
+                </td>
+              </tr>  
+              <tr>
+                <td align='center'>
+                  <img class='originpicture' src=$flag /><br>
+                  <span style='font-size:8pt;color:white' >Origin : $country</span>
+                </td>
+
+                <td align='center'>                              
+                </td>
+
+              </tr>          
+            </table>
+          </div>
+        </td>
+      </tr>
+  </table>";
 }
+
+function renderOneProduct($product)
+{
+  $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
+
+    $render = 
+    "<center><button id='save_image_locally'>Download</button></center>
+    <div id='target'>
+    <div id='content'>
+    <center>";
+      if ($percent == "0")
+        $render .=   _renderProduct($product);
+      else     
+        $render .=   _renderPromoProduct($product);        
+      $render .=
+    "</center>
+     </div>
+     </div>";  
+    echo $render;
+}
+
 ?>
 
-	
-<script type="text/javascript" src="html2canvas.js"></script>
 <script>
    $('#save_image_locally').click(function(){           
-      let opt = { scale : 5};
-      html2canvas(document.getElementById('A4_Image'),opt).then(function(canvas) {
+      let opt = { scale : 5,                  
+                };
+      html2canvas(document.getElementById('target'),opt).then(function(canvas) {
       
       canvas.toBlob(function(blob){
           saveAs(blob, 'lastlabels.jpg');                

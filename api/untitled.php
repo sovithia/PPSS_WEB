@@ -38,7 +38,7 @@ error_reporting(E_ALL);
 	 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="js/html2canvas.min.js"></script>
     <script type="text/javascript" src="js/canvas-toBlob.js"></script>
-    <script type="text/javascript" src="js/FileSaver.js"></script>
+   <!--  <script type="text/javascript" src="js/FileSaver.js"></script> -->
 
 
 </head>
@@ -126,7 +126,6 @@ function renderOneProduct($product)
   $dollarPrice = $product["dollarPrice"];
   $rielPrice = $product["rielPrice"];  
   $country = $product["country"];
-  $image = $product["productImg"];
   $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
   $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
@@ -137,65 +136,63 @@ function renderOneProduct($product)
   {
     echo "
     <div class='A4_horizontal' id='A4_Image'>
-			<div class='A4_box'>
-				<div class='A5_header'>
+    <div class='A7_box'>
+				<div class='A7_header'>
 					<img src='bg/bg-header.png'>
 					<div class='tag-wrap'>
 						<img src='img/logo-text1.png'>
 					</div>
 				</div>
-				<div class='A5_bottom'>
-					<div class='A5_box1'>
-						<div class='text1'>
-							
+					<div class='A7_body'>
+					<div class='A7_box1'>
+						<div class='A7_text1'>
+							<p>$nameKH</p>
 						</div>
-						<div class='text2'>
-							<div class='A5_name_kh'>
-								<p>$nameKH</p>
-							</div>
-							<div class='A5_name_en'>
-								<p>$nameEN</p>
-								<p style='margin-top: -10px; font-size: 12px;''>Code: $barcode</p>
-								<p style='margin-top: -10px; font-size: 12px;''>Origin: $country</p>
-							</div>
+						<div class='A7_text2'>
+							<p>$nameEN</p>
+						</div>
+						<div class='A7_code'>
+							<p>Code: $barcode</p>
+						</div>
+						<div class='A7_code'>
+							<p>Origin: $country</p>
 						</div>
 					</div>
-					<div class='A5_box2'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+					<div class='A7_box2'>
+									<img class='product whitecontour' src='http://phnompenhsuperstore.com/api/picture.php?barcode=$barcode'>
 					</div>
-					<div class='A5_box3'>
-						<div class='A5_box4'>
-							<div class='sale'>
-								<img src='bg/bg-sale.png'>
-								<div class='sale1'>
+					<div class='A7_box3'>
+						<div class='A7_box3_box1'>
+							<img src='bg/bg-sale.png'>
+							<div class='sale1'>
 									<p>SALE</p>
 								</div>
-							</div>
-							
 						</div>
-						<div class='A5_box5'>
-							<div class='A5_box_price'>
-								<div class='A5_box_price1'>
-									<div class='A5_box_price2'>
-										<div class='price_kh'>
+						<div class='A7_box_price1'>
+							<div class='A7_box_price2'>
+								<div class='A7_box_price3'>
+									<div class='A7_box_price4'>
+										<div class='A7_price_kh'>
 											<p>$rielPrice</p>
 										</div>
-										<div class='price_kh_symbool'>
+										<div class='symbool_kh'>
 											<p>៛</p>
 										</div>
 									</div>
-									<div class='A5_box_price3'>
-										<div class='A5_flag'>
-											<div class='A5_flag1'>
+									<div class='A7_box_price5'>
+										<div class='A7_box_price6'>
+											<div class='flag'>
 												<img class='originpicture' src=$flag />
 											</div>
-											<div class='show_unit'><p>1 Unit</p></div>
+											<div class='unit'>
+												<p>1 Unit</p>
+											</div>
 										</div>
-										<div class='A5_price'>
-											<div class='A5_symbool_us'>
+										<div class='A7_box_price7'>
+											<div class='symbool_en'>
 												<p>$</p>
 											</div>
-											<div class='A5_price_us'>
+											<div class='A7_box_price_en'>
 												<p>$dollarPrice</p>
 											</div>
 										</div>
@@ -206,76 +203,9 @@ function renderOneProduct($product)
 					</div>
 				</div>
 			</div>
-
-			<div class='A4_box'>
-				<div class='A5_header'>
-					<img src='bg/bg-header.png'>
-					<div class='tag-wrap'>
-						<img src='img/logo-text1.png'>
-					</div>
-				</div>
-				<div class='A5_bottom'>
-					<div class='A5_box1'>
-						<div class='text1'>
-							
-						</div>
-						<div class='text2'>
-							<div class='A5_name_kh'>
-								<p><?php echo $p_name12; ?></p>
-							</div>
-							<div class='A5_name_en'>
-								<p><?php echo $p_name2; ?></p>
-								<p style='margin-top: -10px; font-size: 12px;''>Code: <?php echo $product_id1; ?></p>
-								<p style='margin-top: -10px; font-size: 12px;'>Origin: <?php echo $flag2; ?></p>
-							</div>
-						</div>
-					</div>
-					<div class='A5_box2'>
-						<img src='img/<?php echo $p_img12; ?>'>
-					</div>
-					<div class='A5_box3'>
-						<div class='A5_box4'>
-							<div class='sale'>
-								<img src='bg/bg-sale.png'>
-								<div class='sale1'>
-									<p>SALE</p>
-								</div>
-							</div>
-						</div>
-						<div class='A5_box5'>
-							<div class='A5_box_price'>
-								<div class='A5_box_price1'>
-									<div class='A5_box_price2'>
-										<div class='price_kh'>
-											<p><?php echo (number_format(round($formattedprice_kh1,-2))); ?></p>
-										</div>
-										<div class='price_kh_symbool'>
-											<p>៛</p>
-										</div>
-									</div>
-									<div class='A5_box_price3'>
-										<div class='A5_flag'>
-											<div class='A5_flag1'><img src='flag/<?php echo $flag2.'.png'; ?>'></div>
-											<div class='show_unit'><p>1 Unit</p></div>
-										</div>
-										<div class='A5_price'>
-											<div class='A5_symbool_us'>
-												<p>$</p>
-											</div>
-											<div class='A5_price_us'>
-												<p><?php echo $formattedprice1; ?></p>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		</br>
-		<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+    </div>
+	</br>
+	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
     }
     else
@@ -285,66 +215,77 @@ function renderOneProduct($product)
   else 
     $percentSize = "45";
     echo "
-    	<div class='A4_horizontal' id='A4_Image'>
-			<div class='A4_box'>
-				<div class='A5_header'>
+    <div class='A4_horizontal' id='A4_Image'>
+    <div class='A7_box'>
+				<div class='A7_header'>
 					<img src='bg/bg-header.png'>
-					<div class='logo'>
+					<div class='tag-wrap'>
 						<img src='img/logo-text1.png'>
 					</div>
 				</div>
-				<div class='A5_bottom'>
-					<div class='A5_box1'>
-						<div class='text1'></div>
-						<div class='text2'>
-							<div class='A5_name_kh'>
-								<p>$nameKH </p>
-							</div>
-							<div class='A5_name_en'>
-								<p>$nameEN</p>
-								<p style='margin-top: -10px; font-size: 12px;'>Code: $barcode</p>
-								<p style='margin-top: -10px; font-size: 12px;'>Origin: $country</p>
-							</div>
+					<div class='A7_body'>
+					<div class='A7_box1'>
+						<div class='A7_text1'>
+							<p>$nameKH</p>
+						</div>
+						<div class='A7_text2'>
+							<p>$nameEN</p>
+						</div>
+						<div class='A7_code'>
+							<p>Code: $barcode</p>
+						</div>
+						<div class='A7_code'>
+							<p>Origin: $country</p>
 						</div>
 					</div>
-					<div class='A5_box2'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+					<div class='A7_box2'>
+						<img class='product whitecontour' src='data:jpeg;base64, $image'>
 					</div>
-					<div class='A5_box3'>
-						<div class='A5_box4'>
-						<img src='bg/bg-sale.png'>
-							<div class='sale'>
-								<div class='sale1'>
-										<div class='promotion_blog'>
-											<div class='A5_disc'>
-												<p>$percent</p>
+					<div class='A7_box3'>
+						<div class='A7_box3_box1'>
+							<img src='bg/bg-sale.png'>
+							<div class='sale1'>
+									<p>SALE</p>
+								</div>
+						</div>
+						<div class='A7_box_price1'>
+							<div class='A7_box_price2'>
+								<div class='A7_box_price3'>
+									<div class='A7_box_price4'>
+										<div class='A7_price_kh'>
+											<p>$rielPrice</p>
+										</div>
+										<div class='symbool_kh'>
+											<p>៛</p>
+										</div>
+									</div>
+									<div class='A7_box_price5'>
+										<div class='A7_box_price6'>
+											<div class='flag'>
+												<img class='originpicture' src=$flag />
 											</div>
-											<div class='A5_percent'>
-												<div class='A5_percent1'>
-													<p>%</p>
-												</div>
-												<div class='A5_off'>
-													<div class='A5_off'><p>OFF</p></div>
-												</div>
+											<div class='unit'>
+												<p>1 Unit</p>
 											</div>
 										</div>
-										<div class='promotion_till'>
-											<p>Promotion Till:  $till</p>
+										<div class='A7_box_price7'>
+											<div class='symbool_en'>
+												<p>$</p>
+											</div>
+											<div class='A7_box_price_en'>
+												<p>$dollarPrice</p>
+											</div>
 										</div>
-									
+									</div>
 								</div>
 							</div>
 						</div>
-						
-
 					</div>
 				</div>
 			</div>
-
-
-		</div>
-		</br>
-		<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+    </div>
+	</br>
+	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	   ";
     }
 }
@@ -361,6 +302,76 @@ function renderOneProduct($product)
       },);
   });
 </script>
+        
 
 </body>
 </html>
+
+
+
+
+
+<table >
+      <tr>        
+        <td colspan='2' align='center'>
+          <div class='productname whitecontour'>            
+
+            <table  width='100%'>
+            
+            <tr>
+              <td align='right'><span class='productname'>$nameEN</span></td>
+              <td rowspan='2' align='right'>
+                <img width='65px' src='img/logo.png'>
+              </td>
+
+            </tr>
+                
+            <tr>
+              <td align='right'><span class='productnameKH' style='color:#ffed00'>$nameKH</span></td>
+            </tr>
+
+            </table>
+          </div>                                                    
+        </td>
+              
+      </tr>
+
+      <tr valign='top'>
+         <td valign='top' >
+          <center>
+            <div style='border-radius: 10px;height:150px;background-color:white;;vertical-align:middle;display:table-cell'>
+            <img class='product whitecontour' src='http://phnompenhsuperstore.com/api/picture.php?barcode=$barcode'>
+            </div>
+            <span style='color:white'>$barcode</span>
+          </center>
+        </td>    
+ 
+
+        <td align='center'  >
+          <div class='productname whitecontour'>                   
+            <table >
+              <tr height='100px'>
+                <td>
+                  <span class='rielprice'>$rielPrice ៛</span>      
+                </td>   
+
+                <td width='100px' align='center'> 
+                  <div class='starburst starburstOne'>
+                   <span style='font-size:25pt'>$dollarPrice</span></div>          
+                </td>
+              </tr>  
+              <tr>
+                <td align='center'>
+                  <img class='originpicture' src=$flag /><br>
+                  <span style='font-size:8pt;color:white' >Origin : $country</span>
+                </td>
+
+                <td align='center'>                              
+                </td>
+
+              </tr>          
+            </table>
+          </div>
+        </td>
+      </tr>
+  </table>
