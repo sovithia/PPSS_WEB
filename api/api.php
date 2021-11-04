@@ -2487,6 +2487,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	// ******************//
 
 	$params = array($status); // DEFAULT STATUS
+	
 	if ($status == "ALL"){
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
 			$params = array();
@@ -2530,6 +2531,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	$mixData["PO"] = $newPOData;
 
+	
 	// ******************//
 	// ***** NO PO ******//
 	// ******************//
@@ -2543,28 +2545,30 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else 
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
 	
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
-	$IDS2 = extractIDS($NOPOData,"PONUMBER");
-	
+
+	$IDS2 = extractIDS($NOPOData,"LINKEDPO");
+
 	$sql = "SELECT VENDNAME,PONUMBER FROM POHEADER WHERE PONUMBER in ".$IDS2;
 	$req = $dbBlue->prepare($sql);
-	
-	error_log($sql);	
-
 	$req->execute(array());		
 	$itemsWithDetailsNOPO = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
 	$INDEXNOPO = array();
 	foreach($itemsWithDetailsNOPO as $itemNOPO)
-		$INDEXNOPO[$item2["PONUMBER"]] = $itemNOPO;
+		$INDEXNOPO[$itemNOPO["PONUMBER"]] = $itemNOPO;
+
 
 	// ADD VENDNAME	& COUNT INVOICES
 	$newNOPOData = array();
 	foreach($NOPOData as $oneNOPOData){		
-		if(!isset($INDEXNOPO[$oneNOPOData["PONUMBER"]]))
+		if(!isset($INDEXNOPO[$oneNOPOData["LINKEDPO"]]))
 			continue;
-		$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["PONUMBER"]]["VENDNAME"];		
+		$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["LINKEDPO"]]["VENDNAME"];		
 		// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -3296,38 +3300,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	return $response;
 });
 
-$app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Response $response) {
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-	$ponumber = $request->getAttribute('ponumber');
-
-	$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($ponumber));
-
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($items as $item)
-	{
-		$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);		
-
-		if ($res["CNT"] == 0){
-			$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
-		}else{
-			$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
-		}		
-	}
-
-	$data["result"] = "OK";
-	$response = $response->withJson($data);	
-	return $response;
-});
 
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
