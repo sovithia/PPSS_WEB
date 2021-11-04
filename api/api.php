@@ -2470,8 +2470,6 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 });
 
 
-
-
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -2592,8 +2590,6 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	return $response;
 });
 
-
-
 $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -2652,9 +2648,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
-
-
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
@@ -2950,8 +2943,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["IDENTIFIER"]));
-		$ponumber = $req->fetch(PDO::FETCH_ASSOC)["PONUMBER"];
-	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if (isset($res["PONUMBER"])
+			$ponumber = $res["PONUMBER"]
+		else 
+			$ponumber = $res["LINKEDPO"];
 
 		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
