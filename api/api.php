@@ -624,7 +624,7 @@ function itemLookupLabel($barcode,$withImage = false)
 		else
 			$oneItem["discpercentstart"] = "";		
 		
-		$oneItem["oldPrice"] = 	"$". truncateDollarPrice($item["PRICE"]);
+		$oneItem["oldPrice"] = 	 truncateDollarPrice($item["PRICE"]);
 
 		$oldPrice = floatval(truncateDollarPrice($item["PRICE"]));					
 		$percent = (100 - floatval($oneItem["discpercent"])) ;		
@@ -637,7 +637,7 @@ function itemLookupLabel($barcode,$withImage = false)
 		else			
 			$newPrice = $oldPrice * 1; 	
 			
-		$oneItem["dollarPrice"] = "$". truncateDollarPrice($newPrice);										
+		$oneItem["dollarPrice"] = truncateDollarPrice($newPrice);										
 		$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 		return $oneItem;
 	}
