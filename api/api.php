@@ -2506,9 +2506,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$newPOData = array();
 	foreach($POData as $onePOData)
 	{
-		if(!isset($INDEX[$onePOData["PONUMBER"]]))
-			continue;
-		$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
+		if(isset($INDEX[$onePOData["PONUMBER"]]))			
+			$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
 			// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -2522,6 +2521,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$onePOData["NBINVOICES"] = $nbinvoices;
 		array_push($newPOData,$onePOData);					
 	}
+
 	$mixData["PO"] = $newPOData;
 
 	
@@ -2559,9 +2559,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	// ADD VENDNAME	& COUNT INVOICES
 	$newNOPOData = array();
 	foreach($NOPOData as $oneNOPOData){		
-		if(!isset($INDEXNOPO[$oneNOPOData["LINKEDPO"]]))
-			continue;
-		$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["LINKEDPO"]]["VENDNAME"];		
+		if(isset($INDEXNOPO[$oneNOPOData["LINKEDPO"]]))
+			$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["LINKEDPO"]]["VENDNAME"];		
 		// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
