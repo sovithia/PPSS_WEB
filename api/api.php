@@ -2473,19 +2473,14 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-
 	$status = $request->getAttribute('status');
-
-
 	if ($status == "WAITING")
 		createSupplyRecordForPO();
 
 	// ******************//
 	// ***** WITH PO ****//
 	// ******************//
-
 	$params = array($status); // DEFAULT STATUS
-	
 	if ($status == "ALL"){
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
 			$params = array();
