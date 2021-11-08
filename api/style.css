@@ -135,7 +135,7 @@ renderTwoProduct{
 }
 .box-image .discount_percent{
 	float: left;
-	margin-left: 15px;
+	margin-left: 25px;
 	width: 85px;
 	height: 85px;
 	margin-top: 65px;
@@ -356,18 +356,18 @@ renderTwoProduct{
 	font-weight: bold;
 	text-align: center;
 }
-.strikethrough:before {
+.A4_price_kh_b2 .A4_price_2items  .strikethrough:before {
   position: absolute;
   margin-top: 12px;
   border: 1px solid #1B9382 ;
   opacity: 0.9;
   border-radius: 5px;
   
-  -webkit-transform:rotate(25deg);
-  -moz-transform:rotate(25deg);
-  -ms-transform:rotate(25deg);
-  -o-transform:rotate(25deg);
-  transform:rotate(25deg);
+  -webkit-transform:rotate(15deg);
+  -moz-transform:rotate(15deg);
+  -ms-transform:rotate(15deg);
+  -o-transform:rotate(15deg);
+  transform:rotate(15deg);
 }
 .box_price1_b2 .A4_price_2item_box{
 	width: 100%;
@@ -2078,7 +2078,7 @@ float: left;
 .A7_box_price4 .oldprice_symbool p{
 	float: right;
 	margin-right: 2px;
-	margin-top: 7px;
+	margin-top: 5px;
 	font-size: 16px;
 	color: #fff;
 	font-family: khb;
