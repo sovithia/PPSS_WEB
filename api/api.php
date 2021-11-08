@@ -624,7 +624,7 @@ function itemLookupLabel($barcode,$withImage = false)
 		else
 			$oneItem["discpercentstart"] = "";		
 		
-		$oneItem["oldPrice"] = 	"$". truncateDollarPrice($item["PRICE"]);
+		$oneItem["oldPrice"] = 	 truncateDollarPrice($item["PRICE"]);
 
 		$oldPrice = floatval(truncateDollarPrice($item["PRICE"]));					
 		$percent = (100 - floatval($oneItem["discpercent"])) ;		
@@ -637,7 +637,7 @@ function itemLookupLabel($barcode,$withImage = false)
 		else			
 			$newPrice = $oldPrice * 1; 	
 			
-		$oneItem["dollarPrice"] = "$". truncateDollarPrice($newPrice);										
+		$oneItem["dollarPrice"] = truncateDollarPrice($newPrice);										
 		$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 		return $oneItem;
 	}
@@ -2470,22 +2470,16 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 });
 
 
-
-
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-
 	$status = $request->getAttribute('status');
-
-
 	if ($status == "WAITING")
 		createSupplyRecordForPO();
 
 	// ******************//
 	// ***** WITH PO ****//
 	// ******************//
-
 	$params = array($status); // DEFAULT STATUS
 	if ($status == "ALL"){
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
@@ -2512,9 +2506,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$newPOData = array();
 	foreach($POData as $onePOData)
 	{
-		if(!isset($INDEX[$onePOData["PONUMBER"]]))
-			continue;
-		$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
+		if(isset($INDEX[$onePOData["PONUMBER"]]))			
+			$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
 			// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -2528,8 +2521,10 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$onePOData["NBINVOICES"] = $nbinvoices;
 		array_push($newPOData,$onePOData);					
 	}
+
 	$mixData["PO"] = $newPOData;
 
+	
 	// ******************//
 	// ***** NO PO ******//
 	// ******************//
@@ -2543,28 +2538,29 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else 
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
 	
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
-	$IDS2 = extractIDS($NOPOData,"PONUMBER");
-	
+
+	$IDS2 = extractIDS($NOPOData,"LINKEDPO");
+
 	$sql = "SELECT VENDNAME,PONUMBER FROM POHEADER WHERE PONUMBER in ".$IDS2;
 	$req = $dbBlue->prepare($sql);
-	
-	error_log($sql);	
-
 	$req->execute(array());		
 	$itemsWithDetailsNOPO = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
 	$INDEXNOPO = array();
 	foreach($itemsWithDetailsNOPO as $itemNOPO)
-		$INDEXNOPO[$item2["PONUMBER"]] = $itemNOPO;
+		$INDEXNOPO[$itemNOPO["PONUMBER"]] = $itemNOPO;
+
 
 	// ADD VENDNAME	& COUNT INVOICES
 	$newNOPOData = array();
 	foreach($NOPOData as $oneNOPOData){		
-		if(!isset($INDEXNOPO[$oneNOPOData["PONUMBER"]]))
-			continue;
-		$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["PONUMBER"]]["VENDNAME"];		
+		if(isset($INDEXNOPO[$oneNOPOData["LINKEDPO"]]))
+			$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["LINKEDPO"]]["VENDNAME"];		
 		// COUNT INVOICES
 		$count = 1;
 		$nbinvoices = 0;
@@ -2587,8 +2583,6 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 	return $response;
 });
-
-
 
 $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -2648,9 +2642,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
-
-
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
@@ -2943,11 +2934,15 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	else if ($json["ACTIONTYPE"] == "TR")
 	{
 		// AUTO TRANSFER ITEMS TO TRANSFERPOOL
-		$sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ID = ?";
+		$sql = "SELECT PONUMBER,LINKEDPO FROM SUPPLY_RECORD WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["IDENTIFIER"]));
-		$ponumber = $req->fetch(PDO::FETCH_ASSOC)["PONUMBER"];
-	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if (isset($res["PONUMBER"]))
+			$ponumber = $res["PONUMBER"];
+		else 
+			$ponumber = $res["LINKEDPO"];
 
 		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
@@ -3296,38 +3291,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	return $response;
 });
 
-$app->post('/supplyrecordtotransferpool/{ponumber}',function(Request $request,Response $response) {
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-	$ponumber = $request->getAttribute('ponumber');
-
-	$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($ponumber));
-
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($items as $item)
-	{
-		$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);		
-
-		if ($res["CNT"] == 0){
-			$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
-		}else{
-			$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
-		}		
-	}
-
-	$data["result"] = "OK";
-	$response = $response->withJson($data);	
-	return $response;
-});
 
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
