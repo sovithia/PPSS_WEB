@@ -281,9 +281,9 @@ function renderEightProduct($products)
         </tr>
       </table>
       </center>   
-      	</br>
-				<center><button class='btngenerate' id='save_image_locally'>Download</button></center>  
      </div>
+     </br>
+    <center><button class='btngenerate' id='save_image_locally'>Download</button></center>  
      "; 
     echo $render;
 }

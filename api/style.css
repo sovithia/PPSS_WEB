@@ -119,13 +119,13 @@ renderTwoProduct{
 	float: left;
 }
 .barcode1 .box-image{
-	width: 50%;
+	width: 41%;
 	height: 90%;
 	float: left;
 }
 .box-image img{
 	float: right;
-	margin-top: 130px;
+	margin-top: 110px;
 	margin-right: 10px;
 	width: 160px;
 	display: block;
@@ -133,9 +133,70 @@ renderTwoProduct{
 	border-radius: 5px;
 
 }
+.box-image .discount_percent{
+	float: left;
+	margin-left: 15px;
+	width: 85px;
+	height: 85px;
+	margin-top: 65px;
+	background-color: #1B9382;
+	border-radius: 50%;
+	border: 3px solid #fff;
+	box-shadow: 1px 1px 0 1px #ccc;
+	position: absolute;
+	padding: 13px;
+}
+.box-image .discount_percent .percent{
+	float: left;
+	width: 100%;
+	height: 70%;
+	margin-top: 5px;
+}
+.box-image .discount_percent .percent .percent1{
+	width: 65%;
+	height: 98%;
+	float: left;
+	position: relative;
+}
+.box-image .discount_percent .percent .percent1 p{
+	float: left;
+	font-size: 35px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+	margin-top: -13px;
+}
+.box-image .discount_percent .percent .percent2{
+	width: 35%;
+	height: 50%;
+	float: left;
+}
+.box-image .discount_percent .percent .percent2 p{
+	float: left;
+	font-size: 12px;
+	font-weight: bold;
+	font-family: acumin;
+	color: #fff;
+	margin-top: 5px;
+
+}
+.box-image .discount_percent .percent .percent3{
+	width: 35%;
+	height: 40%;
+	float: left;
+}
+.box-image .discount_percent .percent .percent3 p{
+	float: left;
+	font-size: 15px;
+	font-weight: bold;
+	font-family: acumin;
+	color: #fff;
+	margin-top: -2px;
+	margin-left: 2px;
+}
 .barcode1 .box-text{
-	width: 50%;
-	height: 100%;
+	width: 59%;
+	height: 90%;
 	float: left;
 }
 .nameKh{
@@ -170,7 +231,7 @@ renderTwoProduct{
 	float: left;
 }
 .box-price{
-	width: 100%;
+	width: 80%;
 	height: 53%;
 	float: left;
 	padding: 3px;
@@ -180,15 +241,15 @@ renderTwoProduct{
 	height: 100%;
 	float: right;
 	background-color: #1B9382;
-	border-radius: 25px;
-	padding: 4px;
+	border-radius: 18px;
+	padding: 3px;
 	position: relative;
 }
 .box_price1_b2{
 	height: 100%;
 	width: 100%;
 	background-color: #EAECEE;
-	border-radius: 20px;
+	border-radius: 15px;
 	border: 5px solid #fff;
 	position: relative;
 }
@@ -197,7 +258,7 @@ renderTwoProduct{
 	width: 100%;
 	height: 30%;
 	background-color: #1B9382;
-	border-radius: 15px 15px 0px 0px;
+	border-radius: 12px 12px 0px 0px;
 
 }
 .unit{
@@ -234,20 +295,18 @@ renderTwoProduct{
 	font-weight: bold;
 }
 .A4_price_kh_b2{
-	margin-top: -18px;
 	float: left;
 	width: 90%;
-	height: 80%;
+	height: 90%;
 }
 .A4_price_kh_b2 p{
 	float: right;
 	margin-right: 2px;
-	margin-top: 10px;
-	font-size: 45px;
+	margin-top: -6px;
+	font-size: 40px;
 	color: #fff;
 	font-family: khb;
 	font-weight: bold;
-	text-align: center;
 }
 .price_en_b2{
 	float: left;	
@@ -259,10 +318,137 @@ renderTwoProduct{
 	width: 18%;
 	height: 100%;
 }
+/*A4 Promotion 2 Line*/
+
+
+.A4_price_kh_b2 .A4_symbool_2items{
+	float: left;
+	width: 15%;
+	height: 100%;
+}
+.A4_price_kh_b2 .A4_symbool_2items p{
+	float: right;
+	margin-top: 4px;
+	font-size: 30px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+}
+.A4_price_kh_b2 .A4_price_2items{
+	float: left;
+	width: 85%;
+	height: 100%;
+	margin-top: 2px;
+}
+.A4_price_kh_b2 .A4_price_2items .strikethrough{
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+.strikethrough:before {
+  position: absolute;
+  content: "";
+  left: 0;
+  top: 40%;
+  right: 0;
+  border-top: 2px solid #1B9382 ;
+  opacity: 0.9;
+  border-radius: 5px;
+  
+  -webkit-transform:rotate(15deg);
+  -moz-transform:rotate(15deg);
+  -ms-transform:rotate(15deg);
+  -o-transform:rotate(15deg);
+  transform:rotate(15deg);
+}
+.A4_price_kh_b2 .A4_price_2items .strikethrough p{
+	float: left;
+	margin-left: 4px;
+	margin-top: -12px;
+	font-size: 43px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+	text-align: center;
+}
+.box_price1_b2 .A4_price_2item_box{
+	width: 100%;
+	height: 30%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_box .unit{
+	width: 15%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_box .unit p{
+	margin-top: 4px;
+	font-weight: bold;
+	font-size: 10px;
+	font-family: acumin;
+	color: #1B9382;
+}
+.box_price1_b2 .A4_price_2item_box .A4_2item_price_disckh{
+	width: 75%;
+	height: 100%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_box .A4_2item_price_disckh p{
+	float: right;
+	font-size: 42px;
+	margin-top: -5px;
+	color: #1B9382;
+	font-family: khb;
+}
+.box_price1_b2 .A4_price_2item_box .A4_2item_price_disckh_symbool{
+	width: 10%;
+	height: 100%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_box .A4_2item_price_disckh_symbool p{
+	float: left;
+	font-size: 30px;
+	margin-left: 2px;
+	margin-top: -5px;
+	color: #1B9382;
+	font-family: kh;
+	font-weight: bold;
+}
+.box_price1_b2 .A4_price_2item_dis{
+	width: 100%;
+	height: 40%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_dis .symbool_en{
+	width: 18%;
+	height: 100%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_dis .symbool_en p{
+	float: right;
+	margin-top: 4px;
+	font-size: 40px;
+	color: #1B9382;
+	font-family: khb;
+}
+.box_price1_b2 .A4_price_2item_dis .price_disc{
+	width: 82%;
+	height: 100%;
+	float: left;
+}
+.box_price1_b2 .A4_price_2item_dis .price_disc p{
+	float: left;
+	margin-left: 3px;
+	font-size: 50px;
+	margin-top: -5px;
+	color: #1B9382;
+	font-family: khb;
+}
+/*End*/
+
 .price_en_b2 .symbool_dollar_b2 p{
 	float: left;
 	font-size: 40px;
-	margin-top: 9px;
+	margin-top: 1px;
 	margin-left: 10px;
 	color: #fff;
 	font-family: khb;
@@ -276,11 +462,11 @@ renderTwoProduct{
 }
 .price_dollar_b2 p{
 	float: left;
+	margin-top: -10px;
 	font-size: 50px;
 	color: #1B9382;
 	font-family: khb;
 	font-weight: bold;
-	text-align: center;
 }
 .box-item{
 	width: 100%;
@@ -291,10 +477,10 @@ renderTwoProduct{
 	float: left;
 	width: 10%;
 	height: 100%;
-	margin-top: -8px;
 }
 .symbol_riel p{
-	font-size: 40px;
+	font-size: 30px;
+	margin-top: -7px;
 	color: #fff;
 	font-family: kh;
 	font-weight: bold;
@@ -543,7 +729,7 @@ renderTwoProduct{
 }
 .box .box1 .name_kh p{
 	width: 100%;
-	font-size: 23px;
+	font-size: 28px;
 	float: left;
 	color: #1B9382;
 	font-family: kh;
@@ -634,12 +820,14 @@ renderTwoProduct{
 }
 .box_price .box_price1 .box_price2 .A4_price_kh p{
 	float: right;
-	margin-top: 8px;
+	margin-right: -1px;
+	margin-top: 6px;
 	font-size: 50px;
 	color: #fff;
 	font-family: khb;
 	font-weight: bold;
 	text-align: center;
+
 }
 /*.box_price .box_price1 .box_price2 .price_kh p{
 	float: left;
@@ -676,21 +864,21 @@ renderTwoProduct{
   transform:rotate(15deg);
 }
 .box_price .box_price1 .box_price2 .symbol_riel{
+	margin-top: 5px;
 	float: left;
-	width: 10%;
-	height: 100%;
-	
+	width: 9%;
+	height: 80%;
 }
 .box_price .box_price1 .box_price2 .symbol_riel p{
-	/*margin-right: 3px;*/
+	margin-right: 4px;
 	font-size: 40px;
-	margin-top: 8px;
+	margin-top: -4px;
 	color: #fff;
 	font-family: kh;
 	font-weight: bold;
 }
 .box_price .box_price1 .box_price2 p{
-	margin-top: 5px;
+	margin-top: 1px;
 	float: right;
 	margin-right: 10px;
 	font-size: 55px;
@@ -853,27 +1041,27 @@ renderTwoProduct{
 	font-weight: bold;
 }
 }
-.box_price .box_price1 .box_price2 .flag img{
+/*.box_price .box_price1 .box_price2 .flag img{
 	margin-top: -75px;
 	margin-left: 5px;
 	height: 25px;
 	float: left;
-}
+}*/
 .box_price .box_price1 .box_price2 .unit {
 	float: right;
 	width: 100%;
 	height: 40%;
-	margin-top: 2px;
 }
 .box_price .box_price1 .box_price2 .unit .unit1 {
 	width: 40%;
 	float: left;
-	padding: 5px;
+	margin-top: 4px;
 }
 .box_price .box_price1 .box_price2 .unit .unit1 img{
-	width: 50%;
+	width: 40%;
 	float: left;
-	margin-left: 15px;
+	margin-left: 6px;
+	margin-top: 8px;
 }
 .box_price .box_price1 .box_price2 .unit .unit2 {
 	width: 50%;
@@ -899,10 +1087,9 @@ renderTwoProduct{
 }*/
 
 .box_price .box_price1 .box_price2 .price_en {
-	margin-top: 10px;
-	width:  100%;
-	height: 100%;
 	float: left;
+	width:  100%;
+	height: 80%;
 }
 .box_price .box_price1 .box_price2 .price_en .symbol_dollar{
 	width: 18%;
@@ -912,28 +1099,29 @@ renderTwoProduct{
 }
 .box_price .box_price1 .box_price2 .price_en .symbol_dollar p{
 	float: left;
-	margin-top: 30px;
+	margin-top: -1px;
 	font-size: 40px;
-	margin-left: 20px;
+	margin-left: 8px;
 	color: #fff;
 	font-family: khb;
 	font-weight: bold;
-	text-align: center;
 	color: #1B9382;
 }
 .box_price .box_price1 .box_price2 .price_en .price1{
 	width: 82%;
 	height: 100%;
 	float: left;
+	position: relative;
 }
 .box_price .box_price1 .box_price2 .price_en .price1 p{
 	float: left;
-	margin-top: 2px;
+	position: absolute;
+	margin-top: -35px;
+	margin-left: -4px;
 	font-size: 68px;
 	color: #1B9382;
 	font-family: khb;
 	font-weight: bold;
-	text-align: center;
 }
 .box_price .box_price1 .box_price2 .price_en p{
 	margin-left: 3px;
@@ -1635,7 +1823,7 @@ renderTwoProduct{
 .symbool_kh p{
 	float: right;
 	font-size: 18px;
-	margin-right: 3px;
+	margin-right: 0px;
 	margin-top: -6px;
 	color: #fff;
 	font-family: kh;
@@ -1648,11 +1836,11 @@ renderTwoProduct{
 }
 .A7_price_kh p{
 	float: right;
-	font-size: 23px;
+	font-size: 20px;
+	margin-right: -3px;
 	color: #fff;
 	font-family: khb;
 	font-weight: bold;
-	margin-top: 1px;
 }
 .A7_box_price5{
 	float: left;
@@ -1715,8 +1903,8 @@ renderTwoProduct{
 .A7_box_price_en p{
 float: left;
 	margin-right: 1px;
-	margin-top: 4px;
-	font-size: 18px;
+	margin-top: -1px;
+	font-size: 22px;
 	color: #1B9382;
 	font-family: khb;
 	font-weight: bold;

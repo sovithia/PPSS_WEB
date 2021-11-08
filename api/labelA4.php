@@ -37,10 +37,35 @@ error_reporting(E_ALL);
   <script type="text/javascript" src="js/html2canvas.min.js"></script>
   <script type="text/javascript" src="js/canvas-toBlob.js"></script>
   <script type="text/javascript" src="js/FileSaver.js"></script>
-<title>Label Printing A4</title>
+<!-- <title>Label Printing A4</title> -->
+<!--   <link rel="stylesheet" type="text/css" href="style.css">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Angkor&display=swap" rel="stylesheet">
+	<link rel="icon" type="image/png" sizes="16x16" href="img/Logo-text1.png">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Hammersmith+One&display=swap" rel="stylesheet">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Anton&family=Fjalla+One&display=swap" rel="stylesheet">
+
+  	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="icon/css/all.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="js/html2canvas.min.js"></script>
+    <script type="text/javascript" src="js/canvas-toBlob.js"></script>
+    <script type="text/javascript" src="js/FileSaver.js"></script> -->
 </head>
 
-<body  >
+<body>
 
 <?php 
    
@@ -308,8 +333,8 @@ else
 	</div>
 	
 </div>
-	</br>
-	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+</br>
+<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	   ";
     }
 }
@@ -340,25 +365,107 @@ function _renderTwoProductPromoLeft($product)
       $percentSize = "45";
 
     return "
-     		Promotion 1
+    		<div class='box-sale'>
+					<img src='bg/bg-sale.png'>
+					<div class='tag-wrap'>
+						<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>
+					</div>
+				</div>
+     		<div class='barcode1'>
+					<div class='box-image'>
+						<div class='discount_percent'>
+						<div class='percent'>
+							<div class='percent1'>
+								<p>$percent</p>
+							</div>
+							<div class='percent2'>
+								<p>OFF</p>
+							</div>
+							<div class='percent3'>
+								<p>%</p>
+							</div>
+						</div>
+					</div>
+						<img class='product whitecontour' style='margin-right: -10px;' src='data:image/jpeg;base64, $image'>
+					</div>
+
+					<div class='box-text'>
+						<div class='box-text1'>
+							<div class='nameKh' style='margin-left: 10px;'>
+								<p>$nameKH</p>
+							</div>
+							<div class='nameen' style='margin-left: 10px;'>
+								<p>$nameEN</p>
+							</div>
+						</div>
+						<div class='box-price'  style='margin-left: 10px;'>
+							<div class='box_price_b2'>
+								<div class='box_price1_b2'>
+								<div class='box_price2_b2'>
+									<div class='A4_price_kh_b2'>
+										<div class='A4_symbool_2items'>
+											<p>$</p>
+										</div>
+										<div class='A4_price_2items'>
+											<div class='strikethrough'>
+												<p>$oldPrice</p>
+											</div>
+										</div>
+									</div>
+								</div>
+
+									<div class='A4_price_2item_box'>
+										<div class='unit'>
+											<p>1 Unit</p>
+										</div>
+										<div class='A4_2item_price_disckh'>
+											<p>$rielPrice</p>
+										</div>
+										<div class='A4_2item_price_disckh_symbool'>
+											<p>៛</p>
+										</div>
+									</div>
+									<div class='A4_price_2item_dis'>
+										<div class='symbool_en'>
+												<p>$</p>
+										</div>
+										<div class='price_disc'>
+											<p>$dollarPrice</p>
+										</div>
+									</div>
+							</div>
+							</div>
+							
+						</div>
+						<div class='box-item'>
+							<div class='code'>
+								<p>
+								Code: $barcode
+								<br>
+								Till: $till
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
         ";
       }
       else{        
         return "
         <div class='barcode1'>
 					<div class='box-image'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+						<img class='product whitecontour' style='margin-right: -18px;' src='data:image/jpeg;base64, $image'>
 					</div>
 					<div class='box-text'>
 						<div class='box-text1'>
-							<div class='nameKH'>
+							<div class='nameKH' style='margin-left: 23px;'>
 								<p>$nameKH</p>
 							</div>
-							<div class='nameen'>
-								<p>$nameEN</p>
+							<div class='nameen' style='margin-left: 23px;'>
+								<p >$nameEN</p>
 							</div>
 						</div>
-						<div class='box-price'>
+						<div class='box-price' style='margin-left: 20px;' >
 							<div class='box_price_b2'>
 								<div class='box_price1_b2'>
 								<div class='box_price2_b2'>
@@ -389,8 +496,8 @@ function _renderTwoProductPromoLeft($product)
 							</div>
 						</div>
 						<div class='box-item'>
-							<div class='code'>
-								<p>$barcode</p>
+							<div class='code' style='margin-left: 5px;' >
+								<p>Code: $barcode</p>
 							</div>
 						</div>
 					</div>
@@ -420,18 +527,96 @@ function _renderTwoProductPromoRight($product)
       $percentSize = "60";
     else 
       $percentSize = "45";
-  return "Promotion 2";
+  return "
+  	<div class='barcode1'>
+					<div class='box-image'>
+						<div class='discount_percent'>
+						<div class='percent'>
+							<div class='percent1'>
+								<p>$percent</p>
+							</div>
+							<div class='percent2'>
+								<p>OFF</p>
+							</div>
+							<div class='percent3'>
+								<p>%</p>
+							</div>
+						</div>
+					</div>
+						<img class='product whitecontour' style='margin-right: -10px;' src='data:image/jpeg;base64, $image'>
+					</div>
+
+					<div class='box-text'>
+						<div class='box-text1'>
+							<div class='nameKh'>
+								<p>$nameKH</p>
+							</div>
+							<div class='nameen'>
+								<p>$nameEN</p>
+							</div>
+						</div>
+						<div class='box-price'  style='margin-left: 10px;'>
+							<div class='box_price_b2'>
+								<div class='box_price1_b2'>
+								<div class='box_price2_b2'>
+									<div class='A4_price_kh_b2'>
+										<div class='A4_symbool_2items'>
+											<p>$</p>
+										</div>
+										<div class='A4_price_2items'>
+											<div class='strikethrough'>
+												<p>$oldPrice</p>
+											</div>
+										</div>
+									</div>
+								</div>
+
+									<div class='A4_price_2item_box'>
+										<div class='unit'>
+											<p>1 Unit</p>
+										</div>
+										<div class='A4_2item_price_disckh'>
+											<p>$rielPrice</p>
+										</div>
+										<div class='A4_2item_price_disckh_symbool'>
+											<p>៛</p>
+										</div>
+									</div>
+									<div class='A4_price_2item_dis'>
+										<div class='symbool_en'>
+												<p>$</p>
+										</div>
+										<div class='price_disc'>
+											<p>$dollarPrice</p>
+										</div>
+									</div>
+							</div>
+							</div>
+							
+						</div>
+						<div class='box-item'>
+							<div class='code'>
+								<p>
+								Code: $barcode
+								<br>
+								Till: $till
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+  ";
     }
     else
     {
       return "
       <div class='barcode1'>
 					<div class='box-image'>
-						<img class='product whitecontour' style='margin-right: 35px;' src='data:image/jpeg;base64, $image'>
+						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
 					</div>
 					<div class='box-text'>
 						<div class='box-text1'>
-							<div class='nameKH'>
+							<div class='nameKH' >
 								<p>$nameKH</p>
 							</div>
 							<div class='nameen'>
@@ -469,8 +654,8 @@ function _renderTwoProductPromoRight($product)
 							</div>
 						</div>
 						<div class='box-item'>
-							<div class='code'>
-								<p>$barcode</p>
+							<div class='code' style='margin-left: 2px;' >
+								<p>Code: $barcode</p>
 							</div>
 						</div>
 					</div>
@@ -522,12 +707,7 @@ function renderTwoProduct($product1,$product2)
 			</div>
 		<div class='box'>
 			<div class='renderTwoProduct'>
-				<div class='box-sale'>
-					<img src='bg/bg-sale.png'>
-					<div class='tag-wrap'>
-						<p>SALE</p>
-					</div>
-				</div>
+			
 				 <td width='50%' >"._renderTwoProductPromoLeft($product1)."
          </td>
 			 <td  width='50%'>".
@@ -536,13 +716,12 @@ function renderTwoProduct($product1,$product2)
 		</div>
 	</div>
 </div>
+</br>
+<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
 }
-
-
-
 ?>
-<script type="text/javascript" src="html2canvas.js"></script>
+<!-- <script type="text/javascript" src="html2canvas.js"></script> -->
 <script>
    $('#save_image_locally').click(function(){           
       let opt = { scale : 5};
