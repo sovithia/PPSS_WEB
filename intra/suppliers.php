@@ -82,6 +82,7 @@ function updateProductsByVendor()
 			$vendid = $split[0];
 			$policy = $split[1];
 
+			usleep(1000000);
     		echo ">>>>>> VENDOR: ".$vendid." ".$policy."<<<<<<<<<<\n";
 
 			$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE VENDID = ?";
@@ -95,8 +96,8 @@ function updateProductsByVendor()
 				$req = $db->prepare($sql);
 				$req->execute(array($policy,$vendid,$item["PRODUCTID"]));    						
 				usleep(100000);  		
-			}
-			break;
+			}	
+
         }
     }
 }
