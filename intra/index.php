@@ -9,7 +9,7 @@ include('Render.php');
 include('PagesRender.php');
 include('RenderCalendar.php');
 require 'vendor/autoload.php';
-include('.../style.css');
+
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
