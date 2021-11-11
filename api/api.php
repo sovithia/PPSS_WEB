@@ -2811,7 +2811,7 @@ function splitPOWithItems($ponumber,$items)
 	}
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
 
-	$sql = "INSERT POHEADER (
+	$sql = "INSERT INTO POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
@@ -3114,10 +3114,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 			
 
-		//if ($res["LOCID"] == "WH1")
-		//	$status = 'RECEIVED';
-		//else if ($res["LOCID"] == "WH2")
-		$status = 'RECEIVEDFORTRANSFER';
+		if ($res["LOCID"] == "WH1")
+			$status = 'RECEIVED';
+		else if ($res["LOCID"] == "WH2")
+			$status = 'RECEIVEDFORTRANSFER';
 
 
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
