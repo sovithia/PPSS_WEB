@@ -98,6 +98,11 @@ renderTwoProduct{
 	float: right;
 	margin-right: -11px;
 }
+.img-sale .box-sale-3item{
+	width: 100%;
+	height: 10px;
+	float: right;
+}
 .box-sale .tag-wrap p{
 	float: right;
 	color: #fff;
@@ -320,6 +325,401 @@ renderTwoProduct{
 }
 /*A4 Promotion 2 Line*/
 
+
+/* Layout 3Items A4 */
+	.box-sale .img-box{
+		width: 100%;
+		height: 110px;
+		float: left;
+	}
+	.box-sale .img-box img{
+		float: right;
+		width: 300px;
+	}
+	.box-sale .img-box p{
+		float: right;
+		color: #fff;
+		font-size: 70px;
+		font-weight: bold;
+		font-family: 'Fjalla One', sans-serif;
+		margin-right: -220px;
+	}
+	.A4 .renderThreeProduct{
+		width: 100%;
+		height: 61%;
+		float: left;
+		margin-top: -90px;
+		margin-left: 15px;
+	}
+	.renderThreeProduct .product1_3item{
+		width: 32%;
+		height: 95%;
+		float: left;
+		padding-left: 15px;
+		margin-top: 20px;
+	}
+	.renderThreeProduct .product1_3item .A4_3item_text{
+		width: 100%;
+		float: left;
+	}
+	.A4_3item_namekh{
+		width: 100%;
+		float: left;
+	}
+	.A4_3item_namekh p{
+	font-size: 14px;
+	float: left;
+	color: #1B9382;
+	font-family: kh;
+	margin-bottom: 1px;
+	}
+	.A4_3item_nameen{
+		width: 100%;
+		height: 50px;
+		float: left;
+	}
+	.A4_3item_nameen p{
+		font-size: 13px;
+		color: #1B9382;
+		font-family: acumin;
+		font-weight: bold;
+	}
+	.renderThreeProduct .product1_3item .img_price{
+		margin-top: 35px;
+		width: 40%;
+		float: left;
+	}
+	.renderThreeProduct .product1_3item .img_price img{
+		width: 100%;
+		margin-left: -3px;
+		float: left;
+		border: 1px solid #1B9382;
+		border-radius: 5px;
+	}
+	.renderThreeProduct .product1_3item .price_3item{
+		width: 60%;
+		float: left;
+		padding: 2px;
+
+	}
+	.renderThreeProduct .product1_3item .price_3item .price_3item1{
+		float: right;
+		width: 100%;
+		height: 145px;
+		background-color: #1B9382;
+		border-radius: 12px;
+		padding: 3px;
+	}
+	.renderThreeProduct .product1_3item .price_3item .price_3item1 .price_3item2{
+		width: 100%;
+		height: 100%;
+		float: left;
+		background-color: #EAECEE;
+		border-radius: 10px;
+		padding: 3px;
+	}
+	.renderThreeProduct .product1_3item .price_3item .price_3item1 .price_3item2 .price_3item3{
+		width: 100%;
+		height: 36%;
+		float: left;
+		background-color: #1B9382;
+		border-radius: 8px 8px 0 0;
+		padding: 2px;
+	}
+	.price_3item3 .price_3item4{
+		width: 100%;
+		height: 100%;
+		float: left;
+	}
+	/*A4_3items promotion*/
+	.price_3item3 .price_3item4 .price_3item_disc{
+		width: 100%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc_symbool_en{
+		width: 15%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc_symbool_en p{
+		float: right;
+		margin-top: 3px;
+		font-size: 23px;
+		color: #fff;
+		font-weight: bold;
+		font-family: khb;
+	}
+	.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc1{
+		width: 85%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc1 .strikethrough{
+		width: 100%;
+		height: 100%;
+		float: left;
+		position: relative;
+	}
+	.strikethrough:before {
+		margin-top: 10px;
+	  border-top: 3px solid #1B9382 ;
+	  opacity: 0.9;
+	  border-radius: 5px;
+	  
+	  -webkit-transform:rotate(15deg);
+	  -moz-transform:rotate(15deg);
+	  -ms-transform:rotate(15deg);
+	  -o-transform:rotate(15deg);
+	  transform:rotate(15deg);
+}
+.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc1 .strikethrough p{
+	float: left;
+	margin-top: -4px;
+	font-size: 30px;
+	margin-left: 2px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+}
+	.price_3item4 .price_3item6{
+		width: 100%;
+		height: 90%;
+		float: left;
+		margin-top: 2px;
+	}
+	.price_3item6 .price_3item_disc_riel{
+		width: 100%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item6 .price_3item_disc_riel .price_3item_disc_riel1{
+		width: 90%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item6 .price_3item_disc_riel .price_3item_disc_riel1 p{
+		float: right;
+		margin-top: -3px;
+		font-size: 33px;
+		color: #1B9382;
+		font-family: khb;
+		font-weight: bold;
+	}
+	.price_3item6 .price_3item_disc_riel .price_3item_symbool_riel{
+		width: 10%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item6 .price_3item_disc_riel .price_3item_symbool_riel p{
+		float: right;
+		font-size: 20px;
+		margin-right: 3px;
+		margin-top: -2px;
+		color: #1B9382;
+		font-family: kh;
+		font-weight: bold;
+	}
+	.price_3item4 .price_3item_old{
+		width: 100%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item_old .price_3item_disc_symbool_en{
+		width: 10%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item_old .price_3item_disc_symbool_en p{
+		float: right;
+		margin-top: 11px;
+		font-size: 20px;
+		color: #1B9382;
+		font-weight: bold;
+		font-family: khb;
+
+	}
+	.price_3item4 .price_3item_old .price_3item_oldprice_en{
+		width: 90%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item4 .price_3item_old .price_3item_oldprice_en p{
+		float: left;
+		margin-top: -2px;
+		margin-left: 2px;
+		font-size: 32px;
+		color: #1B9382;
+		font-family: khb;
+		font-weight: bold;
+	}
+	.img_price .disc_percent{
+		margin-top: -55px;
+		width: 70px;
+		height: 70px;
+		float: left;
+		margin-left: -10px;
+		background-color: #1B9382;
+		position: absolute;
+		border-radius: 50%;
+		border:  2px solid #EAECEE;
+		box-shadow: 1px 1px 1px 1px lightgray;
+		padding: 8px;
+	}
+	.img_price .disc_percent .disc_percent1{
+		width: 100%;
+		height: 100%;
+		float: left;
+	}
+	.img_price .disc_percent .disc_percent1 .percent{
+		width: 60%;
+		height: 100%;
+		float: left;
+	}
+	.img_price .disc_percent .disc_percent1 .percent p{
+		margin-top: 2px;
+		float: right;
+		font-size: 25px;
+		color: #fff;
+		font-family: khb;
+		font-weight: bold;
+	}
+	.img_price .disc_percent .disc_percent1 .off_3item{
+		width: 40%;
+		height: 50%;
+		float: left;
+	}
+	.img_price .disc_percent .disc_percent1 .off_3item p{
+		margin-top: 12px;
+		float: left;
+		font-size: 11px;
+		margin-left: 1px;
+		color: #fff;
+		font-family: acumin;
+		font-weight: bold;
+	}
+.img_price .disc_percent .disc_percent1 .percent_3item{
+	width: 40%;
+	height: 50%;
+	float: left;
+}
+.img_price .disc_percent .disc_percent1 .percent_3item p{
+		margin-top: -2px;
+		margin-left: 2px;
+		float: left;
+		font-size: 14px;
+		color: #fff;
+		font-family: acumin;
+		font-weight: bold;
+}
+	/* End A4_3item Promotion */
+	.price_3item3 .price_3item4 .price_3item_rielprice{
+		width: 85%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item3 .price_3item4 .price_3item_rielprice p{
+		float: right;
+		margin-top: -3px;
+		font-size: 30px;
+		color: #fff;
+		font-family: khb;
+		font-weight: bold;
+	}
+	.price_3item3 .price_3item4 .symbool_3item_kh{
+		width: 15%;
+		height: 100%;
+		float: left;
+	}
+	.price_3item3 .price_3item4 .symbool_3item_kh p{
+		float: left;
+		margin-left: 3px;
+		margin-top: -3px;
+		font-size: 23px;
+		color: #fff;
+		font-family: kh;
+	}
+.price_3item3 .price_3item4 .price_3item5{
+	margin-top: 2px;
+	width: 100%;
+	height: 60%;
+	float: left;
+	margin-left: -4px;
+}
+.price_3item3 .price_3item4 .price_3item5 .flag_3item{
+	width: 50%;
+	height: 100%;
+	float: left;
+	padding: 2px;
+}
+.price_3item3 .price_3item4 .price_3item5 .flag_3item img{
+	height: 80%;
+	float: left;
+}
+.price_3item3 .price_3item4 .price_3item5 .unit_3item{
+	width: 50%;
+	height: 100%;
+	float: left;
+}
+.price_3item3 .price_3item4 .price_3item5 .unit_3item p{
+	float: right;
+	margin-top: 5px;
+	font-size: 14px;
+	color: #1B9382;
+	font-family: acumin;
+	font-weight: bold;
+}
+.price_3item4 .price_3item_dollarprice{
+	margin-top: 5px;
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+.price_3item_dollarprice .symbool_3item_dollar{
+	width: 13%;
+	height: 100%;
+	float: left;
+}
+.price_3item_dollarprice .symbool_3item_dollar p{
+	float: right;
+	margin-top: 7px;
+	font-size: 25px;
+	color: #1B9382;
+	font-family: khb;
+}
+.price_3item_dollarprice .price_3item_dollarprice1{
+	width: 87%;
+	height: 100%;
+	float: left;
+}
+.price_3item_dollarprice .price_3item_dollarprice1 p{
+	float: left;
+	margin-top: -3px;
+	font-size: 35px;
+	margin-left: 4px;
+	color: #1B9382;
+	font-family: khb;
+	font-weight: bold;
+}
+.price_3item .code_3item{
+	margin-top: 5px;
+	width: 100%;
+	float: left;
+}
+.price_3item .code_3item p{
+	margin-left: 3px;
+	font-size: 13px;
+	float: left;
+	color: #1B9382;
+	font-family: acumin;
+	font-weight: bold;
+}
+ .sale_3item{
+	width: 100%;
+	float: left;
+	background-color: green;
+}
+/*End Layout*/
 
 .A4_price_kh_b2 .A4_symbool_2items{
 	float: left;

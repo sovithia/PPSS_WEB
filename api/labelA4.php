@@ -167,7 +167,9 @@ function renderOneProduct($product)
 				<div class='tag-wrap'>
 					<img src='img/logo-text1.png'>
 				</div>
-				<div class='tag-wrap'></div>
+				<div class='tag-wrap'>
+
+				</div>
 			</div>
 		<div class='box'>
 			<div class='box1'>
@@ -452,6 +454,12 @@ function _renderTwoProductPromoLeft($product)
       }
       else{        
         return "
+        	<div class='box-sale'>
+					<img src='bg/bg-sale.png'>
+					<div class='tag-wrap'>
+						<p>SALE</p>
+					</div>
+				</div>
         <div class='barcode1'>
 					<div class='box-image'>
 						<img class='product whitecontour' style='margin-right: -18px;' src='data:image/jpeg;base64, $image'>
@@ -720,6 +728,353 @@ function renderTwoProduct($product1,$product2)
 <center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
 }
+
+
+// THREE
+function _renderThreeProductUp($product)
+{
+  $nameKH = $product["nameKH"];
+  $nameEN = $product["nameEN"];
+  $flag = flagByCountry($product["country"]);
+  $dollarPrice = $product["dollarPrice"];
+  $rielPrice = $product["rielPrice"];  
+  $country = $product["country"];
+  $image = $product["productImg"];  
+  $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
+  $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
+  $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
+  $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
+  $barcode = $product["barcode"];
+
+  if ($percent == "0")
+  {
+  return "
+			<div class='product1_3item'>
+				<div class='A4_3item_text'>
+					<div class='A4_3item_namekh'>
+						<p>$nameKH</p>
+					</div>
+					<div class='A4_3item_nameen'>
+						<p>$nameEN</p>
+					</div>
+				</div>
+				<div class='img_price'>
+					<div class='img-3item'>
+						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
+					</div>
+				</div>
+				<div class='price_3item'>
+						<div class='price_3item1'>
+							<div class='price_3item2'>
+								<div class='price_3item3'>
+									<div class='price_3item4'>
+										<div class='price_3item_rielprice'>
+											<p>$rielPrice</p>
+										</div>
+										<div class='symbool_3item_kh'>
+											<p>៛</p>
+										</div>
+										<div class='price_3item5'>
+											<div class='flag_3item'>
+												<img src='$flag '>
+											</div>
+											<div class='unit_3item'>
+												<p>1 Unit</p>
+											</div>
+										</div>
+										<div class='price_3item_dollarprice'>
+												<div class='symbool_3item_dollar'>
+													<p>$</p>
+												</div>
+												<div class='price_3item_dollarprice1'>
+													<p>$dollarPrice</p>
+												</div>
+											</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class='code_3item'>
+							<p>Code: $barcode</p>
+							<p style='margin-top: -10px;'>Origin: $country</p>
+						</div>
+					</div>
+			</div>
+         ";
+    }
+    else {
+         if (strpos($percent,".") === false)
+      $percentSize = "30";
+    else 
+      $percentSize = "20";
+     return "
+      <div class='product1_3item'>
+				<div class='A4_3item_text'>
+					<div class='A4_3item_namekh'>
+						<p>$nameKH</p>
+					</div>
+					<div class='A4_3item_nameen'>
+						<p>$nameEN</p>
+					</div>
+				</div>
+				<div class='img_price'>
+					<div class='img-3item'>
+						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
+					</div>
+					<div class='disc_percent'>
+						<div class='disc_percent1'>
+							<div class='percent'>
+								<p>$percent</p>
+							</div>
+							<div class='off_3item'>
+								<p>OFF</p>
+							</div>
+							<div class='percent_3item'>
+								<p>%</p>
+							</div>
+						</div>
+				</div>
+				</div>
+				<div class='price_3item'>
+						<div class='price_3item1'>
+							<div class='price_3item2'>
+								<div class='price_3item3'>
+									<div class='price_3item4'>
+										<div class='price_3item_disc'>
+											<div class='price_3item_disc_symbool_en'>
+												<p>$</p>
+											</div>
+											<div class='price_3item_disc1'>
+												<div class='strikethrough'>
+													<p>$oldPrice</p>
+												</div>
+											</div>
+										</div>
+										<div class='price_3item6'>
+											<div class='price_3item_disc_riel'>
+												<div class='price_3item_disc_riel1'>
+													<p>$rielPrice</p>
+												</div>
+												<div class='price_3item_symbool_riel'>
+													<p>៛</p>
+												</div>
+											</div>
+										</div>
+										<div class='price_3item_old'>
+											<div class='price_3item_disc_symbool_en'>
+												<p>$</p>
+											</div>
+											<div class='price_3item_oldprice_en'>
+												<p>$dollarPrice</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class='code_3item'>
+							<p>Code: $barcode</p>
+							<p style='margin-top: -10px;'>Till: $till</p>
+						</div>
+					</div>
+			</div>
+     ";   
+    }
+}
+
+function _renderThreeProductDown($product)
+{
+  $nameKH = $product["nameKH"];
+  $nameEN = $product["nameEN"];
+  $flag = flagByCountry($product["country"]);
+  $dollarPrice = $product["dollarPrice"];
+  $rielPrice = $product["rielPrice"];  
+  $country = $product["country"];
+  $image = $product["productImg"];  
+  $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
+  $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
+  $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
+  $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
+  $barcode = $product["barcode"];
+
+  if ($percent == "0")
+  {
+    return "
+    	<p style ='margin-top: -120px; float: right; margin-right:80px; font-size: 70px; font-weight: bold; font-family: Fjalla One; color: #fff;'>SALE</p>
+    	<div class='product1_3item'>
+				<div class='A4_3item_text'>
+					<div class='A4_3item_namekh'>
+						<p>$nameKH</p>
+					</div>
+					<div class='A4_3item_nameen'>
+						<p>$nameEN</p>
+					</div>
+				</div>
+				<div class='img_price'>
+					<div class='img-3item'>
+						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
+					</div>
+				</div>
+				<div class='price_3item'>
+						<div class='price_3item1'>
+							<div class='price_3item2'>
+								<div class='price_3item3'>
+									<div class='price_3item4'>
+										<div class='price_3item_rielprice'>
+											<p>$rielPrice</p>
+										</div>
+										<div class='symbool_3item_kh'>
+											<p>៛</p>
+										</div>
+										<div class='price_3item5'>
+											<div class='flag_3item'>
+												<img src='$flag'>
+											</div>
+											<div class='unit_3item'>
+												<p>1 Unit</p>
+											</div>
+										</div>
+										<div class='price_3item_dollarprice'>
+												<div class='symbool_3item_dollar'>
+													<p>$</p>
+												</div>
+												<div class='price_3item_dollarprice1'>
+													<p>$dollarPrice</p>
+												</div>
+											</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class='code_3item'>
+							<p>Code: $barcode</p>
+							<p style='margin-top: -10px;'>Origin: $country</p>
+						</div>
+					</div>
+			</div>
+      ";
+  }
+  else{
+      if (strpos($percent,".") === false)
+        $percentSize = "30";
+      else 
+        $percentSize = "20";
+      return "
+      	<p style ='margin-top: -100px; float: right; margin-right:55px; font-size: 40px; font-weight: bold; font-family: Fjalla One; color: #fff;'>PROMOTION</p>
+    	<div class='product1_3item'>
+				<div class='A4_3item_text'>
+					<div class='A4_3item_namekh'>
+						<p>$nameKH</p>
+					</div>
+					<div class='A4_3item_nameen'>
+						<p>$nameEN</p>
+					</div>
+				</div>
+				<div class='img_price'>
+					<div class='img-3item'>
+						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
+					</div>
+					<div class='disc_percent'>
+						<div class='disc_percent1'>
+							<div class='percent'>
+								<p>$percent</p>
+							</div>
+							<div class='off_3item'>
+								<p>OFF</p>
+							</div>
+							<div class='percent_3item'>
+								<p>%</p>
+							</div>
+						</div>
+				</div>
+				</div>
+				<div class='price_3item'>
+						<div class='price_3item1'>
+							<div class='price_3item2'>
+								<div class='price_3item3'>
+									<div class='price_3item4'>
+										<div class='price_3item_disc'>
+											<div class='price_3item_disc_symbool_en'>
+												<p>$</p>
+											</div>
+											<div class='price_3item_disc1'>
+												<div class='strikethrough'>
+													<p>$oldPrice</p>
+												</div>
+											</div>
+										</div>
+										<div class='price_3item6'>
+											<div class='price_3item_disc_riel'>
+												<div class='price_3item_disc_riel1'>
+													<p>$rielPrice</p>
+												</div>
+												<div class='price_3item_symbool_riel'>
+													<p>៛</p>
+												</div>
+											</div>
+										</div>
+										<div class='price_3item_old'>
+											<div class='price_3item_disc_symbool_en'>
+												<p>$</p>
+											</div>
+											<div class='price_3item_oldprice_en'>
+												<p>$dollarPrice</p>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class='code_3item'>
+							<p>Code: $barcode</p>
+							<p style='margin-top: -10px;'>Till: $till</p>
+						</div>
+					</div>
+			</div>
+      ";
+  }
+}
+function renderThreeProduct($product1,$product2,$product3)
+{
+  echo "
+ <div class='A4' id='A4_Image'>
+	<div class='tag-wrap'>
+		<div class='clip4'>
+			<img src='bg/bg-header.png'>
+		</div>
+	</div>
+
+		<div class='logo'>
+				<div class='tag-wrap'>
+					<img src='img/logo-text1.png'>
+				</div>
+		</div>
+	<div class='box-sale' style='margin-top:-215px; height: 115px;'>
+					<div class='img-box'>
+						<img src='bg/bg-sale.png'>
+							
+					</div>
+		</div>
+		<div class='A4_box_3item'>
+			<div class='renderThreeProduct'>
+				 <td  width='33%' >
+              "._renderThreeProductUp($product1)."
+         </td>
+
+			 	<td  width='33%'>
+            "._renderThreeProductDown($product2)."
+        </td>
+        <td  width='33%'>
+            	"._renderThreeProductUp($product3)."
+        </td>
+		</div>
+	</div>
+</div>
+</br>
+<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+";
+}
+
 ?>
 <!-- <script type="text/javascript" src="html2canvas.js"></script> -->
 <script>
