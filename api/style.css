@@ -1336,11 +1336,21 @@ renderTwoProduct{
 	font-family: khb;
 	font-weight: bold;
 }
-.box_price .box_price1 .box_price2 .promot2 .promot3  .strikethrough:before {
+
+.box_price .box_price1 .box_price2 .promot2 .promot3 .strikethrough p{
+	float: left;
+	margin-top: -4px;
+	font-size: 55px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+
+}
+.box_price .box_price1 .box_price2 .promot2 .promot3 .strikethrough:before {
   position: absolute;
   content: "";
   left: 0;
- 	margin-top: 38px;
+ 	margin-top: 3px;
   right: 0;
   border-top: 3px solid #1B9382 ;
   opacity: 1;
@@ -1351,14 +1361,6 @@ renderTwoProduct{
   -ms-transform:rotate(15deg);
   -o-transform:rotate(15deg);
   transform:rotate(15deg);
-}
-.box_price .box_price1 .box_price2 .promot2 .promot3 .strikethrough p{
-	margin-top: -2px;
-	float: left;
-	font-size: 55px;
-	color: #fff;
-	font-family: khb;
-	font-weight: bold;
 }
 .box_price .box_price1 .box_price2 .promot5{
 	width: 100%;
