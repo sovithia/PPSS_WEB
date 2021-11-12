@@ -2387,8 +2387,8 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	}
 
 	if ($ponumber != ''){
-		$sql .= " AND (PONUMBER = ? OR LINKEDPO = ?)";
-		array_push($params,$ponumber,$ponumber);
+		$sql .= " AND (PONUMBER LIKE ? OR LINKEDPO LIKE ?)";
+		array_push($params,'%'.$ponumber.'%','%'.$ponumber.'%');
 	}
 
 	if ($start != '' && $end != ''){
@@ -2488,7 +2488,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else if ($status == "ORDERED")
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 	else 
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$POData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2536,7 +2536,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else if ($status == "ORDERED")
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 	else 
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 150";			
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
 	
 
 	$req = $db->prepare($sql);
@@ -2594,6 +2594,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
 			VALUES (:author,:noponote,'DELIVERED','NOPO')";
 		$req = $db->prepare($sql);	
+	
+		
 	
 		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
 		$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
@@ -3225,8 +3227,9 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$rr["items"] = null;
 	
-	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,VENDNAME,VAT_PERCENT,
-				   ORDER_QTY,TRANCOST,(SELECT  (TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
+	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
+					(SELECT  (TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ?";
 
@@ -3614,6 +3617,14 @@ function createGroupedPurchases()
 
 	}	
 }
+
+$app->get('/lastid', function(Request $request,Response $response) {
+	$db = getDatabase();	
+	$id = sqlite_last_insert_rowid($db);
+	$resp["ID"] = $id;
+	$response = $response->withJson($resp);
+	return $response;	
+});
 
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
