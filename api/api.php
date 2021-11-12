@@ -3624,8 +3624,13 @@ function createGroupedPurchases()
 
 $app->get('/lastid', function(Request $request,Response $response) {
 	$db = getDatabase();	
-	$id = sqlite_last_insert_rowid($db);
-	$resp["ID"] = $id;
+	$db->beginTransaction();    
+	$sql = "INSERT INTO RS_MENU_QUEUE (IDENTIFIER,ARG1,ARG2,ARG3,ARG4) VALUES (?,?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array('1','1','2','3','4'));
+	$lastid = $db->lastInsertId();	
+	$db->commit();    
+	$resp["ID"] = $lastid;
 	$response = $response->withJson($resp);
 	return $response;	
 });
