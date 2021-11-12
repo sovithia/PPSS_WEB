@@ -2591,16 +2591,16 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 	if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "NOPO") 
 	{
-			$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
+		$db->beginTransaction(); 
+		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
 			VALUES (:author,:noponote,'DELIVERED','NOPO')";
 		$req = $db->prepare($sql);	
-	
-		
 	
 		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
 		$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
 		$req->execute();
 		$lastID = $db->lastInsertId();
+		$db->commit(); 
 		
 		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
 		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
@@ -3483,10 +3483,12 @@ function createGroupedRestocks()
 					// ID SEARCHING
 					if (count($irs) == 0)// NEW 
 					{
+						$db->beginTransaction();
 						$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
 						$req = $db->prepare($sql);
 						$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
 						$theID = $db->lastInsertId(); // ID FROM NEW
+						$db->commit();
 					}
 					else
 					{
@@ -3500,11 +3502,13 @@ function createGroupedRestocks()
 								break;
 							}
 						}
-						if ($theID == null){ // ALL FULL						
+						if ($theID == null){ // ALL FULL			
+							$db->beginTransaction();			
 							$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
 							$req = $db->prepare($sql);
 							$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
 							$theID = $db->lastInsertId(); // ID FROM NEW
+							$db->commit();
 						}										
 					}	
 
@@ -3584,10 +3588,12 @@ function createGroupedPurchases()
 			else 
 				$orderday = false;
 
+			$db->beginTransaction();
 			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2,ARG3) VALUES ('GROUPEDPURCHASE','AUTO',?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($vendor["VENDID"],$vendorname,$orderday));
 			$theID = $db->lastInsertId();
+			$db->commit();
 		}
 		else		
 			$theID = $res["ID"];	
@@ -3720,6 +3726,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
 
+	$db->beginTransaction();    
 	if($json["TYPE"] == "PURCHASE" || $json["TYPE"] == "RESTOCK") 
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";
 	else 
@@ -3730,8 +3737,8 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$req->execute(array("DEMAND",$json["REQUESTER"]));
 	else 
 		$req->execute(array($json["TYPE"],$json["REQUESTER"]));
-
 	$lastID = $db->lastInsertId();
+	$db->commit();    
 
 	$imageData = base64_decode($json["REQUESTERSIGNATURE"]);
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
@@ -6402,10 +6409,12 @@ $app->post('/depreciation', function($request,Response $response) {
 	$author = $json["AUTHOR"];
 	$userid = $json["USERID"];
 
+	$db->beginTransaction();    
 	$sql = "INSERT INTO DEPRECIATION (TYPE,CREATOR,STATUS) VALUES (?,?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array($type,$author,"CREATED"));
 	$lastId = $db->lastInsertId();
+	$db->commit();    
 
 	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
 	foreach($items as $item)
@@ -6433,11 +6442,13 @@ $app->post('/depreciation', function($request,Response $response) {
 
 		if ($res == false)
 		{							
+				$db->beginTransaction();    
 				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1) 
 							  VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$item["TYPE"],$lastId));			
 				$depreciationItemId =  $db->lastInsertId();
+				$db->commit();    
 		}
 		else
 		{
@@ -6778,13 +6789,16 @@ $app->post('/depreciationpromopool', function($request,Response $response){
 	}
 
 	if ($ok == true){
+		$db->beginTransaction();    
 		$sql = "INSERT INTO DEPRECIATIONPROMOPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,LINKTYPE,NEEDLABEL,TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";	
-			$req = $db->prepare($sql);
+		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],
 		$json["ENDTIME"],$json["LINKTYPE"],$json["NEEDLABEL"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"]));	
 		$result["result"] = "OK";
+		$lastId = $db->lastInsertId();
+		$db->commit();    
 		if (isset($json["PROOFS"]))
-			pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$db->lastInsertId());
+			pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$lastId);
 	}
 	else{
 		$result["message"] = "Different promotion type";
@@ -6815,12 +6829,15 @@ $app->post('/depreciationwastepool', function($request,Response $response){
 		$ok = true;
 
 	if ($ok == true){
+		$db->beginTransaction();
 		$sql = "INSERT INTO DEPRECIATIONWASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE,USERID) VALUES (?,?,?,?,?)";	
 			$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
 		$result["result"] = "OK";
+		$lastId = $db->lastInsertId();
+		$db->commit();    
 		if (isset($json["PROOFS"]))
-			pictureRecord($json["PROOFS"],"WASTEPOOLPROOFS",$db->lastInsertId());
+			pictureRecord($json["PROOFS"],"WASTEPOOLPROOFS",$lastId);
 	}
 	else{
 		$result["message"] = "Waste needs to be of same type";
@@ -6924,10 +6941,12 @@ $app->post('/returnrecord',function($request,Response $response) {
 	$VENDNAME = $json["VENDNAME"];
 	$AUTHOR = $json["AUTHOR"];
 
+	$db->beginTransaction();
 	$sql = "INSERT INTO RETURNRECORD (VENDID,VENDNAME,STATUS,CREATOR) VALUES (?,?,?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array($VENDID,$VENDNAME,'CREATED',$AUTHOR));
 	$lastId = $db->lastInsertId();
+	$db->commit();    
 
 	$items = $json["ITEMS"];
 	foreach($items as $item){
