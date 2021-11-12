@@ -461,9 +461,9 @@ renderTwoProduct{
 		float: left;
 		position: relative;
 	}
-	.strikethrough:before {
+	.price_3item3 .price_3item4 .price_3item_disc .price_3item_disc1 .strikethrough:before {
 		margin-top: 10px;
-	  border-top: 3px solid #1B9382 ;
+	  border-top: 2px solid #1B9382 ;
 	  opacity: 0.9;
 	  border-radius: 5px;
 	  
@@ -738,7 +738,6 @@ renderTwoProduct{
 	float: left;
 	width: 85%;
 	height: 100%;
-	margin-top: 2px;
 }
 .A4_price_kh_b2 .A4_price_2items .strikethrough{
 	width: 100%;
@@ -746,21 +745,11 @@ renderTwoProduct{
 	float: left;
 	position: relative;
 }
-.A4_price_kh_b2 .A4_price_2items .strikethrough p{
-	float: left;
-	margin-left: 4px;
-	margin-top: -12px;
-	font-size: 43px;
-	color: #fff;
-	font-family: khb;
-	font-weight: bold;
-	text-align: center;
-}
-.A4_price_kh_b2 .A4_price_2items  .strikethrough:before {
+.A4_price_kh_b2 .A4_price_2items .strikethrough:before {
   position: absolute;
   margin-top: 12px;
-  border: 1px solid #1B9382 ;
-  opacity: 0.9;
+  border-top: 2px solid #1B9382 ;
+  opacity: 1;
   border-radius: 5px;
   
   -webkit-transform:rotate(15deg);
@@ -769,6 +758,16 @@ renderTwoProduct{
   -o-transform:rotate(15deg);
   transform:rotate(15deg);
 }
+.A4_price_kh_b2 .A4_price_2items .strikethrough p{
+	float: left;
+	margin-left: 4px;
+	margin-top: -10px;
+	font-size: 43px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+}
+
 .box_price1_b2 .A4_price_2item_box{
 	width: 100%;
 	height: 30%;
@@ -1337,13 +1336,13 @@ renderTwoProduct{
 	font-family: khb;
 	font-weight: bold;
 }
-.strikethrough:before {
+.box_price .box_price1 .box_price2 .promot2 .promot3  .strikethrough:before {
   position: absolute;
   content: "";
   left: 0;
- 	margin-top: 15px;
+ 	margin-top: 38px;
   right: 0;
-  border-top: 2px solid #1B9382 ;
+  border-top: 3px solid #1B9382 ;
   opacity: 1;
   border-radius: 5px;
   
@@ -1419,7 +1418,7 @@ renderTwoProduct{
 .box_price .box_price1 .box_price2 .promot6 .promot_price7 p{
 	float: left;
 	margin-left: 7px;
-	margin-top: 39px;
+	margin-top: 36px;
 	font-size: 35px;
 	color: #1B9382;
 	font-family: khb;
@@ -1432,7 +1431,7 @@ renderTwoProduct{
 }
 .box_price .box_price1 .box_price2 .promot6 .promot_price8 p{
 	float: left;
-	margin-top: 10px;
+	margin-top: -1px;
 	font-size: 65px;
 	color: #1B9382;
 	font-family: khb;
@@ -2432,12 +2431,12 @@ float: left;
 	font-family: kh;
 	font-weight: bold;
 }
-.A7_box_price4 .oldprice{
+.A7_box_price4 .A7_oldprice{
 	width: 80%;
-	height: 100%;
+	height: 30%;
 	float: left;
 }
-.A7_box_price4 .oldprice .strikethrough{
+.A7_box_price4 .A7_oldprice .strikethrough{
 	position: relative;
 	float: left;
 	font-size: 10px;
@@ -2445,13 +2444,13 @@ float: left;
 	font-family: khb;
 	font-weight: bold;
 }
-.strikethrough:before {
+.A7_box_price4 .A7_oldprice .strikethrough:before {
   position: absolute;
   content: "";
   left: 0;
-  top: 35%;
+  margin-top: -2px;
   right: 0;
-  border-top: 1px solid #1B9382 ;
+  border-top: 2px solid #1B9382 ;
   opacity: 1;
   border-radius: 5px;
   
@@ -2461,9 +2460,8 @@ float: left;
   -o-transform:rotate(15deg);
   transform:rotate(15deg);
 }
-.A7_box_price4 .oldprice .strikethrough p{
+.A7_box_price4 .A7_oldprice .strikethrough p{
 	float: left;
-	margin-top: -1px;
 	font-size: 22px;
 	color: #fff;
 	font-family: khb;

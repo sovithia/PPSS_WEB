@@ -366,7 +366,7 @@ function _renderPromoProduct($product)
                     <div class='oldprice_symbool'>
                       <p>$</p>
                     </div>
-                    <div class='oldprice'>
+                    <div class='A7_oldprice'>
                       <div class='strikethrough'>
                         <p>$oldPrice</p>
                       </div>
