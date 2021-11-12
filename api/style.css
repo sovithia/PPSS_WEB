@@ -951,10 +951,11 @@ renderTwoProduct{
 }
 .A4 .box3 .box4 .tag-wrap .disc p{
 	float: right;
-	font-size: 70px;
+	font-size: 65px;
 	font-weight: bold;
 	font-family: khb;
 	margin-right: -8px;
+	margin-top: -8px;
 }
 .A4 .box3 .box4 .tag-wrap .off{
 	float: left;
@@ -1308,7 +1309,7 @@ renderTwoProduct{
 .box_price .box_price1 .box_price2 .promot2 .symbool p{
 	float: left;
 	margin-left: 2px;
-	margin-top: 10px;
+	margin-top: 14px;
 	font-size: 40px;
 	color: #fff;
 	font-family: khb;
@@ -1321,8 +1322,7 @@ renderTwoProduct{
 	width: 82%;
 }
 .box_price .box_price1 .box_price2 .promot2 p{
-	margin-top: -8px;
-	text-align: center;
+	margin-top: -18px;
 	margin-right: 10px;
 	font-size: 55px;
 	color: #fff;
@@ -1341,10 +1341,10 @@ renderTwoProduct{
   position: absolute;
   content: "";
   left: 0;
-  top: 40%;
+ 	margin-top: 15px;
   right: 0;
   border-top: 2px solid #1B9382 ;
-  opacity: 0.9;
+  opacity: 1;
   border-radius: 5px;
   
   -webkit-transform:rotate(15deg);
@@ -1354,7 +1354,7 @@ renderTwoProduct{
   transform:rotate(15deg);
 }
 .box_price .box_price1 .box_price2 .promot2 .promot3 .strikethrough p{
-	margin-top: -1px;
+	margin-top: -2px;
 	float: left;
 	font-size: 55px;
 	color: #fff;
