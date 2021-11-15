@@ -2833,7 +2833,7 @@ function splitPOWithItems($ponumber,$items)
 
 	$line = 1;
 	foreach($items as $item)
-	{
+	{			
 		$sql = "SELECT * FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["ID"],$ponumber));		
@@ -2881,6 +2881,7 @@ function splitPOWithItems($ponumber,$items)
 		PPSS_ORDER_QTY) 
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
 
+		error_log($PRODUCTID." PPSS_ORDER_QTY: ".$itemdetail["PPSS_ORDER_QTY"]);
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
 		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
@@ -3233,10 +3234,10 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
-					(SELECT  (TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ?";
-
+	error_log($sql);
 	if ($rr["TYPE"] == "NOPO")
 	{
 		if ($rr["LINKEDPO"] != null)
