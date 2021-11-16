@@ -9,13 +9,13 @@ switch(mime_content_type($path)) {
     $img = imagecreatefromgif($path);
     break;
   case 'image/jpeg':
-    $img = imagecreatefromjpeg($path);
+    $img = @imagecreatefromjpeg($path);
     break;
   case 'image/bmp':
     $img = imagecreatefrombmp($path);
     break;
   default:
-     $img = imagecreatefromjpeg($path);
+     $img = @imagecreatefromjpeg($path);
   }
   return $img;
 }
@@ -33,12 +33,19 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
 		file_put_contents("./tmp.jpg",$final);		
 		$data = getImage("./tmp.jpg");
-		$data = imagescale($data,$scale);
-		ob_start();
-		imagejpeg($data);
-		$contents = ob_get_contents();
-		ob_end_clean();
-		$final = $contents;		
+		if ($data != false){
+			$data = imagescale($data,$scale);
+			ob_start();
+			imagejpeg($data);
+			$contents = ob_get_contents();
+			ob_end_clean();	
+			$final = $contents;		
+		}else{
+			$path = "img/mystery.png";		
+			$final = file_get_contents($path);
+		}
+		
+		
 	}
 		
 	if ($base64 == true)
