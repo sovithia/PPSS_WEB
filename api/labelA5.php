@@ -56,7 +56,7 @@ error_reporting(E_ALL);
       $newString .= str_replace(" ","%20",$barcode). "|";
     }
     $newString = substr($newString,0,-1);
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);      
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $newString);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
@@ -74,7 +74,7 @@ error_reporting(E_ALL);
     $b4 = str_replace(" ","%20",$_GET['barcode4']);
 
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes);      
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
@@ -117,7 +117,6 @@ error_reporting(E_ALL);
 
 
 // ONE 
-
 function renderOneProduct($product)
 {
   $nameKH = $product["nameKH"];
@@ -140,15 +139,13 @@ function renderOneProduct($product)
 			<div class='A4_box'>
 				<div class='A5_header'>
 					<img src='bg/bg-header.png'>
-					<div class='tag-wrap'>
+					<div class='logo'>
 						<img src='img/logo-text1.png'>
 					</div>
 				</div>
 				<div class='A5_bottom'>
 					<div class='A5_box1'>
-						<div class='text1'>
-							
-						</div>
+						<div class='text1'></div>
 						<div class='text2'>
 							<div class='A5_name_kh'>
 								<p>$nameKH</p>
@@ -206,76 +203,9 @@ function renderOneProduct($product)
 					</div>
 				</div>
 			</div>
-
-			<div class='A4_box'>
-				<div class='A5_header'>
-					<img src='bg/bg-header.png'>
-					<div class='tag-wrap'>
-						<img src='img/logo-text1.png'>
-					</div>
-				</div>
-				<div class='A5_bottom'>
-					<div class='A5_box1'>
-						<div class='text1'>
-							
-						</div>
-						<div class='text2'>
-							<div class='A5_name_kh'>
-								<p><?php echo $p_name12; ?></p>
-							</div>
-							<div class='A5_name_en'>
-								<p><?php echo $p_name2; ?></p>
-								<p style='margin-top: -10px; font-size: 12px;''>Code: <?php echo $product_id1; ?></p>
-								<p style='margin-top: -10px; font-size: 12px;'>Origin: <?php echo $flag2; ?></p>
-							</div>
-						</div>
-					</div>
-					<div class='A5_box2'>
-						<img src='img/<?php echo $p_img12; ?>'>
-					</div>
-					<div class='A5_box3'>
-						<div class='A5_box4'>
-							<div class='sale'>
-								<img src='bg/bg-sale.png'>
-								<div class='sale1'>
-									<p>SALE</p>
-								</div>
-							</div>
-						</div>
-						<div class='A5_box5'>
-							<div class='A5_box_price'>
-								<div class='A5_box_price1'>
-									<div class='A5_box_price2'>
-										<div class='price_kh'>
-											<p><?php echo (number_format(round($formattedprice_kh1,-2))); ?></p>
-										</div>
-										<div class='price_kh_symbool'>
-											<p>៛</p>
-										</div>
-									</div>
-									<div class='A5_box_price3'>
-										<div class='A5_flag'>
-											<div class='A5_flag1'><img src='flag/<?php echo $flag2.'.png'; ?>'></div>
-											<div class='show_unit'><p>1 Unit</p></div>
-										</div>
-										<div class='A5_price'>
-											<div class='A5_symbool_us'>
-												<p>$</p>
-											</div>
-											<div class='A5_price_us'>
-												<p><?php echo $formattedprice1; ?></p>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
 			</div>
-		</div>
 		</br>
-		<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
     }
     else
@@ -341,13 +271,14 @@ function renderOneProduct($product)
 				</div>
 			</div>
 
-
 		</div>
 		</br>
 		<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	   ";
     }
-}
+  }
+  
+
 ?>
 <script>
    $('#save_image_locally').click(function(){           

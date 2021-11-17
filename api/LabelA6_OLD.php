@@ -1,50 +1,286 @@
 <?php
 include('RestEngine.php');
 require_once('functions.php');
-
-ini_set('display_errors',1);
-ini_set('display_startup_errors',1);
-error_reporting(E_ALL); 
 ?>
 
 <html>
 
 <head>
- <!--    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script type="text/javascript" src="js/html2canvas.min.js"></script>
-    <script type="text/javascript" src="js/canvas-toBlob.js"></script>
-    <script type="text/javascript" src="js/FileSaver.js"></script> -->
-   <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="js/html2canvas.min.js"></script>
     <script type="text/javascript" src="js/canvas-toBlob.js"></script>
     <script type="text/javascript" src="js/FileSaver.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Angkor&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" sizes="16x16" href="img/Logo-text1.png">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hammersmith+One&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Fjalla+One&display=swap" rel="stylesheet">
+    <style> 
 
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="icon/css/all.min.css">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-   <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script type="text/javascript" src="js/html2canvas.min.js"></script>
-    <script type="text/javascript" src="js/canvas-toBlob.js"></script>
-    <script type="text/javascript" src="js/FileSaver.js"></script>
+      html{
+        font-family: Myriad Pro Bold;
+      }
+
+
+ .starburst {
+    background: #ffed00;  
     
+    text-align: center;
+    color: #009183;
+    left: 75%;
+    transform: rotate(-45deg);
+  }
+
+  .starburst,
+  .starburst span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .starburst span {
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    transform: rotate(45deg);
+  }
+  .starburst:before,
+  .starburst:after ,
+  .starburst span:before,
+  .starburst span:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    z-index: -1;
+    transform: rotate(30deg);
+  }
+  .starburst:after {
+    transform: rotate(-30deg);
+  }
+  .starburst span:after {
+    transform: rotate(30deg);
+  }
+  .starburst span:before {
+    transform: rotate(-30deg);
+  }
+
+   .starburstOne{
+      width: 4.5em;
+      height: 4.5em;  
+    }
+
+    .starburstTwo{
+      width: 5em;
+      height: 5em;  
+    }
+
+    	.yellowreflect{
+    		box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-moz-box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-webkit-box-shadow: 10px -10px rgb(255, 237, 0); 
+    		-o-box-shadow: 10px -10px rgba(255,237,0,0.6);
+    	}
+
+    	.whitecontour{ /* STYLE */
+    		border: 4px solid white;
+    	}
+
+      .greenbackground{                
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         padding: 5pt;
+         text-align: center;
+      }
+		.yellowcontour{ /* STYLE */
+    		border: 10px solid yellow;
+    	}
+    	.smallcircle { 
+    		width:100px;height:100px;  
+        background-color: rgba(0,145,131,0.8);     	
+        display: table-cell;
+        vertical-align: middle;          
+    		border-radius:200px;
+  			text-align: center;
+  			}
+    
+      .tinycircle {  /* LOGO DECORATION */
+        width:65px;height:65px;  
+        background-color: rgba(0,145,131,0.8);      
+        border-radius:200px; line-height: 100px;    
+        text-align: center;
+        }
+
+		  .bigcircle { /* LOGO DECORATION */
+        width:250px;height:250px; 			
+			  background-color: rgba(0,145,131,0.8);  
+        line-height: 250px;  			
+    		border-radius:380px;     		
+  			text-align: center;
+  			opacity: 1;
+  			filter: alpha(opacity=100);
+  		}
+
+		 #target{
+     background-image: url(img/bg<?=rand(1,4)?>.png);
+    	width: 10.5cm;
+    	display: flex;
+    	flex-direction: row;
+    	flex-wrap: wrap;
+    	justify-content: center;
+    	align-items: center;
+    	margin: auto;
+		}
+
+
+
+		#content{		 
+		 height: 14.8cm;
+		 margin: 10px;
+		 padding:5px;
+		  background-color: rgba(255,255,255,0.6); 
+     border: solid white 1px;      
+		}
+
+		.strikeout {		 
+		  line-height: 1px;
+		  position: relative;
+		}
+		.strikeout::after {
+		  border-bottom: 0.100em solid red;
+		  content: "";
+		  left: 0;
+		  margin-top: calc(0.125em / 2 * -1);
+		  position: absolute;
+		  right: 0;
+		  top: 50%;
+		}
+
+    #save_image_locally{
+      background-color: #009183;
+      font-size: 30pt;
+      color:white;
+    }
+		
+		hr { display: block; height: 1px;
+    		border: 0; border-top: 3px solid #fff;
+    		margin: 1px 0; padding: 0; }
+
+
+    .title{
+      color:#ffed00;
+      font-size:80pt;
+      background-color: rgba(0,145,131,0.8);  
+      border-radius: 10px;      
+    }
+
+    .nopromotitle{
+      color:#ffed00;
+      font-size:40pt;
+      background-color: rgba(0,145,131,0.8);  
+      border-radius: 10px;      
+    }
+
+    .percent {
+      color: #ffed00;
+      font-size: 60pt;      
+      font-weight: bold;
+      }
+
+    .originpicture{
+        width:40px;
+        text-align: center;
+    }
+
+    .originpicturePromo{
+        width:100px;
+    }
+
+    .originNormal{
+         color:white;
+         font-size:10pt;
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         width: 340px;
+         padding: 5pt;
+         text-align: center;
+    }
+
+    .origin{
+         color:white;
+         font-size:10pt;
+         background-color: rgba(0,145,131,0.8);  
+         border-radius: 10px;          
+         width: 100px;
+         padding: 5pt;
+         text-align: center;
+    }
+
+
+    .rielprice{
+      color:#ffed00;
+      font-size: 22pt;
+    }
+
+
+    .newprice{
+    color:white;
+    font-size: 22pt;    
+    } 
+
+    .oldprice {
+      color:#ffed00;      
+      font-size: 14pt;
+      text-align: right;
+    }
+
+  .productname{
+    color:white;
+    font-size: 20pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5);                            
+    }
+
+
+  .productnamePromo{
+    color:white;
+    font-size: 16pt;
+    font-weight: bold;
+    background-color: rgba(0,145,131,0.5);                            
+    }
+
+
+    
+
+
+    .product{
+      height: 260px;      
+      border-radius: 10px;
+      }
+
+    .productPromo{
+      height: 230px;      
+      border-radius: 10px;
+      }
+
+    .till{
+      color:#ffed00;
+      font-weight: bold;      
+    }
+
+      .rounded{
+       border-radius: 10px;
+        background: rgba(0,145,131,0.7);
+        padding: 20px;
+        width: 140px;
+        height: 300px; 
+        
+    }
+    
+     .dollarprice{
+      color:#ffffff;
+      font-size: 40pt;
+    }
+
+    </style>
 </head>
 
 <body  >
@@ -63,7 +299,7 @@ error_reporting(E_ALL);
       $newString .= str_replace(" ","%20",$barcode). "|";
     }
     $newString = substr($newString,0,-1);
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $newString);          
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $newString);          
     if (count($itemList) > 0)
       renderFourProduct($itemList);
   } 
@@ -75,7 +311,7 @@ error_reporting(E_ALL);
     $b4 = str_replace(" ","%20",$_GET['barcode4']);
 
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);      
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/biglabelpromo/" . $barcodes);      
     if (count($itemList) > 0)  
       renderFourProduct($itemList);    
 ?>
@@ -158,13 +394,13 @@ function renderFourProduct($products)
     $percent4 = ($products[3]["discpercent"] != null) ? $products[3]["discpercent"] : "0";
 
   $render = 
-    "
-    <div class='A4_portrait' id='A4_Image'>  
+    "<center><button id='save_image_locally'>Download</button></center>
+    <div id='target' style='width:23cm'>    
     <center>
-    <table>
+    <table border='1' >
     <tr>
-      <td>
-      <div>
+      <td width='50%' align='center'>
+      <div id='content' style='width:10.5cm'>
       ";
       if ($percent1 == "0")
         $render .= _renderProduct( isset($products[0]) ? $products[0] : null );
@@ -174,8 +410,8 @@ function renderFourProduct($products)
       "
       </div>
       </td>
-      <td>
-      <div>";
+      <td width='50%' align='center'>
+      <div id='content' style='width:10.5cm'>";
       if ($percent2 == "0")
         $render .= _renderProduct( isset($products[1]) ? $products[1] : null);
       else 
@@ -187,8 +423,8 @@ function renderFourProduct($products)
     </tr>
 
     <tr>
-      <td>
-      <div>
+      <td width='50%' align='center'>
+      <div id='content' style='width:10.5cm'>
       ";
       if ($percent3 == "0")
         $render .= _renderProduct( isset($products[2]) ? $products[2] : null );
@@ -198,8 +434,8 @@ function renderFourProduct($products)
       "
       </div>
       </td>
-      <td>
-      <div>";
+      <td width='50%' align='center'>
+      <div id='content' style='width:10.5cm'>";
       if ($percent4 == "0")
         $render .= _renderProduct( isset($products[3]) ? $products[3] : null );
       else 
@@ -212,10 +448,7 @@ function renderFourProduct($products)
 
     </table>
     </center>     
-    </div>
-</br>
-<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
-    ";  
+     </div>";  
     echo $render;
 
 }
@@ -242,93 +475,50 @@ function _renderPromoProduct($product)
     $percentSize = "32";
   else 
     $percentSize = "22";
+
   return "
-    <div class='A4_A6'>
-      <div class='A6_header'>
-        <img src='bg/bg-header.png'>
-        <div class='logo'>
-          <img src='img/logo-text1.png'>
-        </div>
+   <table border='0'>
+    <tr> 
+        <td width='300px' valign='top' align='left'>
+          <div class='origin whitecontour' >
+            <center>
+            <img class='originpicturePromo' src=$flag />
+            <br>
+            Origin : $country</center>
+          </div> 
+        </td>  
+
+        <td align='center' width='30%' >
+            <div class='starburst starburstOne' >
+              <span style='font-size:".$percentSize."pt'>-$percent%
+              </span>
+            </div>
+        </td>    
+    </tr>
+    <tr>
+      <td align='center'  colspan='2'>
+      <div class='productnamePromo whitecontour'>        
+        <span style='color:#ffed00;font-family:\"KH Content\"' >$nameKH</span><br>
+          $nameEN
+        <hr>
+          <span class='oldprice strikeout'>$oldPrice</span> <br>  
+          <span class='rielprice'>$rielPrice ៛</span> |           
+          <span style='dollarPrice'>$dollarPrice</span>    
+        <hr> 
+           <span class='till'>From ".$from."</span>       
+        <span class='till'>".($till == "N/A" ? "Until out of stock" : "Till $till") ."</span>
       </div>
-      <div class='A6_body'>
-        <div class='sale_img'>
-            <img src='bg/bg-sale.png'>
-            <div class='A6_sale'>
-              <p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>
-            </div>
-          </div>
-      </div>
-      <div class='A6_bottom'>
-        <div class='A6_box1'>
-          <div class='A6_namekh'>
-            <p>$nameKH</p>
-          </div>
-          <div class='A6_nameen'>
-            <p>$nameEN</p>
-          </div>
-          <div class='flag'>
-            <div class='A6_item'>
-              <p>Code: $barcode</p>
-              <p>Origin: $country</p>
-            </div>
-          </div>
-        </div>
-        <div class='A6_box2'>
-          <div class='box-img'>
-            <div class='A6_percent'>
-              <div class='A6_box_percent'>
-                <div class='A6_percent_disc'>
-                  <p>$percent</p>
-                </div>
-                  <div class='A6_percent_disc1'>
-                    <div class='A6_off'>
-                      <p>OFF</p>
-                    </div>
-                    <div class='A6_percent1'>
-                        <p>%</p>
-                    </div>
-                  </div>
-              </div>
-            </div>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
-          </div>
-        </div>
-        <div class='A6_box3'>
-          <div class='A6_box-price'>
-            <div class='A6_box-price1'>
-              <div class='A6_box-price2'>
-                <div class='A6_box_price2_old'>
-                  <div class='A6_box_price2_old_symboolen'>
-                    <p>$</p>
-                  </div>
-                    <div class='A6_box_price2_old1'>
-                      <div class='strikethrough'>
-                        <p>$oldPrice</p>
-                      </div>
-                    </div>
-                </div>
-              </div>
-              <div class='A6_priceriel_disc'>
-                <div class='A6_priceriel_disc1'>
-                  <p>$rielPrice</p>
-                </div>
-                <div class='A6_priceriel_symboolriel'>
-                  <p>៛</p>
-                </div>
-              </div>
-              <div class='A6_price_disc'>
-                <div class='symboolen_disc'>
-                  <p>$</p>
-                </div>
-                <div class='A6_dollarprice_disc'>
-                  <p>$dollarPrice</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>";
+      </td>
+    </tr>
+    <tr>    
+      <td valign='top' colspan='2'>
+        <center>
+          <img class='productPromo whitecontour'  src='data:image/jpeg;base64, $image'><br>
+          <span style='color:white'>$barcode</span>
+        </center>
+      </td>      
+    </tr>
+   </table>";
 }
 
 function _renderProduct($product)
@@ -348,75 +538,47 @@ function _renderProduct($product)
   $barcode = $product["barcode"];
 
   return "
-   
-    <div class='A4_A6'>
-      <div class='A6_header'>
-        <img src='bg/bg-header.png'>
-        <div class='logo'>
-          <img src='img/logo-text1.png'>
+   <table border='0'>
+      <tr>
+        <td align='center'  colspan='2'>
+        <div class='productname whitecontour'>        
+          <span style='color:#ffed00;font-family:\"KH Content\"'>$nameKH</span><br>
+            $nameEN
+          <hr>        
+          <table >
+          <tr height='100px'>
+            <td>
+              <span class='rielprice'>$rielPrice ៛</span>      
+            </td>
+          
+            <td width='100px' align='center'> 
+              <div class='starburst starburstOne'> <span style='font-size:25pt'>$dollarPrice</span></div>          
+            </td>
+          </tr>
+          <tr>
+            <td colspan='2'>
+              
+              <center>
+              <img class='originpicture' src=$flag /><br>
+              <span style='font-size:10pt;color:white' >Origin : $country</span>
+              </center>
+              </span>             
+            </td>
+          </tr>
+          </table>        
         </div>
-      </div>
-      <div class='A6_body'>
-        <div class='sale_img'>
-            <img src='bg/bg-sale.png'>
-            <div class='A6_sale'>
-              <p>SALE</p>
-            </div>
-          </div>
-      </div>
-      <div class='A6_bottom'>
-        <div class='A6_box1'>
-          <div class='A6_namekh'>
-            <p>$nameKH</p>
-          </div>
-          <div class='A6_nameen'>
-            <p>$nameEN</p>
-          </div>
-          <div class='flag'>
-            <div class='A6_item'>
-              <p>Code: $barcode</p>
-              <p>Origin: $country</p>
-            </div>
-          </div>
-        </div>
-        <div class='A6_box2'>
-          <div class='box-img'>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
-          </div>
-        </div>
-        <div class='A6_box3'>
-          <div class='A6_box-price'>
-            <div class='A6_box-price1'>
-              <div class='A6_box-price2'>
-                <div class='A6_priceriel'>
-                  <p>$rielPrice</p>
-                </div>
-                <div class='A6_symboolreil'>
-                  <p>៛</p>
-                </div>
-              </div>
-              <div class='A6-box-flag'>
-                <div class='A6-flag'>
-                  <img src='$flag'>
-                </div>
-                <div class='A6-unit'>
-                  <p>1 Unit</p>
-                </div>
-              </div>
-              <div class='A6_priceen'>
-                <div class='A6_symboolen'>
-                  <p>$</p>
-                </div>
-                <div class='A6_priceen1'>
-                  <p>$dollarPrice</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  ";
+        </td>      
+      </tr>
+      
+      <tr>
+        <td valign='top' colspan='2'>
+          <center>
+            <img class='product whitecontour'  src='data:image/jpeg;base64, $image'><br>
+            <span style='color:white'>$barcode</span>
+          </center>
+        </td>      
+      </tr>
+     </table>";
 }
 
 function renderOneProduct($product)
@@ -424,9 +586,9 @@ function renderOneProduct($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
 
     $render = 
-    "
-    <div>
-    <div>
+    "<center><button id='save_image_locally'>Download</button></center>
+    <div id='target'>
+    <div id='content'>
     <center>";
       if ($percent == "0")
         $render .=   _renderProduct($product);
@@ -443,9 +605,9 @@ function renderOneProduct($product)
 
 <script>
    $('#save_image_locally').click(function(){           
-      let opt = { scale : 5};
-      html2canvas(document.getElementById('A4_Image'),opt).then(function(canvas) {
-      
+      let opt = { scale : 1,                  
+                };
+      html2canvas(document.getElementById('target'),opt).then(function(canvas) {
       canvas.toBlob(function(blob){
           saveAs(blob, 'lastlabels.jpg');                
       },'image/png');

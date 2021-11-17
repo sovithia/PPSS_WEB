@@ -1583,7 +1583,430 @@ renderTwoProduct{
 	color: #fff;
 }
 
+/*A6 Label*/
+.A4_portrait{
+	background-size: 595.276px 841.89px;
+	width: 841.89px;
+	height: 595.276px;
+	margin: 0 auto;
+	margin-top: 40px;
+	background-color: #EAECEE;
+}
+.A4_portrait .A4_A6{
+	width: 420.94px;
+	height: 297.63px;
+	float: left;
+	background-image: url(img/B1.png);
+	background-size: 100% 100%;
+	background-repeat: no-repeat;
+}
+.A4_portrait .A4_A6 .A6_header{
+	width: 100%;
+	height: 30%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_header img{
+	float: left;
+	width: 100%;
+	height: 100%;
+}
+.A4_portrait .A4_A6 .A6_header .logo{
+	width: 90px;
+	height: 90px;
+	float: left;
+	margin-left: 15px;
+	margin-top: -60px;
+}
+.A4_portrait .A4_A6 .A6_body{
+	width: 36%;
+	height: 10%;
+	float: right;
+}
+.A4_portrait .A4_A6 .A6_body .sale_img{
+	width: 100%;
+	height: 50px;
+	float: right;
+	margin-top: -30px;
+	box-sizing: border-box;
+}
+.A4_portrait .A4_A6 .A6_body .sale_img img{
+	width: 100%;
+	height: 100%;
+	float: right;
+	margin-right: -4px;
+}
+.A4_portrait .A4_A6 .A6_body .sale_img .A6_sale{
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_body .sale_img .A6_sale p{
+		font-size: 33px;
+		margin-top: -47px;
+		margin-left: 60px;
+		font-weight: bold;
+		font-family: Fjalla One;
+		color: #fff;
+}
+.A4_portrait .A4_A6 .A6_header .logo img{
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom{
+	width: 100%;
+	height: 60%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1{
+	width: 33%;
+	height: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_namekh{
+	margin-top: 40px;
+	width: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_namekh p{
+	margin-top: 4px;
+	font-size: 13px;
+	float: left;
+	margin-left: 15px;
+	color: #1B9382;
+	font-family: kh;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_nameen{
+	width: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_nameen p{
+	margin-top: -12px;
+	font-size: 13px;
+	color: #1B9382;
+	font-family: acumin;
+	margin-left: 15px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_item{
+	width: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box1 .A6_item p{
+	margin-top: -12px;
+	font-size: 9px;
+	color: #1B9382;
+	font-family: acumin;
+	margin-left: 15px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box2{
+	width: 31%;
+	height: 100%;
+	float: left;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box2 .box-img{
+	width: 100%;
+	float: left;
+	margin-top: 22px;
+	padding: 2px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box2 .box-img img{
+	float: left;
+	width: 100%;
+	border-radius: 6px;
+	border: 1px solid #1B9382;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box2 .box-img .A6_percent{
+	width: 70px;
+	height: 70px;
+	float: left;
+	background-color: #1B9382;
+	position: absolute;
+	margin-top: -50px;
+	border-radius: 50%;
+	margin-left: -4px;
+	padding: 10px;
+	border: 3px solid #fff;
+	box-shadow: 2px 2px 2px 2px #EAECEE;
+}
+.A6_percent .A6_box_percent{
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+.A6_percent .A6_box_percent .A6_percent_disc{
+	width: 60%;
+	height: 100%;
+	float: left;
+}
+.A6_percent .A6_box_percent .A6_percent_disc p{
+	float: right;
+	font-size: 30px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+	margin-top: -10px;
+}
+.A6_percent .A6_box_percent .A6_percent_disc1{
+	width: 40%;
+	height: 100%;
+	float: left;
+}
+.A6_percent .A6_box_percent .A6_percent_disc1 .A6_off{
+	width: 100%;
+	height: 45%;
+	float: left;
+}
+.A6_percent .A6_box_percent .A6_percent_disc1 .A6_off p{
+	margin-top: 12px;
+	float: left;
+	font-size: 10px;
+	font-family: acumin;
+	color: #fff;
+	margin-left: 2px;
+}
+.A6_percent .A6_box_percent .A6_percent_disc1 .A6_percent1{
+	width: 100%;
+	height: 55%;
+	float: left;
+}
+.A6_percent .A6_box_percent .A6_percent_disc1 .A6_percent1 p{
+	float: left;
+	font-size: 15px;
+	font-family: acumin;
+	font-weight: bold;
+	color: #fff;
+	margin-left: 4px;
+}
 
+.A4_portrait .A4_A6 .A6_bottom .A6_box3{
+	width: 36%;
+	height: 100%;
+	float: left;
+	padding: 10px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box3 .A6_box-price{
+	width: 100%;
+	height: 85%;
+	float: left;
+	background-color: #1B9382;
+	border-radius: 10px;
+	padding: 3px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box3 .A6_box-price .A6_box-price1{
+	width: 100%;
+	height: 100%;
+	float: left;
+	background-color: #EAECEE;
+	border-radius: 8px;
+	padding: 3px;
+}
+.A4_portrait .A4_A6 .A6_bottom .A6_box3 .A6_box-price .A6_box-price1 .A6_box-price2{
+	width: 100%;
+	height: 38%;
+	float: left;
+	background-color: #1B9382;
+	border-radius: 6px 6px 0px 0px ;
+}
+.A6_box-price2 .A6_box_price2_old{
+	width: 100%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price2 .A6_box_price2_old .A6_box_price2_old_symboolen{
+	width: 15%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price2 .A6_box_price2_old .A6_box_price2_old_symboolen p{
+	float: right;
+	margin-top: -3px;
+	font-size: 25px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+}
+
+.A6_box-price2 .A6_box_price2_old .A6_box_price2_old1{
+	width: 85%;
+	height: 100%;
+	float: left;
+}
+.A6_box_price2_old1 .strikethrough{
+	position: relative;
+	margin-top: -5px;
+	float: left;
+	font-size: 20px;
+	color: #fff;
+	font-family: khb;
+	font-weight: bold;
+	}
+.A6_box_price2_old1 .strikethrough:before {
+  position: absolute;
+  border-top: 2px solid #1B9382 ;
+  opacity: 0.9;
+  border-radius: 5px;
+  margin-top: 2px;
+  
+  -webkit-transform:rotate(15deg);
+  -moz-transform:rotate(15deg);
+  -ms-transform:rotate(15deg);
+  -o-transform:rotate(15deg);
+  transform:rotate(15deg);
+}
+.A6_box-price2 .A6_box_price2_old .A6_box_price2_old1 .strikethrough p{
+	float: left;
+	margin-top: -6px;
+	font-size: 32px;
+	color: #fff;
+	font-family: khb;
+}
+.A6_box-price2 .A6_priceriel{
+	width: 88%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price2 .A6_priceriel p{
+	float: right;
+	font-size: 30px;
+	color: #fff;
+	font-family: khb;
+	margin-top: -7px;
+	margin-right: 1px;
+}
+.A6_box-price2 .A6_symboolreil{
+	width: 12%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price2 .A6_symboolreil p{
+	font-size: 25px;
+	color: #fff;
+	font-family: kh;
+	font-weight: bold;
+	margin-top: -12px;
+}
+.A6_box-price1 .A6-box-flag{
+	width: 100%;
+	height: 18%;
+	float: left;
+}
+.A6_box-price1 .A6-box-flag .A6-flag{
+	width: 50%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6-box-flag .A6-flag img{
+	margin-top: 2px;
+	width: 50%;
+	float: left;
+}
+.A6_box-price1 .A6-box-flag .A6-unit{
+	width: 50%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6-box-flag .A6-unit p{
+	float: right;
+	font-size: 12px;
+	font-family: acumin;
+	color: #1B9382;
+	margin-right: 3px;
+	margin-top: 5px;
+}
+.A6_box-price1 .A6_priceen{
+	width: 100%;
+	height: 40%;
+	float: left;
+}
+.A6_box-price1 .A6_priceen .A6_symboolen{
+	width: 18%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_priceen .A6_symboolen p{
+	float: right;
+	font-size: 25px;
+	margin-top: 2px;
+	color: #1B9382;
+	font-family: khb;
+	font-weight: bold;
+}
+.A6_box-price1 .A6_priceen .A6_priceen1{
+	width: 	82%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_priceen .A6_priceen1 p{
+	float: left;
+	font-size: 33px;
+	color: #1B9382;
+	font-family: khb;
+	margin-top: -7px;
+	margin-left: 2px;
+}
+.A6_box-price1 .A6_priceriel_disc{
+	width: 100%;
+	height: 30%;
+	float: left;
+}
+.A6_box-price1 .A6_priceriel_disc .A6_priceriel_disc1{
+	width: 90%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_priceriel_disc .A6_priceriel_disc1 p{
+	float: right;
+	font-size: 30px;
+	color: #1B9382;
+	font-family: khb;
+	margin-top: -10px;
+	margin-right: 1px;
+}
+.A6_box-price1 .A6_priceriel_disc .A6_priceriel_symboolriel{
+	width: 10%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_priceriel_disc .A6_priceriel_symboolriel p{
+	float: left;
+	font-size: 22px;
+	margin-top: -10px;
+	color: #1B9382;
+	font-family: kh;
+}
+.A6_box-price1 .A6_price_disc{
+	width: 100%;
+	height: 30%;
+	float: left;
+}
+.A6_box-price1 .A6_price_disc .symboolen_disc{
+	width: 15%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_price_disc .symboolen_disc p{
+	float: right;
+	margin-top: -4px;
+	font-size: 22px;
+	color: #1B9382;
+	font-family: khb;
+	font-weight: bold;
+}
+.A6_box-price1 .A6_price_disc .A6_dollarprice_disc{
+	width: 85%;
+	height: 100%;
+	float: left;
+}
+.A6_box-price1 .A6_price_disc .A6_dollarprice_disc p{
+	float: left;
+	font-size: 27px;
+	color: #1B9382;
+	font-family: khb;
+	margin-top: -10px;
+	margin-left: 2px;
+	font-weight: bold;
+}
+/*A6 Label End*/
 .A4_horizontal{
 	background-color: #EAECEE;
 	background-size: 595.276px 841.89px;
@@ -1627,10 +2050,9 @@ renderTwoProduct{
 	}
 	.A5_header .logo{
 		float: left;
-		width: 120px;
-		height: 120px;
-		margin-top: -80px;
-		margin-left: 20px;
+		width: 100px;
+		margin-top: -60px;
+		margin-left: 40px;
 	}
 	.A5_header img{
 		float: left;
@@ -1672,23 +2094,23 @@ renderTwoProduct{
 		width: 100%;
 	}
 	.A5_bottom .A5_box1 .text2 .A5_name_en p{
-	margin-left: 20px;
-	font-size: 15px;
-	float: left;
-	color: #1B9382;
-	font-family: acumin;
-	font-weight: bold;
+		margin-left: 20px;
+		font-size: 15px;
+		margin-top: -5px;
+		float: left;
+		color: #1B9382;
+		font-family: acumin;
+		font-weight: bold;
 	}
 	.A5_bottom .A5_box2{
 		float: left;
 		width: 28%;
 		height: 100%;
-
 	}
 	.A5_bottom .A5_box2 img{
 		margin-top: 110px;
 		float: left;
-		width: 90%;
+		width: 100%;
 		border-radius: 5px;
 		border: 1px solid #1B9382;
 	}
@@ -1696,27 +2118,22 @@ renderTwoProduct{
 		float: left;
 		width: 40%;
 		height: 100%;
-		background-color: green;
 	}
 	.A5_box3 .A5_box4{
 		float: left;
 		width: 100%;
 		height: 23%;
-		background-color: black;
 	}
 	.A5_box3 .A5_box4 img{
 		float: right;
 		width: 100%;
 		height: 100%;
-		margin-top: -30px;
-		margin-right: -8px;
 	}
 	.A5_box3 .A5_box4 .sale{
 		float: right;
-		width: 75%;
+		width: 90%;
 		height: 100%;
 		margin-top: -30px;
-
 	}
 	.A5_box3 .A5_box4 .sale img{
 		width: 100%;
@@ -1729,17 +2146,19 @@ renderTwoProduct{
 		height: 100%;
 	}
 	.A5_box3 .A5_box4 .sale .sale1 p{
-		margin-left: 105px;
+		float: left;
+		margin-left: 30px;
+		margin-top: -75px;
 		font-size: 55px;
 		font-weight: bold;
 		font-family: Fjalla One;
 		color: #fff;
 	}
-/*	.A5_box3 .A5_box4 .sale .sale1 {
+	.A5_box3 .A5_box4 .sale .sale1 {
 		float: right;
 		width: 75%;
 		height: 90%;
-	}*/
+	}
 	.A5_box3 .A5_box4 .sale .sale1 .promotion_blog{
 		float: left;
 		width: 100%;
@@ -2002,11 +2421,10 @@ renderTwoProduct{
 	float: left;
 }
 .A5_box3 .A5_box5 .A5_box_price .A5_box_price1 .A5_box_price3 .A5_flag .A5_flag1 img{
-	width: 40%;
-	height: 80%;
+	width: 30%;
 	margin-top: 3px;
 	float: left;
-	margin-left: 5px;
+	margin-left: 2px;
 }
 .A5_box3 .A5_box5 .A5_box_price .A5_box_price1 .A5_box_price3 .A5_flag .show_unit{
 	width: 40%;
@@ -2015,9 +2433,9 @@ renderTwoProduct{
 }
 .A5_box3 .A5_box5 .A5_box_price .A5_box_price1 .A5_box_price3 .A5_flag .show_unit p{
 	float: right;
-	margin-right: 8px;
+	margin-right: 5px;
 	margin-top: 3;
-	font-size: 20px;
+	font-size: 15px;
 	color: #1B9382;
 	font-family: acumin;
 	font-weight: bold;
@@ -2045,7 +2463,6 @@ renderTwoProduct{
 	float: left;
 	width: 80%;
 	height: 100%;
-	background-color: red;
 }
 .A5_box3 .A5_box5 .A5_box_price .A5_box_price1 .A5_box_price3 .A5_price .A5_price_us p{
 	float: left;
@@ -2076,13 +2493,12 @@ renderTwoProduct{
 	width: 100%;
 	height: 100%;
 }
-/*.A7_header .tag-wrap{
+.A7_header .tag-wrap{
 	filter: drop-shadow(-1px 6px 3px rgba(40, 40, 0, 0.3));
-}*/
+}
 .A7_header .tag-wrap img{
 	float: left;
 	width: 60px;
-	height: 60px;
 	margin-top: -45px;
 	margin-left: 15px;
 }
