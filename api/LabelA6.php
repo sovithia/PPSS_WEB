@@ -255,6 +255,7 @@ function _renderPromoProduct($product)
             <img src='bg/bg-sale.png'>
             <div class='A6_sale'>
               <p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>
+              <p style='font-size: 8px; margin-top: -12px; margin-left: 60px; '>Till: $till</p>
             </div>
           </div>
       </div>
