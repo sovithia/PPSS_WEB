@@ -3,16 +3,16 @@
 function getImage($path) {
 switch(mime_content_type($path)) {
   case 'image/png':
-    $img = imagecreatefrompng($path);
+    $img = @imagecreatefrompng($path);
     break;
   case 'image/gif':
-    $img = imagecreatefromgif($path);
+    $img = @imagecreatefromgif($path);
     break;
   case 'image/jpeg':
     $img = @imagecreatefromjpeg($path);
     break;
   case 'image/bmp':
-    $img = imagecreatefrombmp($path);
+    $img = @imagecreatefrombmp($path);
     break;
   default:
      $img = @imagecreatefromjpeg($path);

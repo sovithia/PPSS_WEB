@@ -2627,6 +2627,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
 
+		// ???
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($ponumber));
@@ -2915,6 +2916,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 	if ($json["ACTIONTYPE"] == "VAL"){
 
+		error_log("There is a validation here");
 		$sql = "UPDATE SUPPLY_RECORD SET VALIDATOR_USER = :author ,STATUS = 'VALIDATED'  WHERE ID = :identifier" ;
 		$req = $db->prepare($sql);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
@@ -2927,7 +2929,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 			foreach($json["ITEMS"] as $key => $value)
 			{
-				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,PPSS_ORDER_QTY = ORDER_QTY ,PPSS_VALIDATION_QTY = ?, PPSS_NOTE = ?, PPSS_EXPIREDATE = ? WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+				$sql = "UPDATE PODETAIL SET  ORDER_QTY = ?,
+									PPSS_VALIDATION_QTY = ?, 
+									PPSS_NOTE = ?, 
+									PPSS_EXPIREDATE = ? 
+						WHERE  PRODUCTID = ? 
+						AND PONUMBER = ? ";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($value["PPSS_VALIDATION_QTY"],$value["PPSS_VALIDATION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]));	 						
 
@@ -2946,12 +2953,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute(array($json["IDENTIFIER"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		if (isset($res["PONUMBER"]))
+		if (isset($res["PONUMBER"]) && $res["PONUMBER"] != "" && $res["PONUMBER"] != null)
 			$ponumber = $res["PONUMBER"];
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
@@ -2966,11 +2973,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			if ($res["CNT"] == 0){
 				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
+				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"]));		
 			}else{
-				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
+				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY =  ? WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
+				$req->execute(array($item["TRANQTY"],$item["PRODUCTID"]));			
 			}
 		}	
 	
@@ -3040,7 +3047,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
 				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999"){
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "400-241" || $vendid == "100-999" || $vendid == "100-009"){
 				$isSplitCompany = true;
 			}
 
@@ -3121,7 +3128,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 			
 
-		if ($res["LOCID"] == "WH1")
+		if ($res["LOCID"] == "WH1") // $status = 'RECEIVEDFORTRANSFERFRESH';
 			$status = 'RECEIVED';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
@@ -3235,7 +3242,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
-				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
+				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE,PPSS_QTYCOMMENT 
 				   FROM PODETAIL WHERE PONUMBER = ?";	
 	if ($rr["TYPE"] == "NOPO")
 	{
@@ -6347,6 +6354,7 @@ $app->get('/depreciation', function($request,Response $response) {
 		$sql .= "AND STATUS = ? ";
 		array_push($params,$status);
 	}
+	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);

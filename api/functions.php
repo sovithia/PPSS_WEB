@@ -370,13 +370,19 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		
 		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
 		file_put_contents("./tmp.jpg",$final);		
-		$data = getImage("./tmp.jpg");
+		$data = getImage("./tmp.jpg");		
 		$data = imagescale($data,$scale);
-		ob_start();
-		imagejpeg($data);
-		$contents = ob_get_contents();
-		ob_end_clean();
-		$final = $contents;		
+		if ($data != false)
+		{
+			ob_start();
+			@imagejpeg($data);
+			$contents = ob_get_contents();
+			ob_end_clean();
+			$final = $contents;			
+		}else{			
+			$final = file_get_contents("img/mystery.png");
+		}
+		
 	}
 		
 	if ($base64 == true)
@@ -1329,7 +1335,6 @@ function createPO($items,$author)
 		else
 			$ALGOQTY = $item["REQUEST_QUANTITY"];
 		
-		error_log("ALGO QTY: ". $ALGOQTY);
 		$REASON = "";
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
@@ -1437,8 +1442,8 @@ function createPO($items,$author)
 		$ALGOQTY,$REASON 
 		);
 
-		$debug = var_export($params, true);
-		error_log($debug);
+		//$debug = var_export($params, true);
+		//error_log($debug);
 
 		$req->execute($params);				
 		$line++;
