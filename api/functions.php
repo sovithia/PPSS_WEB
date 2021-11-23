@@ -664,9 +664,6 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	
 	$vendorid = $res["VENDID"];
-
-
-
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
 	if($type == "RESTOCK"){

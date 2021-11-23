@@ -2662,10 +2662,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$data = array();
 	foreach($items as $item)
 	{
-		if (!isset(item["ALGOQTY"]))
+		if (!$isSINGLE) // 
 		{
 			$orderstats = orderStatistics($item["PRODUCTID"],"PURCHASE");	
-
 			$PRODUCTID = $orderstats["PRODUCTID"];
 			$QUANTITY = $orderstats["FINALQTY"];
 			$USERID = $userid;
@@ -2774,12 +2773,15 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 });
 
 
-$app->delete('/supplyrecordpool/{productid}', function(Request $request,Response $response) {
+$app->delete('/supplyrecordpool', function(Request $request,Response $response) {
 	$db = getInternalDatabase();	
+
+	$productid =  $request->getParam('PRODUCTID','');
+	$userid =  $request->getParam('USERID','');
 	$id = $request->getAttribute('productid');
-	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
+	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ? AND USERID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($id));
+	$req->execute(array($productid,$userid));
 	$data["result"] = "OK";	
 	$response = $response->withJson($data);
 	return $response;
