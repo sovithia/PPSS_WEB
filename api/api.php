@@ -2658,13 +2658,15 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	if(isset($json["ITEMS"])){
 		$isSINGLE = false;
 		$items = json_decode($json["ITEMS"],true);		
+	}else{
+		array_push($items,$json["PRODUCTID"]);
 	}
 	$data = array();
 	foreach($items as $item)
 	{
 		if (!$isSINGLE) // 
 		{
-			$orderstats = orderStatistics($item["PRODUCTID"],"PURCHASE");	
+			$orderstats = orderStatistics($item,"PURCHASE");	
 			$PRODUCTID = $orderstats["PRODUCTID"];
 			$QUANTITY = $orderstats["FINALQTY"];
 			$USERID = $userid;
@@ -2690,12 +2692,14 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		if ($res == false) // NO RECORD
 		{
-			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PRICE) values (?,?,?,?,?,?,?)";
+			error_log("A");
+			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_ORDER_PRICE) values (?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($PRODUCTID,$QUANTITY,$USERID,$DISCOUNT,$ALGOQTY,$REASON,$PRICE));
 		}
 		else
 		{
+			error_log("B");
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($PRODUCTID));
@@ -2714,13 +2718,14 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					return $response;
 				}
 				else{
+					error_log("C1");
 					$data["message"] .= $PRODUCTID." Product from different vendor|";
 					continue;
 				}							
 			}
 			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($json["PRODUCTID"]));
+			$req->execute(array($PRODUCTID));
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res4 != false){
 				if ($isSINGLE){
@@ -2730,11 +2735,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					return $response;
 				}
 				else{
+					error_log("C2");
 					$data["message"] .= $PRODUCTID." Product already in list|";
 					continue;
 				}
 			} 
-			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PRICE) values (?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_ORDER_PRICE) values (?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($PRODUCTID,$QUANTITY,$USERID,$DISCOUNT,$ALGOQTY,$REASON,$PRICE));
 		}
@@ -2778,7 +2784,7 @@ $app->delete('/supplyrecordpool', function(Request $request,Response $response) 
 
 	$productid =  $request->getParam('PRODUCTID','');
 	$userid =  $request->getParam('USERID','');
-	$id = $request->getAttribute('productid');
+	
 	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ? AND USERID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($productid,$userid));
