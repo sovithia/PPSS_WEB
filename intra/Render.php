@@ -880,8 +880,9 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
             if ($field == "IMAGE")
               $dataSet .= "'<img height=\"50px\" src=\"http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."\">',";
             
-            else if ($field == "ISDEBT"){
-              if ($item[$field] == "YES")
+            else if ($field == "ISDEBT")
+            {
+              if (isset($item["ISDEBT"]) && $item["ISDEBT"] == "YES")
                 $dataSet .= "'<span style=\"color:red\">DEBT</span>',";
               else 
                 $dataSet .= "'<span style=\"color:green\">DEBT</span>',";
