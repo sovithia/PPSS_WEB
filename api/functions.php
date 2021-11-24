@@ -131,7 +131,8 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
 		else if ($type == "TR")
 			$filename = "./img/supplyrecords_signatures/TR_".$id.".png";
-
+		else if ($type == "TRF")
+			$filename = "./img/supplyrecords_signatures/TRF_".$id.".png";
 		else if ($type == "DEPRECIATION_CREATOR")
 			$filename = "./img/depreciation_signatures/CRE_".$id.".png";
 		else if ($type == "DEPRECIATION_VALIDATOR")

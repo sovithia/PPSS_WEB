@@ -2662,6 +2662,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		array_push($items,$json["PRODUCTID"]);
 	}
 	$data = array();
+	$data["message"] = "";
 	foreach($items as $item)
 	{
 		if (!$isSINGLE) // 
@@ -2691,15 +2692,13 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res == false) // NO RECORD
-		{
-			error_log("A");
+		{			
 			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_ORDER_PRICE) values (?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($PRODUCTID,$QUANTITY,$USERID,$DISCOUNT,$ALGOQTY,$REASON,$PRICE));
 		}
 		else
-		{
-			error_log("B");
+		{			
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($PRODUCTID));
@@ -2717,8 +2716,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					$response = $response->withJson($data);
 					return $response;
 				}
-				else{
-					error_log("C1");
+				else{					
 					$data["message"] .= $PRODUCTID." Product from different vendor|";
 					continue;
 				}							
@@ -2734,8 +2732,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					$response = $response->withJson($data);
 					return $response;
 				}
-				else{
-					error_log("C2");
+				else{					
 					$data["message"] .= $PRODUCTID." Product already in list|";
 					continue;
 				}
@@ -2766,11 +2763,12 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		$item["VENDNAME"] = $res["VENDNAME"];
-		$item["PACKING"] = $res["PACKINGNOTE"];
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		array_push($newData,$item);	
+		if($res != false){
+			$item["VENDNAME"] = $res["VENDNAME"];
+			$item["PACKING"] = $res["PACKINGNOTE"];
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			array_push($newData,$item);	
+		}		
 	}
 	$data["result"] = "OK";				
 	$data["data"] = $newData;
@@ -3041,6 +3039,51 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["result"] = "OK";
 
 	}
+	else if ($json["ACTIONTYPE"] == "TRF")
+	{
+		// AUTO TRANSFER ITEMS TO TRANSFERPOOL
+		$sql = "SELECT PONUMBER,LINKEDPO FROM SUPPLY_RECORD WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["IDENTIFIER"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if (isset($res["PONUMBER"]) && $res["PONUMBER"] != "" && $res["PONUMBER"] != null)
+			$ponumber = $res["PONUMBER"];
+		else 
+			$ponumber = $res["LINKEDPO"];
+
+		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber));
+
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($items as $item)
+		{
+			$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERFRESHPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);		
+
+			if ($res["CNT"] == 0){
+				$sql = "INSERT INTO ITEMREQUESTTRANSFERFRESHPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"]));		
+			}else{
+				$sql = "UPDATE ITEMREQUESTTRANSFERFRESHPOOL SET REQUEST_QUANTITY =  ? WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["TRANQTY"],$item["PRODUCTID"]));			
+			}
+		}		
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
+				WHERE ID = :identifier";			
+		$req = $db->prepare($sql);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);					
+		$req->execute();
+		
+		pictureRecord($json["SIGNATURE"],"TRF",$json["IDENTIFIER"]);
+		$data["result"] = "OK";
+	}
 	else if ($json["ACTIONTYPE"] == "PCH")
 	{			
 		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
@@ -3178,7 +3221,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			
 
 		if ($res["LOCID"] == "WH1") // $status = 'RECEIVEDFORTRANSFERFRESH';
-			$status = 'RECEIVED';
+			$status = 'RECEIVEDFORTRANSFERFRESH';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
 
@@ -3729,7 +3772,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	else
 	{
 		if ($type == "GROUPEDRESTOCK")
-		createGroupedRestocks();
+			createGroupedRestocks();
 
 		if (substr($type,0,1) == "v")
 		{
@@ -3749,23 +3792,35 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		else
 			$filter = "UNVALIDATED";
 
-
-		if ($filter == "UNVALIDATED")
-		{		
-				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";			
-			
+		if ($type == "TRANSFER")
+		{
+			if ($filter == "UNVALIDATED")				
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'TRANSFER' OR TYPE = 'TRANSFERFRESH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
+			else if ($filter == "VALIDATED")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND (TYPE = 'TRANSFER' OR TYPE = 'TRANSFERFRESH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			else if ($filter == "SUBMITED")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'TRANSFER' OR TYPE = 'TRANSFERFRESH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
+			else if ($filter == "ALL")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE (TYPE = 'TRANSFER' OR TYPE = 'TRANSFERFRESH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
+			$req = $db->prepare($sql);
+			$req->execute(array());
+			$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
 		}
-		else if ($filter == "VALIDATED")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
-		else if ($filter == "SUBMITED")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
-		else if ($filter == "ALL")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE 
-				TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
-
-		$req = $db->prepare($sql);
-		$req->execute(array($type));
-		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
+		else
+		{
+			if ($filter == "UNVALIDATED")				
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
+			else if ($filter == "VALIDATED")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			else if ($filter == "SUBMITED")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
+			else if ($filter == "ALL")
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
+			$req = $db->prepare($sql);
+			$req->execute(array($type));
+			$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
+		}
+		
 		
 
 		$resp = array();
@@ -3813,6 +3868,8 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	}
 	else if($json["TYPE"] == "TRANSFER") // WAREHOUSE CREATE TRANSFER REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if ($json["TYPE"] == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($json["TYPE"] == "TRANSFERBACK") // WAREHOUSE CREATE TRANSFER REQUEST AND REMOVE FROM POOL
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if($json["TYPE"] == "PURCHASE") // WAREHOUSE CREATE PURCHASE REQUEST AND REMOVE FROM POOL
@@ -3941,12 +3998,14 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	
 		// UPDATE POOL
 		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;			
+		error_log($sql);
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch();
 				
 		if (($res != false && $res["REQUEST_QUANTITY"] >= $item["REQUEST_QUANTITY"])) // DELETE FROM POOL
 		{
+			
 			$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));				
@@ -4359,6 +4418,9 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				}			
 			}
 		}
+		else if ($ira["TYPE"] == "TRANSFERFRESH") // NOTHING TO DO BECAUSE ALREADY IN WH1
+		{
+		}			
 		else if ($ira["TYPE"] == "TRANSFERBACK")
 		{
 			$msg = transferItems($items,$ira["REQUESTER"],$ira["TYPE"]);
@@ -4575,6 +4637,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTPURCHASEPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTPURCHASEPOOL";
 	else if ($type == "TRANSFER")
 		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTTRANSFERPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTTRANSFERPOOL";	
+	else if ($type == "TRANSFERFRESH")
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTTRANSFERFRESHPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTTRANSFERFRESHPOOL";	
 	else if ($type == "TRANSFERBACK")
 		$sql = "SELECT * FROM ITEMREQUESTTRANSFERBACKPOOL";	
 	else if ($type == "DEBT")
@@ -4717,6 +4781,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$suffix = "";		
 	if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if ($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -4760,6 +4826,8 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if ($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -4811,9 +4879,11 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
 	else if($type == "PURCHASE")
-		$tableName = "ITEMREQUESTPURCHASEPOOL";
+		$tableName = "ITEMREQUESTPURCHASEPOOL";	
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if ($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -4837,8 +4907,22 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 			return $response;
 		}
 	}
-
-	if ($type == "TRANSFERBACK")
+	else if ($type == "TRANSFERFRESH")
+	{
+		$dbBlue = getDatabase();
+		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if (floatval($res["LOCONHAND"]) < floatval($json["REQUEST_QUANTITY"]))
+		{
+			$data["result"] = "KO";
+			$data["message"] = "Update Qty greather than onHand (" . $res["LOCONHAND"] . ")" ;
+			$response = $response->withJson($data);
+			return $response;
+		}
+	}		
+	else if ($type == "TRANSFERBACK")
 	{
 		$dbBlue = getDatabase();
 		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
