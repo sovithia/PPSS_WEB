@@ -575,7 +575,7 @@ function itemLookupLabel($barcode,$withImage = false)
 	$conn=getDatabase();	
 	$begin = date("m-d-y");
 	$params = array($barcode,$barcode);
-	$sql="SELECT PRODUCTID,OTHERCODE,						
+	$sql="SELECT PRODUCTID,OTHERCODE,STKUM,PACKINGNOTE,					
 		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 					
 		  (SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', 
@@ -601,7 +601,8 @@ function itemLookupLabel($barcode,$withImage = false)
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];			
 		$oneItem["country"] = $item["COLOR"];
 		$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
-
+		$oneItem["packing"] = $item["PACKINGNOTE"];
+		$oneItem["unit"] = $item["STKUM"];
 
 		if ($item["DISCPERCENTEND"] != null && $item["DISCPERCENTEND"] != "")
 		{
@@ -678,6 +679,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
 			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 
+			
 
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "YES";
