@@ -53,14 +53,21 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 	return $final;		
 }
 
-$barcode = $_GET["barcode"];
-if (!isset($_GET["scale"]))
-	$scale = 150;
-else 
-	$scale = $_GET["scale"];
-$name = './tmp.png';
-$data = loadPicture($barcode,$scale);
-file_put_contents($name,$data);
+if( isset($_GET["barcode"]) )
+{
+	$barcode = $_GET["barcode"];
+	if (!isset($_GET["scale"]))
+		$scale = 150;
+	else 
+		$scale = $_GET["scale"];
+	$name = './tmp.png';
+	$data = loadPicture($barcode,$scale);
+	file_put_contents($name,$data);
+}
+else {
+	$name = "img/mystery.png";
+}
+
 
 $fp = fopen($name, 'rb');
 // send the right headers

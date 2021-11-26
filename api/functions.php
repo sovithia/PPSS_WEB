@@ -613,6 +613,8 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
 
+	$stats["RCVQTY"] = 0; // Avoid null on return
+	$stats["DISCOUNT"] = 0; // Avoid null on return
 	if($res == false){
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -721,6 +723,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
 	$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
+
 	$MARGIN = (int)$RCVQTY * 0.2;
 
 	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		

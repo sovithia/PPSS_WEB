@@ -680,15 +680,16 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 
 
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
-			$oneItem["ISPACK"] = "PACK";
+			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
 
 
 			array_push($result,$oneItem);
 		}
-		else 	{
-
-			array_push($result,itemLookupLabel($barcode,true));					
+		else {
+			$oneItem = itemLookupLabel($barcode,true);
+			$oneItem["ISPACK"] = "NO";
+			array_push($result,$oneItem);					
 		}				
 			
 	}	
@@ -1020,6 +1021,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	{
 		if ($type == "ORDERSTATS"){
 			$stats = orderStatistics($barcode,"PURCHASE");
+			error_log(">>".$stats["DISCOUNT"]);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
 			$item["LASTRCVQTY"] = $stats["RCVQTY"];
@@ -2641,7 +2643,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$req->execute(array($json["USERID"]));	
 		}
 	}	
-
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;
@@ -2667,14 +2668,30 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	{
 		if (!$isSINGLE) // 
 		{
-			$orderstats = orderStatistics($item,"PURCHASE");	
+			$orderstats = orderStatistics($item["PRODUCTID"],"PURCHASE");
+			if (!isset($orderstats["PRODUCTID"]))
+				continue;	
 			$PRODUCTID = $orderstats["PRODUCTID"];
-			$QUANTITY = $orderstats["FINALQTY"];
+			if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "")
+				$QUANTITY = $item["SPECIALQTY"];
+			else 
+				$QUANTITY = $orderstats["FINALQTY"];
 			$USERID = $userid;
-			$DISCOUNT = "";
+			
+			if (isset($item["DISCOUNT"]) && $item["DISCOUNT"] != "")
+				$DISCOUNT = $item["DISCOUNT"];
+			else
+				$DISCOUNT = "0";
+
+			
 			$PRICE = $orderstats["PRICE"];
 			$ALGOQTY = $orderstats["FINALQTY"];
-			$REASON = "";
+			if (isset($item["REASON"]) && $item["REASON"] != "")
+				$REASON = $item["REASON"];
+			else
+				$REASON = "";
+
+
 		}
 		else
 		{
@@ -2929,7 +2946,6 @@ function splitPOWithItems($ponumber,$items)
 		PPSS_ORDER_QTY) 
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
 
-		error_log($PRODUCTID." PPSS_ORDER_QTY: ".$itemdetail["PPSS_ORDER_QTY"]);
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
 		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
@@ -3139,7 +3155,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
 				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "400-241" || $vendid == "100-999" || $vendid == "100-009"){
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "400-241" || $vendid == "100-999" || $vendid == "100-009" || 
+				$vendid == "200-022" ){
 				$isSplitCompany = true;
 			}
 
@@ -3997,8 +4014,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$targetQty =$item["REQUEST_QUANTITY"];	
 	
 		// UPDATE POOL
-		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;			
-		error_log($sql);
+		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;					
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch();
@@ -4793,7 +4809,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 	$req = $db->prepare($sql);	
-	$req->execute(array($item["PRODUCTID"]));
+	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
 
 	if ($suffix == ""){
@@ -6474,7 +6490,7 @@ $app->get('/depreciation', function($request,Response $response) {
 			$sql .= " AND (TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREWASTE");
 			array_push($params,"DAMAGEWASTE");
-		}else if ($type == ""){
+		}else if ($type == "PROMOTION"){
 			$sql .= " AND (TYPE = ? OR TYPE = ? OR TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREPROMOTION");
 			array_push($params,"DAMAGEDPROMOTION");
