@@ -490,7 +490,6 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 		}
 		else // PACK
 		{			
-
 			$packInfo = packLookup($barcode);			
 			if ($packInfo != null) // IS  A PACK
 			{
@@ -517,10 +516,8 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 				// FROM ITEM				
 				$oneItem["nameEN"] = $packInfo["DESCRIPTION1"];
 				$oneItem["nameKH"] = $packInfo["DESCRIPTION2"];
-				
-
 				$oneItem["country"] = null;			
-				$oneItem["packing"] = null;
+				$oneItem["packing"] = "";
 				// PICTURE PACK
 				//$tmp["ISPACK"] = "PACK";
 				//$tmp["result"] = "OK";		
@@ -585,9 +582,6 @@ function itemLookupLabel($barcode,$withImage = false)
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item = $req->fetch(PDO::FETCH_ASSOC);
-
-	
-
 	if ($item != false)
 	{
 		if ($withImage == true)
@@ -655,13 +649,14 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
-
+		//var_dump($packInfo);
 		if ($packInfo != null)		
 		{
-		
+			
 			$packcode = $barcode;
-			$barcode = $packInfo["PRODUCTID"];									
-			$oneItem = itemLookupLabel($barcode,true);
+			$barcode = $packInfo["PRODUCTID"];												
+			$oneItem = itemLookupLabel($barcode,true);			
+			$oneItem["packing"] = $packInfo["SALEUNIT"];
 			$oneItem["barcode"] = $packcode;
 			$oneItem["oldPrice"] = 	truncateDollarPrice($packInfo["SALEPRICE"]);			
 
@@ -677,76 +672,19 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 				$newPrice = $oldPrice * 1; 	
 			
 			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
-			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
-
-			
-
+			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));			
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
-
-
 			array_push($result,$oneItem);
 		}
 		else {
+			error_log("NOPACK");
 			$oneItem = itemLookupLabel($barcode,true);
 			$oneItem["ISPACK"] = "NO";
 			array_push($result,$oneItem);					
 		}				
 			
-	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
-	$response = $response->withJson($resp);
-	return $response;
-});
-
-$app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {	
-	$barcodes = $request->getAttribute('barcodes'); 		
-	$barcodes = explode("|",$barcodes);	
-
-	$result = array();
-	foreach($barcodes as $barcode)
-	{
-		if ($barcode == "")
-			continue;
-		$packInfo = packLookup($barcode);
-
-		if ($packInfo != null)		
-		{
-		
-			$packcode = $barcode;
-			$barcode = $packInfo["PRODUCTID"];									
-			$oneItem = itemLookupLabel($barcode,true);
-			$oneItem["barcode"] = $packcode;
-			$oneItem["oldPrice"] = 	"$". truncateDollarPrice($packInfo["SALEPRICE"]);			
-
-			// CALCULATE PROMO
-			$oldPrice = floatval(truncateDollarPrice($packInfo["SALEPRICE"]));					
-			$percent = (100 - intval($oneItem["discpercent"])) ;		
-			if ($percent != 100)
-			{
-				$percent = floatval("0.".$percent);
-				$newPrice = $percent * $oldPrice; 				
-			}
-			else			
-				$newPrice = $oldPrice * 1; 	
-			
-			$oneItem["dollarPrice"] = "$". truncateDollarPrice($newPrice);										
-			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
-
-
-			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
-			$oneItem["ISPACK"] = "PACK";
-			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
-
-
-			array_push($result,$oneItem);
-		}
-		else 	{
-
-			array_push($result,itemLookupLabel($barcode,true));					
-		}										
 	}	
 	$resp["result"] = "OK";
 	$resp["data"] = $result;
