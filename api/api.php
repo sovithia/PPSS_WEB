@@ -567,6 +567,8 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	return $response;
 });
 
+
+
 function itemLookupLabel($barcode,$withImage = false)
 {
 	$conn=getDatabase();	
@@ -679,10 +681,13 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			array_push($result,$oneItem);
 		}
 		else {
-			error_log("NOPACK");
+			
 			$oneItem = itemLookupLabel($barcode,true);
-			$oneItem["ISPACK"] = "NO";
-			array_push($result,$oneItem);					
+			IF ($oneItem != null){
+				$oneItem["ISPACK"] = "NO";
+				array_push($result,$oneItem);						
+			}
+			
 		}				
 			
 	}	
