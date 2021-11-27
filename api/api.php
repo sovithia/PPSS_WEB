@@ -965,8 +965,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($item != null)
 	{
 		if ($type == "ORDERSTATS"){
-			$stats = orderStatistics($barcode,"PURCHASE");
-			error_log(">>".$stats["DISCOUNT"]);
+			$stats = orderStatistics($barcode,"PURCHASE");			
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
 			$item["LASTRCVQTY"] = $stats["RCVQTY"];
