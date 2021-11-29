@@ -238,6 +238,24 @@ function _renderPromoProduct($product)
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
 
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
+
   if (strpos($percent,".") === false)
     $percentSize = "32";
   else 
@@ -348,6 +366,23 @@ function _renderProduct($product)
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
 
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
   return "
    
     <div class='A4_A6'>
@@ -401,7 +436,7 @@ function _renderProduct($product)
                   <img src='$flag'>
                 </div>
                 <div class='A6-unit'>
-                  <p>1 Unit</p>
+                   $factor
                 </div>
               </div>
               <div class='A6_priceen'>
@@ -418,6 +453,7 @@ function _renderProduct($product)
       </div>
     </div>
   ";
+
 }
 
 function renderOneProduct($product)

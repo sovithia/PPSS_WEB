@@ -154,6 +154,24 @@ function renderOneProduct($product)
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
 
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
+
   if ($percent == 0)
   {
     echo "
@@ -214,7 +232,7 @@ function renderOneProduct($product)
  									<img class='originpicture' src=$flag>
 								</div>
 								<div class='unit2'>
-									<p>1 Unit</p>
+										$factor
 								</div>
 							</div>
 							<div class='price_en'>
@@ -311,7 +329,7 @@ else
 							</div>
 							<div class='promot5'>
 								<div class='unit1'>
-									<p>1 Unit</p>
+									$factor
 								</div>
 								<div class='unit2'>
 									<p>$rielPrice</p>
@@ -358,7 +376,23 @@ function _renderTwoProductPromoLeft($product)
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
 
+   $unit = $product['unit'];
+  $packing = $product['packing'];
 
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
   if ($percent != "0" && $percent != ".")
   {
     if (strpos($percent,".") === false)
@@ -418,7 +452,7 @@ function _renderTwoProductPromoLeft($product)
 
 									<div class='A4_price_2item_box'>
 										<div class='unit'>
-											<p>1 Unit</p>
+											$factor
 										</div>
 										<div class='A4_2item_price_disckh'>
 											<p>$rielPrice</p>
@@ -488,7 +522,7 @@ function _renderTwoProductPromoLeft($product)
 											<img src='$country'>
 										</div>
 											<div class='unit2'>
-												<p>1 Unit</p>
+												$factor
 											</div>
 									</div>
 									<div class='price_en_b2'>
@@ -527,7 +561,23 @@ function _renderTwoProductPromoRight($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+   $unit = $product['unit'];
+  $packing = $product['packing'];
 
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
 
   if ($percent != "0" && $percent != ".")
   {    
@@ -581,7 +631,7 @@ function _renderTwoProductPromoRight($product)
 
 									<div class='A4_price_2item_box'>
 										<div class='unit'>
-											<p>1 Unit</p>
+											$factor
 										</div>
 										<div class='A4_2item_price_disckh'>
 											<p>$rielPrice</p>
@@ -646,7 +696,7 @@ function _renderTwoProductPromoRight($product)
 											<img src='$country'>
 										</div>
 											<div class='unit2'>
-												<p>1 Unit</p>
+												$factor
 											</div>
 									</div>
 									<div class='price_en_b2'>
@@ -745,6 +795,23 @@ function _renderThreeProductUp($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+   $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
 
   if ($percent == "0")
   {
@@ -779,7 +846,7 @@ function _renderThreeProductUp($product)
 												<img src='$flag '>
 											</div>
 											<div class='unit_3item'>
-												<p>1 Unit</p>
+												$factor
 											</div>
 										</div>
 										<div class='price_3item_dollarprice'>
@@ -896,6 +963,23 @@ function _renderThreeProductDown($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
 
   if ($percent == "0")
   {
@@ -931,7 +1015,7 @@ function _renderThreeProductDown($product)
 												<img src='$flag'>
 											</div>
 											<div class='unit_3item'>
-												<p>1 Unit</p>
+												$factor
 											</div>
 										</div>
 										<div class='price_3item_dollarprice'>

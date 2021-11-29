@@ -306,6 +306,23 @@ function _renderPromoProduct($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
 
    if (strpos($percent,".") === false)
     $percentSize = "28";
@@ -376,7 +393,7 @@ function _renderPromoProduct($product)
                     <div class='A7_box_price6'>
                       <div class='A7_promot_4'>
                         <div class='A7_promot_unit'>
-                          <p>1 Unit</p>
+                            $factor
                         </div>
                         <div class='A7_promot_price_en'>
                           <div class='A7_promot_price_en1'>
@@ -420,6 +437,23 @@ function _renderProduct($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
 
   return "
 
@@ -472,7 +506,7 @@ function _renderProduct($product)
 												<img class='originpicture' src=$flag />
 											</div>
 											<div class='unit'>
-												<p>1 Unit</p>
+												$factor
 											</div>
 										</div>
 										<div class='A7_box_price7'>

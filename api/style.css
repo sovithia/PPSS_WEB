@@ -1464,16 +1464,12 @@ renderTwoProduct{
 }
 .box_price .box_price1 .box_price2 .unit .unit2 {
 	width: 50%;
-	height: 100%;
-	float: left;
+	float: right;
 }
 .box_price .box_price1 .box_price2 .unit .unit2 p{
-	width: 50%;
-	height: 100%;
-	float: right;
-	margin-right: -15px;
-	font-weight: bold;
-	font-size: 22px;
+	margin-top: 10px;
+	font-size: 16px;
+	text-align: center;
 	font-family: acumin;
 	color: #1B9382;
 }
@@ -1907,7 +1903,7 @@ renderTwoProduct{
 }
 .A6_box-price1 .A6-box-flag .A6-unit p{
 	float: right;
-	font-size: 12px;
+	font-size: 8px;
 	font-family: acumin;
 	color: #1B9382;
 	margin-right: 3px;
@@ -2811,12 +2807,10 @@ float: left;
 }
 .A7_box_price6 .A7_promot_4 .A7_promot_unit p{
 	margin-top: 3px;
-	margin-left: 1px;
 	float: left;
-	font-size: 8px;
+	font-size: 6px;
 	color: #1B9382;
 	font-family: acumin;
-	font-weight: bold;
 }
 .A7_box_price6 .A7_promot_4 .A7_promot_price_en{
 	width: 70%;
