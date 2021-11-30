@@ -6706,7 +6706,6 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 	return $response;
 });
 
-
 $app->get('/depreciationwastepool/{userid}', function($request,Response $response){
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
@@ -6740,7 +6739,6 @@ $app->get('/depreciationwastepool/{userid}', function($request,Response $respons
 	$resp["data"] = $newItems;
 	$response = $response->withJson($resp);
 	return $response;
-
 });
 
 $app->get('/depreciationpromopool/{userid}', function($request,Response $response){
