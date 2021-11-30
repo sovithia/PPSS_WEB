@@ -308,7 +308,7 @@ function packLookup($barcode)
 
 	$conn=getDatabase();
 	$params = array($barcode);	
-	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,SALEUNIT FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
+	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
@@ -578,7 +578,7 @@ function itemLookupLabel($barcode,$withImage = false)
 	$sql="SELECT PRODUCTID,OTHERCODE,						
 		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 					
 		  (SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
-		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', 
+		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', STKUM,
 					
 		   BARCODE,PRODUCTNAME,PRODUCTNAME1,SIZE,COLOR,PRICE,STORE
 						FROM dbo.ICPRODUCT WHERE BARCODE = ? OR OTHERCODE = ?";
@@ -595,7 +595,7 @@ function itemLookupLabel($barcode,$withImage = false)
 
 		if ($item["OTHERCODE"] != null)
 			$item["BARCODE"] = $item["OTHERCODE"]; 
-			
+		$oneItem["unit"] = $item["STKUM"];	
 		$oneItem["barcode"] = $item["BARCODE"];
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];			
@@ -654,13 +654,18 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
+		;
 
 		if ($packInfo != null)		
 		{
+			;
 		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
 			$oneItem = itemLookupLabel($barcode,true);
+			
+			$oneItem["unit"] = $packInfo["SALEUNIT"];
+			$oneItem["packing"] =  $packInfo["SALEUNIT"];
 			$oneItem["barcode"] = $packcode;
 			$oneItem["oldPrice"] = 	truncateDollarPrice($packInfo["SALEPRICE"]);			
 
@@ -677,18 +682,19 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			
 			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
 			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
-
-
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
-			$oneItem["ISPACK"] = "PACK";
+			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
 
 
 			array_push($result,$oneItem);
 		}
-		else 	{
-
-			array_push($result,itemLookupLabel($barcode,true));					
+		else {
+			$oneItem = itemLookupLabel($barcode,true);
+			$oneItem["packing"] = "";
+			$oneItem["ISPACK"] = "NO";	
+			array_push($result,$oneItem);
+							
 		}				
 			
 	}	
@@ -732,7 +738,8 @@ $app->get('/biglabelpromo/{barcodes}',function($request,Response $response) {
 			$oneItem["dollarPrice"] = "$". truncateDollarPrice($newPrice);										
 			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 
-
+			
+ 
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "PACK";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
@@ -1037,7 +1044,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["END"] = $stats["end"];
 			$item["DURATION"] = $stats["duration"];
 			$item["POLICY"]	= $stats["policy"];
-			$item["COST"] = $stats["cost"];
+			$item["COST"] = $stats["cost"];			
 		}
 		else if ($type == "WASTESTATS"){
 			$stats = wasteStatistics($barcode,$expiration);
@@ -3176,6 +3183,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		if (file_exists("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png"))	
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
+		if (file_exists("./img/supplyrecords_signatures/ACC_".$json["IDENTIFIER"].".png"))
+			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
+
 		// Cancel all validation
 		$sql = "UPDATE PODETAIL SET PPSS_RECEPTION_QTY = '0',PPSS_INVOICE_PRICE = '0',PPSS_ORDER_QTY = '0', PPSS_NOTE = null,PPSS_EXPIREDATE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
@@ -3234,7 +3244,8 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	
 	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
-					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',			
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ?";	
 	if ($rr["TYPE"] == "NOPO")
@@ -3242,14 +3253,14 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		if ($rr["LINKEDPO"] != null)
 		{
 			$req = $db2->prepare($sql);
-			$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"]));
+			$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
 		}
 	}
 	else 
 	{
 		$req = $db2->prepare($sql);
-		$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"]));
+		$req->execute(array($rr["PONUMBER"],"",$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
 		$rr["items"] = $poitems;
 	}
@@ -6347,6 +6358,7 @@ $app->get('/depreciation', function($request,Response $response) {
 		$sql .= "AND STATUS = ? ";
 		array_push($params,$status);
 	}
+	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);

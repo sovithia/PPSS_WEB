@@ -877,6 +877,7 @@ function wasteStatistics($barcode,$expiration)
 }
 
 function calculatePenalty($barcode, $expiration,$type = null){
+	error_log("TYPE:" .$type);
 		$db=getDatabase();		
 		$indb = getInternalDatabase();
 		$data["start"] = "N/A";
@@ -893,10 +894,14 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		if (!isset($res["SIZE"]))
 			return null;
 
+
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
 		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;			
+		$today = new DateTime('NOW');
 
+		error_log("Size:" . $res["SIZE"]);
+		error_log("DiffDays:" . $diffDays);
 		if ($type == null || $type == "EXPIREPROMOTION")
 		{												
 			if (new DateTime($expiration) <= new DateTime('NOW')){
@@ -909,15 +914,16 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$data["status"] = "MISMATCH";
 				return $data;
 			}
-			
-				if (($res["SIZE"] == "NR90" && $diffDays > 90) || ($res["SIZE"] == "NR60" && $diffDays > 60) || ($res["SIZE"] == "NR30" && $diffDays > 30))
+				if ($res["SIZE"] == "NR") // TMP FIX
+					$res["SIZE"] = "NR60";
+
+				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" && $diffDays > 35))
 				{
 						$data["status"] = "EARLY";
 						return $data;
 				}		
 				else 
-				{		
-								
+				{										
 					$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
 					$req = $indb->prepare($sql);	
 					$req->execute(array($res["SIZE"]));
@@ -947,34 +953,21 @@ function calculatePenalty($barcode, $expiration,$type = null){
 										$occurence++;
 								}
 
-								if ($rule["REQUIREDSTEPS"] == null)
-								{
-										$data["status"] = "PENALTY";																		
-										$data["percentpenalty"] = $rule["PERCENTPENALTY"];
-
+								if($occurence == 0){
+									$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
+									$data["percentpromo"] = $rule["PERCENTPROMOTION"];	
+								}else{
+									$data["percentpromo"] = $rule["PERCENTPROMOTION"];
+									$data["percentpenalty"] = "0";
 								}
-								else 
-								{
-									if ($rule["REQUIREDSTEPS"] == 0){
-										$data["status"] = "OK";
-										$data["percentpromo"] = $rule["PERCENTPROMO"];
-										
-									}
-									else if($occurence == $rule["REQUIREDSTEP"]){
-										$data["status"] = "OK";
-										$data["percentpromo"] = $rule["PERCENTPROMO"];									
-									}							
-									else if ($occurence < $rule["REQUIREDSTEP"]){
-										$data["status"] = "PENALTY";																		
-										$data["percentpenalty"] = $rule["PERCENTPENALTY"];	
-										$data["duration"] = abs($rule["NEXTPROMOSTEP"] - $diffDays);
-									}
-								}					
-
-								$duration = abs($rule["NEXTPROMOSTEP"] - $diffDays);
-								$today = new DateTime('NOW');
+								
+								if ($data["percentpenalty"] == "0")
+									$data["status"] = "OK";	
+								else
+									$data["status"] = "PENALTY";
+															
 								$data["start"] = $today->format('Y-m-d');
-								$today->add(new DateInterval('P'.$duration.'D'));
+								$today->add(new DateInterval('P30D'));
 								$data["end"] = $today->format('Y-m-d');
 								$data["duration"] = $duration;
 
@@ -986,15 +979,16 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		}
 		else if ($type == "LATERETURNPROMOTION")
 		{
+
 			if(substr($res["SIZE"],0,2) == "NR"){
 				$data["status"] = "MISMATCH";
 				return $data;
-			}
-			if (($res["SIZE"] == "R90" && $diffDays > 90) || ($res["SIZE"] == "R60" && $diffDays > 60) || ($res["SIZE"] == "R30" && $diffDays > 30)){
+			}					
+				if (($res["SIZE"] == "R180" && $diffDays > 185) || ($res["SIZE"] == "R150" && $diffDays > 155) || ($res["SIZE"] == "R120" && $diffDays > 125) ||
+						($res["SIZE"] == "R90" && $diffDays > 95) || ($res["SIZE"] == "R60" && $diffDays > 65) || ($res["SIZE"] == "R30" && $diffDays > 35)){
 							$data["status"] = "EARLY";
 							return $data;
 				}
-
 				$sql = "SELECT * FROM RETURNRULES WHERE POLICYNAME = ?";
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
@@ -1002,14 +996,21 @@ function calculatePenalty($barcode, $expiration,$type = null){
 						
 				foreach($rules as $rule)
 				{					
+							
 						if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 						{										
-							if( $rule["PENALTYPERCENT"] == "0")
+							if( $rule["PERCENTPENALTY"] == "0")
 								$data["status"] = "OK";
 							else 									
 								$data["status"] = "PENALTY";								
 							$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
-							$data["percentpromo"] = $rule["PERCENTPROMO"];									
+							$data["percentpromo"] = $rule["PERCENTPROMOTION"];			
+							if ($data["percentpromo"] != "0"){
+								$duration = substr($rule["POLICYNAME"],1);
+								$data["start"] = $today->format('Y-m-d');
+								$today->add(new DateInterval('P'.$duration.'D'));
+								$data["end"] = $today->format('Y-m-d');	
+							}
 							break;
 						}
 				}
