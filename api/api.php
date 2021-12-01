@@ -1475,7 +1475,7 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 		$params = array($thrownstart, $thrownend, $sellstart, $sellend);
 
 		if ($vendid != ''){
-			$sql .= " AND VENDID = ? ";
+			$sql .= " AND dbo.ICPRODUCT.VENDID = ? ";
 			array_push($params,$vendid);
 		}
 
@@ -3197,8 +3197,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		if (isset($json["ITEMS"]))
 		{
+
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
-			{	
+			{
+					error_log($key.":".$value["PPSS_RECEPTION_QTY"]);
 				
 					$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
 					$req = $dbBLUE->prepare($sql);
@@ -3224,7 +3226,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 					
-					$req->execute(array($extcost,$value["PPSS_RECEPTION_QTY"],$value["PPSS_RECEPTION_QTY"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );									 						
+					$req->execute(array($extcost,$value["PPSS_RECEPTION_QTY"],$value["PPSS_RECEPTION_QTY"],$key,$json["PONUMBER"]) );									 						
 			}
 			
 			// RECALCULATE AMOUNT ON POHEADER
@@ -3379,7 +3381,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
-				   FROM PODETAIL WHERE PONUMBER = ?";	
+				   FROM PODETAIL WHERE PONUMBER = ? ORDER BY PRODUCTID ASC";	
 	if ($rr["TYPE"] == "NOPO")
 	{
 		if ($rr["LINKEDPO"] != null)
