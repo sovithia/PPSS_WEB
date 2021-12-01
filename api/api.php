@@ -2745,12 +2745,15 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 });
 
 
-$app->delete('/supplyrecordpool/{productid}', function(Request $request,Response $response) {
-	$db = getInternalDatabase();	
-	$id = $request->getAttribute('productid');
-	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
+$app->delete('/supplyrecordpool', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);	
+	$productid = $json["PRODUCTID"];	
+	$userid = $json["USERID"];	
+	
+	$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ? AND USERID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($id));
+	$req->execute(array($productid,$userid));
 	$data["result"] = "OK";	
 	$response = $response->withJson($data);
 	return $response;
@@ -3033,7 +3036,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	else if ($json["ACTIONTYPE"] == "WH"){
 		$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
 
-		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbibvoices WHERE ID = :identifier";
+		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbinvoices WHERE ID = :identifier";
 		$req = $db->prepare($sql);							
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
@@ -4549,6 +4552,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTPURCHASEPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTPURCHASEPOOL";
 	else if ($type == "TRANSFER")
 		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTTRANSFERPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTTRANSFERPOOL";	
+	else if ($type == "TRANSFERFRESH")
+		$sql = "SELECT *,IFNULL((SELECT 'YES' FROM ITEMREQUESTDEBT WHERE ITEMREQUESTDEBT.PRODUCTID = ITEMREQUESTTRANSFERPOOL.PRODUCTID),'NO') as 'IS_DEBT' FROM ITEMREQUESTTRANSFERFRESHPOOL";	
 	else if ($type == "TRANSFERBACK")
 		$sql = "SELECT * FROM ITEMREQUESTTRANSFERBACKPOOL";	
 	else if ($type == "DEBT")
