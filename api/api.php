@@ -2513,7 +2513,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$INDEX = array();
 	foreach($itemsWithDetails as $item2)
 		$INDEX[$item2["PONUMBER"]] = $item2;
-	
+
 	// ADD VENDNAME	& COUNT INVOICES
 	$newPOData = array();
 	foreach($POData as $onePOData)
@@ -2550,7 +2550,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else if ($status == "ORDERED")
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 	else if ($status == "RECEIVEDBOTH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
 			$params = array();
 	}			
 	else 
@@ -2568,11 +2568,9 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$req->execute(array());		
 	$itemsWithDetailsNOPO = $req->fetchAll(PDO::FETCH_ASSOC);
 
-
 	$INDEXNOPO = array();
 	foreach($itemsWithDetailsNOPO as $itemNOPO)
 		$INDEXNOPO[$itemNOPO["PONUMBER"]] = $itemNOPO;
-
 
 	// ADD VENDNAME	& COUNT INVOICES
 	$newNOPOData = array();
