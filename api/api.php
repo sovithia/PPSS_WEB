@@ -2493,9 +2493,14 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$params = array();
 	}	
 	else if ($status == "ORDERED")
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+	else if ($status == "RECEIVEDBOTH"){
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
+		$params = array();
+	}			
 	else 
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$POData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2543,9 +2548,13 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$params = array();
 	}	
 	else if ($status == "ORDERED")
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+	else if ($status == "RECEIVEDBOTH"){
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
+			$params = array();
+	}			
 	else 
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
 	
 
 	$req = $db->prepare($sql);
@@ -3037,7 +3046,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 		}	
 	
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVEDFRESH', TRANSFERER_USER = :author 
 				WHERE ID = :identifier";			
 		$req = $db->prepare($sql);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
