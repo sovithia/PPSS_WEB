@@ -3192,48 +3192,14 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	
 	}
 	else if ($json["ACTIONTYPE"] == "WHE"){
-		$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
-
-		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbinvoices WHERE ID = :identifier";
-		$req = $db->prepare($sql);							
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':nbinvoices',$nbinvoices,PDO::PARAM_STR);
-		$req->execute();			
-
 		
-		if(isset($json["INVOICEJSONDATA"]))
-			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
 		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
 
 		if (isset($json["ITEMS"]))
 		{
-		
-			$sql = "SELECT VENDID FROM POHEADER WHERE PONUMBER = ?";
-			$req = $dbBLUE->prepare($sql);
-			$req->execute(array($json["PONUMBER"]));
-			$vendid = $req->fetch()["VENDID"];
-
-			$isSplitCompany = false;
-
-			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
-				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999"){
-				$isSplitCompany = true;
-			}
-
-			$absentitems = array();
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
-			{
-
-	
-				if ($value["PPSS_RECEPTION_QTY"] == "0" || $value["PPSS_RECEPTION_QTY"] == 0)
-				{
-						$value["ID"] = $key; // useful ?
-						array_push($absentitems,$value);
-				}												
-				else 
-				{
+			{	
+				
 					$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
 					$req = $dbBLUE->prepare($sql);
 					$req->execute(array($json["PONUMBER"],$key));
@@ -3254,26 +3220,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 					$extcost = $value["PPSS_RECEPTION_QTY"] * $calculatedCost;
 					 
-					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?,PPSS_EXPIREDATE = ?
+					$sql = "UPDATE PODETAIL SET  EXTCOST = ?,ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
-
-					if ($value["PPSS_EXPIREDATE"] == "NO EXPIRE")
-						$value["PPSS_EXPIREDATE"] = null;
-					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
-										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );	
-				}					 						
-			}
-	
-			if ($isSplitCompany  == true)
-				splitPOWithItems($json["PONUMBER"],$absentitems);
-			  
-			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
-			foreach($absentitems as $item)
-			{
-				$sql = "DELETE FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
-				$req = $dbBLUE->prepare($sql);
-				$req->execute(array($item["ID"],$json["PONUMBER"]));
+					
+					$req->execute(array($extcost,$value["PPSS_RECEPTION_QTY"],$value["PPSS_RECEPTION_QTY"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );									 						
 			}
 			
 			// RECALCULATE AMOUNT ON POHEADER
