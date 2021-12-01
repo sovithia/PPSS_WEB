@@ -2515,20 +2515,22 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	{
 		if(isset($INDEX[$onePOData["PONUMBER"]]))			
 			$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
+		
+		if($onePOData["NBINVOICES"] == null){ // OLD STYLE 
 			// COUNT INVOICES
-		$count = 1;
-		$nbinvoices = 0;
-		do
-		{       
-	     if (file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png"))
-	          $nbinvoices++;                
-	        $count++;        
-	        $go = file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png");
-    }while($go);		
-		$onePOData["NBINVOICES"] = $nbinvoices;
+			$count = 1;
+			$nbinvoices = 0;
+			do
+			{       
+			if (file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png"))
+				$nbinvoices++;                
+				$count++;        
+				$go = file_exists("./img/supplyrecords_invoices/INV_".$onePOData["ID"]."_".$count.".png");
+			}while($go);		
+			$onePOData["NBINVOICES"] = $nbinvoices;
+		}	
 		array_push($newPOData,$onePOData);					
 	}
-
 	$mixData["PO"] = $newPOData;
 
 	
@@ -2569,16 +2571,18 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		if(isset($INDEXNOPO[$oneNOPOData["LINKEDPO"]]))
 			$onePOData["VENDNAME"] = $INDEXNOPO[$oneNOPOData["LINKEDPO"]]["VENDNAME"];		
 		// COUNT INVOICES
-		$count = 1;
-		$nbinvoices = 0;
-		do
-		{        
-	        if (file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png"))
-	          $nbinvoices++;                
-	        $count++;        
-	        $go = file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png");
-    	}while($go);		
-		$oneNOPOData["NBINVOICES"] = $nbinvoices;
+		if($onePOData["NBINVOICES"] == null){ // OLD STYLE 
+			$count = 1;
+			$nbinvoices = 0;
+			do
+			{        
+				if (file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png"))
+				$nbinvoices++;                
+				$count++;        
+				$go = file_exists("./img/supplyrecords_invoices/INV_".$oneNOPOData["ID"]."_".$count.".png");
+			}while($go);		
+			$oneNOPOData["NBINVOICES"] = $nbinvoices;
+		}
 		array_push($newNOPOData,$oneNOPOData);
 	}
 	$mixData["NOPO"] = $newNOPOData;
@@ -2598,13 +2602,15 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 	if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "NOPO") 
 	{
+		$nbinvoice = count(json_decode($json["INVOICEJSONDATA"],true));					
 		$db->beginTransaction(); 
-		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
-			VALUES (:author,:noponote,'DELIVERED','NOPO')";
+		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE,NBINVOICES) 
+			VALUES (:author,:noponote,'DELIVERED','NOPO',:nbinvoices)";
 		$req = $db->prepare($sql);	
 	
 		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
 		$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
+		$req->bindParam(':nbinvoices',$nbinvoice,PDO::PARAM_STR);
 		$req->execute();
 		$lastID = $db->lastInsertId();
 		$db->commit(); 
@@ -2630,7 +2636,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$ponumber = createPO($items,$author);
 		$resp["message"] = "Po created with number ".$ponumber;
 
-		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
+		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
 		$req = $db->prepare($sql);
 		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
 
@@ -3025,12 +3031,16 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 	}// CREATE ANOTHER PO WHEN THERE ARE ZERO QUANTITY ON ITEM FOR DKSH
 	else if ($json["ACTIONTYPE"] == "WH"){
-		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED' WHERE ID = :identifier";
+		$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
+
+		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbibvoices WHERE ID = :identifier";
 		$req = $db->prepare($sql);							
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);			
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':nbinvoices',$nbinvoices,PDO::PARAM_STR);
 		$req->execute();			
 
+		
 		if(isset($json["INVOICEJSONDATA"]))
 			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
 		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
