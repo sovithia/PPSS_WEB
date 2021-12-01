@@ -3189,7 +3189,110 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		}
 		$data["result"] = "OK";
-	}else if ($json["ACTIONTYPE"] == "RCV"){
+	
+	}
+	else if ($json["ACTIONTYPE"] == "WHE"){
+		$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
+
+		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbinvoices WHERE ID = :identifier";
+		$req = $db->prepare($sql);							
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':nbinvoices',$nbinvoices,PDO::PARAM_STR);
+		$req->execute();			
+
+		
+		if(isset($json["INVOICEJSONDATA"]))
+			pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$json["IDENTIFIER"]);
+		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
+
+		if (isset($json["ITEMS"]))
+		{
+		
+			$sql = "SELECT VENDID FROM POHEADER WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$vendid = $req->fetch()["VENDID"];
+
+			$isSplitCompany = false;
+
+			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
+				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999"){
+				$isSplitCompany = true;
+			}
+
+			$absentitems = array();
+			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
+			{
+
+	
+				if ($value["PPSS_RECEPTION_QTY"] == "0" || $value["PPSS_RECEPTION_QTY"] == 0)
+				{
+						$value["ID"] = $key; // useful ?
+						array_push($absentitems,$value);
+				}												
+				else 
+				{
+					$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
+					$req = $dbBLUE->prepare($sql);
+					$req->execute(array($json["PONUMBER"],$key));
+					$res = $req->fetch();
+					$TRANDISC = $res["TRANDISC"];
+		
+
+					if (!isset($value["PPSS_INVOICE_PRICE"]) ||  $value["PPSS_INVOICE_PRICE"] == null)				
+						$value["PPSS_INVOICE_PRICE"] = "0";
+
+					if (!is_numeric($value["PPSS_INVOICE_PRICE"]))
+						$value["PPSS_INVOICE_PRICE"] = "0";
+							
+					if ($TRANDISC != null && $TRANDISC != "0")
+						$calculatedCost =  $value["PPSS_INVOICE_PRICE"] - ($value["PPSS_INVOICE_PRICE"] * ($TRANDISC / 100));
+					else 
+						$calculatedCost =  $value["PPSS_INVOICE_PRICE"];
+
+					$extcost = $value["PPSS_RECEPTION_QTY"] * $calculatedCost;
+					 
+					$sql = "UPDATE PODETAIL SET PPSS_INVOICE_PRICE = ?, TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?, PPSS_RECEPTION_QTY = ?,PPSS_NOTE = ?,PPSS_EXPIREDATE = ?
+							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
+					$req = $dbBLUE->prepare($sql);
+
+					if ($value["PPSS_EXPIREDATE"] == "NO EXPIRE")
+						$value["PPSS_EXPIREDATE"] = null;
+					$req->execute(array($value["PPSS_INVOICE_PRICE"],$calculatedCost,$extcost,$value["PPSS_RECEPTION_QTY"] ,
+										$value["PPSS_RECEPTION_QTY"],$value["PPSS_NOTE"],$value["PPSS_EXPIREDATE"],$key,$json["PONUMBER"]) );	
+				}					 						
+			}
+	
+			if ($isSplitCompany  == true)
+				splitPOWithItems($json["PONUMBER"],$absentitems);
+			  
+			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
+			foreach($absentitems as $item)
+			{
+				$sql = "DELETE FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($item["ID"],$json["PONUMBER"]));
+			}
+			
+			// RECALCULATE AMOUNT ON POHEADER
+			$sql = "SELECT EXTCOST FROM PODETAIL WHERE PONUMBER = ? ";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$details = $req->fetchAll();
+			$totalAMT = 0;
+			foreach($details as $detail)			
+				$totalAMT += $detail["EXTCOST"];
+
+			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ? WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($totalAMT,$json["PONUMBER"]));
+
+		}
+		$data["result"] = "OK";
+	}
+	else if ($json["ACTIONTYPE"] == "RCV"){
 
 		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
 			$ponumber  = $json["LINKEDPO"];				
