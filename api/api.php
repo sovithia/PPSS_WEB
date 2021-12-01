@@ -3132,33 +3132,37 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["result"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
 
-		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")
-			$ponumber  = $json["LINKEDPO"];
+		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
+			$ponumber  = $json["LINKEDPO"];				
 		else
-		 	$ponumber  = $json["PONUMBER"];
+			$ponumber  = $json["PONUMBER"];
 
 		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 			
-
 		if ($res["LOCID"] == "WH1")
 			$status = 'RECEIVEDFORTRANSFERFRESH';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
 
-
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
+		{
+			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
 				LINKEDPO = :linkedpo WHERE ID = :identifier";			
-		$req = $db->prepare($sql);
-
+			$req = $db->prepare($sql);			
+			$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);								
+		}
+		else{
+			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+				 WHERE ID = :identifier";			
+			$req = $db->prepare($sql);			
+		}
 		$req->bindParam(':status',$status,PDO::PARAM_STR);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);
-		$req->execute();
-		
+		$req->execute();						
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
 		$data["result"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "ACC"){
