@@ -3132,14 +3132,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["result"] = "OK";
 	}else if ($json["ACTIONTYPE"] == "RCV"){
 
+		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")
+			$ponumber  = $json["LINKEDPO"];
+		else
+		 	$ponumber  = $json["PONUMBER"];
+
 		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($json["LINKEDPO"]));
+		$req->execute(array($ponumber));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 			
 
 		if ($res["LOCID"] == "WH1")
-			$status = 'RECEIVED';
+			$status = 'RECEIVEDFORTRANSFERFRESH';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
 
