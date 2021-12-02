@@ -2786,7 +2786,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($json["PRODUCTID"]));
+			$req->execute(array($item["PRODUCTID"]));
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res4 != false){
 
