@@ -705,7 +705,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 
 	$stats["LASTRCVDATE"] = $begin;
 	$stats["TODAY"] = $end;
-
+	$stats["PRICE"] = $PRICE;
 	$stats["RCVQTY"] = $RCVQTY;
 	$stats["QTYSALE"] = $QTYSALE;
 	$stats["RATIOSALE"] = $RATIOSALE;

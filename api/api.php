@@ -2709,12 +2709,14 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$dbBlue = getDatabase();
 
 	$json = json_decode($request->getBody(),true);	
-
+	$userid = $json["USERID"];
 	if (!isset($json["ITEMS"]))
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
 		$item["QUANTITY"] = $json["QUANTITY"];
-		$item["USERID"] = $json["USERID"];
+		$item["USERID"] = $userid;
+		$item["PRICE"] = $json["PRICE"];
+		$item["PACKING"] = $json["PACKING"];
 		$item["DISCOUNT"] = $json["DISCOUNT"];
 		$item["ALGOQTY"] = $json["ALGOQTY"];
 		$item["REASON"] = $json["REASON"];
@@ -2736,23 +2738,35 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		if ($res == false) 
 			continue;
 
-		// TEST IF POOL IS EMPTY
+		// TEST IF POOL IS EMPTY AND PICK FIRST ITEM
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["USERID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
+		
+		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
+		$item["ALGOQTY"] = $stats["FINALQTY"];	
+		$item["PRICE"] = $stats["PRICE"];		
+		$item["DECISION"] = $stats["DECISION"];
+
+		
+
+		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0")
+			$QUANTITY = $item["SPECIALQTY"];
+		else
+			$QUANTITY = $item["ALGOQTY"];
 		if ($res == false) // NO RECORD
-		{
-			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+		{			
+			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_ORDER_PRICE,DECISION) values (?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["USERID"],$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"]));
+			$req->execute(array($item["PRODUCTID"],$QUANTITY,$userid,$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"]));
 		}
 		else
 		{
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
-			$req->execute(array($json["PRODUCTID"]));
+			$req->execute(array($item["PRODUCTID"]));
 			$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -2776,15 +2790,15 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res4 != false){
 
-			$sql = "UPDATE SUPPLYRECORDPOOL set ORDER_QTY = ?, ALGOQTY = ?, REASON = ? WHERE  USERID = ? AND PRODUCTID = ?) values (?,?,?,?,?)";
+			$sql = "UPDATE SUPPLYRECORDPOOL set ORDER_QTY = ?, ALGOQTY = ?, REASON = ?,PPSS_ORDER_PRICE = ?,DECISION = ? WHERE  USERID = ? AND PRODUCTID = ?) values (?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["ORDER_QTY"],$item["ALGOQTY"],$item["REASON"],$item["USERID"],$item["PRODUCTID"]));	
+				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
 			else
 			{
-				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_ORDER_PRICE,DECISION) values (?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["USERID"],$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"]));	
+				$req->execute(array($item["PRODUCTID"],$QUANTITY,$userid,$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"]));	
 			}
 
 			
