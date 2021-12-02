@@ -2642,8 +2642,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$vendorid = $res["VENDID"];
 		$vendname = $res["VENDNAME"];
 
-		$ponumber = createPO($items,$author);
-		receivePO($ponumber,$author);
+		$ponumber = createAndReceivePO($items,$author);
+		
 
 		$resp["message"] = "Po created and received with number ".$ponumber;
 
@@ -2870,9 +2870,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,PRICE) values (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"],$json["REASON"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["PRICE"]));
 	}
 	else
 	{
@@ -2905,9 +2905,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			return $response;
 		} 
 
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,PRICE) values (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"],$json["REASON"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["PRICE"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -3095,8 +3095,7 @@ function splitPOWithItems($ponumber,$items)
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
 		PPSS_ORDER_QTY) 
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
-
-		error_log($PRODUCTID." PPSS_ORDER_QTY: ".$itemdetail["PPSS_ORDER_QTY"]);
+		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
 		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,

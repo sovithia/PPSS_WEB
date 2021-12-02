@@ -878,7 +878,7 @@ function wasteStatistics($barcode,$expiration)
 }
 
 function calculatePenalty($barcode, $expiration,$type = null){
-	error_log("TYPE:" .$type);
+	
 		$db=getDatabase();		
 		$indb = getInternalDatabase();
 		$data["start"] = "N/A";
@@ -900,9 +900,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		$data["cost"] = $res["COST"];
 		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;			
 		$today = new DateTime('NOW');
-
-		error_log("Size:" . $res["SIZE"]);
-		error_log("DiffDays:" . $diffDays);
+		
 		if ($type == null || $type == "EXPIREPROMOTION")
 		{												
 			if (new DateTime($expiration) <= new DateTime('NOW')){
@@ -1330,8 +1328,7 @@ function createPO($items,$author)
 			$ALGOQTY = $item["ALGOQTY"];
 		else
 			$ALGOQTY = $item["REQUEST_QUANTITY"];
-		
-		error_log("ALGO QTY: ". $ALGOQTY);
+				
 		$REASON = "";
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
@@ -1439,8 +1436,8 @@ function createPO($items,$author)
 		$ALGOQTY,$REASON 
 		);
 
-		$debug = var_export($params, true);
-		error_log($debug);
+		//$debug = var_export($params, true);
+		//error_log($debug);
 
 		$req->execute($params);				
 		$line++;

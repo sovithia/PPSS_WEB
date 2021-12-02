@@ -277,7 +277,7 @@ function _createPO($items,$author)
 function _receivePO($PONumber,$author)
 {		
     $db = getDatabase();
-    $today = new DateTime('NOW').format('Y-m-d');
+    $today = date('Y-m-d');
 
 
     $sql = "SELECT NUM3 FROM SYSDATA WHERE sysid = 'PO'";
