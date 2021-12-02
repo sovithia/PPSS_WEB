@@ -2645,7 +2645,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$ponumber = createPO($items,$author);
 		receivePO($ponumber,$author);
 
-
 		$resp["message"] = "Po created and received with number ".$ponumber;
 
 		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
@@ -2710,52 +2709,92 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$dbBlue = getDatabase();
 
 	$json = json_decode($request->getBody(),true);	
-	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["USERID"]));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
 
-	if ($res == false) // NO RECORD
+	if (!isset($json["ITEMS"]))
 	{
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"],$json["REASON"]));
+		$item["PRODUCTID"] = $json["PRODUCTID"];
+		$item["QUANTITY"] = $json["QUANTITY"];
+		$item["USERID"] = $json["USERID"];
+		$item["DISCOUNT"] = $json["DISCOUNT"];
+		$item["ALGOQTY"] = $json["ALGOQTY"];
+		$item["REASON"] = $json["REASON"];
+		$items = array();
+		array_push($items,$item);
+	}else{
+		$items = json_decode($json["ITEMS"],true);	
 	}
-	else
+	
+
+	foreach($items as $item)
 	{
-		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($json["PRODUCTID"]));
-		$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
-		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		// TEST PRODUCT EXISTENCE		
+		$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
-		$req->execute(array($res["PRODUCTID"]));
-		$res3 = $req->fetch(PDO::FETCH_ASSOC);
-		
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false) 
+			continue;
 
-		if ($res2["VENDID"] != $res3["VENDID"]){
-			$data["result"] = "KO";	
-			$data["message"] = "Product from different vendor";
-			$response = $response->withJson($data);
-			return $response;
+		// TEST IF POOL IS EMPTY
+		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["USERID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res == false) // NO RECORD
+		{
+			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["USERID"],$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"]));
 		}
+		else
+		{
+			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($json["PRODUCTID"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
-		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"]));
-		$res4 = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res4 != false){
-			$data["result"] = "KO";	
-			$data["message"] = "Product already in list";
-			$response = $response->withJson($data);
-			return $response;
-		} 
+			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($res["PRODUCTID"]));
+			$res3 = $req->fetch(PDO::FETCH_ASSOC);
+			
 
-		$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
-		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["ALGOQTY"],$json["REASON"]));
+			if ($res2["VENDID"] != $res3["VENDID"]){
+				$data["result"] = "KO";	
+				if (isset($data["message"]))
+					$data["message"] = $item["PRODUCTID"]." Different vendor";
+				else
+					$data["message"] .= "|".$item["PRODUCTID"]." Different vendor";
+					continue;				
+			}
+
+			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($json["PRODUCTID"]));
+			$res4 = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res4 != false){
+
+			$sql = "UPDATE SUPPLYRECORDPOOL set ORDER_QTY = ?, ALGOQTY = ?, REASON = ? WHERE  USERID = ? AND PRODUCTID = ?) values (?,?,?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["ORDER_QTY"],$item["ALGOQTY"],$item["REASON"],$item["USERID"],$item["PRODUCTID"]));	
+			}
+			else
+			{
+				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ORDER_QTY,USERID,DISCOUNT,ALGOQTY,REASON) values (?,?,?,?,?,?)";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["USERID"],$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"]));	
+			}
+
+			
+		}
+	
+
 	}
+
+
+	
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
 	return $response;
