@@ -550,26 +550,36 @@ function calculateMultiple($barcode){
 
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
-
-	$increasedQty = round($lastrcvqty * (1 + (0.1 * $unit)));
 	$multiple = calculateMultiple($barcode);
 
+	if ($lastrcvqty % $multiple != 0)
+		$lastrcvqty = $multiple;
+
+	$increasedQty = round($lastrcvqty * (1 + (0.1 * $unit)));
+	
 	if ($multiple == 1){
 		return $increasedQty;
 	}
 	else
 	{
-		$remains = $increasedQty % $multiple;
+		$remains = $increasedQty % $multiple;	
 		if ($price < 5)
-		{			
-				return $increasedQty + $remains; // +1
+		{		
+				$total = $increasedQty + ($multiple - $remains);
+
+				error_log("Total:" . $total);
+				return $total; // +1
 		}
 		else
 		{
-			if ($remains > ($multiple / 2))		
-				return  $lastrcvqty;
+			if ($remains > ($multiple / 2)){
+				if ($lastrcvqty % $multiple == 0)
+					return  $lastrcvqty;
+				else
+					return $increasedQty + ($multiple - $remains);				
+			}						
 			else if ($remains < ($multiple / 2))				
-				return $increasedQty + $remains; // +1
+				return $increasedQty + ($multiple - $remains); // +1
 		}			
 	}
 
@@ -577,8 +587,12 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 
 function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 {
-	$decreasedQty = round($lastrcvqty * (1 - (0.1 * $unit)));
 	$multiple = calculateMultiple($barcode);
+	if ($lastrcvqty % $multiple != 0)
+		$lastrcvqty = $multiple;
+
+	$decreasedQty = round($lastrcvqty * (1 - (0.1 * $unit)));
+	
 	if ($multiple == 1){
 		return $decreasedQty;
 	}
@@ -586,13 +600,13 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 	{
 		$remains = $decreasedQty % $multiple;
 		if ($price > 10){			
-				return $decreasedQty - $remains; // -1
+				return $decreasedQty - ($multiple - $remains); // -1
 		}
 		else{
 			if ($remains > ($multiple / 2))		
 				return  $lastrcvqty;
 			else if ($remains < ($multiple / 2))				
-				return $increasedQty + $remains; // -1
+				return $increasedQty + ($multiple - $remains); // -1
 		}		 		
 	}
 }
@@ -660,8 +674,6 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	
 	$vendorid = $res["VENDID"];
 
-
-
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
 	if($type == "RESTOCK"){
@@ -726,17 +738,26 @@ function orderStatistics($barcode,$type = "RESTOCK")
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
 			if($stats["SALESPEED"] < 30){
+				
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
+
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
+				
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			
 		  else if ($ONHAND < ($RCVQTY * 0.5) )
 			{
+					$multiple = calculateMultiple($barcode);
+					$remains = $RCVQTY % $multiple;
+					if ($remains == 0)
 						$stats["FINALQTY"] = $RCVQTY;
-						$stats["DECISION"] = "SAMEQTY";	
+					else{
+						$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+					}			
+					$stats["DECISION"] = "SAMEQTY";	
 			}
 			else
 			{
@@ -765,16 +786,24 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			else
 			{
 				if($stats["SALESPEED"] < 30){
+
 					$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,2);
 					$stats["DECISION"] = "INCREASEQTY";
 				}
 				else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
+
 					$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 					$stats["DECISION"] = "INCREASEQTY";
 				}	
 				else if ($ONHAND < ($RCVQTY * 0.4) )
 				{
-						$stats["FINALQTY"] = $RCVQTY;
+						$multiple = calculateMultiple($barcode);
+						$remains = $RCVQTY % $multiple;
+						if ($remains == 0)
+							$stats["FINALQTY"] = $RCVQTY;
+						else{
+							$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+						}					
 						$stats["DECISION"] = "SAMEQTY";	
 				}
 				else{
@@ -804,7 +833,13 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}
 			else if ($ONHAND < ($RCVQTY * 0.3) )
 				{
-						$stats["FINALQTY"] = $RCVQTY;
+						$multiple = calculateMultiple($barcode);
+						$remains = $RCVQTY % $multiple;
+						if ($remains == 0)
+							$stats["FINALQTY"] = $RCVQTY;
+						else{
+							$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+						}
 						$stats["DECISION"] = "SAMEQTY";	
 				}
 			else
@@ -843,7 +878,13 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}		
 			else if ($ONHAND < ($RCVQTY * 0.2) )
 				{
-						$stats["FINALQTY"] = $RCVQTY;
+						$multiple = calculateMultiple($barcode);
+						$remains = $RCVQTY % $multiple;
+						if ($remains == 0)
+							$stats["FINALQTY"] = $RCVQTY;
+						else{
+							$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+						}
 						$stats["DECISION"] = "SAMEQTY";	
 				}
 			else{
@@ -852,7 +893,7 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}	
 		}
 	
-
+	error_log($stats["FINALQTY"]);
 	return $stats;	
 }
 
