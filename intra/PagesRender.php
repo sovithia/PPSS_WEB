@@ -4542,6 +4542,7 @@ function renderSupplyRecordList($data,$action){
    $body .=   "PO Total : ".count($itemsPO);              
    $body .=   "<table border='1' id='resultTable1'>
                <thead><tr>
+                  <th>ID</th>                                
                   <th>DETAILS</th>                                
                   <th>PO NUMBER</th>
                   <th>VENDOR</th> 
@@ -4558,6 +4559,7 @@ function renderSupplyRecordList($data,$action){
                </tr></thead>
 
                <tfoot><tr>
+                  <th>ID</th>                                
                   <th>DETAILS</th>                                
                   <th>PO NUMBER</th>
                   <th>VENDOR</th> 
@@ -4597,7 +4599,7 @@ function renderSupplyRecordList($data,$action){
 
          $dataSet1 .= 
          "[ 
-
+          '".$ID."',
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',                
           '".$item["PONUMBER"]."',
           \"".$item["VENDNAME"]."\",
@@ -4635,6 +4637,7 @@ function renderSupplyRecordList($data,$action){
     $body .= "NO PO Total : ".count($itemsNOPO);              
     $body .=   "<table border='1' id='resultTable2'>
                <thead><tr>
+                  <th>ID</th>
                   <th>DETAILS</th>
                   <th>NOPONOTE</th>
                   <th>LINKEDPO</th>                  
@@ -4651,6 +4654,7 @@ function renderSupplyRecordList($data,$action){
                </tr></thead>
 
                <tfoot><tr>
+                  <th>ID</th>
                   <th>DETAILS</th>
                   <th>NOPONOTE</th>
                   <th>LINKEDPO</th>
@@ -4678,7 +4682,8 @@ function renderSupplyRecordList($data,$action){
           $TR = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."TR_".$ID.".png")) ? $base."TR_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["TRANSFERER_USER"];
           $ACC = "<img style=\"background-color:#009183\" width=\"150px\" src=\"".((file_exists($base."ACC_".$ID.".png")) ? $base."ACC_".$ID.".png" : "../api/img/na.jpg")."\"><br>".$item["ACCOUNTANT_USER"];
 
-          $dataSet2 .= "[    
+          $dataSet2 .= "[  
+          '".$ID."',  
           '<a href=\"?display=supplyrecorddetails&entity=supplyrecorddetails&action=".$action."&ID=".$item["ID"]."\">DETAILS</a>',      
           \"".$item["NOPONOTE"]."\",
           \"".$item["LINKEDPO"]."\",
