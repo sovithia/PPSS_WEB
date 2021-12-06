@@ -188,8 +188,10 @@ function renderEightProduct($products)
             <td>
             <div>
             ";
-            if ($percent1 == "0")
+            if   ($percent1 == "0" )
               $render .= _renderProduct(isset($products[0]) ? $products[0] : null);
+            // else if($percent1 == "1")
+            //     $render .="Buy one get one free";
             else 
               $render .= _renderPromoProduct(isset($products[0]) ? $products[0] : null);
             $render .= 
@@ -306,9 +308,9 @@ function _renderPromoProduct($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+
   $unit = $product['unit'];
   $packing = $product['packing'];
-
   $ispack = $product['ISPACK'];
   if ($ispack == 'NO') {
      ?>
@@ -437,9 +439,9 @@ function _renderProduct($product)
   $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
+  
   $unit = $product['unit'];
   $packing = $product['packing'];
-
   $ispack = $product['ISPACK'];
   if ($ispack == 'NO') {
      ?>
@@ -506,7 +508,7 @@ function _renderProduct($product)
 												<img class='originpicture' src=$flag />
 											</div>
 											<div class='unit'>
-												$factor
+												    $factor
 											</div>
 										</div>
 										<div class='A7_box_price7'>

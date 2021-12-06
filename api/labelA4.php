@@ -253,6 +253,95 @@ function renderOneProduct($product)
 	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
     }
+      elseif($percent != "0" && $percent == "1."){
+    	if (strpos($percent,"1.") === false)
+    		   $percentSize = "60";
+    else 
+      $percentSize = "45";
+    echo "
+    	<div class='A4' id='A4_Image'>
+		<div class='tag-wrap'>
+			<div class='clip4'>
+				<img src='bg/bg-header.png'>
+		</div>
+		</div>
+			<div class='logo'>
+				<div class='tag-wrap'>
+					<img src='img/logo-text1.png'>
+				</div>
+				<div class='tag-wrap'>
+
+				</div>
+			</div>
+		<div class='box'>
+			<div class='box1'>
+				<div class='name_kh'>
+					<p>$nameKH</p>
+				</div>
+				<div class='name_En'>
+					<p>$nameEN</p>
+				</div> 
+				<div class='itemcode'>
+					<p>Code: $barcode</p>
+				</div>
+				<div class='itemcode'>
+					<p>Origin: $country</p>
+					<p>Till: $till</p>
+				</div>
+			</div>
+			<div class='box2'>
+				<div class='box_img' style='margin-top: 1px;'>
+					<img class='product whitecontour' src='data:image/jpeg;base64, $image' >
+					<center><p style='font-size: 90px; margin-top: -37px; font-weight: bold; color: #1B9382;'>+</p></center>
+				</div>
+
+				<div class='box_img' style='margin-top: 250px;'>
+					<img class='product whitecontour' src='data:image/jpeg;base64, $image' >
+				</div>
+			</div>
+			<div class='box3'>
+				<div class='box4'>
+					<img src='bg/bg-sale.png'>
+					<div class='tag-wrap'>
+						<p style='font-size: 30px; font-family: kh; margin-top: 14px; margin-buttom: -10px; '>ទិញ១ ថែម១</p>
+						<p style='font-size: 30px; font-family:'acumin';'>BUY 1 FREE1</p>
+					</div>
+				</div>
+				<div class='box_price'>
+					<div class='box_price1'>
+						<div class='box_price2'>
+							<div class='A4_price_kh'>
+								<p>$rielPrice</p>
+							</div>
+							<div class='symbol_riel'>
+								<p>៛</p>
+							</div>
+							<div class='unit'>
+								<div class='unit1'>
+ 									<img class='originpicture' src=$flag>
+								</div>
+								<div class='unit2'>
+										$factor
+								</div>
+							</div>
+							<div class='price_en'>
+								<div class='symbol_dollar'>
+								<p>$</p>
+								</div>
+								<div class='price1'>
+									<p>$dollarPrice</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+	</br>
+	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+    ";
+    }
 else
     {
   if (strpos($percent,".") === false)

@@ -168,6 +168,8 @@ function renderFourProduct($products)
       ";
       if ($percent1 == "0")
         $render .= _renderProduct( isset($products[0]) ? $products[0] : null );
+      else if($percent1 == "1.")
+        $render .= _renderFreeProduct( isset($products[0]) ? $products[0] : null );
       else 
         $render .= _renderPromoProduct( isset($products[0]) ? $products[0] : null );
       $render .= 
@@ -178,6 +180,8 @@ function renderFourProduct($products)
       <div>";
       if ($percent2 == "0")
         $render .= _renderProduct( isset($products[1]) ? $products[1] : null);
+      else if($percent1 == "1.")
+        $render .= _renderFreeProduct( isset($products[1]) ? $products[1] : null );
       else 
         $render .= _renderPromoProduct( isset($products[1]) ? $products[1] : null);
       $render .=
@@ -192,6 +196,8 @@ function renderFourProduct($products)
       ";
       if ($percent3 == "0")
         $render .= _renderProduct( isset($products[2]) ? $products[2] : null );
+       else if($percent1 == "1.")
+        $render .= _renderFreeProduct( isset($products[2]) ? $products[2] : null );
       else 
         $render .= _renderPromoProduct( isset($products[2]) ? $products[2] : null );
       $render .= 
@@ -202,6 +208,8 @@ function renderFourProduct($products)
       <div>";
       if ($percent4 == "0")
         $render .= _renderProduct( isset($products[3]) ? $products[3] : null );
+      else if($percent1 == "1.")
+        $render .= _renderFreeProduct( isset($products[3]) ? $products[3] : null );
       else 
         $render .= _renderPromoProduct( isset($products[3]) ? $products[3] : null);
       $render .=
@@ -220,7 +228,118 @@ function renderFourProduct($products)
 
 }
 
+function _renderFreeProduct($product)
+{
+  if ($product == null)
+    return "";
+  $nameKH = $product["nameKH"];
+  $nameEN = $product["nameEN"];
+  $flag = flagByCountry($product["country"]);
+  $dollarPrice = $product["dollarPrice"];
+  $rielPrice = $product["rielPrice"];  
+  $country = $product["country"];
+  $image = $product["productImg"];  
+  $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
+  $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
+  $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
+  $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
+  $barcode = $product["barcode"];
 
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
+  if(strpos($percent,"1.") === false)
+  $percentSize = "32";
+  else 
+  $percentSize = "22";
+  return "<div class='A4_A6'>
+      <div class='A6_header'>
+        <img src='bg/bg-header.png'>
+        <div class='logo'>
+          <img src='img/logo-text1.png'>
+        </div>
+      </div>
+      <div class='A6_body'>
+        <div class='sale_img'>
+            <img src='bg/bg-sale.png'>
+            <div class='A6_sale'>
+              <p style='font-size: 15px; margin-top: -50px; font-family: kh;'>ទិញ១ ថែម១</p>
+              <p style='font-size: 15px; margin-top: -15px; font-family:'acumin';'>BUY 1 FREE1</p>
+            </div>
+          </div>
+      </div>
+      <div class='A6_bottom'>
+        <div class='A6_box1'>
+          <div class='A6_namekh'>
+            <p>$nameKH</p>
+          </div>
+          <div class='A6_nameen'>
+            <p>$nameEN</p>
+          </div>
+          <div class='flag'>
+            <div class='A6_item'>
+              <p>Code: $barcode</p>
+              <p>Origin: $country</p>
+              <p>Till: $till</p>
+            </div>
+          </div>
+        </div>
+        <div class='A6_box2'>
+        <div class='box-img' style='margin-top: -65px; width: 110px; margin-left: 10px;'>
+            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+          </div>
+          <center><p style='font-size: 30px; margin-top: -35px; font-weight: bold; color: #1B9382;'>+</p></center>
+          <div class='box-img' style=' margin-top: -15px; width: 110px; margin-left: 10px;'>
+            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+          </div>
+        </div>
+        <div class='A6_box3'>
+          <div class='A6_box-price'>
+            <div class='A6_box-price1'>
+              <div class='A6_box-price2'>
+                <div class='A6_priceriel'>
+                  <p>$rielPrice</p>
+                </div>
+                <div class='A6_symboolreil'>
+                  <p>៛</p>
+                </div>
+              </div>
+              <div class='A6-box-flag'>
+                <div class='A6-flag'>
+                  <img src='$flag'>
+                </div>
+                <div class='A6-unit'>
+                   $factor
+                </div>
+              </div>
+              <div class='A6_priceen'>
+                <div class='A6_symboolen'>
+                  <p>$</p>
+                </div>
+                <div class='A6_priceen1'>
+                  <p>$dollarPrice</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>";
+}
 function _renderPromoProduct($product)
 {
   if ($product == null)
@@ -255,8 +374,7 @@ function _renderPromoProduct($product)
                 ?>
         <?php
         }
-
-  if (strpos($percent,".") === false)
+  if(strpos($percent,".") === false)
     $percentSize = "32";
   else 
     $percentSize = "22";
