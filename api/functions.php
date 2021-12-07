@@ -893,7 +893,6 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}	
 		}
 	
-	error_log($stats["FINALQTY"]);
 	return $stats;	
 }
 

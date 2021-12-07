@@ -2379,6 +2379,8 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	$vendorname = $request->getParam('VENDORNAME','');
 	$vendid = $request->getParam('VENDID','');
 
+
+
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
@@ -2418,13 +2420,13 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 			$sql .= " AND TYPE = ?";
 			array_push($params,$potype);
 		}
-		
 	}
 
-	if ($productid != ''){
+	if ($productid != 'ALL'){
 				
 		$sql1 = "SELECT PONUMBER FROM PODETAIL WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql1);
+		$req->execute(array($productid));
 		$ponumbers = $req->fetchAll();
 		if (count($ponumbers) > 0)
 		{
@@ -2713,7 +2715,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	if (!isset($json["ITEMS"]))
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
-		$item["QUANTITY"] = $json["QUANTITY"];
+		if ($json["QUANTITY"] != $json["ALGOQTY"])
+			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
 		$item["PRICE"] = $json["PRICE"];
 		$item["PACKING"] = $json["PACKING"];
@@ -6681,9 +6684,9 @@ $app->get('/depreciation', function($request,Response $response) {
 		}else if ($type == "PROMOTION"){
 			$sql .= " AND (TYPE = ? OR TYPE = ? OR TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREPROMOTION");
-			array_push($params,"DAMAGEDPROMOTION");
-			array_push($params,"LOWSELLPROMOTION");
-			array_push($params,"TOOMUCHPROMOTION");
+			array_push($params,"CLEARANCEMEDIUMDAMAGEDPROMOTION");
+			array_push($params,"CLEARANCEHIGHDAMAGEDPROMOTION");
+			array_push($params,"CLEARANCELOWSELLPROMOTION");
 		}		
 		
 	}
@@ -6691,6 +6694,8 @@ $app->get('/depreciation', function($request,Response $response) {
 		$sql .= "AND STATUS = ? ";
 		array_push($params,$status);
 	}
+	error_log($status);
+	error_log($sql);
 	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
