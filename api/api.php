@@ -3391,9 +3391,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{
 
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
-			{
-					error_log($key.":".$value["PPSS_RECEPTION_QTY"]);
-				
+			{						
 					$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
 					$req = $dbBLUE->prepare($sql);
 					$req->execute(array($json["PONUMBER"],$key));
@@ -5051,6 +5049,8 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";	
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -5105,6 +5105,8 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -6694,8 +6696,6 @@ $app->get('/depreciation', function($request,Response $response) {
 		$sql .= "AND STATUS = ? ";
 		array_push($params,$status);
 	}
-	error_log($status);
-	error_log($sql);
 	$sql .= " ORDER BY CREATED DESC";
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -6767,6 +6767,8 @@ $app->post('/depreciation', function($request,Response $response) {
 	$db->commit();    
 
 	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
+
+
 	foreach($items as $item)
 	{			
 		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";

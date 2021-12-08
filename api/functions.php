@@ -2,6 +2,19 @@
 
 require_once 'RestEngine.php';
 
+function getIP()
+{
+	
+	if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+    $ip = $_SERVER['HTTP_CLIENT_IP'];
+	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+	    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+	} else {
+	    $ip = $_SERVER['REMOTE_ADDR'];
+	}
+	return $ip
+}
+
 function extractIDS($items,$keyname = "PRODUCTID"){
 	if (count($items) == 0)
 		return "('')";
@@ -40,6 +53,22 @@ function countOccurence($type,$id)
 		$count++;
 	}
 	return $nb;
+}
+
+
+function cleanPictures($id,$type)
+{
+	if ($type == "WASTE"){
+		$path = "./img/waste_proofs/";		
+	}
+	else if($type == "PROMO"){
+		$path = "./img/promo_proofs/";
+	}
+	$count = 1;
+	while(file_exists($path.$id."_".$count.".png")){
+			unlink($path.$id."_".$count.".png");
+			$count++;
+	}
 }
 
 function movePicture($depreciationItemId,$poolitemId,$type)
@@ -200,6 +229,8 @@ function isLocal()
 
 function getDatabase($name = "MAIN")
 { 
+	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
+		$name =	"TRAINING"
 	$conn = null;      
 	try  
 	{  		
@@ -567,7 +598,6 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 		{		
 				$total = $increasedQty + ($multiple - $remains);
 
-				error_log("Total:" . $total);
 				return $total; // +1
 		}
 		else
