@@ -1044,7 +1044,6 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["PERCENTPROMO"] = $stats["percentpromo"];	
 			$item["START"] = $stats["start"];
 			$item["END"] = $stats["end"];
-			$item["DURATION"] = $stats["duration"];
 			$item["POLICY"]	= $stats["policy"];
 			$item["COST"] = $stats["cost"];			
 		}

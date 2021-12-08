@@ -956,7 +956,8 @@ function calculatePenalty($barcode, $expiration,$type = null){
 
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
-		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;			
+		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days + 1; // HACK
+		error_log("DIFF : ".$diffDays);			
 		$today = new DateTime('NOW');
 		
 		if ($type == null || $type == "EXPIREPROMOTION")
@@ -974,7 +975,8 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				if ($res["SIZE"] == "NR") // TMP FIX
 					$res["SIZE"] = "NR60";
 
-				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" && $diffDays > 35))
+				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" &&  $diffDays > 35) ||
+						($res["SIZE"] == "NR14" && $diffDays > 17) || ($res["SIZE"] == "NR7" && $diffDays > 10))
 				{
 						$data["status"] = "EARLY";
 						return $data;
