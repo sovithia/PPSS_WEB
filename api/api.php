@@ -3167,7 +3167,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PORECEIVEDDETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
