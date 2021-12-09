@@ -816,7 +816,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if ($item["OTHERCODE"] != null)
+	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
 
 	$resp = array();
@@ -2889,7 +2889,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
 		
 
-		if ($res2["VENDID"] != $res3["VENDID"]){
+		if ($res2 != false && $res3 != false && $res2["VENDID"] != $res3["VENDID"]){
 			$data["result"] = "KO";	
 			$data["message"] = "Product from different vendor";
 			$response = $response->withJson($data);

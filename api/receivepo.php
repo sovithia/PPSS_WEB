@@ -71,8 +71,14 @@ function _createPO($items,$author)
 	{
 		if (!isset($item["DISCOUNT"])) // TO CLEAN 
 			$item["DISCOUNT"] = "0";
-		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
-			$item["ORDER_QTY"] = $item["ORDERQTY"];
+		if (!isset($item["ORDER_QTY"]) ) // TO CLEAN 
+		{
+			if (isset($item["ORDERQTY"]))
+				$item["ORDER_QTY"] = $item["ORDERQTY"];
+			else if (isset($item["QUANTITY"]))
+				$item["ORDER_QTY"] = $item["QUANTITY"];
+		}
+			
 
 
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
@@ -131,9 +137,18 @@ function _createPO($items,$author)
 	{
 		if (!isset($item["DISCOUNT"])) // TO CLEAN 
 			$item["DISCOUNT"] = "0";
-		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
-			$item["ORDER_QTY"] = $item["ORDERQTY"];
+			
+		if (!isset($item["ORDER_QTY"]) ) // TO CLEAN 
+		{
+				if (isset($item["ORDERQTY"]))
+					$item["ORDER_QTY"] = $item["ORDERQTY"];
+				else if (isset($item["QUANTITY"]))
+					$item["ORDER_QTY"] = $item["QUANTITY"];
+		}
 
+
+
+			
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -154,15 +169,19 @@ function _createPO($items,$author)
 
 		if(isset($item["ALGOQTY"]))
 			$ALGOQTY = $item["ALGOQTY"];
-		else
-			$ALGOQTY = $item["REQUEST_QUANTITY"];
+		else{
+			if (isset($item["REQUEST_QUANTITY"])) // TO CLEAN
+				$ALGOQTY = $item["REQUEST_QUANTITY"];
+			else if (isset($item["QUANTITY"]))
+				$ALGOQTY = $item["QUANTITY"]; // TO CLEAN
+ 		}
+			
 		
 		
 		$REASON = "";
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
-
-		
+	
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
 			$QUANTITY = $item["SPECIALQTY"];
@@ -170,8 +189,13 @@ function _createPO($items,$author)
 		}			
 		else if (isset($item["ORDER_QTY"]))
 			$QUANTITY = $item["ORDER_QTY"];
-		else
+		else{
+			if (isset($item["REQUEST_QUANTITY"])) // TO CLEAN
 			$QUANTITY = $item["REQUEST_QUANTITY"];
+		else if (isset($item["QUANTITY"]))
+			$QUANTITY = $item["QUANTITY"]; // TO CLEAN			
+		}
+			
 		//
 	
 		$PURCHASE_DATE = $now;
@@ -265,8 +289,8 @@ function _createPO($items,$author)
 		$ALGOQTY,$REASON 
 		);
 
-		$debug = var_export($params, true);
-		error_log($debug);
+		//$debug = var_export($params, true);
+		//error_log($debug);
 
 		$req->execute($params);				
 		$line++;
@@ -277,23 +301,25 @@ function _createPO($items,$author)
 function _receivePO($PONumber,$author)
 {		
     $db = getDatabase();
-    $today = date('Y-m-d');
+    $today = date("Y-m-d H:i:s");
 
 
-    $sql = "SELECT NUM3 FROM SYSDATA WHERE sysid = 'PO'";
+    $sql = "SELECT num3 FROM SYSDATA WHERE sysid = 'PO'";
     $req = $db->prepare($sql);
+	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $PONUM = $res["NUM3"];  
-    $sql = "UPDATE SYSDATA SET NUM3=NUM3+1 WHERE ltrim(rtrim(SYSID))='PO'";
+
+    $PONUM = $res["num3"];  
+    $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
     $req->execute(array());
 
-
-    $sql = "SELECT NUM1 FROM SYSDATA WHERE sysid = 'AP'";
+    $sql = "SELECT num1 FROM SYSDATA WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
+	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $APNUM = $res["NUM1"];
-    $sql = "UPDATE SYSDATA set NUM1 = NUM1 +1  WHERE sysid = 'AP'";
+    $APNUM = $res["num1"];
+    $sql = "UPDATE SYSDATA set num1 = num1 +1  WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
     $req->execute(array());
 
@@ -328,7 +354,7 @@ function _receivePO($PONumber,$author)
 	$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($PONumber));
-	$items = $req->fecthAll(PDO::FETCH_ASSOC);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$VENDID =  $theVENDID;
 	$RECEIVENO =  "RP00000000000".$PONUM;
@@ -378,18 +404,19 @@ function _receivePO($PONumber,$author)
 	VENDID,RECEIVENO,VOUCHERNO,TRANDATE,DUEDATE,   
 	VENDNAME,VENDNAME1,TO_INVOICE,VAT_AMT,VAT_PERCENT,
 	INV_AMT,PAID_AMT,BALANCE,PCNAME,CURR_RATE,  
-	REMARK,TERMID,TERM_DAYS,TERM_DISC,TERM_NET,VOUCHER_DESC, 
-	VOUCHER_DESC1,REFERENCE,VATNO, PONUMBER,APACCOUNT, 
-	DISC_PERCENT,TAXACC_OUT,DISC_AMT,FILEID,EXPENSE_TYPE,
-	POCLEARINGACC,PODATE,RECEIVEDATE,LOCID,CURR_ID, 
-	BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,SHIP_REFERENCE,DATEADD, 
-	USERADD) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-					 ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-					 ?)";
+	REMARK,TERMID,TERM_DAYS,TERM_DISC,TERM_NET,
+	VOUCHER_DESC,VOUCHER_DESC1,REFERENCE,VATNO, PONUMBER,
+	APACCOUNT,DISC_PERCENT,TAXACC_OUT,DISC_AMT,FILEID,
+	EXPENSE_TYPE,POCLEARINGACC,PODATE,RECEIVEDATE,LOCID,
+	CURR_ID, BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,SHIP_REFERENCE,
+	DATEADD, USERADD) values (?,?,?,?,?,?,?,?,?,?,
+							  ?,?,?,?,?,?,?,?,?,?,
+					 		  ?,?,?,?,?,?,?,?,?,?,
+							  ?,?,?,?,?,?,?,?,?,?,
+					 		  ?,?)";
 	
-
 	$req = $db->prepare($sql);
-	$req = $db->execute(array(
+	$req->execute(array(
 	$VENDID,$RECEIVENO,$VOUCHERNO,$TRANDATE,$DUEDATE,
 	$VENDNAME,$VENDNAME1,$TO_INVOICE,$VAT_AMT,$VAT_PERCENT,
 	$INV_AMT,$PAID_AMT,$BALANCE,$PCNAME,$CURR_RATE,
@@ -460,22 +487,22 @@ function _receivePO($PONumber,$author)
 
 
 
-			$sql = "INSERT INTO PORECEIVEDETAIL(
+		$sql = "INSERT INTO PORECEIVEDETAIL(
 		VENDID,RECEIVENO,VENDNAME,VENDNAME1,PONUMBER,   
 		TRANDATE,APSTATUS,TRANCOST,PURCHASEDATE,LINENUM,     
 		PRODUCTID,PRODUCTNAME,PRODUCTNAME1,TRANQTY,DIMENSION,  
 		FILEID,COST_CENTER,INVENTORY_ACC,POCLEARING_ACC,EXTCOST,    
 		LOCID,QTY_ORDER,VATABLE,VAT_PERCENT,LINE_NOTE,   
-		REQUIREDATE,TRANDISC,FROM_SERIAL,TO_SERIAL,   
-		TRANUNIT,TRANFACTOR,CURRID_COSTADD,OPERATIONBASE,CURRID_EXCHRATE, 
-		CURRENCY_AMOUNT,COST_ADD,CURR_ID,BASECURR_ID,CURRENCY_COST, 
-		CURRENCY_COST_ADD,ORIGINAL_QTY,QTY_PACK,PACK_WEIGHT,CHAMBERNG_QTY, 
-		WET_QTY,WET_PERCENT,DATEADD,USERADD) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		REQUIREDATE,TRANDISC,FROM_SERIAL,TO_SERIAL,TRANUNIT,
+		TRANFACTOR,CURRID_COSTADD,OPERATIONBASE,CURRID_EXCHRATE,CURRENCY_AMOUNT,
+		COST_ADD,CURR_ID,BASECURR_ID,CURRENCY_COST,CURRENCY_COST_ADD,
+		ORIGINAL_QTY,QTY_PACK,PACK_WEIGHT,CHAMBERNG_QTY, WET_QTY,
+		WET_PERCENT,DATEADD,USERADD) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,
+				?,?,?,?,?,?,?,?,?,?,
+				?,?,?,?,?,?,?,?,?,?,
+				?,?,?,?,?,?,?,?,?,?,				
+				?,?,?,?,?,?,?,?)";
 
 		$req = $db->prepare($sql);
 		$req->execute(array(
@@ -484,7 +511,7 @@ function _receivePO($PONumber,$author)
 		$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$TRANQTY,$DIMENSION,
 		$FILEID,$COST_CENTER,$INVENTORY_ACC,$POCLEARING_ACC,$EXTCOST,
 		$LOCID,$QTY_ORDER,$VATABLE,$VAT_PERCENT,$LINE_NOTE,
-		$REQUIREDATE,$PO_COLID,$TRANDISC,$FROM_SERIAL,$TO_SERIAL,
+		$REQUIREDATE,$TRANDISC,$FROM_SERIAL,$TO_SERIAL,
 		$TRANUNIT,$TRANFACTOR,$CURRID_COSTADD,$OPERATIONBASE,$CURRID_EXCHRATE,
 		$CURRENCY_AMOUNT,$COST_ADD,$CURR_ID,$BASECURR_ID,$CURRENCY_COST,
 		$CURRENCY_COST_ADD,$ORIGINAL_QTY,$QTY_PACK,$PACK_WEIGHT,$CHAMBERNG_QTY,
@@ -496,7 +523,7 @@ function _receivePO($PONumber,$author)
 							 CURRENCY_RECEIVEAMOUNT = CURRENCY_RECEIVEAMOUNT+ ?,
 							 [POSTATUS] = ?  WHERE [PONUMBER]= ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($CURRENCY_AMOUNT,$CURRENCY_AMOUNT,$PONumber));
+	$req->execute(array($CURRENCY_AMOUNT,$CURRENCY_AMOUNT,'C',$PONumber));
 
 	$sql = "UPDATE APVENDOR set TOTALREC = TOTALREC + ?,
 							LASTRECAMT = ?,
@@ -553,9 +580,9 @@ function _receivePO($PONumber,$author)
 	ARACC,BASECURR_ID,CURRENCY_AMOUNT,PURPOSE_ISSUE,JOB_ID,      
 	USERADD,DATEADD) 
 	values 
-	(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-	 ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-	 ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+	(?,?,?,?,?,?,?,?,?,?,
+	 ?,?,?,?,?,?,?,?,?,?,
+	 ?,?,?,?,?,?,?,?,?,?,
 	 ?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array(
@@ -576,11 +603,11 @@ function _receivePO($PONumber,$author)
 
 		$sql = "SELECT CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($item["PRODUCTID"]));
-
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$line++;
 
-		$DOCNUM = "VO00000000000" + $APNUM;
+		$DOCNUM = "VO00000000000".$APNUM;
 		$PRODUCTID = $item["PRODUCTID"]; 
 		$LOCID = "WH2"; 
 		$CATEGORYID = $res["CATEGORYID"];
@@ -690,26 +717,26 @@ function _receivePO($PONumber,$author)
 		LINE_NOTE,CASE_PRODUCTID,CASE_QTY,POSSTAT,DECL1,      
 		FOB,FREIGHT,INSUR,DECL2,DUTY_VAT,     
 		MCC_EXP,LDC,FREIGHT_SG,INSUR_SG,RECEIVENO,    
-		OTHER_PRICE,RETURN_DATE,BORROW_NUMBER,CHANGE_REWARD,   
-		MONEY_REWARD,IS_MONEY_REWARD,PACK_RECEIVE,PACK_UNIT,REWARD_UNIT,    
-		COST_METHOD,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,CURRENCY_COST_ADD,  
-		CURRENCY_EXTPRICE,CURRENCY_PRICE,FF_LF_INDEX,PURPOSE_ISSUE,JOB_ID,     
-		ROW_ID,MAIN_PRODUCTID,USERADD,DATEADD) 
+		OTHER_PRICE,RETURN_DATE,BORROW_NUMBER,CHANGE_REWARD,MONEY_REWARD,
+		IS_MONEY_REWARD,PACK_RECEIVE,PACK_UNIT,REWARD_UNIT,COST_METHOD,
+		BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,CURRENCY_COST_ADD,CURRENCY_EXTPRICE,
+		CURRENCY_PRICE,FF_LF_INDEX,PURPOSE_ISSUE,JOB_ID,ROW_ID,
+		MAIN_PRODUCTID,USERADD,DATEADD) 
 		values(
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?)";
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?)";
 
 		$req = $db->prepare($sql);
 
-		$req->execute(
+		$req->execute(array(
 		$DOCNUM,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID, 
 		$BATCHNO,$SERIAL,$TIERID,$TRANDATE,$TRANTYPE, 
 		$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,$REFERENCE,$COMMENT, 
@@ -724,11 +751,11 @@ function _receivePO($PONumber,$author)
 		$LINE_NOTE,$CASE_PRODUCTID,$CASE_QTY,$POSSTAT,$DECL1, 
 		$FOB,$FREIGHT,$INSUR,$DECL2,$DUTY_VAT, 
 		$MCC_EXP,$LDC,$FREIGHT_SG,$INSUR_SG,$RECEIVENO, 
-		$OTHER_PRICE,$PO_COLID,$RETURN_DATE,$BORROW_NUMBER,$CHANGE_REWARD, 
-		$MONEY_REWARD,$IS_MONEY_REWARD,$PACK_RECEIVE,$PACK_UNIT,$REWARD_UNIT, 
-		$COST_METHOD,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,$CURRENCY_COST_ADD, 
-		$CURRENCY_EXTPRICE,$CURRENCY_PRICE,$FF_LF_INDEX,$PURPOSE_ISSUE,$JOB_ID, 
-		$ROW_ID,$MAIN_PRODUCTID,$USERADD,$DATEADD);
+		$OTHER_PRICE,$RETURN_DATE,$BORROW_NUMBER,$CHANGE_REWARD,$MONEY_REWARD,
+		$IS_MONEY_REWARD,$PACK_RECEIVE,$PACK_UNIT,$REWARD_UNIT, $COST_METHOD,
+		$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,$CURRENCY_COST_ADD, $CURRENCY_EXTPRICE,
+		$CURRENCY_PRICE,$FF_LF_INDEX,$PURPOSE_ISSUE,$JOB_ID,$ROW_ID,
+		$MAIN_PRODUCTID,$USERADD,$DATEADD));
 	}
 
 	//$sql = "UPDATE SYSSETUPCURRENCY  set HAS_TRANSACTION = ? WHERE CURR_ID = ?"; NO NEED ?
@@ -783,10 +810,10 @@ function _receivePO($PONumber,$author)
 	LOCID,CURR_ID,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,
 	CURRENCY_BALANCE,CURRENCY_PAIDAMT,DATEADD,USERADD) 
 	values (
-	?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-	?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-	?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-	?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+	?,?,?,?,?,?,?,?,?,?,
+	?,?,?,?,?,?,?,?,?,?,
+	?,?,?,?,?,?,?,?,?,?,
+	?,?,?,?,?,?,?,?,?)";
 
 	$req = $db->prepare($sql);
 	$req->execute(array($VENDID,$VOUCHERNO,$TRANDATE,$DUEDATE,$VENDNAME,
@@ -806,7 +833,7 @@ function _receivePO($PONumber,$author)
 		 		set RECEIVE_DATE = ?,
 				[RECEIVE_QTY] = RECEIVE_QTY + ?,
 				[POSTATUS] = 'C',
-				[QTY_OVERORDER] = 0,		
+				[QTY_OVERORDER] = 0		
 		 		WHERE PONUMBER = ? 
 		 		AND PRODUCTID =?";
 		 $req = $db->prepare($sql);
@@ -814,6 +841,7 @@ function _receivePO($PONumber,$author)
 
 		$LOCCOST = $item["TRANCOST"];
 		$LOCLASTCOST = $item["TRANCOST"];
+		$RECENTLASTCOST = $LOCLASTCOST;
 		$LOCONHAND = $item["ORDER_QTY"];
 		$TOTALRECEIVE = $item["ORDER_QTY"];
 		$LASTRECEIVE = $today;
@@ -836,7 +864,7 @@ function _receivePO($PONumber,$author)
 
 		$req = $db->prepare($sql);
 		$req->execute(array(
-			$LOCCOST,$LOCLASTCOST,$LOCONHAND,$TOTALRECEIVE,$LASTRECEIVE,
+			$LOCCOST,$LOCLASTCOST,$RECENTLASTCOST,$LOCONHAND,$TOTALRECEIVE,$LASTRECEIVE,
 			$USEREDIT,$DATEEDIT,$LOCID,$PRODUCTID));
 
 		$ONHAND = $item["ORDER_QTY"];
@@ -853,11 +881,11 @@ function _receivePO($PONumber,$author)
 			COST = ? 
 			WHERE [PRODUCTID]= ?";
 		$req = $db->prepare($sql);
-		$req->execute($ONHAND,$LASTCOST,$TOTALRECEIVE,$LASTRECEIVEDATE,$COST,$PRODUCTID);
+		$req->execute(array($ONHAND,$LASTCOST,$TOTALRECEIVE,$LASTRECEIVEDATE,$COST,$PRODUCTID));
 
 
 		$LASTCOST = $item["TRANCOST"];
-		$LASTRECEIVE = $item["ORDER_QTY"];
+		$LASTRECEIVE = $today;
 		$TOTALRECEIVE = $item["ORDER_QTY"];
 		$USEREDIT = blueUser($author);
 		$DATEEDIT = $today;
@@ -870,10 +898,11 @@ function _receivePO($PONumber,$author)
 								  DATEEDIT = ?
 								  WHERE PRODUCTID = ? AND VENDID =?";
 		$req = $db->prepare($sql);
-		$req->execute(array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
+		$req->execute(
+			array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
 
 		$VENDID =  $theVENDID;
-		$VOUCHERNO =  "VO00000000000" + $APNUM;
+		$VOUCHERNO =  "VO00000000000" . $APNUM;
 		$VENDNAME = $theVENDNAME; 
 		$VENDNAME1 = $theVENDNAME1;
 		$PONUMBER =  $PONumber;
@@ -882,7 +911,7 @@ function _receivePO($PONumber,$author)
 		$TRANCOST =   $item["TRANCOST"]; //  Last cost of Item
 		$PURCHASEDATE = $today;
 		$LINENUM =   $line;
-		$PRODUCTID =  $item["PRDUCTID"];
+		$PRODUCTID =  $item["PRODUCTID"];
 		$PRODUCTNAME = $item["PRODUCTNAME"]; 
 		$PRODUCTNAME1 = $item["PRODUCTNAME1"]; 
 		$TRANQTY =   $item["ORDER_QTY"];
@@ -909,13 +938,12 @@ function _receivePO($PONumber,$author)
 		FILEID,COST_CENTER,FREIGHTSG,INSURSG,TRANUNIT,    
 		TRANFACTOR,CURR_ID,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,   
 		AMOUNT,CURR_RATE,DATEADD,USERADD) values (
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?)";
 
 		$req = $db->prepare($sql);
-		$req->execute(array(
-		));
+		$req->execute(array());
 	}
 
 	//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
