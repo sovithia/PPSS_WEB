@@ -943,7 +943,14 @@ function _receivePO($PONumber,$author)
 		?,?,?,?,?,?,?,?,?)";
 
 		$req = $db->prepare($sql);
-		$req->execute(array());
+		$req->execute(array(
+		$VENDID,$VOUCHERNO,$VENDNAME,$VENDNAME1,$PONUMBER,    
+		$TRANDATE,$APSTATUS,$TRANCOST,$PURCHASEDATE,$LINENUM,     
+		$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$TRANQTY,$DIMENSION, 
+		$FILEID,$COST_CENTER,$FREIGHTSG,$INSURSG,$TRANUNIT,    
+		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
+		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD
+		));
 	}
 
 	//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
@@ -960,7 +967,7 @@ function _receivePO($PONumber,$author)
 	$GLAMT =    $theTOTALAMOUNT; 
 	$DEBIT =     "0";
 	$CREDIT =    $theTOTALAMOUNT;
-	$DOCNO =     "VO00000000000" + $APNUM;
+	$DOCNO =     "VO00000000000" . $APNUM;
 	$USERADD =    blueUser($author);
 	$DATEADD =    $today;
 	$GLPOST =    "N";
@@ -1065,7 +1072,7 @@ function _receivePO($PONumber,$author)
 
 	//+APACCOUNT (Account Number 17000)
 	$VENDID = $theVENDID;
-	$VOUCHERNO = "VO00000000000" + $APNUM; 
+	$VOUCHERNO = "VO00000000000" . $APNUM; 
 	$TRANDATE = $today;
 	$LINENUM =   "1";
 	$ACCNO =       "17000";
@@ -1104,7 +1111,7 @@ function _receivePO($PONumber,$author)
 	 ?,?,?,?,?,?,?,?,?,?,
 	 ?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$sql->execute(array(
+	$req->execute(array(
 	$VENDID,$VOUCHERNO,$TRANDATE,$LINENUM,$ACCNO,
 	$AMOUNT,$PERIOD,$YEAR,$BATCH,$REFERENCE,
 	$ACCNAME,$ACCNAME1,$STAT,$TYPE,$BATCHDATE,
@@ -1113,7 +1120,7 @@ function _receivePO($PONumber,$author)
 	$USERADD,$DATEADD
 	));
 
-
+	/* THIS IS FOR PAY AP
 	$PAID_AMT = "";
 	$DISC_AMT = "";
 	$BALANCE = "";
@@ -1138,8 +1145,8 @@ function _receivePO($PONumber,$author)
 	$req = $db->prepare($sql);
 	$req->execute(array(
 	$PAID_AMT,$DISC_AMT,$BALANCE,$CURRENCY_PAIDAMT,$CURRENCY_DISCAMT,
-	$CURRENCY_BALANCE,$PAIDDATE,$VENDID,$VOUCHERNO
-	));
+	$CURRENCY_BALANCE,$PAIDDATE,$VENDID,$VOUCHERNO)
+	);
 
 
 	$BALANCE = "";
@@ -1152,6 +1159,7 @@ function _receivePO($PONumber,$author)
 
 	$req = $db->prepare($sql);
 	$req->execute(array($BALANCE,$LASTPAIDAMT,$VENDID));		
+	*/
 }
 
 function createAndReceivePO($items,$author)

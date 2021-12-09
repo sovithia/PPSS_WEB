@@ -2932,12 +2932,12 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		$item["VENDNAME"] = $res["VENDNAME"];
-		$item["PACKING"] = $res["PACKINGNOTE"];
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		array_push($newData,$item);	
-
+		if ($res != false){
+			$item["VENDNAME"] = $res["VENDNAME"];
+			$item["PACKING"] = $res["PACKINGNOTE"];
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			array_push($newData,$item);	
+		}	
 	}
 	$data["result"] = "OK";				
 	$data["data"] = $newData;
