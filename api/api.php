@@ -3553,8 +3553,13 @@ $app->delete('/supplyrecord/{id}',function(Request $request,Response $response) 
 	return $response;
 });
 
+
+
 $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
+
+	$hidenoreceive =  $request->getParam('hidenorcv','NO');
+
 	$db = getInternalDatabase();
 	$db2 = getDatabase();
 
@@ -3565,12 +3570,25 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$rr["items"] = null;
 	
-	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
+
+	if ($hidenoreceive == 'YES')
+	{
+		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ? AND RECEIVE_QTY > 0 ORDER BY PRODUCTID ASC";	
+	}
+	else{
+		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
+				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
+				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
+	}
+		
 	
 
 	if ($rr["TYPE"] == "NOPO")
