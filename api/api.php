@@ -3167,7 +3167,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
@@ -3182,11 +3182,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			if ($res["CNT"] == 0){
 				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
+				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"]));		
 			}else{
 				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
+				$req->execute(array($item["TRANQTY"],$item["PRODUCTID"]));			
 			}
 		}	
 	
