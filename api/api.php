@@ -2928,11 +2928,13 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 
 	$newData = array();
 	foreach($items as $item){
-		$sql = "SELECT PRODUCTNAME,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != false){
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			$item["PRODUCTNAME1"] = $res["PRODUCTNAME1"];			
 			$item["VENDNAME"] = $res["VENDNAME"];
 			$item["PACKING"] = $res["PACKINGNOTE"];
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
@@ -3167,7 +3169,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
