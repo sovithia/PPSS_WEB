@@ -3169,7 +3169,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PORECEIVEDDETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
@@ -5035,7 +5035,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 	$req = $db->prepare($sql);	
-	$req->execute(array($item["PRODUCTID"]));
+	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
 
 	if ($suffix == ""){
