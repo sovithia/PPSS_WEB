@@ -67,7 +67,6 @@ function fieldsPresets($type)
              $type == "itemrequestactionpool_TRANSFER" ||  
              $type == "itemrequestactionpool_RESTOCK")
         return ["IMAGE", "PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY"];
-
     else if ($type == "depleteditems")
     {
         return ["IMAGE","PRODUCTID","PRODUCTNAME", "VENDNAME","WH1","WH2","ORDERPOINT","ORDERQUANTITY"];    
@@ -149,7 +148,7 @@ function generateExcel($items,$fields,$setQuantity = false)
     $alphacount = 0;
 
    
-    foreach($fields as $field )
+    foreach($fields as $field)
     {
         $sheet->setCellValue($alphabet[$alphacount].'1', $field); 
         $alphacount++;     
@@ -329,31 +328,31 @@ if ($type == "EXPORTALL")
 {
     $items = Service::ListEntity("itemsearch2","?zerosale=YES&thrownstart=2015-01-01&thrownend=2030-01-01&sellstart=2015-01-01&sellend=2030-01-01");     
     error_log("DOWNLOAD DONE");
-    generateExcel($items,$type);    
+    generateExcel($items,fieldsPresets($type));    
     downloadFile("data.xlsx");
 }
 else if ($type == "POEXPORT")
 { 
     $items = purifyData($_POST);            
-    generateExcel($items,$type,true);    
+    generateExcel($items,fieldsPresets($type),true);    
     downloadFile("data.xlsx");
 }
 else if ($type == "itemnegative")
 {
     $items = Service::ListEntity("itemnegative","?page=-1");     
-    generateExcel($items,"itemnegative");
+    generateExcel($items,fieldsPresets($type));
     downloadFile("data.xlsx");  
 }
 else if ($type == "itemzerostock")
 {
     $items = Service::ListEntity("itemzerostock","?page=-1");     
-    generateExcel($items,"itemzerostock");
+    generateExcel($items,fieldsPresets($type));
     downloadFile("data.xlsx");     
 }
 else if ($type == "zerosale")
 {
     $items = Service::ListEntity("zerosale","?page=-1");     
-    generateExcel($items,"zerosale");
+    generateExcel($items,fieldsPresets($type));
     downloadFile("data.xlsx");
 }
 else if ($type == "pricecalculator")
@@ -365,7 +364,7 @@ else if ($type == "pricecalculator")
 else if ($type == "EXPORTSELECT")
 {
     $items = purifySelectedData($_POST);    
-    generateExcel($items,$type);    
+    generateExcel($items,fieldsPresets($type));    
     downloadFile("data.xlsx");
 }                  
 else if ($type == "itemrequestactionpool_PURCHASE" || 
@@ -373,10 +372,10 @@ else if ($type == "itemrequestactionpool_PURCHASE" ||
          $type == "itemrequestactionpool_RESTOCK" || 
          $type == "depleteditems")
 {
-
-    $items = json_decode($_POST["items"],true);        
-    generateExcel($items,$type);
-    downloadFile("data.xlsx");
+    
+    $items = json_decode($_POST["items"],true);            
+    generateExcel($items,fieldsPresets($type));
+    //downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
 {       
