@@ -3580,7 +3580,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
-				   FROM PODETAIL WHERE PONUMBER = ? AND RECEIVE_QTY > 0 ORDER BY PRODUCTID ASC";	
+				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
 	}
 	else{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
@@ -3598,14 +3598,20 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		if ($rr["LINKEDPO"] != null)
 		{
 			$req = $db2->prepare($sql);
-			$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
+			if ($hidenoreceive == 'YES')
+				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));	
+			else
+				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
 		}
 	}
 	else 
 	{
 		$req = $db2->prepare($sql);
-		$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
+		if ($hidenoreceive == 'YES')
+			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
+		else
+			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
 
 		//$debug = var_export($poitems[0], true);
@@ -3655,6 +3661,20 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$response = $response->withJson($resp);
 
 
+	return $response;
+});
+
+
+$app->get('/itemstatistics/{id}', function(Request $request,Response $response) {
+	
+	$id = $request->getAttribute('id');
+	$start = $request->getParam('start','');
+	$end = $request->getParam('end','');
+	$stats = statisticsByItem($id,$start,$end);
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $stats;
+	$response = $response->withJson($resp);
 	return $response;
 });
 
