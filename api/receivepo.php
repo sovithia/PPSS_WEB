@@ -1007,7 +1007,7 @@ function _receivePO($PONumber,$author)
 		$GLAMT =    $theVATAMOUNT;
 		$DEBIT =     $theVATAMOUNT;
 		$CREDIT =    0;
-		$DOCNO =      "VO00000000000" + $APNUM;
+		$DOCNO =      "VO00000000000" . $APNUM;
 		$USERADD =    blueUser($author);
 		$DATEADD =    $today;
 		$GLPOST =    "N";
