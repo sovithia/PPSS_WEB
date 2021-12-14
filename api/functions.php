@@ -449,6 +449,8 @@ function statisticsByItem($barcode, $start = '',$end = '')
 		ONHAND FROM dbo.ICPRODUCT
 		WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
+			
+	
 		$req->execute(array($barcode));			
 	}
 	$item = $req->fetch(PDO::FETCH_ASSOC);	
@@ -570,7 +572,8 @@ function calculateMultiple($barcode){
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
-
+	if (!is_numeric($multiple))
+		$multiple = 1;	
 	if ($lastrcvqty % $multiple != 0)
 		$lastrcvqty = $multiple;
 
@@ -956,8 +959,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
-		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days + 1; // HACK
-		error_log("DIFF : ".$diffDays);			
+		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days + 1; // HACK		
 		$today = new DateTime('NOW');
 		
 		if ($type == null || $type == "EXPIREPROMOTION")

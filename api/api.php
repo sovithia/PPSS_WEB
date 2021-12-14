@@ -6619,7 +6619,8 @@ $app->get('/depleteditems', function($request,Response $response) {
 					AND ACTIVE = 1
 					AND LOCID = 'WH1'
 					AND ONHAND < ICLOCATION.ORDERPOINT 
-					AND ICLOCATION.ORDERPOINT > 0";
+					AND ICLOCATION.ORDERPOINT > 0
+					GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8399,6 +8400,68 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+$app->get('/penalty/{status}',function($request,Response $response) {
+	$db = getInternalDatabase();
+	$status = $request->getAttribute('status');
+	$data = array();
+
+	$sql = "SELECT PRODUCTID,QUANTITY1,EXPIRATION,PERCENTPENALTY1, FROM DEPRECIATIONITEM  WHERE STATUS_1 = 'UNSOLVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+	array_push($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY2,EXPIRATION,PERCENTPENALTY2 FROM DEPRECIATIONITEM  WHERE STATUS_2 = 'UNSOLVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+	array_push($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY3,EXPIRATION,PERCENTPENALTY3 FROM DEPRECIATIONITEM  WHERE STATUS_3 = 'UNSOLVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+	array_push($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY4,EXPIRATION,PERCENTPENALTY4 FROM DEPRECIATIONITEM  WHERE STATUS_4 = 'UNSOLVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());	
+	array_push($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$newData = array();
+	foreach($items as $item){
+		$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);		
+		$req->execute(array()); 
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res != false)
+			$item["PRICE"] = $res["PRICE"];
+		array_push($newData,$item);
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	return $resp;
+});
+
+$app->put('/penalty/{id}',function($request,Response $response) {
+	$db = getInternalDatabase();
+	$data = array();
+
+	$json = json_decode($request->getBody(),true);
+	$field = $json["FIELD"];
+	$productid = $json["PRODUCTID"];
+	$expiration = $json["EXPIRATION"];
+	
+	$sql = "UPDATE DEPRECIATIONITEN SET ? = 'SOLVED' WHERE PRODUCTID = ? AND EXPIRATION = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($field,$productid,$expiration));
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	return $resp;
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
