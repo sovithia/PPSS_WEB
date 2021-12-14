@@ -1030,8 +1030,15 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$stats = orderStatistics($barcode,"PURCHASE");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
-			$item["LASTRCVQTY"] = $stats["RCVQTY"];
-			$item["DISCOUNT"] = $stats["DISCOUNT"];
+			if(isset($stats["RCVQTY"]))
+				$item["LASTRCVQTY"] = $stats["RCVQTY"];
+			else 
+				$item["LASTRCVQTY"] = "0";
+
+			if (isset($stats["DISCOUNT"]))
+				$item["DISCOUNT"] = $stats["DISCOUNT"];
+			else 
+				$item["DISCOUNT"] = "0";
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode,"RESTOCK");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -2718,7 +2725,11 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
 		$item["PRICE"] = $json["PRICE"];
-		$item["PACKING"] = $json["PACKING"];
+		error_log("PRICE: ".$item["PRICE"]);
+		if (isset($json["PACKING"]))
+			$item["PACKING"] = $json["PACKING"];
+		else
+			$item["PACKING"] = "";
 		$item["DISCOUNT"] = $json["DISCOUNT"];
 		$item["ALGOQTY"] = $json["ALGOQTY"];
 		$item["REASON"] = $json["REASON"];
@@ -2748,8 +2759,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		
 		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
-		$item["ALGOQTY"] = $stats["FINALQTY"];	
-		$item["PRICE"] = $stats["PRICE"];		
+		$item["ALGOQTY"] = $stats["FINALQTY"];
+		if (isset($stats["PRICE"]))	
+			$item["PRICE"] = $stats["PRICE"];		
 		$item["DECISION"] = $stats["DECISION"];
 
 		
