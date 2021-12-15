@@ -646,7 +646,8 @@ function orderStatistics($barcode,$type = "RESTOCK")
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$res = $req->execute(array($barcode));
-		$stats["FINALQTY"] = 0;				
+		$stats["FINALQTY"] = 0;
+		$stats["PRICE"] = $res["PRICE"];				
 		if ($res == false)
 			$stats["DECISION"] = "NOT FOUND";			
 		else 

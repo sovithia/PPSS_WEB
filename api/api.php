@@ -2709,7 +2709,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;
-});
+	});
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
@@ -2718,14 +2718,13 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	
 	$json = json_decode($request->getBody(),true);	
 	$userid = $json["USERID"];
-	if (!isset($json["ITEMS"]))
+	if (!isset($json["ITEMS"])) // MANUAL
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
 		if ($json["QUANTITY"] != $json["ALGOQTY"])
 			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
 		$item["PRICE"] = $json["PRICE"];
-		error_log("PRICE: ".$item["PRICE"]);
 		if (isset($json["PACKING"]))
 			$item["PACKING"] = $json["PACKING"];
 		else
@@ -2735,11 +2734,11 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$item["REASON"] = $json["REASON"];
 		$items = array();
 		array_push($items,$item);
-	}else{
+	}else{ // EXCEL
 		$items = json_decode($json["ITEMS"],true);	
 	}
 	
-
+	$message = "";
 	foreach($items as $item)
 	{
 
@@ -2748,9 +2747,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res == false) 
-			continue;
+		if ($res == false){
 
+			$message .= "\n".$item["PRODUCTID"]." Not Found";
+			continue;
+		} 
+			
 		// TEST IF POOL IS EMPTY AND PICK FIRST ITEM
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
 		$req = $db->prepare($sql);
@@ -2759,9 +2761,16 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		
 		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
+		if ($stats["DECISION"] == "NEVER RECEIVED"){
+			$message .= "\n".$item["PRODUCTID"]." Never received";
+			continue;
+		}
+
+
 		$item["ALGOQTY"] = $stats["FINALQTY"];
 		if (isset($stats["PRICE"]))	
-			$item["PRICE"] = $stats["PRICE"];		
+			$item["PRICE"] = $stats["PRICE"];
+
 		$item["DECISION"] = $stats["DECISION"];
 
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0")
@@ -2820,8 +2829,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	}
 
-
-	
+	if ($message != "")
+		$data["message"] = $message;
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
 	return $response;
@@ -3319,8 +3328,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$isSplitCompany = false;
 
 			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
-				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103"){
+				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||	
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103" || $vendid == "100-009"){
 				$isSplitCompany = true;
 			}
 
@@ -4208,16 +4217,22 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				else
 					$theQty = $item["REQUEST_QUANTITY"];
 
-							
-				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$theQty,$vendid));
+				if (intval($theQty) > 0)
+				{
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$theQty,$vendid));
+				}	
+				
 			}
 			else
 			{
-				$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY =  ? WHERE  PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($theQty,$item["PRODUCTID"]));
+				if (intval($theQty) > 0)
+				{
+					$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY =  ? WHERE  PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($theQty,$item["PRODUCTID"]));
+				}
 			}
 		}
 		else if ($json["TYPE"] == "RESTOCK")
@@ -4258,16 +4273,21 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				else
 					$theQty = $item["REQUEST_QUANTITY"];
 
-
-				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));
+				if(intval($item["REQUEST_QUANTITY"]) > 0)
+				{
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));	
+				}				
 			}
 			else
 			{
-				$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+				if(intval($item["REQUEST_QUANTITY"]) > 0)
+				{
+					$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+				}
 			}
 		}
 
@@ -4295,7 +4315,9 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$req = $db->prepare($sql);
 			$req->execute(array($newQty,$item["PRODUCTID"]));								
 		}									
-	}		
+	}
+
+
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
 	return $response->withHeader('Access-Control-Allow-Origin', '*')
@@ -5006,6 +5028,8 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}
+			if (intval($item["REQUEST_QUANTITY"]) <= 0 && intval($orderstats["FINALQTY"]) <= 0)
+				continue;
 			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);				
 			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																								
@@ -6854,7 +6878,7 @@ $app->post('/depreciation', function($request,Response $response) {
 
 
 				$db->beginTransaction();    
-				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1,STATUS_1) 
+				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1,STATUS1) 
 							  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$item["TYPE"],$lastId,$status));			
