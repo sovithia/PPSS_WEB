@@ -2761,7 +2761,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		
 		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
-		if ($stats["DECISION"] == "NEVER RECEIVED"){
+		if ($stats["DECISION"] == "NEVER RECEIVED" && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
 			$message .= "\n".$item["PRODUCTID"]." Never received";
 			continue;
 		}
@@ -3329,7 +3329,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
 				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||	
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103" || $vendid == "100-009"){
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103" || $vendid == "100-009" ||
+				$vendid == "100-059" || $vendid == "100-123"){
 				$isSplitCompany = true;
 			}
 
@@ -4950,6 +4951,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	$IDS = extractIDS($items);
 
+	error_log($IDS);
+
 	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
 				FROM ICPRODUCT,APVENDOR 
@@ -4987,6 +4990,8 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
 
+
+
 		$errors = array();
 		$AUTHOR = "";
 		if(isset($json["AUTHOR"]))
@@ -4999,15 +5004,30 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$item["SPECIALQTY"] = $json["SPECIALQTY"];
 				$item["REASON"] = $json["REASON"];		
 			}
-			$items = array($item);		
-		}else{
+			$items = array($item);
+
+		}else{			
 			$items = $json["ITEMS"];
 		}
-
+		$debug = var_export($items, true);
+		error_log($debug);
 		foreach($items as $item)
-		{		
+		{	
+	
 			if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
-				continue;			
+				continue;		
+
+			// TEST PRODUCT EXISTENCE		
+			$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res == false){
+				$message .= "\n".$item["PRODUCTID"]." Not Found";
+				continue;
+			} 
+
+
 			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");			
 			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);
@@ -5028,11 +5048,31 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}
-			if (intval($item["REQUEST_QUANTITY"]) <= 0 && intval($orderstats["FINALQTY"]) <= 0)
-				continue;
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
-			$req = $db->prepare($sql);				
-			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																								
+
+			if (intval($item["REQUEST_QUANTITY"]) <= 0 && intval($orderstats["FINALQTY"]) <= 0){
+				if (!isset($data["message"]))
+					$data["message"] = $item["PRODUCTID"]." cannot order, use special if really needed";
+				else
+					$data["message"] .= "|".$item["PRODUCTID"]."  cannot order, use special if really needed";
+				continue;	 				
+			}
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME,COMMENT) values(?,?,?,?,?,?,?,?)";
+			$req = $db->prepare($sql);	
+
+			if (isset($item["REQUEST_QUANTITY"]) && $item["REQUEST_QUANTITY"] != "" && $item["REQUEST_QUANTITY"] != null)
+				$qty = $item["REQUEST_QUANTITY"];
+			else if (isset($item["SPECIAL_QUANTITY"]) && $item["SPECIAL_QUANTITY"] != "" && $item["SPECIAL_QUANTITY"] != null)
+				$qty = $item["SPECIAL_QUANTITY"];
+			else 	
+				$qty = $orderstats["FINALQTY"];
+
+			if (isset($item["REASON"]))
+				$reason = $item["REASON"];
+			else 
+				$reason = "";
+
+			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"],$reason));	
+			error_log("HERE");																							
 		}		
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
