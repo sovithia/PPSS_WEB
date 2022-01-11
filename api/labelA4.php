@@ -102,7 +102,7 @@ error_reporting(E_ALL);
 
 		$percentages  = implode("|",array($p1,$p2,$p3,$p4));		
 		if (strlen($percentages) > 0)
-			$percentages = "?percetages="$percentages;
+			$percentages = "?percetages=".$percentages;
 		else
 			$percentages = "";
 
@@ -127,7 +127,7 @@ error_reporting(E_ALL);
   <h1 style='color:#009183'>BIG LABEL GENERATOR</h1>  
 <table bgcolor="#009183" width="1000px" border='1'>
   <tr>    
-    <td  align="center">
+    <td  align="center" bgcolor="#1b9382">
       <span style='color:white'>NORMAL</span>
       <form  method="POST">
         <span style='color:white'>BARCODE 1</span><input name='barcode1' ><span style="color: white;">PERCENT1</span><input type="text" name="percent1"><br>
