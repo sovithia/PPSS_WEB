@@ -2,6 +2,7 @@
 
 require_once 'RestEngine.php';
 
+
 function extractIDS($items,$keyname = "PRODUCTID"){
 	if (count($items) == 0)
 		return "('')";
@@ -40,6 +41,22 @@ function countOccurence($type,$id)
 		$count++;
 	}
 	return $nb;
+}
+
+
+function cleanPictures($id,$type)
+{
+	if ($type == "WASTE"){
+		$path = "./img/waste_proofs/";		
+	}
+	else if($type == "PROMO"){
+		$path = "./img/promo_proofs/";
+	}
+	$count = 1;
+	while(file_exists($path.$id."_".$count.".png")){
+			unlink($path.$id."_".$count.".png");
+			$count++;
+	}
 }
 
 function movePicture($depreciationItemId,$poolitemId,$type)
@@ -200,6 +217,8 @@ function isLocal()
 
 function getDatabase($name = "MAIN")
 { 
+	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
+		$name =	"TRAINING";
 	$conn = null;      
 	try  
 	{  		
@@ -430,6 +449,8 @@ function statisticsByItem($barcode, $start = '',$end = '')
 		ONHAND FROM dbo.ICPRODUCT
 		WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
+			
+	
 		$req->execute(array($barcode));			
 	}
 	$item = $req->fetch(PDO::FETCH_ASSOC);	
@@ -551,7 +572,8 @@ function calculateMultiple($barcode){
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
-
+	if (!is_numeric($multiple))
+		$multiple = 1;	
 	if ($lastrcvqty % $multiple != 0)
 		$lastrcvqty = $multiple;
 
@@ -567,7 +589,6 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 		{		
 				$total = $increasedQty + ($multiple - $remains);
 
-				error_log("Total:" . $total);
 				return $total; // +1
 		}
 		else
@@ -625,7 +646,8 @@ function orderStatistics($barcode,$type = "RESTOCK")
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$res = $req->execute(array($barcode));
-		$stats["FINALQTY"] = 0;				
+		$stats["FINALQTY"] = 0;
+		$stats["PRICE"] = $res["PRICE"];				
 		if ($res == false)
 			$stats["DECISION"] = "NOT FOUND";			
 		else 
@@ -893,7 +915,6 @@ function orderStatistics($barcode,$type = "RESTOCK")
 			}	
 		}
 	
-	error_log($stats["FINALQTY"]);
 	return $stats;	
 }
 
@@ -939,7 +960,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 
 		$data["policy"] = $res["SIZE"];
 		$data["cost"] = $res["COST"];
-		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days;			
+		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days + 1; // HACK		
 		$today = new DateTime('NOW');
 		
 		if ($type == null || $type == "EXPIREPROMOTION")
@@ -957,7 +978,8 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				if ($res["SIZE"] == "NR") // TMP FIX
 					$res["SIZE"] = "NR60";
 
-				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" && $diffDays > 35))
+				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" &&  $diffDays > 35) ||
+						($res["SIZE"] == "NR14" && $diffDays > 17) || ($res["SIZE"] == "NR7" && $diffDays > 10))
 				{
 						$data["status"] = "EARLY";
 						return $data;

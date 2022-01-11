@@ -650,7 +650,10 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 	$barcodes = $request->getAttribute('barcodes'); 		
 	$barcodes = explode("|",$barcodes);	
 
+	$percentages = $request->getParam('percentages','');
+	$percentages = explode("|",$percentages);
 	$result = array();
+	$count = 0;
 	foreach($barcodes as $barcode)
 	{
 		if ($barcode == "")
@@ -660,7 +663,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 
 		if ($packInfo != null)		
 		{
-			;
+			
 		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
@@ -693,11 +696,14 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		}
 		else {
 			$oneItem = itemLookupLabel($barcode,true);
+			if (isset($percentages[$count]))			 
+				$oneItem["discpercent"] = $percentages[$count];
 			$oneItem["packing"] = "";
 			$oneItem["ISPACK"] = "NO";	
 			array_push($result,$oneItem);
 							
-		}				
+		}
+		$count++;				
 			
 	}	
 	$resp["result"] = "OK";
@@ -816,7 +822,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if ($item["OTHERCODE"] != null)
+	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
 
 	$resp = array();
@@ -1030,8 +1036,15 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$stats = orderStatistics($barcode,"PURCHASE");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
-			$item["LASTRCVQTY"] = $stats["RCVQTY"];
-			$item["DISCOUNT"] = $stats["DISCOUNT"];
+			if(isset($stats["RCVQTY"]))
+				$item["LASTRCVQTY"] = $stats["RCVQTY"];
+			else 
+				$item["LASTRCVQTY"] = "0";
+
+			if (isset($stats["DISCOUNT"]))
+				$item["DISCOUNT"] = $stats["DISCOUNT"];
+			else 
+				$item["DISCOUNT"] = "0";
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode,"RESTOCK");
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -1044,7 +1057,6 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["PERCENTPROMO"] = $stats["percentpromo"];	
 			$item["START"] = $stats["start"];
 			$item["END"] = $stats["end"];
-			$item["DURATION"] = $stats["duration"];
 			$item["POLICY"]	= $stats["policy"];
 			$item["COST"] = $stats["cost"];			
 		}
@@ -2379,6 +2391,8 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	$vendorname = $request->getParam('VENDORNAME','');
 	$vendid = $request->getParam('VENDID','');
 
+
+
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
@@ -2418,13 +2432,13 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 			$sql .= " AND TYPE = ?";
 			array_push($params,$potype);
 		}
-		
 	}
 
-	if ($productid != ''){
+	if ($productid != 'ALL'){
 				
 		$sql1 = "SELECT PONUMBER FROM PODETAIL WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql1);
+		$req->execute(array($productid));
 		$ponumbers = $req->fetchAll();
 		if (count($ponumbers) > 0)
 		{
@@ -2701,32 +2715,36 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;
-});
+	});
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-
+	
 	$json = json_decode($request->getBody(),true);	
 	$userid = $json["USERID"];
-	if (!isset($json["ITEMS"]))
+	if (!isset($json["ITEMS"])) // MANUAL
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
-		$item["QUANTITY"] = $json["QUANTITY"];
+		if ($json["QUANTITY"] != $json["ALGOQTY"])
+			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
 		$item["PRICE"] = $json["PRICE"];
-		$item["PACKING"] = $json["PACKING"];
+		if (isset($json["PACKING"]))
+			$item["PACKING"] = $json["PACKING"];
+		else
+			$item["PACKING"] = "";
 		$item["DISCOUNT"] = $json["DISCOUNT"];
 		$item["ALGOQTY"] = $json["ALGOQTY"];
 		$item["REASON"] = $json["REASON"];
 		$items = array();
 		array_push($items,$item);
-	}else{
+	}else{ // EXCEL
 		$items = json_decode($json["ITEMS"],true);	
 	}
 	
-
+	$message = "";
 	foreach($items as $item)
 	{
 
@@ -2735,9 +2753,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res == false) 
-			continue;
+		if ($res == false){
 
+			$message .= "\n".$item["PRODUCTID"]." Not Found";
+			continue;
+		} 
+			
 		// TEST IF POOL IS EMPTY AND PICK FIRST ITEM
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
 		$req = $db->prepare($sql);
@@ -2746,11 +2767,17 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		
 		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
-		$item["ALGOQTY"] = $stats["FINALQTY"];	
-		$item["PRICE"] = $stats["PRICE"];		
-		$item["DECISION"] = $stats["DECISION"];
+		if ($stats["DECISION"] == "NEVER RECEIVED" && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
+			$message .= "\n".$item["PRODUCTID"]." Never received";
+			continue;
+		}
 
-		
+
+		$item["ALGOQTY"] = $stats["FINALQTY"];
+		if (isset($stats["PRICE"]))	
+			$item["PRICE"] = $stats["PRICE"];
+
+		$item["DECISION"] = $stats["DECISION"];
 
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0")
 			$QUANTITY = $item["SPECIALQTY"];
@@ -2790,7 +2817,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res4 != false){
 
-			$sql = "UPDATE SUPPLYRECORDPOOL set ORDER_QTY = ?, ALGOQTY = ?, REASON = ?,PPSS_ORDER_PRICE = ?,DECISION = ? WHERE  USERID = ? AND PRODUCTID = ?) values (?,?,?,?,?,?,?,?)";
+			$sql = "UPDATE SUPPLYRECORDPOOL set ORDER_QTY = ?, ALGOQTY = ?, REASON = ?,PPSS_ORDER_PRICE = ?,DECISION = ? 
+					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
@@ -2807,8 +2835,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 	}
 
-
-	
+	if ($message != "")
+		$data["message"] = $message;
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
 	return $response;
@@ -2887,7 +2915,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
 		
 
-		if ($res2["VENDID"] != $res3["VENDID"]){
+		if ($res2 != false && $res3 != false && $res2["VENDID"] != $res3["VENDID"]){
 			$data["result"] = "KO";	
 			$data["message"] = "Product from different vendor";
 			$response = $response->withJson($data);
@@ -2926,16 +2954,18 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 
 	$newData = array();
 	foreach($items as $item){
-		$sql = "SELECT PRODUCTNAME,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		$item["VENDNAME"] = $res["VENDNAME"];
-		$item["PACKING"] = $res["PACKINGNOTE"];
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		array_push($newData,$item);	
-
+		if ($res != false){
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			$item["PRODUCTNAME1"] = $res["PRODUCTNAME1"];			
+			$item["VENDNAME"] = $res["VENDNAME"];
+			$item["PACKING"] = $res["PACKINGNOTE"];
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			array_push($newData,$item);	
+		}	
 	}
 	$data["result"] = "OK";				
 	$data["data"] = $newData;
@@ -3165,7 +3195,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
-		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+		$sql = "SELECT * FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 
@@ -3180,11 +3210,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			if ($res["CNT"] == 0){
 				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
+				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"]));		
 			}else{
 				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
+				$req->execute(array($item["TRANQTY"],$item["PRODUCTID"]));			
 			}
 		}	
 	
@@ -3304,8 +3334,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$isSplitCompany = false;
 
 			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
-				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||		
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103"){
+				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||	
+				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103" || $vendid == "100-009" ||
+				$vendid == "100-059" || $vendid == "100-123"){
 				$isSplitCompany = true;
 			}
 
@@ -3388,9 +3419,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		{
 
 			foreach($json["ITEMS"] as $key => $value) // TODO ITEM WITH NOT ENOUGH QTY
-			{
-					error_log($key.":".$value["PPSS_RECEPTION_QTY"]);
-				
+			{						
 					$sql = "SELECT TRANCOST,TRANDISC FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
 					$req = $dbBLUE->prepare($sql);
 					$req->execute(array($json["PONUMBER"],$key));
@@ -3553,8 +3582,13 @@ $app->delete('/supplyrecord/{id}',function(Request $request,Response $response) 
 	return $response;
 });
 
+
+
 $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
+
+	$hidenoreceive =  $request->getParam('hidenorcv','NO');
+
 	$db = getInternalDatabase();
 	$db2 = getDatabase();
 
@@ -3565,26 +3599,51 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$rr["items"] = null;
 	
-	$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
+
+	if ($hidenoreceive == 'YES')
+	{
+		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
-				   FROM PODETAIL WHERE PONUMBER = ? ORDER BY PRODUCTID ASC";	
+				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
+	}
+	else{
+		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
+				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
+				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
+	}
+		
+	
+
 	if ($rr["TYPE"] == "NOPO")
 	{
 		if ($rr["LINKEDPO"] != null)
 		{
 			$req = $db2->prepare($sql);
-			$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
+			if ($hidenoreceive == 'YES')
+				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));	
+			else
+				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
 		}
 	}
 	else 
 	{
 		$req = $db2->prepare($sql);
-		$req->execute(array($rr["PONUMBER"],"",$rr["PONUMBER"]));
+		if ($hidenoreceive == 'YES')
+			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
+		else
+			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
+
+		//$debug = var_export($poitems[0], true);
+		//error_log($debug);
+
 		$rr["items"] = $poitems;
 	}
 
@@ -3629,6 +3688,20 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$response = $response->withJson($resp);
 
 
+	return $response;
+});
+
+
+$app->get('/itemstatistics/{id}', function(Request $request,Response $response) {
+	
+	$id = $request->getAttribute('id');
+	$start = $request->getParam('start','');
+	$end = $request->getParam('end','');
+	$stats = statisticsByItem($id,$start,$end);
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $stats;
+	$response = $response->withJson($resp);
 	return $response;
 });
 
@@ -4151,16 +4224,22 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				else
 					$theQty = $item["REQUEST_QUANTITY"];
 
-							
-				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$theQty,$vendid));
+				if (intval($theQty) > 0)
+				{
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$theQty,$vendid));
+				}	
+				
 			}
 			else
 			{
-				$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY =  ? WHERE  PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($theQty,$item["PRODUCTID"]));
+				if (intval($theQty) > 0)
+				{
+					$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY =  ? WHERE  PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($theQty,$item["PRODUCTID"]));
+				}
 			}
 		}
 		else if ($json["TYPE"] == "RESTOCK")
@@ -4201,16 +4280,21 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				else
 					$theQty = $item["REQUEST_QUANTITY"];
 
-
-				$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));
+				if(intval($item["REQUEST_QUANTITY"]) > 0)
+				{
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));	
+				}				
 			}
 			else
 			{
-				$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+				if(intval($item["REQUEST_QUANTITY"]) > 0)
+				{
+					$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+				}
 			}
 		}
 
@@ -4238,7 +4322,9 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$req = $db->prepare($sql);
 			$req->execute(array($newQty,$item["PRODUCTID"]));								
 		}									
-	}		
+	}
+
+
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
 	return $response->withHeader('Access-Control-Allow-Origin', '*')
@@ -4871,6 +4957,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	$IDS = extractIDS($items);
 
+	error_log($IDS);
+
 	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
 				FROM ICPRODUCT,APVENDOR 
@@ -4908,6 +4996,8 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
 
+
+
 		$errors = array();
 		$AUTHOR = "";
 		if(isset($json["AUTHOR"]))
@@ -4920,15 +5010,30 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$item["SPECIALQTY"] = $json["SPECIALQTY"];
 				$item["REASON"] = $json["REASON"];		
 			}
-			$items = array($item);		
-		}else{
+			$items = array($item);
+
+		}else{			
 			$items = $json["ITEMS"];
 		}
-
+		$debug = var_export($items, true);
+		error_log($debug);
 		foreach($items as $item)
-		{		
+		{	
+	
 			if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
-				continue;			
+				continue;		
+
+			// TEST PRODUCT EXISTENCE		
+			$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res == false){
+				$message .= "\n".$item["PRODUCTID"]." Not Found";
+				continue;
+			} 
+
+
 			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");			
 			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);
@@ -4949,9 +5054,31 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
-			$req = $db->prepare($sql);				
-			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																								
+
+			if (intval($item["REQUEST_QUANTITY"]) <= 0 && intval($orderstats["FINALQTY"]) <= 0){
+				if (!isset($data["message"]))
+					$data["message"] = $item["PRODUCTID"]." cannot order, use special if really needed";
+				else
+					$data["message"] .= "|".$item["PRODUCTID"]."  cannot order, use special if really needed";
+				continue;	 				
+			}
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME,COMMENT) values(?,?,?,?,?,?,?,?)";
+			$req = $db->prepare($sql);	
+
+			if (isset($item["REQUEST_QUANTITY"]) && $item["REQUEST_QUANTITY"] != "" && $item["REQUEST_QUANTITY"] != null)
+				$qty = $item["REQUEST_QUANTITY"];
+			else if (isset($item["SPECIAL_QUANTITY"]) && $item["SPECIAL_QUANTITY"] != "" && $item["SPECIAL_QUANTITY"] != null)
+				$qty = $item["SPECIAL_QUANTITY"];
+			else 	
+				$qty = $orderstats["FINALQTY"];
+
+			if (isset($item["REASON"]))
+				$reason = $item["REASON"];
+			else 
+				$reason = "";
+
+			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"],$reason));	
+			error_log("HERE");																							
 		}		
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
@@ -5009,7 +5136,7 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 
 	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 	$req = $db->prepare($sql);	
-	$req->execute(array($item["PRODUCTID"]));
+	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
 
 	if ($suffix == ""){
@@ -5042,6 +5169,8 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";	
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -5096,6 +5225,8 @@ $app->put('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$tableName = "ITEMREQUESTPURCHASEPOOL";
 	else if($type == "TRANSFER")
 		$tableName = "ITEMREQUESTTRANSFERPOOL";
+	else if($type == "TRANSFERFRESH")
+		$tableName = "ITEMREQUESTTRANSFERFRESHPOOL";
 	else if($type == "TRANSFERBACK")
 		$tableName = "ITEMREQUESTTRANSFERBACKPOOL";
 	else if (substr($type,0,6) == "DEMAND"){		
@@ -5418,8 +5549,11 @@ $app->get('/itemzerostock',function(Request $request,Response $response) {
 	$start = 0;
 	$end = 100000;
 	
-	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
-				   COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
+	$sql = "SELECT PRODUCTID,BARCODE,
+			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
+			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',
+			COST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
+			COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
@@ -5469,8 +5603,11 @@ $app->get('/itemnegative',function(Request $request,Response $response) {
 	$start = 0;
 	$end = 100000;
 
-	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,AVGCOST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
-				   COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
+	$sql = "SELECT PRODUCTID,BARCODE,
+			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
+			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',
+			COST,AVGCOST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
+			COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
@@ -6546,7 +6683,7 @@ $app->get('/info',function(Request $request,Response $response){
 
 $app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
-	$sql = "SELECT ICPRODUCT.PRODUCTID,
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRICE,
 		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'PRODUCTNAME', 
 		ICLOCATION.ORDERPOINT, ORDERQTY,
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
@@ -6557,7 +6694,8 @@ $app->get('/depleteditems', function($request,Response $response) {
 					AND ACTIVE = 1
 					AND LOCID = 'WH1'
 					AND ONHAND < ICLOCATION.ORDERPOINT 
-					AND ICLOCATION.ORDERPOINT > 0";
+					AND ICLOCATION.ORDERPOINT > 0
+					GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -6675,9 +6813,9 @@ $app->get('/depreciation', function($request,Response $response) {
 		}else if ($type == "PROMOTION"){
 			$sql .= " AND (TYPE = ? OR TYPE = ? OR TYPE = ? OR TYPE = ?)";
 			array_push($params,"EXPIREPROMOTION");
-			array_push($params,"DAMAGEDPROMOTION");
-			array_push($params,"LOWSELLPROMOTION");
-			array_push($params,"TOOMUCHPROMOTION");
+			array_push($params,"CLEARANCEMEDIUMDAMAGEDPROMOTION");
+			array_push($params,"CLEARANCEHIGHDAMAGEDPROMOTION");
+			array_push($params,"CLEARANCELOWSELLPROMOTION");
 		}		
 		
 	}
@@ -6756,6 +6894,8 @@ $app->post('/depreciation', function($request,Response $response) {
 	$db->commit();    
 
 	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
+
+
 	foreach($items as $item)
 	{			
 		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";
@@ -6778,30 +6918,48 @@ $app->post('/depreciation', function($request,Response $response) {
 		$PERCENTPENALTY = isset($item["PERCENTPENALTY"]) ? $item["PERCENTPENALTY"] : "";
 		$PERCENTPROMO = isset($item["PERCENTPROMO"]) ? $item["PERCENTPROMO"] : "";
 
+		if(intval($PERCENTPENALTY) != 0)
+			$status = 'UNSOLVED';
+		else
+			$status = 'NOPENALTY';
+
 
 		if ($res == false)
-		{							
+		{	
+
+
+
 				$db->beginTransaction();    
-				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1) 
-							  VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+				$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE,DEPRECIATION_ID1,STATUS1) 
+							  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$item["TYPE"],$lastId));			
+				$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$NEEDLABEL,$STARTTIME,$ENDTIME,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$item["TYPE"],$lastId,$status));			
 				$depreciationItemId =  $db->lastInsertId();
 				$db->commit();    
 		}
 		else
 		{
-			if ($res["DEPRECIATION_ID3"] != "")
+			// IF PRECEDENT IS ZERO OR N/A THEN 0
+
+
+			if ($res["DEPRECIATION_ID3"] != ""){
+				//$last = $res["PERCENTPENALTY2"];
 				$cnt = "4";				
-			else if($res["DEPRECIATION_ID2"] != "")
+			}
+			else if($res["DEPRECIATION_ID2"] != ""){
+				//$last = $res["PERCENTPENALTY1"];
 				$cnt = "3";				
-			else if($res["DEPRECIATION_ID1"] != "")			
-				$cnt = "2";								
+			}
+			else if($res["DEPRECIATION_ID1"] != ""){
+				$cnt = "2";
+			}			
+			
+		
 			$sql = "UPDATE DEPRECIATIONITEM SET QUANTITY".$cnt." = ?, STARTTIME".$cnt." = ?, ENDTIME".$cnt." = ?, DEPRECIATION_ID".$cnt." = ?,  
-							LINKTYPE".$cnt." = ?, PERCENTPENALTY".$cnt." = ?, PERCENTPROMO".$cnt." = ?  
+							LINKTYPE".$cnt." = ?, PERCENTPENALTY".$cnt." = ?, PERCENTPROMO".$cnt." = ?, STATUS".$cnt." = ?  
 							WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$PRODUCTID,$EXPIRATION));		
+			$req->execute(array($QUANTITY,$STARTTIME,$ENDTIME,$lastId,$LINKTYPE,$PERCENTPENALTY,$PERCENTPROMO,$status,$PRODUCTID,$EXPIRATION));		
 			$depreciationItemId =  $res["ID"];
 		}
 		if($item["TYPE"] == "DAMAGEWASTE" || $item["TYPE"] == "EXPIREWASTE")
@@ -6822,7 +6980,7 @@ $app->post('/depreciation', function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-// CREATED (GECKMEY) VALIDATED (GECKMEY) CLEARED (ACC) 
+ 
 $app->put('/depreciation', function($request,Response $response) {
 		
 	$json = json_decode($request->getBody(),true);
@@ -7493,800 +7651,6 @@ $app->delete('/returnrecordpool/{id}', function($request,Response $response){
 	return $response;
 });
 
-function createCreditNote($items){
-	$db = $conn=getDatabase();
-
-	$sql = "INSERT INTO POHEADER (PONUMBER,VENID,VENDNAME,VENDNAME1,PODATE,
-				  LOCID,PURCHASE_AMT,RECEIVE_AMT,NOTE,USERADD,
-				  DATEADD,POSTATUS,VAT_PERCENT,PCNAME,CURR_RATE,
-					CURRID,EST_ARRIVAL,REQUIRE_DATE,VAT_AMT,REFERENCE,
-					DISC_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,CURRENCY_RECEIVEAMOUNT) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-	$PONUMBER;				
-	$VENID;
-	$VENDNAME;
-	$VENDNAME1;
-	$PODATE;
-	$LOCID;
-	$PURCHASE_AMT;
-	$RECEIVE_AMT;
-	$NOTE;
-	$USERADD;
-	$DATEADD;
-	$POSTATUS;
-	$VAT_PERCENT;
-	$PCNAME;
-	$CURR_RATE;
-	$CURRID;
-	$EST_ARRIVAL;
-	$REQUIRE_DATE;
-	$VAT_AMT;
-	$REFERENCE;
-	$DISC_PERCENT;
-	$BASECURR_ID;
-	$CURRENCY_AMOUNT;
-	$CURRENCY_VATAMOUNT;
-	$CURRENCY_RECEIVEAMOUNT;
-
-  $req = $db->prepare($sql);
-	$req->execute(array( $PONUMBER,$VENID,$VENDNAME,$VENDNAME1,$PODATE,
-											 $LOCID,$PURCHASE_AMT,$RECEIVE_AMT,$NOTE,$USERADD,
-											 $DATEADD,$POSTATUS,$VAT_PERCENT,$PCNAME,$CURR_RATE,
-										   $CURRID,$EST_ARRIVAL,$REQUIRE_DATE,$VAT_AMT,$REFERENCE,
-											 $DISC_PERCENT,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,$CURRENCY_RECEIVEAMOUNT));
-		/*
-	===========Return PO===============
-	+ INSERT INTO POHEADER
-	INSERT INTO [POHEADER]
-	([PONUMBER],  => Return Number    —> Count From SYSDATA num2++
-	[VENID],    => VENID Return.     —> Select Vendor That return
-	[VENDNAME],  => Vendor Name  ENGLISH return  ———Vendor Name——
-	[VENDNAME1],  => Vendor name KHMER return 
-	[PODATE],   => Date Return
-	[LOCID],    => Location Return
-	[PURCHASE_AMT], => Total Amount Return (Menus)
-	[RECEIVE_AMT],  => Total  Amount Return (Menus)
-	[TERMID],   => (Null) 
-	[TERM_DAYS],  => (0)
-	[TERM_DISC],  => (0)
-	[TERM_NET],   => (0)
-	[FOB_POINT],  => (Null)
-	[SHIPVIA],   => (Null)
-	[NOTE],    => Note Return
-	[USERADD],   => User Return —> User Log in
-	[DATEADD],   => Date Return —> Current Date
-	[USEREDIT],   => (Null) 
-	[DATEEDIT],   => (Null)
-	[COLID],    => Auto
-	[POSTATUS],   => (R)
-	[VAT_PERCENT],  => VAT VENDOR —> Check from APVENDOR
-	[PCNAME],   => PC Return.     —> PC Return
-	[CURR_RATE],  => (1)
-	[CURRID],   => (USD)
-	[EST_ARRIVAL],  => Date Return (Current Date)
-	[REQUIRE_DATE],  => Date Return (Current Date)
-	[REQUSTBY],   => (Null)
-	[VAT_AM],   => Vat Amount Return —> (PURCHASE_AMT - (PURCHASE_AMT/1.1))
-	[REFERENCE],  => Reference Return   —> The same Note
-	
-	[DISC_PERCENT],  => Total Disc        —> From Header 
-	[FILEID],    => (Null) —> Blank
-	[USER_DOCNO],  => (Null) —> Blank
-	[CLOSEBY],   => (Null) —> Blank
-	[CLOSEDATE],  => (Null) —> Blank
-	[VOIDBY],   => (Null) —> Blank
-	[VOIDDATE],   => (Null) —> Blank
-	[BASECURR_ID],  => (USD) 
-	[CURRENCY_AMOUNT],   => Minus Total Amount
-	[CURRENCY_VATAMOUNT],  => (Mnius) Total Vat Amount 
-	[CURRENCY_RECEIVEAMOUNT], => Minus Total Amount
-	[SHIP_REFERENCE],    => (Null)
-	[DISC_AMT_HEADER],    => (0)    
-	[COST_ADD_HEADER],   => (0)
-	[COST_ADD_HEADER2]   => (0)
-	);
-	*/
-
-	foreach($items as $item){
-
-		$PONUMBER;
-		$VENDID;
-		$VENDNAME;
-		$VENDNAME1;
-		$PURCHASE_DATE;
-		$LOCID;
-		$PRODUCTID;
-		$PRODUCTNAME;
-		$PRODUCTNAME1;
-		$ORDER_QTY;
-		$RECEIVE_QTY;
-		$TRANUNIT;
-		$TRANFACTOR;
-		$STKFACTOR;
-		$STKUNIT;
-		$TRANDISC;
-		$TRANCOST;
-		$EXTCOST;
-		$CURRENTONHAND;
-		$CURR_RATE;
-		$CURRID;
-		$WEIGHT;
-		$OLDWEIGHT;
-		$COST_ADD;
-		$TRANLINE;
-		$VATABLE;
-		$VAT_PERCENT;
-		$POSTATUS;
-		$BASECURR_ID;
-		$CURRENCY_AMOUNT;
-		$CURRENCY_COST;
-		$USERADD;
-		$DATEADD;
-		$sql = "INSERT INTO PODETAIL (PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE,
-						LOCID,PRODUCTID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY,
-						RECEIVE_QTY,TRANUNIT,TRANFACTOR,STKFACTOR,STKUNIT,
-						TRANDISC,TRANCOST,EXTCOST,CURRENTONHAND,CURR_RATE,
-						CURRID,WEIGHT,OLDWEIGHT,COST_ADD,TRANLINE,
-						VATABLE,VAT_PERCENT,POSTATUS,BASECURR_ID,CURRENCY_AMOUNT
-						CURRENCY_COST,USERADD,DATEADD ) 
-						VALUES (?,?,?,?,?,
-										?,?,?,?,?,
-										?,?,?,?,?,
-									  ?,?,?,?,?,
-										?,?,?,?,?,
-									  ?,?,?,?,?,
-										?,?,?)";
-
-		$req = $db->prepare($sql);
-
-		$req->execute(array(
-		$PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PURCHASE_DATE,
-		$LOCID,$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$ORDER_QTY,
-		$RECEIVE_QTY,$TRANUNIT,$TRANFACTOR,$STKFACTOR,$STKUNIT,
-		$TRANDISC,$TRANCOST,$EXTCOST,$CURRENTONHAND,$CURR_RATE,
-		$CURRID,$WEIGHT,$OLDWEIGHT,$COST_ADD,$TRANLINE,
-		$VATABLE,$VAT_PERCENT,$POSTATUS,$BASECURR_ID,$CURRENCY_AMOUNT,
-		$CURRENCY_COST,$USERADD,$DATEADD));									  
-	}
-
-	
-	/*
-	+INSERT INTO PODETAIL
-	INSERT INTO [PODETAIL]
-	([PONUMBER],  => Return Number    —> Count From SYSDATA num2++   
-	[VENDID],   => VENID Return.     —> Select Vendor That return 
-	[VENDNAME],  => Vendor Name  ENGLISH return  ———Vendor Name——
-	[VENDNAME1],  => Vendor name KHMER return 
-	[PURCHASE_DATE], => Date Return
-
-	[LOCID],    => Location Return
-	[PRODUCTID],  => ProductID
-	[PRODUCTNAME], => ProductName
-	[PRODUCTNAME1], => ProductName1
-	[COMMENT],   => (Null)
-	[ORDER_QTY],  => Qty Return (Minus)
-	[RECEIVE_QTY],  => Qty Return (Minus)
-	[TRANUNIT],   => (UNIT)
-	[TRANFACTOR],  => (1)
-	[STKFACTOR],  => (1)
-	[STKUNIT],   => (UNIT)
-
-	[TRANDISC],   =>  Disc_Line
-	[TRANCOST],   => Cost Product
-	[EXTCOST],   => Cost after Discount
-	[CURRENTONHAND], => Onhand Before Return
-	[CURR_RATE],  => (USD)
-
-	[CURRID],   => (1)
-	[WEIGHT],   => (1)
-	[OLDWEIGHT],  => (1)
-	[COST_ADD],   => (0)
-	[TRANLINE],   => Count Line Discount
-
-
-	[VATABLE],   => (Y)
-	[VAT_PERCENT],  => (10)
-	[POSTATUS],   => (R)
-	[FILEID],    => (Null)
-	[BASECURR_ID],  => (USD)
-	[CURRENCY_AMOUNT], => Cost after Discount
-
-	[CURRENCY_COST],  => Cost Before Discount
-	[USERADD],    => User Return
-	[DATEADD]);    => Current Daten Retur
-	*/
-
-	
-	$DOCNUM;
-	$FLOCID;
-	$REFERENCE;
-	$TRANDATE;
-	$TRANTYPE;	 
-	$TOTAL_AMT;
-	$PCNAME;
-	$CURRID;
-	$CURR_RATE;
-	$VENDID;
-	$DISC_PERCENT;
-	$VAT_PERCENT;
-	$APPLID;
-	$BASECURR_ID;
-	$CURRENCY_AMOUNT;
-	$USERADD;
-	$DATEADD;
-
-	$sql = "INSERT INTO ICTRANHEADER (DOCNUM,FLOCID,REFERENCE,TRANDATE,TRANTYPE, 
-											 TOTAL_AMT,PCNAME,CURRID,CURR_RATE,VENDID,
-											 DISC_PERCENT,VAT_PERCENT,APPLID,BASECURR_ID,CURRENCY_AMOUNT,
-											 USERADD,DATEADD) 
-											 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-	$req = $db->prepare($sql);	
-	$req->execute(array(
-	$DOCNUM,$FLOCID,$REFERENCE,$TRANDATE,$TRANTYPE,	 
-	$TOTAL_AMT,$PCNAME,$CURRID,$CURR_RATE,$VENDID,
-	$DISC_PERCENT,$VAT_PERCENT,$APPLID,$BASECURR_ID,$CURRENCY_AMOUNT,
-	$USERADD,$DATEADD));
-											 
-
-	/*
-	+ INSERT ICTRANHEADER
-
-	INSERT INTO [ICTRANHEADER]
-	([DOCNUM],    => VO000000000030 (AUTO VO+…) —> AP: num1
-	[FLOCID],    => Return Location
-	[TLOCID],    => (Null)
-	[REFERENCE],   => (Return) +( PO) + Return Number
-	[TRANDATE],    => Date Return
-	[TRANTYPE],    => (I)
-	[TOTAL_AMT],   => Menus Total Amount Return = (SubTotal + VAT Amount)
-	[PCNAME],    => Machine Return
-	[CURRID],    => (USD)
-
-	[CURR_RATE],   => (1)
-	[CUSTID],    => (Null)
-	[VENDID],    => Vendor ID 
-	[DISC_PERCENT],   => (0) Discount  Header from vendor  
-	[VAT_PERCENT],   => (0)Vat Vendor
-	[APPLID],    => (PO)
-	[FILEID],     => (Null)
-	[TOFILEID],    => (Null)
-	[IS_CHANGE_AVGCOST], => (Null)
-	[REF_DOCUMENT],  => (Null) 
-	[IS_PROCCESS],   => (Null)
-	[POSSTAT],    => (Null)
-	[RECEIVENO],   => (Null)
-	[CHANGE_REWARD],  => (Null)
-	[TOTAL_STOCKREWARD], => (0)
-	[TOTAL_MONEYREWARD], => (0)
-	[ARACC],    => (Null)
-	[BASECURR_ID],   => (USD) 
-	[CURRENCY_AMOUNT], => Minus Total Amount (Sub Total + VAT)
-	[PURPOSE_ISSUE],  => (Null)
-	[JOB_ID],    => (Null)
-	[USERADD],    => User Return
-	[DATEADD]);    => Date Return
-	*/
-
-
-	$DOCNUM;
-	$PRODUCTID;
-	$LOCID;
-	$CATEGORYID;
-	$CLASSID;
-	$TRANDATE;
-	$TRANTYPE;
-	$LINENUM;
-	$PRODUCTNAME;
-	$PRODUCTNAME1;	
-	$REFERENCE;
-	$TRANQTY;
-	$TRANUNIT;
-	$TRANFACTOR;
-	$STKUNIT;		
-	$STKFACTOR;
-	$TRANDISC;
-	$TRANTAX;
-	$TRANCOST;
-	$TRANPRICE;
-	$PRICE_ORI;
-	$EXTPRICE;
-	$EXTCOST;
-	$CURRENTONHAND;
-	$CURRID;	
-	$CURR_RATE;
-	$VENDID;
-	$WEIGHT;
-	$APPLID;
-	$CURRENTCOST;	
-	$LASTCOST;
-	$ICCLEARING_ACC;
-	$INVENTORY_ACC;
-	$DIMENSION;
-	$TRANQTY_NEW;	
-	$TRANCOST_NEW;
-	$TRANEXTCOST_NEW;
-	$COST_METHOD;
-	$BASECURR_ID;
-	$CURRENCY_AMOUNT;	
-	$CURRENCY_COST;
-	$MAIN_PRODUCTID;
-	$USERADD;
-	$DATEADD;
-
-	$sql = "INSERT INTO ICTRANDETAIL (DOCNUM,PRODUCTID,LOCID,CATEGORYID,CLASSID,
-					TRANDATE,TRANTYPE,LINENUM,PRODUCTNAME,PRODUCTNAME1,
-					REFERENCE,TRANQTY,TRANUNIT,TRANFACTOR,STKUNIT,
-					STKFACTOR,TRANDISC,TRANTAX,TRANCOST,TRANPRICE,
-					PRICE_ORI,EXTPRICE,EXTCOST,CURRENTONHAND,CURRID,
-					CURR_RATE,VENDID,WEIGHT,APPLID,CURRENTCOST,
-					LASTCOST,ICCLEARING_ACC,INVENTORY_ACC,DIMENSION,TRANQTY_NEW,
-					TRANCOST_NEW,TRANEXTCOST_NEW,COST_METHOD,BASECURR_ID,CURRENCY_AMOUNT,
-					CURRENCY_COST,MAIN_PRODUCTID,USERADD,DATEADD
-					) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
-				 )"; 
-	$req = $db->prepare($sql);			 
-
-	$req->execute(array(
-	$DOCNUM,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
-	$TRANDATE,$TRANTYPE,$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,
-	$REFERENCE,$TRANQTY,$TRANUNIT,$TRANFACTOR,$STKUNIT,		
-	$STKFACTOR,$TRANDISC,$TRANTAX,$TRANCOST,$TRANPRICE,
-	$PRICE_ORI,$EXTPRICE,$EXTCOST,$CURRENTONHAND,$CURRID,
-	$CURR_RATE,$VENDID,$WEIGHT,$APPLID,$CURRENTCOST,
-	$LASTCOST,$ICCLEARING_ACC,$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,	
-	$TRANCOST_NEW,$TRANEXTCOST_NEW,$COST_METHOD,$BASECURR_ID,$CURRENCY_AMOUNT,
-	$CURRENCY_COST,$MAIN_PRODUCTID,$USERADD,$DATEADD));
-
-
-	/*
-	+ INSERT ICTRANDETAIL
-	INSERT INTO [ICTRANDETAIL]
-	([DOCNUM],     => VO000000000030 (AUTO VO+…) —> AP: num1
-	[PRODUCTID],    =>ProductID (List)
-	[LOCID],     => LOCATION ID RETURE
-	[CATEGORYID],   => CATEGORY ITEMS
-	[CLASSID],    => CLASS ITEMS
-	[BATCHNO],    => (NULL)
-	[SERIAL],    => (NULL)
-	[TIERID],     => (NULL)
-	[TRANDATE],    => DATE RETURN
-	[TRANTYPE],    => (I)
-	[LINENUM],    => LINE NUMBER ITEMS 
-	[PRODUCTNAME],  => PRODUCT NAME
-	[PRODUCTNAME1],  => PRODUCT NAME1
-	[REFERENCE],   => (Return) + (PO) + RETURN NUMBER
-	[COMMENT],    => (NULL)
-	[TRANQTY],    =>  QTY RETURN (Menus return qty)
-	[TRANUNIT],    => (NUIT)
-	[TRANFACTOR],   => (1)
-	[STKUNIT],    => (UNIT)
-	[STKFACTOR],   => (1)
-	[TRANDISC],    => TRANDISC BY LINE 
-	[TRANTAX],    => TRANTAX BY LINE (VENDOR)
-	[TRANCOST],    => COST ITEM (Cost Original )
-	[TRANPRICE],   => PRICE ITEM  (Price Item)
-	[PRICE_ORI],    => PRICE ITEM (Selling Price)
-	[EXTPRICE],    => PRICE ITEM (Menus Selling Price)
-	[EXTCOST],    => COST ITEM (Menus Original Cost)
-	[CURRENTONHAND],  => ADD CURRENT ONHAND (Onhand Before Return)
-	[CURRID],    => (USD)
-	[CURR_RATE],   => (1)
-	[CUSTID],    => (NULL)
-	[VENDID],    => VENDER RETURN 
-	[WEIGHT],    => (1)
-	[OLDWEIGHT],   => (0)
-	[APPLID],    => (PO)
-	[CURRENTCOST],   => COST ITEM (Cost Original)
-	[LASTCOST],    => LASTCOST ITEM 
-	[COST_ADD],    => (0) 
-	[COST_RIEL],    => (0)
-	[LINK_LINE],    => (0)
-	[ICCLEARING_ACC],  => DEFAULT ACCOUNT (21400)
-	[INVENTORY_ACC],  => DEFAULT ACCOUNT  (17000)
-	[COSG_ACC],   => (Null)
-	[DIMENSION],   => (1)
-	[FILEID],     => (Null)
-	[IS_CHANGE_AVGCOST], => (Null)
-	[WASTE_QTY],   => (Null)
-	[PRODUCT_PRODUCTID], => (Null)
-	[IS_PROCCESS],   => (Null)
-	[EXPIRED_DATE],   => (Null)
-	[TRANQTY_NEW],   => Qty Return (Minus of qty return by line)
-	[TRANCOST_NEW],  => Cost Item (Original  Cost)
-	[TRANEXTCOST_NEW], =>  Menus Total Cost ( Qty * Cost)
-	[LINE_DISCAMT],   =>  (0) 
-	[COST_CENTER],   => (Null)
-	[LINE_NOTE],    => (Null)
-	[CASE_PRODUCTID],  => (Null)
-	[CASE_QTY],    => (0)
-	[POSSTAT],    => (Null)
-	[DECL1],     => (0)
-	[FOB],     => (0)
-	[FREIGHT],    => (0)
-	[INSUR],     => (0)
-	[DECL2],     => (0)
-	[DUTY_VAT],    => (0)
-	[MCC_EXP],    => (0)
-	[LDC],     => (0)
-	[FREIGHT_SG],   => (0)
-	[INSUR_SG],    => (0)
-	[RECEIVENO],   => (Null)
-	[OTHER_PRICE],   => (0)
-	[PO_COLID],    => (0)
-	[RETURN_DATE],   => (Null)
-	[BORROW_NUMBER],  => (Null)
-	[CHANGE_REWARD],  => (Null)
-	[MONEY_REWARD],  => (0)
-	[IS_MONEY_REWARD], => (Null)
-	[PACK_RECEIVE],   => (0)
-	[PACK_UNIT],   => (Null)
-	[REWARD_UNIT],   => (Null)
-	[COST_METHOD],   => (AG)
-	[BASECURR_ID],   => (USD)
-	[CURRENCY_AMOUNT], => Menus Total amount return  after Discount ( Qty *  Cost)
-	[CURRENCY_COST],  => Total amount return  Original ( Qty *  Cost)
-	[CURRENCY_COST_ADD], => (0)
-	[CURRENCY_EXTPRICE], => (0)
-	[CURRENCY_PRICE],  => (0)
-	[FF_LF_INDEX],   => (0)
-	[PURPOSE_ISSUE],  => (Null)
-	[JOB_ID],    => (Null)
-	[ROW_ID],    => (0)
-	[MAIN_PRODUCTID],  => Product ID
-	[USERADD],    => User Return
-	[DATEADD]);    => Date Return
-	*/
-
-
-	/*
-	+UDPATE ICTRANDETAIL
-	UPDATE [ICTRANDETAIL] set 
-	[TRANCOST] = [EXTCOST]/[TRANQTY],
-	[TRANCOST_NEW] = [EXTCOST]/[TRANQTY],
-	[TRANEXTCOST_NEW] = [EXTCOST],
-	[CURRENCY_COST] = [EXTCOST]/[TRANQTY]
-	  WHERE [TRANDATE]>=@1 
-	AND [TRANDATE]<=@2 
-	AND [PRODUCTID]=@3 
-	AND ([TRANTYPE]=@4 
-	AND [IS_PROCCESS]=@5);
-
-	*/
-
-	$sql = "INSERT INTO GLTRAN (GLNO,LINNO,GLDESC,GLDATE,GLYEAR,
-				  GLMONTH,ACCNO,GLAMT,CREDIT,DOCNO,
-				  USERADD,DATEADD,GLPOST,GLTYPE,APPID,
-					VENDID,LOCID) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-	$req = $db->prepare($sql);
-	$req->execute(array($GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,
-	$GLMONTH,$ACCNO,$GLAMT,$CREDIT,$DOCNO,
-	$USERADD,$DATEADD,$GLPOST,$GLTYPE,$APPID,
-	$VENDID,$LOCID
-	));					
-
-	/*
-	****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
-	****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
-
-	+ INSERT INTO GLTRAN (17000) INVENTORY
-
-	INSERT INTO [GLTRAN]
-	([GLNO],   => Auto Number : year (yy)+ month(MM) + 0000000+GLNO(GLSYS)
-	[LINNO],   => Line Number of Return
-	[GLDESC],  => (Return PO) 
-	[GLDATE],  => Date Return (yyyy-MM-dd)
-	[GLYEAR],  => Year Return (yyyy)
-	[GLMONTH],  => Month Return (M)
-	[ACCNO],  => (17000) 
-	[GLAMT],  => SubToTaL 
-	[DEBIT],   => (0)
-	[CREDIT],  => SubTotal
-	[DOCNO],  => VO000000000030 (AUTO VO+…) —> AP: num1
-	[USERADD],  => User Return
-	[DATEADD],  => Date Return
-	[GLPOST],  => (N)
-	[GLTYPE],  => (J)
-	[APPID],   => (PO)
-	[REMARKS],  => (Null)
-	[CUSTID],  => (Null)
-	[VENDID],  => Vendor ID Return
-	[FILEID],    => (Null)
-	[LINE_ACC],  => (Null)
-	[COLID],   => Auto
-	[LOCID]);  => Local ID
-	*/
-
-	$sql = "INSERT INTO GLTRAN (GLNO,LINNO,GLDESC,GLDATE,GLYEAR,
-				  GLMONTH,ACCNO,GLAMT,CREDIT,DOCNO,
-				  USERADD,DATEADD,GLPOST,GLTYPE,APPID,
-					VENDID,LOCID) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-	$req = $db->prepare($sql);
-	$req->execute(array($GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,
-	$GLMONTH,$ACCNO,$GLAMT,$CREDIT,$DOCNO,
-	$USERADD,$DATEADD,$GLPOST,$GLTYPE,$APPID,
-	$VENDID,$LOCID
-	));	
-
-	/*
-	+ INSERT INTO GLTRAN (16100) VAT INPUT
-	INSERT INTO [GLTRAN]
-	([GLNO],   => Auto Number : year + month + 00000001
-	[LINNO],   => Line Number of Return
-	[GLDESC],  => (Return PO) 
-	[GLDATE],  => Date Return (yyyy-MM-dd)
-	[GLYEAR],  => Year Return (yyyy)
-	[GLMONTH],  => Month Return (M)
-	[ACCNO],  => (16100) 
-	[GLAMT],  => Total VAT 
-	[DEBIT],   => (0)
-	[CREDIT],  => Total VAT
-	[DOCNO],  => VO000000000030 (AUTO VO+…) —> AP: num1
-	[USERADD],  => User Return
-	[DATEADD],  => Date Return
-	[GLPOST],  => (N)
-	[GLTYPE],  => (J)
-	[APPID],   => (PO)
-	[REMARKS],  => (Null)
-	[CUSTID],  => (Null)
-	[VENDID],  => Vendor Return
-	[FILEID],    => (Null)
-	[LINE_ACC],  => (Null)
-	[COLID],   => Auto
-	[LOCID]);  => Local ID
-	*/
-
-	$sql = "INSERT INTO GLTRAN (GLNO,LINNO,GLDESC,GLDATE,GLYEAR,
-				  GLMONTH,ACCNO,GLAMT,CREDIT,DOCNO,
-				  USERADD,DATEADD,GLPOST,GLTYPE,APPID,
-					VENDID,LOCID) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-	$req = $db->prepare($sql);
-	$req->execute(array($GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,
-	$GLMONTH,$ACCNO,$GLAMT,$CREDIT,$DOCNO,
-	$USERADD,$DATEADD,$GLPOST,$GLTYPE,$APPID,
-	$VENDID,$LOCID
-	));	
-
-	/*
-	+ INSERT INTO GLTRAN (20000) ACCOUNT PAYBLE
-
-	INSERT INTO [GLTRAN]
-	([GLNO],   => Auto Number : year + month + 00000001
-	[LINNO],   => Line of Return
-	[GLDESC],  => (Return PO) 
-	[GLDATE],  => Date Return (yyyy-MM-dd)
-	[GLYEAR],  => Year Return (yyyy)
-	[GLMONTH],  => Month Return (M)
-	[ACCNO],  => (20000) 
-	[GLAMT],  => Grand Total Amount (Subtotal + VTA  amount)
-	[DEBIT],   => Grand Total Amount
-	[CREDIT],  => (0)
-	[DOCNO],  => VO000000000030 (AUTO VO+…) —> AP: num1
-	[USERADD],  => User Return
-	[DATEADD],  => Date return
-	[GLPOST],  => (N)
-	[GLTYPE],  => (J)
-	[APPID],   => (PO)  
-	[REMARKS],  => (Null)
-	[CUSTID],  => (Null) 
-	[VENDID],  => Vendor Return
-	[FILEID],    => (Null)
-	[LINE_ACC],  => (Null)
-	[LOCID]);  => Local ID
-
-	*/
-
-	$ONHAND;
-	$TOTALUSE;
-	$PRODUCTID;
-  $sql = "UPDATE ICPRODUCT set ONHAND = ?, TOTALUSE = ? WHERE PRODUCTID = ?";
-  $req = $db->prepare($sql);
-  $req->execute(array($ONHAND,$TOTALUSE,$PRODUCTID));
-	/*
-	+UPDATE ICPRODUCT
-	UPDATE [ICPRODUCT] set 
-	[ONHAND] = [ONHAND]-@1,
-	[TOTALUSE] = [TOTALUSE]+@2  
-	WHERE [PRODUCTID]=@3;
-	+ Update Onhand in ICPRODUCT with Item code 
-	*/
-
-	$LOCONHAND;
-	$TOTALUSE;
-	$LASTUSE;
-	$LOCID;
-	$PRODUCTID;
-
-	$sql = "UPDATE ICLOCATION set LOCONHAND = ?, TOTALUSE = ?, LASTUSE = ? WHERE LOCID = ? AND PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($LOCONHAND,$TOTALUSE,$LASTUSE,$LOCID,$PRODUCTID));
-
-	/*
-	+UPDATE ICLOCATION
-	UPDATE [ICLOCATION] set 
-	[LOCONHAND] = [LOCONHAND]-@1,
-	[TOTALUSE] = [TOTALUSE]+@2,
-	[LASTUSE] = @3  
-	WHERE [LOCID]=@4 AND [PRODUCTID]=@5;
-	+ Update Onhand in ICLOCATION with Item code 
-	*/
-
-
-	/*
-	****** IF VENDOR NOT VAT INSERT 1 LINE (21400)**************************
-	****** IF VENDOR HAS VAT INSERT 2 LINE (21400) AND (16100)************
-
-	*/
-	$VENDID;
-	$VOUCHERNO;
-	$TRANDATE;
-	$LINENUM;
-	$ACCNO;
-	$AMOUNT;
-	$PERIOD;
-	$YEAR;
-	$REFERENCE;
-	$ACCNAME;
-	$TYPE;
-	$BATCHDATE;
-	$CURR_AMOUNT;
-	$CURR_AMOUNT;
-	$CURR_RATE;
-	$BASECURR_ID;
-	$CURR_ID;
-	$USERADD;
-	$DATEADD;	
-	$sql = "INSERT INTO APACCOUNT (VENDID,VOUCHERNO,TRANDATE,LINENUM,ACCNO,
-					AMOUNT,PERIOD,YEAR,REFERENCE,ACCNAME,
-					TYPE,BATCHDATE,CURR_AMOUNT,CURR_AMOUNT,CURR_RATE,
-					BASECURR_ID,CURR_ID,USERADD,DATEADD)";
-	$req = $db->prepare($sql);					
-	$req->prepare(array($VENDID,$VOUCHERNO,$TRANDATE,$LINENUM,$ACCNO,
-											$AMOUNT,$PERIOD,$YEAR,$REFERENCE,$ACCNAME,
-										  $TYPE,$BATCHDATE,$CURR_AMOUNT,$CURR_AMOUNT,$CURR_RATE,
-											$BASECURR_ID,$CURR_ID,$USERADD,$DATEADD));	
-	
-	/*
-	+INSERT INTO APACCOUNT
-	INSERT INTO [APACCOUNT]
-	([VENDID],   => Verdor ID
-	[VOUCHERNO],  =>  VO000000000030 (AUTO VO+…) —> AP: num1
-	[TRANDATE],   => Date Return
-	[LINENUM],   => (1)
-	[ACCNO],   => (21400) (PO Clearing)
-	[AMOUNT],   => Amount Return (Minus Grand Total)
-	[PERIOD],   => Month of Return (MM) 
-	[YEAR],    => Year of Return (yyyy)
-	[BATCH],   => (Null)
-	[REFERENCE],  => Return Number(RTXXXXXXXXX)
-	[ACCNAME],   => “PO Clearing”
-	[ACCNAME1],   => (Null)
-	[STAT],    => (Null)
-	[TYPE],    => (Null)
-	[BATCHDATE],  => Date Return
-	[FILEID],    => (Null)
-	[CURR_AMOUNT], => Subtotal (Menus Subtotal) 
-	[CURR_RATE],  => (1)
-	[OPERATION_BASE], => (Null)
-	[BASECURR_ID],  => (USD)
-	[CURR_ID],   =>(USD)
-	[USERADD],   => User Return
-	[DATEADD]);   => Date Return 
-	*/
-
-	// IF VAT
-	$VENDID;
-	$VOUCHERNO;
-	$TRANDATE;
-	$LINENUM;
-	$ACCNO;
-	$AMOUNT;
-	$PERIOD;
-	$YEAR;
-	$REFERENCE;
-	$ACCNAME;
-	$TYPE;
-	$BATCHDATE;
-	$CURR_AMOUNT;
-	$CURR_AMOUNT;
-	$CURR_RATE;
-	$BASECURR_ID;
-	$CURR_ID;
-	$USERADD;
-	$DATEADD;	
-	$sql = "INSERT INTO APACCOUNT (VENDID,VOUCHERNO,TRANDATE,LINENUM,ACCNO,
-					AMOUNT,PERIOD,YEAR,REFERENCE,ACCNAME,
-					TYPE,BATCHDATE,CURR_AMOUNT,CURR_AMOUNT,CURR_RATE,
-					BASECURR_ID,CURR_ID,USERADD,DATEADD)";
-	$req = $db->prepare($sql);					
-	$req->prepare(array($VENDID,$VOUCHERNO,$TRANDATE,$LINENUM,$ACCNO,
-											$AMOUNT,$PERIOD,$YEAR,$REFERENCE,$ACCNAME,
-										  $TYPE,$BATCHDATE,$CURR_AMOUNT,$CURR_AMOUNT,$CURR_RATE,
-											$BASECURR_ID,$CURR_ID,$USERADD,$DATEADD));	
-	
-
-
-
-	/*
-	+INSERT INTO APACCOUNT
-	INSERT INTO [APACCOUNT]
-	([VENDID],   => Verdor ID
-	[VOUCHERNO],  =>  VO000000000030 (AUTO VO+…) —> AP: num1
-	[TRANDATE],   => Date Return
-	[LINENUM],   => (1)
-	[ACCNO],   => (16100) (VAT Input)
-	[AMOUNT],   => Amount VAT (Minus Amount Vat)
-	[PERIOD],   => Month of Return (MM)
-	[YEAR],    => Year of Return (yyyy)
-	[BATCH],   => (Null)
-	[REFERENCE],  => Return Number(RTXXXXXXXXX)
-	[ACCNAME],   => “VAT Input”
-	[ACCNAME1],   => (Null)
-	[STAT],    => (Null)
-	[TYPE],    => (T)
-	[BATCHDATE],  => Date Return
-	[FILEID],    => (Null)
-	[CURR_AMOUNT], => Amount VAT (Minus VAT Amount)
-	[CURR_RATE],  => (1)
-	[OPERATION_BASE], => (Null)
-	[BASECURR_ID],  => (USD)
-	[CURR_ID],   => (USD)
-	[USERADD],   => User Return
-	[DATEADD]);   => Date Return 
-	*/
-
-
-	$BALANCE; //BALANCE - AMOUNT RETURN
-	$VENDID;
-	$sql = "UPDATE APVENDOR SET BALANCE = ? WHERE VENDID = ?";
-	$req->prepare($sql);
-	$req->execute(array());
-
-	/*
-	+UPDATE APVENDOR
-	UPDATE [APVENDOR] set
-	[BALANCE] = [BALANCE]-@1  
-	WHERE [VENDID]=@2;
-	*UDPATE APVENDOR SET BALANCE = BALANCE - AMOUNT RETURN WHER VENDID = VENDID RETURN
-	*/
-
-
-	$PONUMBER;
-	$VENDID;
-	$USERADD;
-	$DATEADD;
-	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD) 
-					values (?,?,?,?)";
-	$req = $db->prepare($sql);					
-	$req->execute(array($PONUMBER,$VENDID,$USERADD,$DATEADD));
-	/*
-	+INSERT INTO POLOCATION
-	INSERT INTO [POLOCATION]
-	([PONUMBER],  => Return Number
-	[VENDID],   => Vendor Return
-	[TOADDRESS1],  => (Null)
-	[TOVENDID],   => (Null)
-	[TOPHONE1],   => (Null)
-	[TOFAXNO],   => (Null)
-	[TOCOUNTRY],  => (Null)
-	[TOCITY],   => (Null)
-	[ADDRESS1],   => (Null)
-	[COUNTRY],   => (Null)
-	[PHONE1],   => (Null)
-	[FAXNO],   => (Null)
-	[CITY],    => (Null)
-	[USERADD],   => User Return
-	[DATEADD]);   => Date Return
-	*/
-}
-
 function receiveItems($items){
 }
 
@@ -8335,6 +7699,71 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+$app->get('/penalty/{status}',function($request,Response $response) {
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+
+	$status = $request->getAttribute('status');
+	$data = array();
+
+	$sql = "SELECT PRODUCTID,QUANTITY1,EXPIRATION,PERCENTPENALTY1 FROM DEPRECIATIONITEM  WHERE STATUS1 = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));		
+	$data = array_merge($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY2,EXPIRATION,PERCENTPENALTY2 FROM DEPRECIATIONITEM  WHERE STATUS2 = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));	
+	$data = array_merge($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY3,EXPIRATION,PERCENTPENALTY3 FROM DEPRECIATIONITEM  WHERE STATUS3 = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));	
+	$data = array_merge($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$sql = "SELECT PRODUCTID,QUANTITY4,EXPIRATION,PERCENTPENALTY4 FROM DEPRECIATIONITEM  WHERE STATUS4 = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));	
+	$data = array_merge($data,$req->fetchAll(PDO::FETCH_ASSOC));
+
+	$newData = array();
+	foreach($data as $item){
+		$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);		
+		$req->execute(array($item["PRODUCTID"])); 
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res != false)
+			$item["PRICE"] = $res["PRICE"];
+		array_push($newData,$item);
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->put('/penalty/{id}',function($request,Response $response) {
+	$db = getInternalDatabase();
+	$data = array();
+
+	$json = json_decode($request->getBody(),true);
+	$field = $json["FIELD"];
+	$productid = $json["PRODUCTID"];
+	$expiration = $json["EXPIRATION"];
+	
+	$sql = "UPDATE DEPRECIATIONITEN SET ? = 'SOLVED' WHERE PRODUCTID = ? AND EXPIRATION = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($field,$productid,$expiration));
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	return $resp;
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
