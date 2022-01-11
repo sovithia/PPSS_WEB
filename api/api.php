@@ -650,7 +650,10 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 	$barcodes = $request->getAttribute('barcodes'); 		
 	$barcodes = explode("|",$barcodes);	
 
+	$percentages = $request->getParam('percentages','');
+	$percentages = explode("|",$percentages);
 	$result = array();
+	$count = 0;
 	foreach($barcodes as $barcode)
 	{
 		if ($barcode == "")
@@ -660,7 +663,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 
 		if ($packInfo != null)		
 		{
-			;
+			
 		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];									
@@ -693,11 +696,14 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		}
 		else {
 			$oneItem = itemLookupLabel($barcode,true);
+			if (isset($percentages[$count]))			 
+				$oneItem["discpercent"] = $percentages[$count];
 			$oneItem["packing"] = "";
 			$oneItem["ISPACK"] = "NO";	
 			array_push($result,$oneItem);
 							
-		}				
+		}
+		$count++;				
 			
 	}	
 	$resp["result"] = "OK";
@@ -5543,8 +5549,11 @@ $app->get('/itemzerostock',function(Request $request,Response $response) {
 	$start = 0;
 	$end = 100000;
 	
-	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
-				   COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
+	$sql = "SELECT PRODUCTID,BARCODE,
+			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
+			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',
+			COST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
+			COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
@@ -5594,8 +5603,11 @@ $app->get('/itemnegative',function(Request $request,Response $response) {
 	$start = 0;
 	$end = 100000;
 
-	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,AVGCOST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
-				   COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
+	$sql = "SELECT PRODUCTID,BARCODE,
+			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
+			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',
+			COST,AVGCOST,PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,OTHER_ITEMCODE,
+			COLOR,CATEGORYID,ONHAND,WH1,WH2,SALELAST30,PRICE,LASTRECEIVEDATE,LASTSALEDATE,DA
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY PRODUCTID) as SEQ ,PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
