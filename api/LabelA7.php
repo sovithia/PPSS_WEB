@@ -93,16 +93,16 @@ error_reporting(E_ALL);
   <tr>    
     <td  align="center">      
       <form  method="GET">
-        <span style='color:white'>BARCODE1</span><input name='barcode1' ><br>        
-        <span style='color:white'>BARCODE2</span><input name='barcode2' ><br>        
-        <span style='color:white'>BARCODE3</span><input name='barcode3' ><br>        
-        <span style='color:white'>BARCODE4</span><input name='barcode4' ><br>        
-        <span style='color:white'>BARCODE5</span><input name='barcode5' ><br>        
-        <span style='color:white'>BARCODE6</span><input name='barcode6' ><br>        
-        <span style='color:white'>BARCODE7</span><input name='barcode7' ><br>        
-        <span style='color:white'>BARCODE8</span><input name='barcode8' ><br>        
+        <span style='color:white'>BARCODE1</span><input name='barcode1' ><span style="color: white;">PERCENT1</span><input type="text" name="percent1"><br>        
+        <span style='color:white'>BARCODE2</span><input name='barcode2' ><span style="color: white;">PERCENT2</span><input type="text" name="percent2"><br>        
+        <span style='color:white'>BARCODE3</span><input name='barcode3' ><span style="color: white;">PERCENT3</span><input type="text" name="percent3"><br>        
+        <span style='color:white'>BARCODE4</span><input name='barcode4' ><span style="color: white;">PERCENT4</span><input type="text" name="percent4"><br>        
+        <span style='color:white'>BARCODE5</span><input name='barcode5' ><span style="color: white;">PERCENT5</span><input type="text" name="percent5"><br>        
+        <span style='color:white'>BARCODE6</span><input name='barcode6' ><span style="color: white;">PERCENT6</span><input type="text" name="percent6"><br>        
+        <span style='color:white'>BARCODE7</span><input name='barcode7' ><span style="color: white;">PERCENT7</span><input type="text" name="percent7"><br>        
+        <span style='color:white'>BARCODE8</span><input name='barcode8' ><span style="color: white;">PERCENT8</span><input type="text" name="percent8"><br>        
 
-        <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+        <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-left: 90px; margin-top: 20px;' type='submit' value='GENERATE' />
       </form>
     </td>
     

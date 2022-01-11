@@ -96,12 +96,12 @@ error_reporting(E_ALL);
     <td  align="center">
       <span style='color:white'>NORMAL</span>
       <form  method="POST">
-        <span style='color:white'>BARCODE 1</span><input name='barcode1' ><br>
-        <span style='color:white'>BARCODE 2</span><input name='barcode2' ><br>
-        <span style='color:white'>BARCODE 3</span><input name='barcode3' ><br>
-        <span style='color:white'>BARCODE 4</span><input name='barcode4' ><br>
+        <span style='color:white'>BARCODE 1</span><input name='barcode1' ><span style="color: white;">PERCENT1</span><input type="text" name="percent1"><br>
+        <span style='color:white'>BARCODE 2</span><input name='barcode2' ><span style="color: white;">PERCENT2</span><input type="text" name="percent2"><br>
+        <span style='color:white'>BARCODE 3</span><input name='barcode3' ><span style="color: white;">PERCENT3</span><input type="text" name="percent3"><br>
+        <span style='color:white'>BARCODE 4</span><input name='barcode4' ><span style="color: white;">PERCENT4</span><input type="text" name="percent4"><br>
         <input type='hidden' value='NORMAL' name='action' />
-        <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+        <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-left: 90px; margin-top: 20px;' type='submit' value='GENERATE' />
       </form>
     </td>
     

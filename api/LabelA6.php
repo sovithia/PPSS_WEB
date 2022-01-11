@@ -89,11 +89,11 @@ error_reporting(E_ALL);
   <tr>    
     <td  align="center">      
       <form  method="GET">
-        <span style='color:white'>BARCODE1</span><input name='barcode1' ><br>        
-        <span style='color:white'>BARCODE2</span><input name='barcode2' ><br>        
-        <span style='color:white'>BARCODE3</span><input name='barcode3' ><br>        
-        <span style='color:white'>BARCODE4</span><input name='barcode4' ><br>                
-        <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+        <span style='color:white'>BARCODE1</span><input name='barcode1' ><span style="color: white;">PERCENT1</span><input type="text" name="percent1"><br>        
+        <span style='color:white'>BARCODE2</span><input name='barcode2' ><span style="color: white;">PERCENT2</span><input type="text" name="percent2"><br>        
+        <span style='color:white'>BARCODE3</span><input name='barcode3' ><span style="color: white;">PERCENT3</span><input type="text" name="percent3"><br>        
+        <span style='color:white'>BARCODE4</span><input name='barcode4' ><span style="color: white;">PERCENT4</span><input type="text" name="percent4"><br>                
+        <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-left: 90px; margin-top: 20px;' type='submit' value='GENERATE' />
       </form>
     </td>
     

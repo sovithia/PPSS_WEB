@@ -95,8 +95,20 @@ error_reporting(E_ALL);
     $b3 = str_replace(" ","%20",$_GET['barcode3']);
     $b4 = str_replace(" ","%20",$_GET['barcode4']);
 
+    $p1 = str_replace(" ","%20",$_GET['percent1']); 
+		$p2 = str_replace(" ","%20",$_GET['percent2']);
+		$p3 = str_replace(" ","%20",$_GET['percent3']);
+		$p4 = str_replace(" ","%20",$_GET['percent4']);
+
+		$percentages  = implode("|",array($p1,$p2,$p3,$p4));		
+		if (strlen($percentages) > 0)
+			$percentages = "?percetages="$percentages;
+		else
+			$percentages = "";
+
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);      
+
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
@@ -118,12 +130,12 @@ error_reporting(E_ALL);
     <td  align="center">
       <span style='color:white'>NORMAL</span>
       <form  method="POST">
-        <span style='color:white'>BARCODE 1</span><input name='barcode1' ><br>
-        <span style='color:white'>BARCODE 2</span><input name='barcode2' ><br>
-        <!-- <span style='color:white'>BARCODE 3</span><input name='barcode3' ><br>
-        <span style='color:white'>BARCODE 4</span><input name='barcode4' ><br> -->
+        <span style='color:white'>BARCODE 1</span><input name='barcode1' ><span style="color: white;">PERCENT1</span><input type="text" name="percent1"><br>
+        <span style='color:white'>BARCODE 2</span><input name='barcode2' ><span style="color: white;">PERCENT2</span><input type="text" name="percent2"><br>
+        <span style='color:white'>BARCODE 3</span><input name='barcode3' ><span style="color: white;">PERCENT3</span><input type="text" name="percent3"><br>
+        <span style='color:white'>BARCODE 4</span><input name='barcode4' ><span style="color: white;">PERCENT4</span><input type="text" name="percent4"><br>
         <input type='hidden' value='NORMAL' name='action' />
-        <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+        <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-left: 90px; margin-top: 20px;' type='submit' value='GENERATE' />
       </form>
     </td>
     
@@ -161,7 +173,7 @@ function renderOneProduct($product)
   if ($ispack == 'NO') {
      ?>
               <?php
-                  $factor = "<p>1 $unit</p>";
+                  $factor = "<p>1$unit</p>";
                 ?>
         <?php
     }else{
