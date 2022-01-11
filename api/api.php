@@ -572,7 +572,7 @@ $app->get('/biglabel/{barcodes}',function($request,Response $response) {
 	return $response;
 });
 
-function itemLookupLabel($barcode,$withImage = false)
+function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 {
 	$conn=getDatabase();	
 	$begin = date("m-d-y");
@@ -602,7 +602,10 @@ function itemLookupLabel($barcode,$withImage = false)
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];			
 		$oneItem["country"] = $item["COLOR"];
-		$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
+		if ($forceDiscount != 0)
+			$oneItem["discpercent"] = $forceDiscount;	
+		else
+			$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
 
 
 		if ($item["DISCPERCENTEND"] != null && $item["DISCPERCENTEND"] != "")
@@ -649,9 +652,9 @@ function itemLookupLabel($barcode,$withImage = false)
 $app->get('/label/{barcodes}',function($request,Response $response) {	
 	$barcodes = $request->getAttribute('barcodes'); 		
 	$barcodes = explode("|",$barcodes);	
-
 	$percentages = $request->getParam('percentages','');
 	$percentages = explode("|",$percentages);
+
 	$result = array();
 	$count = 0;
 	foreach($barcodes as $barcode)
@@ -666,8 +669,12 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			
 		
 			$packcode = $barcode;
-			$barcode = $packInfo["PRODUCTID"];									
-			$oneItem = itemLookupLabel($barcode,true);
+			$barcode = $packInfo["PRODUCTID"];		
+			if (isset($percentages[$count]))
+				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
+			else
+				$oneItem = itemLookupLabel($barcode,true);							
+			
 			
 			$oneItem["unit"] = $packInfo["SALEUNIT"];
 			$oneItem["packing"] =  $packInfo["SALEUNIT"];
@@ -695,9 +702,11 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			array_push($result,$oneItem);
 		}
 		else {
-			$oneItem = itemLookupLabel($barcode,true);
-			if (isset($percentages[$count]))			 
-				$oneItem["discpercent"] = $percentages[$count];
+			if (isset($percentages[$count]))
+				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
+			else
+				$oneItem = itemLookupLabel($barcode,true);
+			
 			$oneItem["packing"] = "";
 			$oneItem["ISPACK"] = "NO";	
 			array_push($result,$oneItem);
@@ -4957,7 +4966,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	$IDS = extractIDS($items);
 
-	error_log($IDS);
+
 
 	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
@@ -5077,8 +5086,7 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 			else 
 				$reason = "";
 
-			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"],$reason));	
-			error_log("HERE");																							
+			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"],$reason));																						
 		}		
 	$data["result"] = "OK";
 	$response = $response->withJson($data);

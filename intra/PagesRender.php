@@ -21,11 +21,29 @@ function renderA4Label()
           <center>
           <span style='color:white'>NORMAL</span><br><br>
           <form  action='http://phnompenhsuperstore.com/api/labelA4.php' method='GET' target='_blank'>
-            <span style='color:white'>BARCODE 1</span><input name='barcode1' ><br>
-            <span style='color:white'>BARCODE 2</span><input name='barcode2' ><br>
-            <span style='color:white'>BARCODE 3</span><input name='barcode3' ><br>
-            <span style='color:white'>BARCODE 4</span><input name='barcode4' ><br><br>            
-            <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+          <table>
+            <tr>
+              <td><span style='color:white'>BARCODE1</span><input  name='barcode1' ></td>
+              <td><span style='color:white'>PERCENT1</span><input  name='percent1'></td>
+            </tr>
+            <tr>            
+              <td><span style='color:white'>BARCODE2</span><input  name='barcode2' ></td>
+              <td><span style='color: white;'>PERCENT2</span><input  name='percent2'></td>
+            </tr>
+              <td><span style='color:white'>BARCODE3</span><input  name='barcode3' ></td>
+              <td><span style='color: white;'>PERCENT3</span><input  name='percent3'></td>
+            </tr>
+            <tr>  
+              <td><span style='color:white'>BARCODE4</span><input  name='barcode4' ></td>
+              <td><span style='color: white;'>PERCENT4</span><input  name='percent4'></td>
+            </tr>
+            <tr>
+              <td colspan='2'>
+                <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-top: 20px;' type='submit' value='GENERATE' /> 
+              </td>
+            </tr>
+          </table>
+                       
           </form>
           </center>
         </td>

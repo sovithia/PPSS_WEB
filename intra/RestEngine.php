@@ -7,7 +7,7 @@ class RestEngine
 {
 	static function GET($uri,$headers = array())
 	{	
-		//echo $uri."<br>";
+		error_log($uri);
 
 		$response = \Httpful\Request::get($uri)
 				->expectsJson()
