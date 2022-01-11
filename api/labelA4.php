@@ -102,12 +102,12 @@ error_reporting(E_ALL);
 
 		$percentages  = implode("|",array($p1,$p2,$p3,$p4));		
 		if (strlen($percentages) > 0)
-			$percentages = "?percetages=".$percentages;
+			$percentages = "?percentages=".$percentages;
 		else
 			$percentages = "";
 
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-
+    error_log("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);      
     if (count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
