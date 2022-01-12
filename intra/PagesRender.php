@@ -158,7 +158,7 @@ function renderA7Label()
                     <td><span style='color:white'>PERCENT6</span><input name='percent6'></td>
                   </tr>    
                   <tr>
-                    <tr><span style='color:white'>BARCODE7</span><input name='barcode7'></tr>
+                    <td><span style='color:white'>BARCODE7</span><input name='barcode7'></td>
                     <td><span style='color:white'>PERCENT7</span><input name='percent7'></td>
                   </tr>
                   <tr>
