@@ -63,7 +63,7 @@ error_reporting(E_ALL);
       $newString .= str_replace(" ","%20",$barcode). "|";
     }
     $newString = substr($newString,0,-1);
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $newString);          
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $newString.$percentages);          
     if (count($itemList) > 0)
       renderFourProduct($itemList);
   } 
@@ -74,8 +74,19 @@ error_reporting(E_ALL);
     $b3 = str_replace(" ","%20",$_GET['barcode3']);
     $b4 = str_replace(" ","%20",$_GET['barcode4']);
 
+    $p1 = str_replace(" ","%20",$_GET['percent1']);
+    $p2 = str_replace(" ","%20",$_GET['percent2']);
+    $p3 = str_replace(" ","%20",$_GET['percent3']);
+    $p4 = str_replace(" ","%20",$_GET['percent4']);
+
+    $percentages =implode("|",array($p1,$p2,$p3,$p4));
+    if (strlen($percentages) > 0)
+      $percentages = "?percentages=".$percentages;
+    else
+      $percentages = "";
+
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);      
+    $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes.$percentages);      
     if (count($itemList) > 0)  
       renderFourProduct($itemList);    
 ?>

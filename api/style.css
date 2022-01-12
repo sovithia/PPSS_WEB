@@ -1838,7 +1838,7 @@ renderTwoProduct{
 	}
 .A6_box_price2_old1 .strikethrough:before {
   position: absolute;
-  border-top: 2px solid #1B9382 ;
+  border-top: 2px solid red ;
   opacity: 0.9;
   border-radius: 5px;
   margin-top: 2px;
@@ -2862,7 +2862,7 @@ float: left;
   left: 0;
   margin-top: -2px;
   right: 0;
-  border-top: 2px solid #1B9382 ;
+  border-top: 2px solid red ;
   opacity: 1;
   border-radius: 5px;
   

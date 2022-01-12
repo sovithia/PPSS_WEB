@@ -90,12 +90,26 @@ function renderA6Label()
             <td >
               <center>   
 
-                <form  method='GET' action='http://phnompenhsuperstore.com/api/labelA6.php' target='_blank'>                
-                 <span style='color:white'>BARCODE1</span><input name='barcode1' ><br>        
-                 <span style='color:white'>BARCODE2</span><input name='barcode2' ><br>        
-                 <span style='color:white'>BARCODE3</span><input name='barcode3' ><br>        
-                 <span style='color:white'>BARCODE4</span><input name='barcode4' ><br>                  
-                  <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+                <form  method='GET' action='http://phnompenhsuperstore.com/api/labelA6.php' target='_blank'>
+                  <tr>
+                    <td><span style='color:white'>BARCODE1</span><input name='barcode1'></td>
+                    <td><span style='color:white'>PERCENT1</span><input  name='percent1'></td>
+                  </tr>
+                  <tr>
+                    <td><span style='color:white'>BARCODE2</span><input name='barcode2' ></td>
+                    <td><span style='color:white'>PERCENT2</span><input  name='percent2'></td>
+                  </tr>    
+                  <tr>
+                    <td><span style='color:white'>BARCODE3</span><input name='barcode3'></td>
+                    <td><span style='color:white'>PERCENT3</span><input  name='percent3'></td>
+                  </tr>
+
+                  <tr>
+                    <td><span style='color:white'>BARCODE4</span><input name='barcode4'></td>
+                    <td><span style='color:white'>PERCENT4</span><input  name='percent4'></td>
+                  </tr>     
+                                 
+                  <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-top: 20px;' type='submit' value='GENERATE' />
                 </center>
               </form>
             </td>
@@ -118,16 +132,40 @@ function renderA7Label()
           <tr>    
             <td >
               <center>                
-                <form  method='GET' action='http://phnompenhsuperstore.com/api/labelA7.php' target='_blank'>                
-                  <span style='color:white'>BARCODE1</span><input name='barcode1' ><br>        
-                 <span style='color:white'>BARCODE2</span><input name='barcode2' ><br>        
-                 <span style='color:white'>BARCODE3</span><input name='barcode3' ><br>        
-                 <span style='color:white'>BARCODE4</span><input name='barcode4' ><br>
-                 <span style='color:white'>BARCODE5</span><input name='barcode5' ><br>        
-                 <span style='color:white'>BARCODE6</span><input name='barcode6' ><br>        
-                 <span style='color:white'>BARCODE7</span><input name='barcode7' ><br>        
-                 <span style='color:white'>BARCODE8</span><input name='barcode8' ><br>                
-                  <input style='background-color:#ffed00;color:009183;font-weight: bold' type='submit' value='GENERATE' />
+                <form  method='GET' action='http://phnompenhsuperstore.com/api/labelA7.php' target='_blank'>   
+                  <tr>
+                    <td><span style='color:white'>BARCODE1</span><input name='barcode1'></td>
+                    <td><span style='color:white'>PERCENT1</span><input name='percent1'></td>
+                  </tr>
+                  <tr>
+                    <td><span style='color:white'>BARCODE2</span><input name='barcode2'></td>
+                    <td><span style='color:white'>PERCENT2</span><input name='percent2'></td>
+                  </tr> 
+                  <tr>
+                    <td><span style='color:white'>BARCODE3</span><input name='barcode3'></td>
+                    <td><span style='color:white'>PERCENT3</span><input name='percent3'></td>
+                  </tr>
+                  <tr>
+                    <td><span style='color:white'>BARCODE4</span><input name='barcode4' ></td>
+                    <td><span style='color:white'>PERCENT4</span><input name='percent4'></td>
+                  </tr>
+                  <tr>
+                    <td><span style='color:white'>BARCODE5</span><input name='barcode5'></td>
+                    <td><span style='color:white'>PERCENT5</span><input name='percent5'></td>
+                  </tr>        
+                  <tr>
+                    <td><span style='color:white'>BARCODE6</span><input name='barcode6'></td>
+                    <td><span style='color:white'>PERCENT6</span><input name='percent6'></td>
+                  </tr>    
+                  <tr>
+                    <tr><span style='color:white'>BARCODE7</span><input name='barcode7'></tr>
+                    <td><span style='color:white'>PERCENT7</span><input name='percent7'></td>
+                  </tr>
+                  <tr>
+                    <td><span style='color:white'>BARCODE8</span><input name='barcode8'></td>
+                    <td><span style='color:white'>PERCENT8</span><input name='percent8'></td>
+                  </tr>               
+                  <input style='background-color:#ffed00;color:009183;font-weight: bold; margin-top:20px' type='submit' value='GENERATE' />
                 </center>
               </form>
             </td>
