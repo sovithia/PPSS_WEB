@@ -2667,9 +2667,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 		$ponumber = createAndReceivePO($items,$author);
 		
-
 		$resp["message"] = "Po created and received with number ".$ponumber;
-
 		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
 		$req = $db->prepare($sql);
 		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
@@ -2703,10 +2701,14 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$ponumber = createPO($items,$author);
 
 		$resp["message"] = "Po created with number ".$ponumber;
-
-		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
+		$db->beginTransaction();
+		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
 		$req = $db->prepare($sql);
 		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
+		$lastID = $db->lastInsertId();
+		$db->commit(); 
+
+		pictureRecord($json["PURCHASERSIGNATUREIMAGE"],"PCH",$lastID);
 
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBlue->prepare($sql);
@@ -2776,10 +2778,11 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		
 		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
-		if ($stats["DECISION"] == "NEVER RECEIVED" && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
-			$message .= "\n".$item["PRODUCTID"]." Never received";
+		if ( ($stats["DECISION"] == "NEVER RECEIVED" || $stats["DECISION"] == "TOOEARLY" ) && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
+			$message .= "\n".$item["PRODUCTID"]." Not Added";
 			continue;
 		}
+
 
 
 		$item["ALGOQTY"] = $stats["FINALQTY"];
@@ -3166,7 +3169,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
 
-	if ($json["ACTIONTYPE"] == "VAL"){
+	if ($json["ACTIONTYPE"] == "VAL"){ // DEPRECATED
 
 		$sql = "UPDATE SUPPLY_RECORD SET VALIDATOR_USER = :author ,STATUS = 'VALIDATED'  WHERE ID = :identifier" ;
 		$req = $db->prepare($sql);
@@ -3650,8 +3653,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
 
-		//$debug = var_export($poitems[0], true);
-		//error_log($debug);
 
 		$rr["items"] = $poitems;
 	}
@@ -5024,14 +5025,11 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		}else{			
 			$items = $json["ITEMS"];
 		}
-		$debug = var_export($items, true);
-		error_log($debug);
 		foreach($items as $item)
 		{	
 	
 			if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 				continue;		
-
 			// TEST PRODUCT EXISTENCE		
 			$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
@@ -5856,7 +5854,7 @@ $app->get('/custombarcodes', function(Request $request,Response $response){
 	$db=getDatabase();
 	$sql = 'SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE FROM ICPRODUCT WHERE LEN(BARCODE) = 15';
 	$req = $db->prepare($sql);
-	$req->execute(array($category));
+	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$resp = array();
@@ -7707,6 +7705,264 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+/*
+                           ,,,,                   ,,,,,
+                           ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
+                    ,╓▄▄▄▄▄▄▄▄▓▓▓▓╬▓▓▓▓▓█▓▓▓▓▓▀╣▓▓▓▌▄▄▄▄▄▄▄µ,
+                ,▄▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▌▄
+              ╔▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╬▀▓▌╣╣╣╣╣╣╣╣╣╣▓▀╬╬╣╣╣╣╣╣╣╣╣╬╣▓▓▓▓▓▄
+            ╓▓▓▓▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▀▓▓▓▓▓▓▓▓▄
+             ,▄▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+           ,▓▓▓▓▀╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
+          ▄▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▀▀▀▀▀▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▓
+         ▓▓▓▓╣╣╣╣╣▓▓▓░░░░▀▀▀▓▓▀░░░░░░░░░▀░░░░░░░░░░▀▓▓▀▀░░░░▀▓▓▓╣╣╣╣╣▓▓▓▄
+        ▓▓▓▓╣╣╣╣╣╣▓▓▌░░▒▌▄░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▄▄▓░░░▓▓▓╣╣╣╣╣╣▓▓▓▄
+       ╟▓▓▓╣╣╣╣╣╣╣▓▓▓▄░░▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▀░░▓▓▓╬╣╣╣╣╣╣╣▓▓▓
+       ▓▓▓╣╣▓▓▓╣╣╣╣╣▓▓▓▓▓▓▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓▓▓▓▓▓▓╬╣╣╣╣▓▓▓╣╣▓▓▌
+      ▐▓▓▓▓▓▓▓╣╣╣╣╣╣╣╬╬▓▓▓░░░░▓▓▓▄░░░░░░░░░░░░░░▄▓▓▌░░░║▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓
+      ╟▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓░░░░░╚▓▓▓▓▓▄░░░░░░░░▓▓▓▓▓▀░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓
+      ╙▀^╟▓▓▌╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░▀▀▓▌░░░░░░▓▓▀░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓ ▀▀
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░▀░░░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓b
+         ▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░╣▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▌
+        ]▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▒░░░░█▓▓▓▓▓▓░░░░░█▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+        ╫▓▓▓╣╣╣▓▓╬╣╣╣╣╣╣╣╣▀▓▓▓▓▀░░░░░░░▀▓▓▀░░░░░░░▓▓▓▓▓╬╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+      ╔▓▓▓▓╣▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░║▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓╬╣▓▓▓▄
+    "▀▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▌░░░░░░░░╟▓▓░░░░░░░░░▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▀
+             ║▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓▌▄▄░░▄▄▓▓▓▓▓▓▄░░░▄▄▓▓▓▌╣╣╣╣╣╣╣╣╣╣╣▓▓▓
+             ╘▓▓▓╣╣╣╣╣▌╣╣╣╣╣╣▓▓▓▓▓▓▓▓▀▀░░░░▀▓▓▓▓▓▓▓▓▌╣╣╣╣╣╣▓╣╣╣╣╣▓▓▌
+              ▀▓▓▓╣╣╣▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓░░░░░░░╣▓▓▓╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣╣▓▓▓
+               ▀▓▓▓╣▓▓▓▓╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣▓▓▓╣╣▓▓▓Γ
+                ╙▓▓▓▓▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╬▀▓▓▓▓▓▓▒╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▓▀
+                  ▀▓▓▓▌▓▓▓▓╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▀▓▓▓▓`
+                    ╙█▌ ▀▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓` ▓▀`
+                          ▀█▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣▓▓▓▓▓▓▀
+                             ^▀▀▓▓▓▓▓╬╣╣╣╣╣╣▓▓▓▓▓▓▀╙ 
+							         EXTERNAL 						 		  						 	 
+*/      
+//
+
+
+$app->get('/externalvendor', function($request,Response $response){ // VENDOR LIST
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM EXTERNALVENDOR";	
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $pool;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->get('/externalvendordetails/{id}', function($request,Response $response){ // VENDOR PRODUCT LIST
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM EXTERNALITEM, EXTERNALPRICE WHERE EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
+	$req = $db->prepare($sql);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$resp["result"] = "OK";
+	$resp["data"] = $items;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/externalvendor', function($request,Response $response){ // CREATE VENDOR
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$sql = "INSERT INTO EXTERNALVENDOR (NAMEEN,NAMEKH,PHONE1,PHONE2,PHONE3,
+	PHONE4,ADDRESS1,ADDRESS2,COMMUNICATIONTYPE,COMMENT) values (?,?,?,?,?,?,?,?,?,?)";	 
+	$req = $db->prepare($sql);
+
+	$req->execute(array($json["NAMEEN"],$json["NAMEKH"],$json["PHONE1"],$json["PHONE2"],$json["PHONE3"],
+	$json["PHONE4"],$json["ADDRESS1"],$json["ADDRESS2"],$json["COMMUNICATIONTYPE"],$json["COMMENT"],
+	$json["ID"] ));
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$resp = array();	
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->put('/externalvendor', function($request,Response $response){ // UPDATE VENDOR
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$sql = "UPDATE EXTERNALVENDOR SET 
+	NAMEEN = ?, 
+	NAMEKH = ?,
+	PHONE1 = ?,
+	PHONE2 = ?,
+	PHONE3 = ?, 
+	PHONE4 = ?,
+	ADDRESS1 = ?, 
+	ADDRESS2 =  ?, 
+	COMMUNICATIONTYPE = ?, 
+	COMMENT = ? 
+	WHERE ID = ?";	
+	$req = $db->prepare($sql);
+
+	$req->execute(array($json["NAMEEN"],$json["NAMEKH"],$json["PHONE1"],$json["PHONE2"],$json["PHONE3"],
+	$json["PHONE4"],$json["ADDRESS1"],$json["ADDRESS2"],$json["COMMUNICATIONTYPE"],$json["COMMENT"] ));
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$resp = array();	
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->delete('/externalvendor/{id}', function($request,Response $response){ // DELETE VENDOR
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+
+	$sql = "DELETE FROM EXTERNALVENDOR WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->post('/externalprice',function($request,Response $response){	// Link item with vendor
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$PRODUCTID = $json["PRODUCTID"];
+	$VENDORID = $json["VENDORID"];
+	$PRICE = $json["PRICE"];
+	$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
+	$req =  $db->prepare($sql);
+	$req->execute(array($PRODUCTID,$VENDORID,$PRICE));	
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->delete('/externalprice',function($request,Response $response){	// unLink item with vendor
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$PRODUCTID = $json["PRODUCTID"];
+	$VENDORID = $json["VENDORID"];
+	$sql = "DELETE FROM EXTERNALPRICE WHERE EXTERNALITEM_ID = ? AND EXTERNALVENDOR_ID = ?";
+	$req =  $db->prepare($sql);
+	$req->execute(array($PRODUCTID,$VENDORID));	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->post('/externalitem', function($request,Response $response){ // Add item with vendor
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$PRODUCTID = $json["PRODUCTID"];
+	$VENDORID = $json["VENDORID"];
+	$NAMEEN = $json["NAMEEN"];
+	$NAMEKH = $json["NAMEKH"];
+	$PRICE = $json["PRICE"];
+		
+	$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE,NBINVOICES) 
+		VALUES (:author,:noponote,'DELIVERED','NOPO',:nbinvoices)";
+	$req = $db->prepare($sql);	
+
+	$sql = "SELECT * FROM EXTERNALITEM WHERE PRODUCTID = ?";
+	$req =  $db->prepare($sql);
+	$req->execute(array($PRODUCTID));	
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false){
+		$db->beginTransaction(); 
+		$sql = "INSERT INTO EXTERNALITEM (PRODUCTID,NAMEEN,NAMEKH) VALUES (?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute($PRODUCTID,$NAMEEN,$NAMEKH);
+		$lastID = $db->lastInsertId();
+		$db->commit(); 
+	}else{
+		$lastID = $res["PRODUCTID"];
+	}
+	$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
+	$req =  $db->prepare($sql);
+	$req->execute(array($lastID,$VENDORID,$PRICE));	
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+
+});
+
+$app->get('/externalitemsearch', function($request,Response $response){ // TODO
+	$vendorname = $request->getParam('vendorname','');	
+	$productname = $request->getParam('productname','ALL');
+	$productid = $request->getParam('productid','ALL');	
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM EXTERNALITEM,EXTERNALVENDOR,EXTERNALPRICE 
+			WHERE EXTERNALVENDOR.ID = EXTERNALPRICE.EXTERNALVENDOR_ID
+			AND EXTERNALITEM.ID = EXTERNALPRICE.EXTERNALITEM_ID";
+	$params = array();
+
+	if ($vendorname != ""){
+		$sql .= " AND EXTERNALVENDOR.NAMEEN LIKE '?' OR EXTERNALVENDOR.NAMEKH LIKE '?'";
+		array_push($params,'%'.$vendorname.'%','%'.$vendorname.'%');		
+	}
+	if ($productname != ""){
+		$sql .= " AND EXTERNALITEM.NAMEEN LIKE '?' OR EXTERNALITEM.NAMEKH LIKE '?'";
+		array_push($params,'%'.$productname.'%','%'.$productname.'%');		
+	}
+	if ($productid != ""){
+		$sql .= " AND EXTERNALITEM.PRODUCTID = ?";
+		array_push($params,'%'.$productid.'%');		
+	}
+	$req =  $db->prepare($sql);
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$result["data"] = $items;
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->get('/externalitemalert', function($request,Response $response){ // TODO
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$sql = "SELECT PRODUCTID FROM EXTERNALITEM";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$data = array();
+	foreach($items as $item){
+		$productid = $item["PRODUCTID"];
+		$sql = "SELECT ICPRODUCT.PRODUCTID,
+		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'PRODUCTNAME', 
+		ICLOCATION.ORDERPOINT, ORDERQTY,
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
+		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
+		FROM ICLOCATION,ICPRODUCT 
+		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ACTIVE = 1
+		AND LOCID = 'WH1'
+		AND ONHAND < ICLOCATION.ORDERPOINT 
+		AND ICLOCATION.ORDERPOINT > 0
+		AND ICPRODUCT.PRODUCTID = ?
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($productid));
+		$onedata = $req->fetch(PDO::FETCH_ASSOC);
+		array_push($data, $onedata); 
+	}
+
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+
+
+
+
 
 $app->get('/penalty/{status}',function($request,Response $response) {
 	$db = getInternalDatabase();

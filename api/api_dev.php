@@ -2725,7 +2725,6 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
 		$item["PRICE"] = $json["PRICE"];
-		error_log("PRICE: ".$item["PRICE"]);
 		if (isset($json["PACKING"]))
 			$item["PACKING"] = $json["PACKING"];
 		else
@@ -3625,10 +3624,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		else
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
-
-		//$debug = var_export($poitems[0], true);
-		//error_log($debug);
-
 		$rr["items"] = $poitems;
 	}
 

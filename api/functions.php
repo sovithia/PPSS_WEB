@@ -1387,20 +1387,26 @@ function createPO($items,$author)
 		}
 		$DISCABLE = $res2["DISCABLE"];
 
-		if(isset($item["ALGOQTY"]))
-			$ALGOQTY = $item["ALGOQTY"];
-		else
-			$ALGOQTY = $item["REQUEST_QUANTITY"];
-				
-		$REASON = "";
-		if (isset($item["REASON"]))
-			$REASON = $item["REASON"];
+		//$debug = var_export($item, true);
+		//error_log($debug);
 
+		if(isset($item["ALGOQTY"])){			
+			$ALGOQTY = $item["ALGOQTY"];
+		}
+		else{			
+			$ALGOQTY = $item["REQUEST_QUANTITY"];
+		}
+
+		$REASON = "ALGO";
+		
 		
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
 			$QUANTITY = $item["SPECIALQTY"];
-			$REASON = $item["REASON"];
+			if (isset($item["REASON"]))
+				$REASON = $item["REASON"];
+			else 
+				$REASON = "Unspecified reason";
 		}			
 		else if (isset($item["ORDER_QTY"]))
 			$QUANTITY = $item["ORDER_QTY"];
@@ -1498,9 +1504,6 @@ function createPO($items,$author)
 		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
 		$ALGOQTY,$REASON 
 		);
-
-		//$debug = var_export($params, true);
-		//error_log($debug);
 
 		$req->execute($params);				
 		$line++;
