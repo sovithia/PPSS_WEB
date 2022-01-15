@@ -309,7 +309,7 @@ function _receivePO($PONumber,$author)
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
 
-    $PONUM = $res["num3"];  
+    $PONUM = intval($res["num3"]);  
     $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -318,7 +318,7 @@ function _receivePO($PONumber,$author)
     $req = $db->prepare($sql);
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $APNUM = $res["num1"];
+    $APNUM = intval($res["num1"]);    
     $sql = "UPDATE SYSDATA set num1 = num1 +1  WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -995,7 +995,6 @@ function _receivePO($PONumber,$author)
 	if ($HAVEVAT)
 	{
 		//+GLTRAN (Account Number 16100)
-
 
 		$GLNO =    $theGLNO;
 		$LINNO =   "2";  // Line 1-2 or hav VTA 1-2-3

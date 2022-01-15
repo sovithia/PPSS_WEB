@@ -1393,12 +1393,16 @@ function createPO($items,$author)
 		if(isset($item["ALGOQTY"])){			
 			$ALGOQTY = $item["ALGOQTY"];
 		}
-		else{			
+		else if(isset($item["REQUEST_QUANTITY"])){			
 			$ALGOQTY = $item["REQUEST_QUANTITY"];
 		}
-
 		$REASON = "ALGO";
-		
+
+		if (isset($item["FINAL_QUANTITY"])){
+			$ALGOQTY = $item["FINAL_QUANTITY"];
+			$REASON = "GROUPEDPURCHASE";
+		}
+
 		
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){

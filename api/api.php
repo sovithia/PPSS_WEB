@@ -3127,7 +3127,7 @@ function splitPOWithItems($ponumber,$items)
 		$CURRENCY_COST = $itemdetail["CURRENCY_COST"];
 
 		$PPSS_ORDER_QTY = $itemdetail["PPSS_ORDER_QTY"];
-
+		$PPSS_QTYCOMMENT = "SPLIT";
 		$sql = "INSERT INTO PODETAIL (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
 		PRODUCTID,LOCID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY, 	
@@ -3135,7 +3135,7 @@ function splitPOWithItems($ponumber,$items)
 		TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
 		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
-		PPSS_ORDER_QTY) 
+		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
 		
 		$req = $dbBLUE->prepare($sql);
@@ -3146,7 +3146,7 @@ function splitPOWithItems($ponumber,$items)
 		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
 		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
 		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
-		$PPSS_ORDER_QTY);
+		$PPSS_ORDER_QTY,$PPSS_QTYCOMMENT);
 
 		$req->execute($params);				
 		$line++;
@@ -6125,6 +6125,78 @@ $app->get('/sale/{date}',function(Request $request,Response $response) {
 
 	return $response;	
 });
+
+$app->get('/salereport',function(Request $request,Response $response) {   
+	
+	$db=getDatabase();	
+	$date = $request->getParam('date','');
+	$category = $request->getParam('category','');
+	$params = array();
+	$sql = "
+		SELECT   
+		dbo.POSDETAIL.PRODUCTID
+		,dbo.POSDETAIL.PRODUCTNAME
+		,dbo.POSDETAIL.PRODUCTNAME1
+		,dbo.POSDETAIL.PRICE
+		,dbo.ICPRODUCT.COST
+		,dbo.POSDETAIL.CATEGORYID
+		,dbo.ICPRODUCT.COLOR
+		,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID),0) as 'TOTALRECEIVE'
+		,ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE'
+		,(SELECT TOP(1) (PRICE_ORI - PRICE) FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID AND DATESTART <= '$date 00:00:00.000' 
+		AND DATEEND >= '$date 23:59:59.999' ORDER BY DATESTART DESC) as 'DISCAMOUNT' 
+		,(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID AND DATEFROM <= '$date 00:00:00.000' 
+		AND DATETO >= '$date 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT'
+		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
+		,VENDNAME
+		,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+		FROM dbo.POSDETAIL,dbo.ICPRODUCT,dbo.APVENDOR
+		WHERE dbo.POSDETAIL.PRODUCTID = dbo.ICPRODUCT.PRODUCTID
+		AND dbo.APVENDOR.VENDID = dbo.ICPRODUCT.VENDID
+		AND POSDATE >=  '$date 00:00:00.000' 
+		AND POSDATE <= '$date 23:59:59.999'";
+
+	if($category != ''){
+		$sql .= "AND CATEGORYID = ?";
+		array_push($params,$category); 
+	}		
+	$sql .=	
+		"GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
+		ORDER BY COUNT DESC"; 
+	$db->prepare($sql);	
+	$db->execute($params);
+	$items = $db->fetchAll(PDO::FETCH_ASSOC);
+
+	// SALE 
+	$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+					FROM POSDETAIL 			
+					WHERE POSDATE >= '".$date." 00:00:00.000' 
+					AND POSDATE <= '".$date." 23:59:59.999'
+					AND CUSTID NOT IN (".clientToExclude().")";	
+	$req = $conn->prepare($sql);
+	$req->execute(array());
+	$result = $req->fetch(PDO::FETCH_ASSOC);	
+	$left = explode('.',$result["PROFIT"])[0];
+	$right = explode('.',$result["PROFIT"])[1];
+	$profit = $left.".".substr($right, 0,2);
+
+	$left = explode('.',$result["SALE"])[0];
+	$right = explode('.',$result["SALE"])[1];
+	$sale = $left.".".substr($right, 0,2);
+
+	$result["PROFIT"] = $profit;
+	$result["SALE"] = $sale;
+	$result["ITEMS"] = $items;
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $result;
+	$response = $response->withJson($resp);
+
+	return $response;	
+});
+
 
 $app->get('/adjusteditems', function(Request $request,Response $response) {
 
