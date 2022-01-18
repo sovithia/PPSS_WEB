@@ -3136,7 +3136,7 @@ function splitPOWithItems($ponumber,$items)
 		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
 		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"; 
 		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
@@ -8118,6 +8118,7 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	  	$onedata["PRICE" . ($i + 1)] = $prices[$i]["PRICE"];	  
 	  	 
 	  }
+	  if ($onedata != null)
 		array_push($data, $onedata); 
 	}
 	
@@ -8233,7 +8234,8 @@ $app->put('/penalty/{id}',function($request,Response $response) {
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $newData;
-	return $resp;
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 // PROBLEMS 
@@ -8252,8 +8254,110 @@ $app->get('/needmoveitems',function($request,Response $response) {
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $items;
-	return $resp;		
+	$response = $response->withJson($resp);
+	return $response;		
 });
+
+// ACCOUNTING 
+
+$app->get('/aplist',function ($request,Response $response){
+	$dbBlue = getDatabase();
+	$sql = "SELECT VENDID FROM APVENDOR";
+	$begin = $request->getParam('begin','1970-01-01');
+	$end = $request->getParam('end','2050-01-01');
+
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array());
+	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$begin = $begin . " 00:00:00.000";
+	$end = $end . " 23:59:59.000"; 
+
+	$data = array();
+	foreach($vendors as $vendor){
+		$sql = "SELECT VENDID,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
+				(INV_AMT - VAT_AMT) as 'BEFORE_VAT',
+				VAT_AMT,INV_AMT, PONUMBER,
+				replace(replace(replace(SUPPLIER_INVOICE,char(10),''),char(13),''),'\"','') as 'SUPPLIER_INVOICE',
+				TRANDATE 
+				FROM APHEADER 
+				WHERE VENDID = ? AND BALANCE < 0 
+				AND APSTATUS <> 'V' 
+				AND TRANDATE BETWEEN ? AND ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($vendor["VENDID"],$begin,$end));
+		$aplist = $req->fetchAll(PDO::FETCH_ASSOC);		
+		$data = array_merge($data,$aplist);
+
+		$sql = "SELECT VENDID,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
+				(INV_AMT - VAT_AMT) as 'BEFORE_VAT',
+				VAT_AMT,INV_AMT, PONUMBER,
+				replace(replace(replace(SUPPLIER_INVOICE,char(10),''),char(13),''),'\"','') as 'SUPPLIER_INVOICE',
+				TRANDATE 
+				FROM APHEADER 
+				WHERE VENDID = ? 
+				AND BALANCE > 0 
+				AND APSTATUS <> 'V'
+				AND TRANDATE BETWEEN ? AND ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($vendor["VENDID"],$begin,$end));
+		$aplist = $req->fetchAll(PDO::FETCH_ASSOC);		
+		$data = array_merge($data,$aplist);		
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+
+});
+
+$app->get('/discountsumlist',function ($request,Response $response){
+
+	$dbBlue = getDatabase();
+	$sql = "SELECT VENDID,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME'
+			FROM APVENDOR";
+	$begin = $request->getParam('begin','1970-01-01');
+	$end = $request->getParam('end','2050-01-01');
+
+	$begin = $begin . " 00:00:00.000";
+	$end = $end . " 23:59:59.000"; 
+
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array());
+	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	error_log($begin." ".$end);
+	$data = array();
+	foreach($vendors as $vendor)
+	{	
+		$sql = "SELECT sum(CURRENCY_AMOUNT * (TRANDISC/100))  as 'DISCOUNT' 
+				FROM PORECEIVEDETAIL 
+				WHERE VENDID = ? 
+				AND TRANDATE BETWEEN ? AND ?";
+
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($vendor["VENDID"],$begin,$end));
+
+		$discount = $req->fetch(PDO::FETCH_ASSOC);
+		if ($discount == null || $discount["DISCOUNT"] == null || $discount["DISCOUNT"] == 0.0)
+			continue;
+
+		//var_dump($discount);
+		//exit;
+		$onedata["DISCOUNT"] = $discount["DISCOUNT"];
+		$onedata["VENDNAME"] = $vendor["VENDNAME"];		
+		$onedata["VENDID"] = $vendor["VENDID"];   
+		array_push($data,$onedata);	
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
