@@ -6748,7 +6748,9 @@ $app->get('/bestseller',function($request,Response $response) {
 });
 
 $app->get('/info',function(Request $request,Response $response){
-	$db=getDatabase();
+	phpinfo();
+	/*
+	$db=getDatabase();	
 	$sql = "SELECT TOP(1) * FROM ICPRODUCT";
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -6756,6 +6758,7 @@ $app->get('/info',function(Request $request,Response $response){
 	$response = $response->withJson($item);
 	
 	return $response;
+	*/	
 });
 
 
@@ -7179,9 +7182,49 @@ $app->get('/expiresearch',function($request,Response $response) {
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	$indb = getInternalDatabase();
+	$newData = array();
+	foreach($items as $item)
+	{
+		$sql = "SELECT * FROM DEPRECIATIONITEM 
+						WHERE PRODUCTID = ? 
+						AND TYPE <> 'EXPIREWASTE' 
+						AND TYPE 'DAMAGEWASTE' 
+						ORDER BY CREATED DESC LIMIT 1";
+
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$promo = $req->fetch(PDO::FETCH_ASSOC);
+		if ($promo != false)
+		{
+			if ($promo["QUANTITY4"] != null){
+				$item["LASTPROMOQTY"] = $promo["QUANTITY4"];		
+				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO4"];			
+			}
+			else if ($promo["QUANTITY3"] != null){
+				$item["LASTPROMOQTY"] = $promo["QUANTITY3"];		
+				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO3"];			
+			}
+			else if ($promo["QUANTITY2"] != null){
+				$item["LASTPROMOQTY"] = $promo["QUANTITY2"];		
+				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO2"];			
+			}
+			else if ($promo["QUANTITY1"] != null){
+				$item["LASTPROMOQTY"] = $promo["QUANTITY1"];		
+				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO1"];			
+			}
+		}else{
+			$item["LASTPROMOQTY"] = "N/A"; 
+			$item["LASTPROMOPERCENT"] = "N/A"; 
+		}
+		$item["LASTPROMOEXPIRATION"] = $promo["EXPIRATION"];
+		$item["LASTPROMODATE"] = $promo["STARTTIME1"];
+		array_push($newData,$item);
+	}
+
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"] = $items;
+	$resp["data"] = $newData;
 	$response = $response->withJson($resp);
 	return $response;
 });
@@ -7830,8 +7873,10 @@ $app->get('/externalvendor', function($request,Response $response){ // VENDOR LI
 
 $app->get('/externalvendordetails/{id}', function($request,Response $response){ // VENDOR PRODUCT LIST
 	$db = getInternalDatabase();
+	$id = $request->getAttribute('id');
 	$sql = "SELECT * FROM EXTERNALITEM, EXTERNALPRICE WHERE EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
 	$req = $db->prepare($sql);
+	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$resp["result"] = "OK";
 	$resp["data"] = $items;
@@ -7964,12 +8009,16 @@ $app->post('/externalitem', function($request,Response $response){ // Add item w
 
 $app->get('/externalitemsearch', function($request,Response $response){ // TODO
 	$vendorname = $request->getParam('vendorname','');	
-	$productname = $request->getParam('productname','ALL');
-	$productid = $request->getParam('productid','ALL');	
+	$productname = $request->getParam('productname','ALL');	
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM EXTERNALITEM,EXTERNALVENDOR,EXTERNALPRICE 
-			WHERE EXTERNALVENDOR.ID = EXTERNALPRICE.EXTERNALVENDOR_ID
-			AND EXTERNALITEM.ID = EXTERNALPRICE.EXTERNALITEM_ID";
+	$sql = "SELECT EXTERNALITEM.NAMEEN as 'PRODUCTNAMEEN',
+								 EXTERNALITEM.NAMEKH as 'PRODUCTNAMEKH',
+								 EXTERNALVENDOR.NAMEEN as 'PRODCTNAMEEN',
+								 EXTERNALVENDOR.NAMEKH as 'PRODCTNAMEEKH'
+
+	 							 FROM EXTERNALITEM,EXTERNALVENDOR,EXTERNALPRICE 
+								 WHERE EXTERNALVENDOR.ID = EXTERNALPRICE.EXTERNALVENDOR_ID
+								 AND EXTERNALITEM.ID = EXTERNALPRICE.EXTERNALITEM_ID";
 	$params = array();
 
 	if ($vendorname != ""){
@@ -7980,10 +8029,7 @@ $app->get('/externalitemsearch', function($request,Response $response){ // TODO
 		$sql .= " AND EXTERNALITEM.NAMEEN LIKE '?' OR EXTERNALITEM.NAMEKH LIKE '?'";
 		array_push($params,'%'.$productname.'%','%'.$productname.'%');		
 	}
-	if ($productid != ""){
-		$sql .= " AND EXTERNALITEM.PRODUCTID = ?";
-		array_push($params,'%'.$productid.'%');		
-	}
+	
 	$req =  $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -7997,12 +8043,16 @@ $app->get('/externalitemsearch', function($request,Response $response){ // TODO
 $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-	$sql = "SELECT PRODUCTID FROM EXTERNALITEM";
+	$backseven = strtotime('-7 days');
+
+	$sql = "SELECT ID,PRODUCTID FROM EXTERNALITEM WHERE 
+					EXTERNALITEM_ID NOT IN (SELECT EXTERNALITEM_ID FROM EXTERNALORDER WHERE CREATED > ?)";
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($backseven));
 
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data = array();
+
 	foreach($items as $item){
 		$productid = $item["PRODUCTID"];
 		$sql = "SELECT ICPRODUCT.PRODUCTID,
@@ -8018,12 +8068,59 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 		AND ONHAND < ICLOCATION.ORDERPOINT 
 		AND ICLOCATION.ORDERPOINT > 0
 		AND ICPRODUCT.PRODUCTID = ?
-		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY";
+		AND 
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY";		
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($productid));
 		$onedata = $req->fetch(PDO::FETCH_ASSOC);
+
+		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY, FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array());
+		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
+		$onedata["LASTRECEIVEVENDOR"] = $lastreceive["VENDNAME"];
+		$onedata["LASTRECEIVEQTY"] =  $lastreceive["TRANQTY"];
+		$onedata["LASTRECEIVEPRICE"] = $lastreceive["CURRENCY_COST"];
+
+		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
+						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						AND EXTERNALITEM_ID = ? ORDER BY CREATED DESC";
+		$req = $db->prepare($sql);
+		$req->execute($item["ID"]);
+		$lastorder = $req->fetch(PDO::FETCH_ASSOC);
+		$onedata["LASTORDERVENDOR"] = $lastorder["NAMEEN"];
+		$onedata["LASTORDERQTY"] = $lastorder["QUANTITY"];
+		$onedata["LASTORDERPRICE"] = $lastorder["PRICE"];
+
+		$sql = "SELECT * FROM EXTERNALPRICE,EXTERNALVENDOR 
+						WHERE  EXTERNALPRICE 
+						AND EXTERNALITEM_ID = ? ORDER BY PRICE ASC";
+	  $req = $db->prepare($sql);
+	  $req->execute($item["ID"]);
+	  $count = 1;
+
+		$onedata["VENDOR1"] = "";	  
+		$onedata["PRICE1"] = "";	  
+		$onedata["VENDOR2"] = "";	  
+		$onedata["PRICE2"] = "";	  
+		$onedata["VENDOR3"] = "";	  
+		$onedata["PRICE3"] = "";	  
+		$onedata["VENDOR4"] = "";	  
+		$onedata["PRICE4"] = "";	  
+
+	  $prices = $req->fetchAll(PDO::FETCH_ASSOC);
+	  $nbitems = count($history);
+	  for($i = 0;isset($prices[$i]); $i++)
+	  {
+	  	if ($i == 4)
+	  		break;
+	  	$onedata["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
+	  	$onedata["PRICE" . ($i + 1)] = $prices[$i]["PRICE"];	  
+	  	 
+	  }
 		array_push($data, $onedata); 
 	}
+	
 
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
@@ -8032,6 +8129,45 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 });
 
 
+
+$app->post('/externalorder', function($request,Response $response){
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$EXTERNALITEM_ID = $json["EXTERNALITEM_ID"];
+	$EXTERNALVENDOR_ID = $json["EXTERNALVENDOR_ID"];	
+	$AUTHOR = $json["AUTHOR"];
+	$PRICE = $json["PRICE"];
+	$QUANTITY = $json["QUANTITY"];
+
+	$sql = "INSERT INTO EXTERNALORDER (EXTERNALITEM_ID,EXTERNALVENDOR_ID,AUTHOR,PRICE,QUANTITY) 
+					values (?,?,?,?,?)";
+
+	$req = $db->prepare($sql);
+	$req->execute(array($EXTERNALITEM_ID,$EXTERNALVENDOR_ID,$AUTHOR,$PRICE,$QUANTITY));
+
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+
+});
+
+$app->get('/externalorder', function($request,Response $response){
+	$db = getInternalDatabase();
+	$back = strtotime('-7 days');
+	
+	$sql = "SELECT * FROM EXTERNALORDER, EXTERNALITEM,EXTERNALVENDOR
+					WHERE EXTERNALORDER.EXTERNALITEM_ID = EXTERNALITEM.ID
+					AND EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID
+					WHERE CREATED > ?";
+	$req = $db->prepare($sql);					
+	$req->execute(array($back));
+	$orders = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
+	$resp["result"] = "OK";
+	$resp["data"] = $orders;
+	$response = $response->withJson($resp);
+});
 
 
 
@@ -8100,6 +8236,24 @@ $app->put('/penalty/{id}',function($request,Response $response) {
 	return $resp;
 });
 
+// PROBLEMS 
+$app->get('/needmoveitems',function($request,Response $response) {
+	$db = getDatabase();
+	$sql = "SELECT PRODUCTNAME,PRODUCTID,COST,PRICE
+		(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+		FROM ICPRODUCT 
+		WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND <= 0)
+		AND PRODUCTID IN  (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND > 0)";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $items;
+	return $resp;		
+});
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
