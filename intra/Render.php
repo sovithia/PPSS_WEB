@@ -481,14 +481,12 @@ function renderLeftSidebar()
   $sectionACCOUNTANT = '<li class="li-hover"><div class="divider"></div></li>
                         <li class="li-hover"><p class="ultra-small margin more-text">ACCOUNTING</p></li>
 
-                        
-                        <li  '.hoverColor("supplyrecordlist"."supplyrecord"."PAID"."ACC").' >
-                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=RECEIVED&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCTodoPage.png" width="30px" height="30px">SupplyRecord(Todo)</a></li>
+                        <li '.hoverColor("discountsumlist").'>
+                        <a href="?display=discountsumlist&entity=discountsumlist" >
+                        Discount Sum</a></li>
 
-                        <li  '.hoverColor("supplyrecordlist"."supplyrecord"."RECEIVED"."ACC").' >
-                        <a href="?display=supplyrecordlist&entity=supplyrecord&status=PAID&action=ACC" >
-                        <img src="images/icons/ACC/SupplyRecordListACCDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>                       
+                        <li '.hoverColor("aplist").'><a href="?display=aplist&entity=aplist" >
+                          AP List</a></li>                                        
             ';
 
 
@@ -851,9 +849,11 @@ function _ItemsTable($items,$fields,$params = null,$name = "",$exporttype = "")
 
  if($exporttype != "NO")
  {
+    $itemsjson = json_encode($items);
+    $itemsjson = str_replace("'","",$itemsjson);
     $body .= "<form target=_blank action='export.php' method='POST' >         
             <input type='hidden' name='type' value='".$exporttype."'>
-            <input type='hidden' name='items' value='".json_encode($items)."'>
+            <input type='hidden' name='items' value='".$itemsjson."'>
             <input type='hidden' name='fields' value='".json_encode($fields)."'>
             <input type='submit' value='EXPORT'>
           </form>";

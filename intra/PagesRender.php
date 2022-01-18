@@ -6002,9 +6002,96 @@ function renderPriceProgression($data)
     ";   
     }
   return $body;    
-
 }
 
+
+function renderDiscountSumList($items)
+{
+  $beginStr = isset($_GET["begin"]) ? $_GET["begin"] : "";
+  $endStr = isset($_GET["end"]) ? $_GET["end"] : "";
+  $body = "";  
+  $body .= "<div class='col s12 m8 l9'>
+              
+              <div class='row margin'>
+                <form class='col s12' method='GET'>
+
+                <div class='row'>
+                  <div class='input-field col s12'>                        
+                      ".dateSelect("begin",$beginStr)."
+                  </div>
+                </div>
+            
+                <div class='row'>
+                  <div class='input-field col s12'>
+                    ".dateSelect("end",$endStr)."
+                  </div>
+                </div>
+
+                <div class='row'>    
+                     <div class='input-field col s12'>             
+                      <input type='hidden' name='display' value='discountsumlist'>
+                      <input type='hidden' name='entity' value='discountsumlist'>                      
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
+                     </div>
+                </div>
+
+               </form>
+              </div>
+             </div> 
+              ";   
+
+  if ($items != null)
+  {      
+    $fields = ["DISCOUNT","VENDNAME","VENDID"];
+    $body .= _ItemsTable($items,$fields,"","discountsumlist","discountsumlist"); 
+
+  }
+  return $body;
+}
+
+function renderAPList($items)
+{
+  $beginStr = isset($_GET["begin"]) ? $_GET["begin"] : "";
+  $endStr = isset($_GET["end"]) ? $_GET["end"] : "";
+  $body = "";  
+  $body .= "<div class='col s12 m8 l9'>
+              
+              <div class='row margin'>
+                <form class='col s12' method='GET'>
+
+                <div class='row'>
+                  <div class='input-field col s12'>                        
+                      ".dateSelect("begin",$beginStr)."
+                  </div>
+                </div>              
+
+                <div class='row'>
+                  <div class='input-field col s12'>
+                    ".dateSelect("end",$endStr)."
+                  </div>
+                </div>
+
+                <div class='row'>    
+                     <div class='input-field col s12'>             
+                      <input type='hidden' name='display' value='aplist'>
+                      <input type='hidden' name='entity' value='aplist'>
+                      <input type='submit' class='btn waves-effect waves-light col s12 grey darken-2' value='Show'>
+                     </div>
+                </div>
+
+               </form>
+              </div>
+             </div> 
+              ";   
+
+  if ($items != null)
+  {      
+    $fields = ["VENDID","VENDNAME","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
+    $body .= _ItemsTable($items,$fields,"","aplist","aplist"); 
+
+  }
+  return $body;
+}
 
 ?>
 
