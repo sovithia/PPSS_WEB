@@ -1,6 +1,6 @@
 <?php 
 
-function _createPO($items,$author)
+function createPO($items,$author)
 {
 	if(count($items) == 0){
 		return null;
@@ -59,10 +59,9 @@ function _createPO($items,$author)
 	$CURRENCY_AMOUNT = 0;
 
 	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD,
-																	TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
-																	TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
-																 ) VALUES (?,?,?,getdate(),
-																 					'','','','','','','','','','','')";
+									TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
+									TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
+									) VALUES (?,?,?,getdate(),'','','','','','','','','','','')";
 	$req = $db->prepare($sql);
 	$req->execute(array($PONUMBER,$vendorid,$USERADD)); 
 
@@ -145,9 +144,6 @@ function _createPO($items,$author)
 				else if (isset($item["QUANTITY"]))
 					$item["ORDER_QTY"] = $item["QUANTITY"];
 		}
-
-
-
 			
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
@@ -167,18 +163,20 @@ function _createPO($items,$author)
 		}
 		$DISCABLE = $res2["DISCABLE"];
 
-		if(isset($item["ALGOQTY"]))
+		$REASON = "ALGO";
+		if(isset($item["ALGOQTY"])){			
 			$ALGOQTY = $item["ALGOQTY"];
-		else{
-			if (isset($item["REQUEST_QUANTITY"])) // TO CLEAN
-				$ALGOQTY = $item["REQUEST_QUANTITY"];
-			else if (isset($item["QUANTITY"]))
-				$ALGOQTY = $item["QUANTITY"]; // TO CLEAN
- 		}
-			
-		
-		
-		$REASON = "";
+		}
+		else if(isset($item["REQUEST_QUANTITY"])){	 // TO CLEAN		
+			$ALGOQTY = $item["REQUEST_QUANTITY"];
+		}
+		else if (isset($item["QUANTITY"]))
+			$ALGOQTY = $item["QUANTITY"]; 
+
+		if (isset($item["FINAL_QUANTITY"])){
+			$ALGOQTY = $item["FINAL_QUANTITY"];
+			$REASON = "GROUPEDPURCHASE";
+		}		
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
 	
@@ -298,7 +296,7 @@ function _createPO($items,$author)
 	return $PONUMBER;
 }
 
-function _receivePO($PONumber,$author)
+function receivePO($PONumber,$author)
 {		
     $db = getDatabase();
     $today = date("Y-m-d H:i:s");
@@ -1163,8 +1161,8 @@ function _receivePO($PONumber,$author)
 
 function createAndReceivePO($items,$author)
 {
-	$ponumber = _createPO($items,$author);
-	_receivePO($ponumber,$author);
+	$ponumber = createPO($items,$author);
+	receivePO($ponumber,$author);
 	return $ponumber;
 }
 

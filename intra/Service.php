@@ -166,6 +166,10 @@ class Service
  	const ResourceItemRequestPool = Service::BaseURL."/itemrequestitemspool";
 
 	const ResourceDepletedItems = Service::BaseURL."/depleteditems";			 	  
+
+	const ResourceDiscountSum = Service::BaseURL."/discountsumlist";
+	const ResourceAPList = Service::BaseURL."/aplist";
+
 						 	  
 	const modelRoute = array( 		
 							  "sales" => Service::ResourceSales,
@@ -264,7 +268,9 @@ class Service
 						 	  "vaultdetail" => Service::ResourceVault,
 						 	  "tinyitemsearch" => Service::ResourceTinyItemSearch,
 						 	  "lowseller" => Service::ResourceLowSeller,
-						 	  "priceprogression" => Service::ResourcePriceProgression
+						 	  "priceprogression" => Service::ResourcePriceProgression,
+							  "aplist" => Service::ResourceAPList,
+						 	  "discountsumlist" => Service::ResourceDiscountSum
 						 	 );
 	 
 								

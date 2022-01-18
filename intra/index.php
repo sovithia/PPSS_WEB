@@ -247,7 +247,16 @@ function getData($display,$entity,$param)
   else if ($display == "bestseller" && isset($param["begin"]) ){
     $params = "?begin=".$param["begin"];
     $params .= "&end=".$param["end"];
-
+    return Service::ListEntity($entity,$params);
+  }
+  else if ($display == "discountsumlist" && isset($param["begin"])){
+    $params = "?begin=".$param["begin"];
+    $params .= "&end=".$param["end"];
+    return Service::ListEntity($entity,$params);
+  }
+  else if ($display == "aplist" && isset($param["begin"])){
+    $params = "?begin=".$param["begin"];
+    $params .= "&end=".$param["end"];
     return Service::ListEntity($entity,$params);
   }
   else if ($display == "itemsale" && isset($param["begin"])){
@@ -271,7 +280,7 @@ function getData($display,$entity,$param)
     || $display == "schedule" || $display == "restday" || $display == "podetail" ||
     $display == "receivedpodetail" || $display == "supplieritems" || $display == "supplierpurchaseorders"
     || $display == "receptionRecordDetail" || $display == "receptionRecordDetailNOPO" || $display == "vaultdetail" ||
-    $display == "supplyrecorddetails")
+    $display == "supplyrecorddetails" )
   {                                                   
     return Service::ListEntity($entity,$param["ID"]);
   }    
@@ -433,6 +442,12 @@ else if ($display == "itemsearch3")
     return renderItemNegative($data);
   else if ($display == "zerosale")
     return renderZeroSale($data);
+
+  // Account
+  else if ($display == "discountsumlist")
+    return renderDiscountSumList($data);
+  else if ($display == "aplist")
+    return renderAPList($data);
 
   // Admin  
   else if ($display == "itemcategorize")

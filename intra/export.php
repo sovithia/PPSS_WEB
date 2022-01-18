@@ -67,6 +67,12 @@ function fieldsPresets($type)
              $type == "itemrequestactionpool_TRANSFER" ||  
              $type == "itemrequestactionpool_RESTOCK")
         return ["IMAGE", "PRODUCTNAME","PRODUCTID","PACKINGNOTE","VENDNAME","REQUEST_QUANTITY"];
+    
+
+    else if ($type == "aplist")
+        return ["DISCOUNT","VENDNAME","VENDID"];
+    else if ($type == "discountsumlist")               
+        return ["VENDID","VENDNAME","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
     else if ($type == "depleteditems")
     {
         return ["IMAGE","PRODUCTID","PRODUCTNAME", "VENDNAME","WH1","WH2","ORDERPOINT","ORDERQUANTITY"];    
@@ -108,12 +114,9 @@ function purifySelectedData($data)
 }
 
 
-function generateExcel($items,$fields,$setQuantity = false)
+function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = true)
 {
-
-
     $alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
-
 
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
@@ -153,16 +156,18 @@ function generateExcel($items,$fields,$setQuantity = false)
         $sheet->setCellValue($alphabet[$alphacount].'1', $field); 
         $alphacount++;     
     }
-
  
     $count = 2;    
-        
     foreach($items as $item)    
     {  
-    
-        if (isset($item["PRODUCTID"]) && $item["PRODUCTID"] == "153020") // MYSTERY
-            continue;        
 
+        if($skipNullProduct == true)
+        {
+            if (!isset($item["PRODUCTID"]))
+            continue;
+            if ($item["PRODUCTID"] == "153020") // MYSTERY
+                continue;                
+        }
         $sheet->getRowDimension($count)->setRowHeight(100); 
          
         if ($setQuantity == true)
@@ -171,12 +176,6 @@ function generateExcel($items,$fields,$setQuantity = false)
                 $_POST["qty".$item["PRODUCTID"]] == 0)
                 continue;
         }           
-
-        if (!isset($item["PRODUCTID"]))
-            continue;
-        
-
-
         $alphacount = 0;
         foreach($fields as $field )
         {            
@@ -184,9 +183,7 @@ function generateExcel($items,$fields,$setQuantity = false)
             {
                 
                 $path = "http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"];
-                //$data = file_get_contents($path);
-            
-
+                //$data = file_get_contents($path);       
                 $ch = curl_init(); //curl handler init
                 curl_setopt($ch,CURLOPT_URL,$path);
                 curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);// set optional params
@@ -317,17 +314,10 @@ function downloadFile($filename)
 }
 
 
-
-
 $type = isset($_POST["type"]) ? $_POST["type"] : 0;
-//var_dump($type);
-//exit;
-//if($type == 0)
-//    $type =  "EXPORTALL";
 if ($type == "EXPORTALL")
 {
     $items = Service::ListEntity("itemsearch2","?zerosale=YES&thrownstart=2015-01-01&thrownend=2030-01-01&sellstart=2015-01-01&sellend=2030-01-01");     
-    error_log("DOWNLOAD DONE");
     generateExcel($items,fieldsPresets($type));    
     downloadFile("data.xlsx");
 }
@@ -375,7 +365,7 @@ else if ($type == "itemrequestactionpool_PURCHASE" ||
     
     $items = json_decode($_POST["items"],true);            
     generateExcel($items,fieldsPresets($type));
-    //downloadFile("data.xlsx");
+    downloadFile("data.xlsx");
 }
 else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
 {       
@@ -388,11 +378,12 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
         $fields = json_decode($_POST["fields"],true);
     else 
         $fields = fieldsPresets($type);  
-      
-    //var_dump($items);  
-    //var_dump($fields);
-
-    generateExcel($items,$fields);        
+    
+    if ($type == "aplist" || $type == "discountsumlist")
+        generateExcel($items,$fields,false,false);
+    else {       
+        generateExcel($items,$fields,false,true);        
+    }
     downloadFile("data.xlsx");
 } 
 
