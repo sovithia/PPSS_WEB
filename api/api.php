@@ -6156,10 +6156,9 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	{
 		$sql .= " AND dbo.POSDETAIL.CATEGORYID = ?";
 		$params = array($from,$to,$category);		
-	}else{
+	}else{		
 		$params = array($from,$to);
-	}
-	error_log($sql);
+	}	
 	$sql .=	" GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
 			  ORDER BY COUNT DESC";
 
@@ -6170,13 +6169,24 @@ $app->get('/salereport',function(Request $request,Response $response) {
 
 	// SALE 
 	
-	$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+	if($category == 'ALL'){
+		$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
 					FROM POSDETAIL 			
 					WHERE POSDATE >= ?
 					AND POSDATE <= ?
 					AND CUSTID NOT IN (".clientToExclude().")";	
-	$req = $db->prepare($sql);
-	$req->execute(array($from,$to));
+		$req = $db->prepare($sql);
+		$req->execute(array($from,$to));
+	}else{
+		$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+					FROM POSDETAIL 			
+					WHERE POSDATE >= ?
+					AND POSDATE <= ?
+					AND CATEGORYID = ?
+					AND CUSTID NOT IN (".clientToExclude().")";	
+		$req = $db->prepare($sql);
+		$req->execute(array($from,$to,$category));
+	}
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	$left = explode('.',$res["PROFIT"])[0];
@@ -7898,7 +7908,9 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 
 $app->get('/externalvendor', function($request,Response $response){ // VENDOR LIST
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM EXTERNALVENDOR";	
+	$sql = "select NAMEEN,NAMEKH,PHONE1,(select count(EXTERNALITEM_ID) 
+			FROM EXTERNALPRICE WHERE EXTERNALVENDOR_ID = EXTERNALVENDOR.ID ) as 'ITEMCOUNT'  
+			FROM EXTERNALVENDOR";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -7912,10 +7924,53 @@ $app->get('/externalvendor', function($request,Response $response){ // VENDOR LI
 $app->get('/externalvendordetails/{id}', function($request,Response $response){ // VENDOR PRODUCT LIST
 	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
-	$sql = "SELECT * FROM EXTERNALITEM, EXTERNALPRICE WHERE EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
+	$sql = "SELECT EXTERNALITEM.ID,EXTERNALITEM.NAMEEN,EXTERNALPRICE.PRICE 
+			FROM EXTERNALITEM, EXTERNALPRICE 
+			WHERE EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$newItems = array();
+	foreach($items as $item)
+	{
+		$sql = "SELECT EXTERNALPRICE.EXTERNALITEMID,EXTERNALPRICE.EXTERNALVENDOR_ID, EXTERNALPRICE.PRICE,EXTERNALVENDOR.NAMEEN
+				FROM EXTERNALPRICE,EXTERNALVENDOR 
+				WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+				AND EXTERNALITEM_ID = ? 
+				ORDER BY PRICE ASC";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["ID"]));
+		$prices = $req->fetchAll(PDO::FETCH_ASSOC);
+
+		$count = 1;
+		$item["VENDOR1"] = "";	  
+		$item["PRICE1"] = "";	  
+		$item["VENDOR2"] = "";	  
+		$item["PRICE2"] = "";	  
+		$item["VENDOR3"] = "";	  
+		$item["PRICE3"] = "";	  
+		$item["VENDOR4"] = "";	  
+		$item["PRICE4"] = "";	  	
+		for($i = 0;isset($prices[$i]); $i++)
+		{
+			if ($i == 4)
+				break;
+			if ($prices[$i]["EXTERNALVENDOR_ID"])
+				continue;
+			$item["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
+			$item["PRICE" . ($i + 1)] = $prices[$i]["PRICE"];	   
+		}
+		array_push($newItems,$item);
+	}
+	$sql = "SELECT * FROM EXTERNALVENDOR WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$vendor = $req->fetch(PDO::FETCH_ASSOC);
+	
+	$data["items"] = $$newItems;
+	$data["vendor"] = $vendor;
+
 	$resp["result"] = "OK";
 	$resp["data"] = $items;
 	$response = $response->withJson($resp);
@@ -7926,13 +7981,27 @@ $app->post('/externalvendor', function($request,Response $response){ // CREATE V
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
-	$sql = "INSERT INTO EXTERNALVENDOR (NAMEEN,NAMEKH,PHONE1,PHONE2,PHONE3,
-	PHONE4,ADDRESS1,ADDRESS2,COMMUNICATIONTYPE,COMMENT) values (?,?,?,?,?,?,?,?,?,?)";	 
+	$sql = "INSERT INTO EXTERNALVENDOR 
+	(NAMEEN,NAMEKH,PHONE1,PHONE2,PHONE3,
+	 PHONE4,ADDRESS1,ADDRESS2,
+	 COMMUNICATIONTYPE1,COMMUNICATIONHANDLE1,
+	 COMMUNICATIONTYPE2,COMMUNICATIONHANDLE2,
+	 COMMUNICATIONTYPE3,COMMUNICATIONHANDLE3,
+	 COMMUNICATIONTYPE4,COMMUNICATIONHANDLE4,	
+	 COMMENT) 
+	 values (?,?,?,?,?,?,?,?,?,?)";	 
 	$req = $db->prepare($sql);
 
-	$req->execute(array($json["NAMEEN"],$json["NAMEKH"],$json["PHONE1"],$json["PHONE2"],$json["PHONE3"],
-	$json["PHONE4"],$json["ADDRESS1"],$json["ADDRESS2"],$json["COMMUNICATIONTYPE"],$json["COMMENT"],
+	$req->execute(array($json["NAMEEN"],$json["NAMEKH"],
+	$json["PHONE1"],$json["PHONE2"],$json["PHONE3"],$json["PHONE4"],
+	$json["ADDRESS1"],$json["ADDRESS2"],
+	$json["COMMUNICATIONTYPE1"],$json["COMMUNICATIONHANDLE1"],
+	$json["COMMUNICATIONTYPE2"],$json["COMMUNICATIONHANDLE2"],
+	$json["COMMUNICATIONTYPE3"],$json["COMMUNICATIONHANDLE3"],
+	$json["COMMUNICATIONTYPE4"],$json["COMMUNICATIONHANDLE4"],
+	$json["COMMENT"],
 	$json["ID"] ));
+
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
 	
 	$resp = array();	
@@ -7953,7 +8022,18 @@ $app->put('/externalvendor', function($request,Response $response){ // UPDATE VE
 	PHONE4 = ?,
 	ADDRESS1 = ?, 
 	ADDRESS2 =  ?, 
-	COMMUNICATIONTYPE = ?, 
+	COMMUNICATIONTYPE1 = ?, 
+	COMMUNICATIONHANDLE1 = ?,
+
+	COMMUNICATIONTYPE2 = ?, 
+	COMMUNICATIONHANDLE2 = ?,
+	
+	COMMUNICATIONTYPE3 = ?, 
+	COMMUNICATIONHANDLE3 = ?,
+	
+	COMMUNICATIONTYPE4 = ?, 
+	COMMUNICATIONHANDLE4 = ?,
+
 	COMMENT = ? 
 	WHERE ID = ?";	
 	$req = $db->prepare($sql);
