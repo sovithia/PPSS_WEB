@@ -6132,63 +6132,65 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	$db=getDatabase();	
 	$date = $request->getParam('date','');
 	$category = $request->getParam('category','ALL');
-	$params = array();
-
+	
 	$from = $date . ' 00:00:00.000';
 	$to = $date . ' 23:59:59.999';
+	$sql = "SELECT 
+	dbo.POSDETAIL.PRODUCTID
+	,dbo.POSDETAIL.PRODUCTNAME
+	,dbo.POSDETAIL.PRODUCTNAME1
+	,dbo.POSDETAIL.PRICE
+	,dbo.ICPRODUCT.COST
+	,dbo.POSDETAIL.CATEGORYID
+	,dbo.ICPRODUCT.COLOR	
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
+	,VENDNAME
+	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	FROM dbo.POSDETAIL,dbo.ICPRODUCT,dbo.APVENDOR
+	WHERE dbo.POSDETAIL.PRODUCTID = dbo.ICPRODUCT.PRODUCTID
+	AND dbo.APVENDOR.VENDID = dbo.ICPRODUCT.VENDID
+	AND POSDATE >=  ?
+	AND POSDATE <= ?";
 	if($category != 'ALL')
 	{
-		$sql = "SELECT DISTINCT(PRODUCTID) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND TRANDATE BETWEEN ? AND ? AND CATEGORYID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($from,$to,$category));
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);		
+		$sql .= " AND dbo.POSDETAIL.CATEGORYID = ?";
+		$params = array($from,$to,$category);		
+	}else{
+		$params = array($from,$to);
 	}
-	else 	
-	{
+	error_log($sql);
+	$sql .=	" GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
+			  ORDER BY COUNT DESC";
 
-		$sql = "SELECT DISTINCT(PRODUCTID) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND TRANDATE BETWEEN ? AND ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($from,$to));
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	}
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);		
+	$result["ITEMS"] = $items;
 
-	$data = array();
-	foreach($items as $item){
-		$sql = "
-		SELECT PRODUCTID, PRODUCTNAME,PRODUCTNAME1,PRICE,COST,CATEGORYID		
-		,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE'
-		,ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE'		
-		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1'
-		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2'
-		,
-		(SELECT (SUM(TRANQTY) * -1) as 'SALE' FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND TRANDATE BETWEEN ? AND ? AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'SALE'
-		FROM dbo.ICPRODUCT
-		WHERE PRODUCTID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($from,$to,$item["PRODUCTID"]));
-		$onedata = $req->fetch(PDO::FETCH_ASSOC);
-		array_push($data,$onedata);
-	}
 	// SALE 
+	
 	$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
 					FROM POSDETAIL 			
-					WHERE POSDATE >= '".$date." 00:00:00.000' 
-					AND POSDATE <= '".$date." 23:59:59.999'
+					WHERE POSDATE >= ?
+					AND POSDATE <= ?
 					AND CUSTID NOT IN (".clientToExclude().")";	
 	$req = $db->prepare($sql);
-	$req->execute(array());
-	$result = $req->fetch(PDO::FETCH_ASSOC);	
-	$left = explode('.',$result["PROFIT"])[0];
-	$right = explode('.',$result["PROFIT"])[1];
+	$req->execute(array($from,$to));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	$left = explode('.',$res["PROFIT"])[0];
+	$right = explode('.',$res["PROFIT"])[1];
 	$profit = $left.".".substr($right, 0,2);
 
-	$left = explode('.',$result["SALE"])[0];
-	$right = explode('.',$result["SALE"])[1];
+	error_log($result["SALE"]);
+	$left = explode('.',$res["SALE"])[0];
+	$right = explode('.',$res["SALE"])[1];
 	$sale = $left.".".substr($right, 0,2);
 
 	$result["PROFIT"] = $profit;
 	$result["SALE"] = $sale;
-	$result["ITEMS"] = $data;
+	
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -6565,6 +6567,7 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	as 'STOREBIN1',
 	ISNULL( (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH2' ) ,'N/A') 
 	as 'STOREBIN2',
+	(SELECT TOP(1) PPSS_EXPIREDATE FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY RECEIVE_DATE DESC) as 'EXPIRATION',
 	(SELECT VENDNAME FROM APVENDOR WHERE VENDID =  dbo.ICPRODUCT.VENDID) as 'VENDNAME'
   		
 	FROM dbo.ICPRODUCT 	
@@ -6572,6 +6575,11 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	OR PRODUCTID in (SELECT PRODUCTID FROM [PhnomPenhSuperStore2019].[dbo].[ICNEWPROMOTION] WHERE DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ) 
 	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,PRICE,CATEGORYID,COLOR,TOTALRECEIVE,TOTALSALE,VENDID"; 
 	
+	
+	
+	
+
+
 	$req = $conn->prepare($sql);
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -6587,6 +6595,9 @@ $app->get('/currentpromotion',function($request,Response $response) {
 			array_push($tmp,$item);		
 	}
 	$result = $tmp;
+
+	$indb = 
+
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -8265,9 +8276,9 @@ $app->put('/penalty/{id}',function($request,Response $response) {
 // PROBLEMS 
 $app->get('/needmoveitems',function($request,Response $response) {
 	$db = getDatabase();
-	$sql = "SELECT PRODUCTNAME,PRODUCTID,COST,PRICE
+	$sql = "SELECT PRODUCTNAME,PRODUCTID,COST,PRICE,
 		(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
-		(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'
 		FROM ICPRODUCT 
 		WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND <= 0)
 		AND PRODUCTID IN  (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND > 0)";
