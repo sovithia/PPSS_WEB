@@ -1716,13 +1716,12 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 			(SELECT ORDERPOINT FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1',
 			(SELECT ORDERQTY   FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1',
 			replace(replace(replace(PACKINGNOTE,char(10),''),char(13),''),'\"','') as 'PACKINGNOTE'
-			,COST,PRICE,VENDNAME,
-			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
+			,COST,PRICE,VENDNAME,			
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',
-			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALRECEIVE',
-			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',				
+			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE',
+			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE',				
 			OTHER_ITEMCODE,COLOR,CATEGORYID,ONHAND,
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
@@ -7909,7 +7908,7 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 
 $app->get('/externalvendor', function($request,Response $response){ // VENDOR LIST
 	$db = getInternalDatabase();
-	$sql = "select NAMEEN,NAMEKH,PHONE1,(select count(EXTERNALITEM_ID) 
+	$sql = "select ID,NAMEEN,NAMEKH,PHONE1,(select count(EXTERNALITEM_ID) 
 			FROM EXTERNALPRICE WHERE EXTERNALVENDOR_ID = EXTERNALVENDOR.ID ) as 'ITEMCOUNT'  
 			FROM EXTERNALVENDOR";	
 	$req = $db->prepare($sql);
@@ -7924,28 +7923,70 @@ $app->get('/externalvendor', function($request,Response $response){ // VENDOR LI
 
 $app->get('/externalvendordetails/{id}', function($request,Response $response){ // VENDOR PRODUCT LIST
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	$id = $request->getAttribute('id');
-	$sql = "SELECT EXTERNALITEM.ID,EXTERNALITEM.NAMEEN,EXTERNALPRICE.PRICE 
+	$sql = "SELECT EXTERNALITEM.PRODUCTID,EXTERNALITEM.ID,EXTERNALITEM.NAMEEN,EXTERNALPRICE.PRICE 
 			FROM EXTERNALITEM, EXTERNALPRICE 
-			WHERE EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
+			WHERE EXTERNALITEM.ID = EXTERNALPRICE.EXTERNALITEM_ID
+			AND EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$newItems = array();
-	foreach($items as $item)
-	{
-		$sql = "SELECT EXTERNALPRICE.EXTERNALITEMID,EXTERNALPRICE.EXTERNALVENDOR_ID, EXTERNALPRICE.PRICE,EXTERNALVENDOR.NAMEEN
-				FROM EXTERNALPRICE,EXTERNALVENDOR 
-				WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-				AND EXTERNALITEM_ID = ? 
-				ORDER BY PRICE ASC";
+	$newitems = array();
+
+	foreach($items as $item){
+		$productid = $item["PRODUCTID"];
+
+		$sql = "SELECT ICPRODUCT.PRODUCTID,
+		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'PRODUCTNAME',PRODUCTNAME1, 		
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2'		
+		FROM ICPRODUCT 
+		WHERE ACTIVE = 1				
+		AND ICPRODUCT.PRODUCTID = ?";		
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($productid));
+		$onedata = $req->fetch(PDO::FETCH_ASSOC);
+		$item["NAMEEN"] = "N/A";
+		$item["NAMEKH"] = "N/A";
+		$item["WH1"] = "N/A";
+		$item["WH2"] = "N/A";
+		if ($onedata != false){
+			$item["NAMEEN"] = $onedata["PRODUCTNAME"];
+			$item["NAMEKH"] = $onedata["PRODUCTNAME1"];
+			$item["WH1"] = $onedata["WH1"];
+			$item["WH2"] = $onedata["WH2"];			
+		}
+
+		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($productid));
+		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
+		$item["LASTRECEIVEVENDOR"] = $lastreceive["VENDNAME"] ?? "N/A";
+		$item["LASTRECEIVEQTY"] =  $lastreceive["TRANQTY"] ?? "N/A";
+		$item["LASTRECEIVEPRICE"] = $lastreceive["CURRENCY_COST"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
+						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						AND EXTERNALITEM_ID = ? ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["ID"]));
-		$prices = $req->fetchAll(PDO::FETCH_ASSOC);
 
-		$count = 1;
-		$item["VENDOR1"] = "";	  
+		$lastorder = $req->fetch(PDO::FETCH_ASSOC);
+		$item["LASTORDERVENDOR"] = $lastorder["NAMEEN"] ?? "N/A";
+		$item["LASTORDERQTY"] = $lastorder["QUANTITY"] ?? "N/A";
+		$item["LASTORDERPRICE"] = $lastorder["PRICE"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALPRICE,EXTERNALVENDOR 
+						 WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND EXTERNALITEM_ID = ? 
+						 ORDER BY PRICE ASC";
+	  	$req = $db->prepare($sql);
+	  	$req->execute(array($item["ID"]));
+	  	$prices = $req->fetchAll(PDO::FETCH_ASSOC);
+	  	$count = 1;
+	  	$item["VENDOR1"] = "";	  
 		$item["PRICE1"] = "";	  
 		$item["VENDOR2"] = "";	  
 		$item["PRICE2"] = "";	  
@@ -7955,25 +7996,28 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 		$item["PRICE4"] = "";	  	
 		for($i = 0;isset($prices[$i]); $i++)
 		{
-			if ($i == 4)
-				break;
-			if ($prices[$i]["EXTERNALVENDOR_ID"])
-				continue;
-			$item["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
-			$item["PRICE" . ($i + 1)] = $prices[$i]["PRICE"];	   
-		}
-		array_push($newItems,$item);
+		  	if ($i == 4)
+		  		break;
+		  	$item["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
+		  	$item["PRICE" . ($i + 1)] = $prices[$i]["PRICE"];	   
+		}		
+		array_push($newitems, $item); 
 	}
+
+	$data = array();
+	$data["items"] = $newitems;
+
 	$sql = "SELECT * FROM EXTERNALVENDOR WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$vendor = $req->fetch(PDO::FETCH_ASSOC);
-	
-	$data["items"] = $$newItems;
 	$data["vendor"] = $vendor;
 
+	
+	
+
 	$resp["result"] = "OK";
-	$resp["data"] = $items;
+	$resp["data"] = $data;
 	$response = $response->withJson($resp);
 	return $response;
 });
