@@ -70,9 +70,10 @@ function fieldsPresets($type)
     
 
     else if ($type == "aplist")
-        return ["DISCOUNT","VENDNAME","VENDID"];
+        return ["VENDID","VENDNAME","BALANCE","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
+
     else if ($type == "discountsumlist")               
-        return ["VENDID","VENDNAME","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
+        return ["DISCOUNT","VENDNAME","VENDID"];        
     else if ($type == "depleteditems")
     {
         return ["IMAGE","PRODUCTID","PRODUCTNAME", "VENDNAME","WH1","WH2","ORDERPOINT","ORDERQUANTITY"];    

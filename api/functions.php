@@ -1234,5 +1234,48 @@ function autoPromoForVendor($vendid){
 	return 0;
 }
 
+function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture = null)
+{
+	$db = getDatabase();
+
+	if ($picture != null)
+		writePicture($barcode,$value);
+
+	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if($res == false)
+	{
+		$sql = "INSERT INTO ICPRODUCT (PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,BARCODE,
+																COST,PRICE,LASTCOST,TYPE,VENDID,
+																ACTIVE,DISCABLE,PURUM,PURFACTOR,SALEUM,
+																SALEFACTOR,USERADD,DATEADD,USEREDIT,DATEEDIT,
+																REVENUEACC,COGSACC,INVENTORYACC,TAXACC,SALEDISCOUNTACC,
+																SIZE, BIG_UNIT, BIG_UNIT_FACTOR, RECORD_STATUS,COSTMETHOD,PRICE,
+																MFG_OR_PUR,HAS_VAT,VAT_RATE,HAS_PLT) 
+									values (?,?,?,?,?,?,?,?,?,?,
+													?,?,?,?,?,?,?,?,?,?,
+													?,?,?,?,?,?,?,?,?,?)";
+		if ($vat == "0" || $vat == "0.0" || $vat == null)
+			$has_vat = 'N';
+		else 						
+			$has_vat = 'Y';							
+		$today = date("Y-m-d");												
+		$req = $db->prepare($sql);
+		$req->execute(array(
+			$barcode, $name,$namekh,$category,$barcode,
+			$cost, $price,'I', $cost,$vendid,
+			1,1,'PURUM',1.0,'UNIT',
+			1.0,$author,$today,$author,$today,
+			40000,50000,170000,16100,49000,
+			$policy, 'UNIT',1.0,'E','AG',
+			'P',$has_vat,$vat,'N'));
+		return true;	
+	}
+	else 
+		return false;
+}
 
 ?>

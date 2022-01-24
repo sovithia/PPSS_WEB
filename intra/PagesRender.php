@@ -6086,7 +6086,7 @@ function renderAPList($items)
 
   if ($items != null)
   {      
-    $fields = ["VENDID","VENDNAME","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
+    $fields = ["VENDID","VENDNAME","BALANCE","BEFORE_VAT","VAT_AMT","INV_AMT","PONUMBER","SUPPLIER_INVOICE","TRANDATE"];
     $body .= _ItemsTable($items,$fields,"","aplist","aplist"); 
 
   }

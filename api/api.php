@@ -825,9 +825,10 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
+	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,LASTCOST,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
+	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',HAS_VAT,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
-		  FROM dbo.ICPRODUCT  
+	FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ? OR OTHERCODE = ?";
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
@@ -1790,8 +1791,6 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	return $response;	
 }); 
 
-
-
 // ADMIN UPDATE PRODUCT PRICE/NAME/CATEGORY 
 $app->get('/itemall',function(Request $request,Response $response) {    	
 	$conn=getDatabase();
@@ -1899,7 +1898,6 @@ $app->put('/itempromo/{barcode}', function(Request $request,Response $response) 
 	}		
 	return $response;
 });
-
 
 $app->put('/item/{barcode}',function(Request $request,Response $response) {   
 
@@ -5888,6 +5886,7 @@ $app->get('/averagebasket', function(Request $request, Response $response){
 	return $result["BASKET"];
 });
 
+
 $app->get('/vendormargin', function(Request $request, Response $response){
 	$vendorid = $request->getParam('vendorid','');
 	$begin =  $request->getParam('begin','');
@@ -7904,7 +7903,23 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 							         EXTERNAL 						 		  						 	 
 */      
 //
+$app->get('/vendor', function($request,Response $response){ // VENDOR LIST
+	$db = getDatabase();
+	$sql = "select VENDNAME,VENDID 		  
+			FROM APVENDOR";	
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
 
+
+
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $pool;
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 $app->get('/externalvendor', function($request,Response $response){ // VENDOR LIST
 	$db = getInternalDatabase();
@@ -8109,12 +8124,12 @@ $app->delete('/externalvendor/{id}', function($request,Response $response){ // D
 $app->post('/externalprice',function($request,Response $response){	// Link item with vendor
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-	$PRODUCTID = $json["PRODUCTID"];
+	$ITEMID = $json["ITEMID"];
 	$VENDORID = $json["VENDORID"];
 	$PRICE = $json["PRICE"];
 	$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
 	$req =  $db->prepare($sql);
-	$req->execute(array($PRODUCTID,$VENDORID,$PRICE));	
+	$req->execute(array($ITEMID,$VENDORID,$PRICE));	
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
 	return $response;
@@ -8125,7 +8140,10 @@ $app->delete('/externalprice',function($request,Response $response){	// unLink i
 	$json = json_decode($request->getBody(),true);
 	$PRODUCTID = $json["PRODUCTID"];
 	$VENDORID = $json["VENDORID"];
-	$sql = "DELETE FROM EXTERNALPRICE WHERE EXTERNALITEM_ID = ? AND EXTERNALVENDOR_ID = ?";
+	$sql = "DELETE 
+			FROM EXTERNALPRICE 
+			WHERE EXTERNALITEM_ID = ? 
+			AND EXTERNALVENDOR_ID = ?";
 	$req =  $db->prepare($sql);
 	$req->execute(array($PRODUCTID,$VENDORID));	
 
@@ -8136,16 +8154,22 @@ $app->delete('/externalprice',function($request,Response $response){	// unLink i
 
 $app->post('/externalitem', function($request,Response $response){ // Add item with vendor
 	$db = getInternalDatabase();
+
 	$json = json_decode($request->getBody(),true);
-	$PRODUCTID = $json["PRODUCTID"];
-	$VENDORID = $json["VENDORID"];
-	$NAMEEN = $json["NAMEEN"];
-	$NAMEKH = $json["NAMEKH"];
-	$PRICE = $json["PRICE"];
-		
-	$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE,NBINVOICES) 
-		VALUES (:author,:noponote,'DELIVERED','NOPO',:nbinvoices)";
-	$req = $db->prepare($sql);	
+
+	if (isset($json["PICTURE"]))
+		writePicture($json["BARCODE"],$json["PICTURE"]);
+
+	$barcode = $json["BARCODE"];
+	$nameen = $json["NAMEEN"];
+	$namekh = $json["NAMEKH"];
+	$category = $json["CATEGORY"];
+	$price = $json["PRICE"];
+	$cost = $json["COST"];
+	$author = $json["AUTHOR"];
+	$vat = $json["VAT"];
+	$vendid = $json["VENDID"];\
+	createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid);
 
 	$sql = "SELECT * FROM EXTERNALITEM WHERE PRODUCTID = ?";
 	$req =  $db->prepare($sql);
@@ -8159,16 +8183,58 @@ $app->post('/externalitem', function($request,Response $response){ // Add item w
 		$lastID = $db->lastInsertId();
 		$db->commit(); 
 	}else{
-		$lastID = $res["PRODUCTID"];
+		$lastID = $res["ID"];
 	}
-	$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
-	$req =  $db->prepare($sql);
-	$req->execute(array($lastID,$VENDORID,$PRICE));	
-	$result["result"] = "OK";
+
+	$sql = "SELECT * FROM EXTERNALPRICE WHERE EXTERNALITEM_ID = ?"; 			
+	$req = $db->prepare($sql);		
+	$res = $req->execute(array($lastID));
+
+	if ($res == false){
+		$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
+		$req =  $db->prepare($sql);
+		$req->execute(array($lastID,$VENDORID,$PRICE));
+		$result["result"] = "OK";
+	}		
+	else{
+		$result["result"] = "KO";
+		$result["message"] = "Item already exist with external vendor";
+	}
+
 	$response = $response->withJson($result);
 	return $response;
-
+	
 });
+
+$app->post('/newitem',function($request,Response $response){
+	$db = getDatabase();
+
+	$json = json_decode($request->getBody(),true);
+	if (isset($json["PICTURE"]))
+		writePicture($json["BARCODE"],$json["PICTURE"]);
+
+	$barcode = $json["BARCODE"];
+	$nameen = $json["NAMEEN"];
+	$namekh = $json["NAMEKH"];
+	$category = $json["CATEGORY"];
+	$price = $json["PRICE"];
+	$cost = $json["COST"];
+	$author = $json["AUTHOR"];
+	$vat = $json["VAT"];
+	$vendid = $json["VENDID"];
+
+	$res = createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid);
+	if ($res){
+		$result["result"] = "OK";	
+	}else{
+		$result["result"] = "KO";
+		$result["message"] = "Item already exists";
+	}
+	
+	$response = $response->withJson($result);
+	return $response;
+});
+
 
 $app->get('/externalitemsearch', function($request,Response $response){ // TODO
 	$vendorname = $request->getParam('vendorname','');	
@@ -8209,7 +8275,7 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	$backseven = strtotime('-7 days');
 
 	$sql = "SELECT ID,PRODUCTID FROM EXTERNALITEM WHERE 
-					ID NOT IN (SELECT EXTERNALITEM_ID FROM EXTERNALORDER WHERE CREATED > ?)";
+					ID IN (SELECT EXTERNALITEM_ID FROM EXTERNALORDER WHERE CREATED > ?)";
 	$req = $db->prepare($sql);
 	$req->execute(array($backseven));
 
@@ -8289,8 +8355,6 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	return $response;
 });
 
-
-
 $app->post('/externalorder', function($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -8309,7 +8373,6 @@ $app->post('/externalorder', function($request,Response $response){
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
 	$response = $response->withJson($resp);
-
 });
 
 $app->get('/externalorder', function($request,Response $response){
@@ -8330,8 +8393,7 @@ $app->get('/externalorder', function($request,Response $response){
 	$response = $response->withJson($resp);
 });
 
-
-
+// Penalty
 
 $app->get('/penalty/{status}',function($request,Response $response) {
 	$db = getInternalDatabase();
@@ -8435,11 +8497,11 @@ $app->get('/aplist',function ($request,Response $response){
 
 	$data = array();
 	foreach($vendors as $vendor){
-		$sql = "SELECT VENDID,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
+		$sql = "SELECT VENDID,BALANCE,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
 				(INV_AMT - VAT_AMT) as 'BEFORE_VAT',
 				VAT_AMT,INV_AMT, PONUMBER,
 				replace(replace(replace(SUPPLIER_INVOICE,char(10),''),char(13),''),'\"','') as 'SUPPLIER_INVOICE',
-				TRANDATE 
+				CONVERT(DATE, TRANDATE, 101) as 'TRANDATE'  
 				FROM APHEADER 
 				WHERE VENDID = ? AND BALANCE < 0 
 				AND APSTATUS <> 'V' 
@@ -8449,11 +8511,11 @@ $app->get('/aplist',function ($request,Response $response){
 		$aplist = $req->fetchAll(PDO::FETCH_ASSOC);		
 		$data = array_merge($data,$aplist);
 
-		$sql = "SELECT VENDID,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
+		$sql = "SELECT VENDID,BALANCE,replace(replace(replace(VENDNAME,char(10),''),char(13),''),'\"','') as 'VENDNAME', 
 				(INV_AMT - VAT_AMT) as 'BEFORE_VAT',
 				VAT_AMT,INV_AMT, PONUMBER,
 				replace(replace(replace(SUPPLIER_INVOICE,char(10),''),char(13),''),'\"','') as 'SUPPLIER_INVOICE',
-				TRANDATE 
+				CONVERT(DATE, TRANDATE, 101) as 'TRANDATE' 
 				FROM APHEADER 
 				WHERE VENDID = ? 
 				AND BALANCE > 0 
@@ -8480,15 +8542,12 @@ $app->get('/discountsumlist',function ($request,Response $response){
 			FROM APVENDOR";
 	$begin = $request->getParam('begin','1970-01-01');
 	$end = $request->getParam('end','2050-01-01');
-
 	$begin = $begin . " 00:00:00.000";
 	$end = $end . " 23:59:59.000"; 
 
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array());
 	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	error_log($begin." ".$end);
 	$data = array();
 	foreach($vendors as $vendor)
 	{	
