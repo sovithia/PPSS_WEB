@@ -76,6 +76,8 @@ function createPO($items,$author)
 				$item["ORDER_QTY"] = $item["ORDERQTY"];
 			else if (isset($item["QUANTITY"]))
 				$item["ORDER_QTY"] = $item["QUANTITY"];
+			else if (isset($item["REQUEST_QUANTITY"]))
+				$item["ORDER_QTY"] = $item["REQUEST_QUANTITY"];
 		}
 			
 
