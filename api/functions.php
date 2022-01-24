@@ -167,9 +167,8 @@ function pictureRecord($base64Str,$type,$id){
 
 
 function blueUser($author){
-	if($author == "thoeun_s") // TODO FUNCTION
-		return "THOEUN SOPHAL";	
-	else if ($author == "hay_s")
+	
+	if ($author == "hay_s")
 		return "HAY SE";
 	else if ($author ==	"sen_s")
 		return "SOVI";
@@ -179,8 +178,7 @@ function blueUser($author){
 		return "PONLEU";
 	else if ($author == "prom_r")
 		return "RETH";
-	
-	else if ($author == "chea_s")
+	else if ($author == "chea_s" || $author == "meng_s" || $author == "in_v" || $author == "sor_p" || $author == "koem_n")
 		return "SOPHAL";
 	else if ($author == "meng_g")
 		return "GECKMEY";
@@ -193,9 +191,10 @@ function blueUser($author){
 	else if ($author == "tieng_s")
 		return "SOPHEARITH";
 	else if ($author == "hong_v")
+
 		return "VICHET";
 
-		return $author;
+	return $author;
 
 }	
 
@@ -350,12 +349,16 @@ function flagByCountry($flag){
 
 function writePicture($barcode,$b64Image)
 {
-	$state = smbclient_state_new();
+	//$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:
-	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
-	$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
-	smbclient_write($state,$file,base64_decode($b64Image));
+	//smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
+	//$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
+	//smbclient_write($state,$file,base64_decode($b64Image));
+	$myfile = fopen("/Volumes/Image/".$barcode.".jpg", "wb") or die("Unable to open file!");    
+    fwrite($myfile, base64_decode($b64Image));    
+    fclose($myfile);
 }
+
 
 
 function getImage($path) {
@@ -1236,28 +1239,36 @@ function autoPromoForVendor($vendid){
 
 function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture = null)
 {
+	$author = blueUser($author);
 	$db = getDatabase();
 
 	if ($picture != null)
-		writePicture($barcode,$value);
+		writePicture($barcode,$picture);
 
 	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$picturePath = "Y:\\".$barcode.".jpg";
 
 	if($res == false)
 	{
 		$sql = "INSERT INTO ICPRODUCT (PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,BARCODE,
-																COST,PRICE,LASTCOST,TYPE,VENDID,
-																ACTIVE,DISCABLE,PURUM,PURFACTOR,SALEUM,
-																SALEFACTOR,USERADD,DATEADD,USEREDIT,DATEEDIT,
-																REVENUEACC,COGSACC,INVENTORYACC,TAXACC,SALEDISCOUNTACC,
-																SIZE, BIG_UNIT, BIG_UNIT_FACTOR, RECORD_STATUS,COSTMETHOD,PRICE,
-																MFG_OR_PUR,HAS_VAT,VAT_RATE,HAS_PLT) 
-									values (?,?,?,?,?,?,?,?,?,?,
-													?,?,?,?,?,?,?,?,?,?,
-													?,?,?,?,?,?,?,?,?,?)";
+										COST,PRICE,LASTCOST,TYPE,VENDID,
+										ACTIVE,DISCABLE,PURUM,PURFACTOR,SALEUM,
+										SALEFACTOR,USERADD,DATEADD,USEREDIT,DATEEDIT,
+										REVENUEACC,COGSACC,INVENTORYACC,TAXACC,SALEDISCOUNTACC,
+										SIZE, BIG_UNIT, BIG_UNIT_FACTOR, RECORD_STATUS,COST_METHOD,
+										MFG_OR_PUR,HAS_VAT,VAT_RATE,HAS_PLT,CLASSID,
+										PICTURE_PATH,STKUM,STKFACTOR) 
+									values (?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?)";
 		if ($vat == "0" || $vat == "0.0" || $vat == null)
 			$has_vat = 'N';
 		else 						
@@ -1265,13 +1276,22 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 		$today = date("Y-m-d");												
 		$req = $db->prepare($sql);
 		$req->execute(array(
-			$barcode, $name,$namekh,$category,$barcode,
-			$cost, $price,'I', $cost,$vendid,
-			1,1,'PURUM',1.0,'UNIT',
+			$barcode, $nameen,$namekh,$category,$barcode,
+			$cost, $price,$cost,'I',$vendid,
+			1,1,'UNIT',1.0,'UNIT',
 			1.0,$author,$today,$author,$today,
 			40000,50000,170000,16100,49000,
 			$policy, 'UNIT',1.0,'E','AG',
-			'P',$has_vat,$vat,'N'));
+			'P',$has_vat,$vat,'N','LOCAL',
+			$picturePath,'UNIT',1.0));
+		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
+							VALUES(?,?,?,?,?,?)";
+		
+		$req = $db->prepare($sql);
+		$req->execute(array('WH1',$barcode,$vendid,$today,$author,16100));
+		$req->execute(array('WH2',$barcode,$vendid,$today,$author,16100));
+
+
 		return true;	
 	}
 	else 

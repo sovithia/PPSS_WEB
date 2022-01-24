@@ -945,8 +945,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$resp["result"] = "OK";
 			$resp["data"] = $item;
 		}
-		else			
+		else{
 			$resp["result"] = "KO";
+			$resp["message"] = "Product not found";
+		}			
+			
 	}
 	
 	$response = $response->withJson($resp);
@@ -7906,13 +7909,11 @@ $app->get('/orderstats/{barcode}',function($request,Response $response) {
 $app->get('/vendor', function($request,Response $response){ // VENDOR LIST
 	$db = getDatabase();
 	$sql = "select VENDNAME,VENDID 		  
-			FROM APVENDOR";	
+			FROM APVENDOR
+			ORDER BY VENDNAME ASC";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-
-
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -8168,8 +8169,9 @@ $app->post('/externalitem', function($request,Response $response){ // Add item w
 	$cost = $json["COST"];
 	$author = $json["AUTHOR"];
 	$vat = $json["VAT"];
-	$vendid = $json["VENDID"];\
-	createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid);
+	$vendid = $json["VENDID"];
+	$picture = $json["PICTURE"];
+	createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture);
 
 	$sql = "SELECT * FROM EXTERNALITEM WHERE PRODUCTID = ?";
 	$req =  $db->prepare($sql);
@@ -8219,13 +8221,15 @@ $app->post('/newitem',function($request,Response $response){
 	$category = $json["CATEGORY"];
 	$price = $json["PRICE"];
 	$cost = $json["COST"];
+	$policy = $json["POLICY"];
 	$author = $json["AUTHOR"];
 	$vat = $json["VAT"];
 	$vendid = $json["VENDID"];
+	$picture = $json["PICTURE"];
 
-	$res = createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid);
-	if ($res){
-		$result["result"] = "OK";	
+	$res = createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture);
+	if ($res == true){
+		$result["result"] = "OK";			
 	}else{
 		$result["result"] = "KO";
 		$result["message"] = "Item already exists";
