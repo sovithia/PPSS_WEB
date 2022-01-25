@@ -168,7 +168,7 @@ function pictureRecord($base64Str,$type,$id){
 
 function blueUser($author){
 	
-	if ($author == "hay_s")
+	if ($author == "hay_s" || $author == "SERTEST")
 		return "HAY SE";
 	else if ($author ==	"sen_s")
 		return "SOVI";
@@ -1237,7 +1237,7 @@ function autoPromoForVendor($vendid){
 	return 0;
 }
 
-function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture = null)
+function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture,$plt)
 {
 	$author = blueUser($author);
 	$db = getDatabase();
@@ -1260,7 +1260,7 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 										REVENUEACC,COGSACC,INVENTORYACC,TAXACC,SALEDISCOUNTACC,
 										SIZE, BIG_UNIT, BIG_UNIT_FACTOR, RECORD_STATUS,COST_METHOD,
 										MFG_OR_PUR,HAS_VAT,VAT_RATE,HAS_PLT,CLASSID,
-										PICTURE_PATH,STKUM,STKFACTOR) 
+										PICTURE_PATH,STKUM,STKFACTOR,OTHER_PRICE,PLT_TAX_ACC) 
 									values (?,?,?,?,?,
 											?,?,?,?,?,
 											?,?,?,?,?,
@@ -1268,11 +1268,17 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 											?,?,?,?,?,
 											?,?,?,?,?,
 											?,?,?,?,?,
-											?,?,?)";
+											?,?,?,?,?)";
 		if ($vat == "0" || $vat == "0.0" || $vat == null)
 			$has_vat = 'N';
 		else 						
-			$has_vat = 'Y';							
+			$has_vat = 'Y';		
+			
+		if($plt == 'Y')
+			$pltacc = "16400";
+		else
+			$pltacc = null;
+
 		$today = date("Y-m-d");												
 		$req = $db->prepare($sql);
 		$req->execute(array(
@@ -1280,10 +1286,10 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 			$cost, $price,$cost,'I',$vendid,
 			1,1,'UNIT',1.0,'UNIT',
 			1.0,$author,$today,$author,$today,
-			40000,50000,170000,16100,49000,
+			40000,50000,17000,16100,49000,
 			$policy, 'UNIT',1.0,'E','AG',
-			'P',$has_vat,$vat,'N','LOCAL',
-			$picturePath,'UNIT',1.0));
+			'P',$has_vat,$vat,$plt,'LOCAL',
+			$picturePath,'UNIT',1.0,$price,$pltacc));
 		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
 							VALUES(?,?,?,?,?,?)";
 		
@@ -1291,6 +1297,10 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 		$req->execute(array('WH1',$barcode,$vendid,$today,$author,16100));
 		$req->execute(array('WH2',$barcode,$vendid,$today,$author,16100));
 
+		$sql = "INSERT INTO ICVENDOR(PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD)
+				VALUES(?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode,$vendid,$barcode,$author,$today));
 
 		return true;	
 	}

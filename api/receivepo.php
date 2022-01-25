@@ -80,23 +80,28 @@ function createPO($items,$author)
 				$item["ORDER_QTY"] = $item["REQUEST_QUANTITY"];
 		}
 			
-
-
-		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res != false){	
-			$TRANCOST = $res["TRANCOST"];	
-		}else{
-			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+		if (isset($item["COST"]))
+			$TRANCOST = $item["COST"];
+		else
+		{
+			$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$TRANCOST = $res["LASTCOST"];				
+	
+			if ($res != false){	
+				$TRANCOST = $res["TRANCOST"];	
+			}else{
+				$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+	
+				$TRANCOST = $res["LASTCOST"];				
+			}
 		}
+
+	
 		
 		$TRANDISC = $item["DISCOUNT"];
 		
@@ -267,32 +272,29 @@ function createPO($items,$author)
 		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
 		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
 		VALUES (?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?)"; 
-
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?)"; 		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
-		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
-		$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
-		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
-		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
-		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
-		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
-		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
-		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
-		$ALGOQTY,$REASON 
-		);
-
-		//$debug = var_export($params, true);
-		//error_log($debug);
+			$PONUMBER,$VENDID, $VENDNAME, $VENDNAME1, $PURCHASE_DATE,
+			$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
+			$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
+			$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
+			$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
+			$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
+			$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
+			$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
+			$ALGOQTY,$REASON );		
 
 		$req->execute($params);				
+		
+		
 		$line++;
 	}
 	return $PONUMBER;

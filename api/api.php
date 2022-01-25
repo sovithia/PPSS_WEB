@@ -826,7 +826,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	}
 	
 	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,LASTCOST,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
-	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',HAS_VAT,
+	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',HAS_VAT,HAS_PLT,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 	FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ? OR OTHERCODE = ?";
@@ -2911,9 +2911,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,PRICE) values (?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST) values (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["PRICE"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"]));
 	}
 	else
 	{
@@ -2946,9 +2946,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			return $response;
 		} 
 
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,PRICE) values (?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST) values (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["PRICE"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -6288,7 +6288,7 @@ $app->post('/item/{barcode}',function(Request $request,Response $response) {
 
 	// RETRIEVE PRODUCT INFO
 	$params = array($barcode);
-	$sql = "SELECT ONHAND,PRODUCTNAME,PRODUCTNAME1,PRICE,LASTCOST,CATEGORYID,CLASSID  FROM dbo.ICPRODUCT WHERE BARCODE = ?";
+	$sql = "SELECT ONHAND,PRODUCTNAME,PRODUCTNAME1,PRICE,LASTCOST,CATEGORYID,CLASSID  FROM dbo.ICPRODUCT WHERE BARCODE = ? ";
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$theitem = $req->fetch(PDO::FETCH_ASSOC);
@@ -8226,8 +8226,9 @@ $app->post('/newitem',function($request,Response $response){
 	$vat = $json["VAT"];
 	$vendid = $json["VENDID"];
 	$picture = $json["PICTURE"];
+	$plt = $json["PLT"];
 
-	$res = createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture);
+	$res = createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture,$plt);
 	if ($res == true){
 		$result["result"] = "OK";			
 	}else{
