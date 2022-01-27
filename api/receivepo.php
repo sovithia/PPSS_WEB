@@ -43,7 +43,10 @@ function createPO($items,$author)
 	$VENDNAME = $vendor["VENDNAME"];
 	$VENDNAME1 = $vendor["VENDNAME1"];
 	$PODATE = $now;
-	$LOCID = 'WH2';
+	if (isset($items[0]))
+		$LOCID = $items[0]["LOCID"];
+	else 
+		$LOCID = "WH2";
 	$USERADD = $author;
 	$DATEADD = $now;
 	$VAT_PERCENT = $vendor["TAX"];
@@ -100,11 +103,7 @@ function createPO($items,$author)
 				$TRANCOST = $res["LASTCOST"];				
 			}
 		}
-
-	
-		
 		$TRANDISC = $item["DISCOUNT"];
-		
 		if ($TRANDISC != null && $TRANDISC != "0"){
 			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
 		}			
@@ -120,7 +119,7 @@ function createPO($items,$author)
 	 $CURRENCY_VATAMOUNT = $VAT_AMT;
 	 $CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
 
-	 $sql = "INSERT POHEADER (
+	 $sql = "INSERT INTO POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
@@ -129,6 +128,8 @@ function createPO($items,$author)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	$req =$dbBLUE->prepare($sql);	
+
+
 
 
 	$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
@@ -300,10 +301,16 @@ function createPO($items,$author)
 	return $PONUMBER;
 }
 
-function receivePO($PONumber,$author)
+function receivePO($PONumber,$author,$notes)
 {		
     $db = getDatabase();
     $today = date("Y-m-d H:i:s");
+
+	$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($PONumber));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$THELOCATION = $res["LOCID"];
 
 
     $sql = "SELECT num3 FROM SYSDATA WHERE sysid = 'PO'";
@@ -374,30 +381,31 @@ function receivePO($PONumber,$author)
 	$PCNAME =  "Application";
 	$CURR_RATE = "1";
 	$REMARK =  "Note";
-	$TERMID =  null;
+	$TERMID =  "";
 	$TERM_DAYS = 0;
 	$TERM_DISC =  0;
 	$TERM_NET =   0;
 	$VOUCHER_DESC = $PONumber;
-	$VOUCHER_DESC1 = null;
+	$VOUCHER_DESC1 = "";
 	$REFERENCE =  $PONumber;
-	$VATNO =   null;
+	$VATNO =   "";
 	$PONUMBER =  $PONumber;
 	$APACCOUNT =  "20000";
 	$DISC_PERCENT =  $PORef["DISC_PERCENT"];
 	$TAXACC_OUT =  "16100";
 	$DISC_AMT =   0;
-	$FILE  = null;
-	$EXPENSE_TYPE =  null;
-	$POCLEARINGACC = null;
+	$FILEID  = '';
+
+	$EXPENSE_TYPE =  "";
+	$POCLEARINGACC = "";
 	$PODATE = $today;
 	$RECEIVEDATE = $today;
-	$LOC  =  'WH2';
+	$LOC  =  $THELOCATION;
 	$CURR_ID =   "USD";
 	$BASECURR_ID =  "USD";
 	$CURRENCY_AMOUNT =  $PORef["CURRENCY_AMOUNT"]; 
 	$CURRENCY_VATAMOUNT =  $PORef["CURRENCY_VATAMOUNT"]; 
-	$SHIP_REFERENCE = null;
+	$SHIP_REFERENCE = "";
 	$DATEADD =  $today;
 	$USERADD = blueUser($author);
  
@@ -424,7 +432,7 @@ function receivePO($PONumber,$author)
 	$INV_AMT,$PAID_AMT,$BALANCE,$PCNAME,$CURR_RATE,
 	$REMARK,$TERMID,$TERM_DAYS,$TERM_DISC,$TERM_NET,
 	$VOUCHER_DESC,$VOUCHER_DESC1,$REFERENCE,$VATNO,$PONUMBER,
-	$APACCOUNT,$DISC_PERCENT,$TAXACC_OUT,$DISC_AMT,$FILE,
+	$APACCOUNT,$DISC_PERCENT,$TAXACC_OUT,$DISC_AMT,$FILEID,
 	$EXPENSE_TYPE,$POCLEARINGACC,$PODATE,$RECEIVEDATE,$LOC,
 	$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,$SHIP_REFERENCE,
 	$DATEADD,$USERADD));
@@ -444,7 +452,7 @@ function receivePO($PONumber,$author)
 		$VENDNAME1 =   $PORef["VENDNAME1"];
 		$PONUMBER =    $PONumber;
 		$TRANDATE =    $today;
-		$APSTATUS =    null;
+		$APSTATUS =    '';
 		$TRANCOST =     $item["TRANCOST"]; 
 		$PURCHASEDATE = $item["PURCHASE_DATE"];
 		$LINENUM =      $line;
@@ -453,24 +461,24 @@ function receivePO($PONumber,$author)
 		$PRODUCTNAME1 = $item["PRODUCTNAME1"];
 		$TRANQTY =     $item["ORDER_QTY"]; 
 		$DIMENSION =   0;
-		$FILEID =   null;
-		$COST_CENTER =   null;
+		$FILEID =   "";
+		$COST_CENTER =   "";
 		$INVENTORY_ACC =    "17000";
 		$POCLEARING_ACC =  "21400";
 		$EXTCOST =   $item["EXTCOST"];
-		$LOCID =     "WH2";
+		$LOCID =     $item["LOCID"];
 		$QTY_ORDER =  $item["ORDER_QTY"];
-		$VATABLE =    $item["VATABLE"];
+		$VATABLE =    0;
 		$VAT_PERCENT = $item["VAT_PERCENT"];
-		$LINE_NOTE =    $today;
-		$REQUIREDATE =  $today;
+		$LINE_NOTE =    "";
+		$REQUIREDATE =  "";
 		$TRANDISC =     $item["TRANDISC"];
-		$FROM_SERIAL =  null;
-		$TO_SERIAL =    null;
+		$FROM_SERIAL =  "";
+		$TO_SERIAL =    "";
 		$TRANUNIT =     "UNIT";
 		$TRANFACTOR =   "1";
-		$CURRID_COSTADD =  null;
-		$OPERATIONBASE =   null;
+		$CURRID_COSTADD =  "";
+		$OPERATIONBASE =   "";
 		$CURRID_EXCHRATE = "1";
 		$CURRENCY_AMOUNT = $item["CURRENCY_AMOUNT"];
 		$COST_ADD =  "0";
@@ -520,12 +528,53 @@ function receivePO($PONumber,$author)
 		$WET_QTY,$WET_PERCENT,$DATEADD,$USERADD
 		));
 	}
+	$BUYER = "";
+	$TERMID = "";
+	$TERM_DAYS = 0;
+	$TERM_DISC = 0;
+	$TERM_NET = 0;
+	$FOB_POINT = "";
+	$SHIPVIA = "";
+	$REQUESTBY = "";
+	$FILEID = "";
+	$USER_DOCNO = "";
+	$SHIP_REFERENCE = "";
 
-	$sql = "UPDATE POHEADER  set RECEIVE_AMT = RECEIVE_AMT + ?, 
-							 CURRENCY_RECEIVEAMOUNT = CURRENCY_RECEIVEAMOUNT+ ?,
-							 [POSTATUS] = ?  WHERE [PONUMBER]= ?";
+	
+	$sql = "UPDATE POHEADER  set BUYER = ?,							 	  
+							 RECEIVE_AMT = PURCHASE_AMT, 
+							 TERMID = ?,
+							 TERM_DAYS = ?,
+							 TERM_DISC =  ?,
+							 TERM_NET = ?,
+							 FOB_POINT = ?,
+							 SHIPVIA = ?,
+							 REQUESTBY = ?,
+							 FILEID = ?,
+							 USER_DOCNO = ?,
+							 SHIP_REFERENCE = ?,
+							 CURRENCY_RECEIVEAMOUNT = ?,
+							 NOTES = ?,
+							 REFERENCE = ?,
+							 [POSTATUS] = ?  
+							 WHERE [PONUMBER]= ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($CURRENCY_AMOUNT,$CURRENCY_AMOUNT,'C',$PONumber));
+	$req->execute(array($BUYER,											
+						$TERMID,
+						$TERM_DAYS,
+						$TERM_DISC,
+						$TERM_NET,
+						$FOB_POINT,
+						$SHIPVIA,
+						$REQUESTBY,
+						$FILEID,
+						$USER_DOCNO,
+						$SHIP_REFERENCE,
+						$CURRENCY_AMOUNT,
+						$notes,
+						$notes,
+						'C',
+						$PONumber));
 
 	$sql = "UPDATE APVENDOR set TOTALREC = TOTALREC + ?,
 							LASTRECAMT = ?,
@@ -540,9 +589,9 @@ function receivePO($PONumber,$author)
 
 
 
-	$DOCNUM =   "RP00000000000".$PONUM;
-	$FLOCID =    "WH2";
-	$TLOCID =    null;
+	$DOCNUM =   "RP000000000000".$PONUM;
+	$FLOCID =    $THELOCATION;
+	$TLOCID =    '';
 	$REFERENCE =   "Receive PO " . $PONumber;
 	$TRANDATE =    $today;
 	$TRANTYPE =    "R";
@@ -550,26 +599,26 @@ function receivePO($PONumber,$author)
 	$PCNAME =    "Application";
 	$CURRID =    "USD";
 	$CURR_RATE =   "1";
-	$CUSTID =    null;
+	$CUSTID =    '';
 	$VENDID =    $theVENDID;
 	$DISC_PERCENT =   "0";
 	$VAT_PERCENT =   "0";
 	$APPLID =    "PO";
-	$FILEID =     null;
-	$TOFILEID =    null;
-	$IS_CHANGE_AVGCOST = null;
-	$REF_DOCUMENT =  null;
-	$IS_PROCCESS =   null;
-	$POSSTAT =       //
-	$RECEIVENO =   null;
-	$CHANGE_REWARD =  null;
-	$TOTAL_STOCKREWARD = null;
-	$TOTAL_MONEYREWARD = null;
-	$ARACC =    null;
+	$FILEID =     '';
+	$TOFILEID =    '';
+	$IS_CHANGE_AVGCOST = '';
+	$REF_DOCUMENT =  '';
+	$IS_PROCCESS =   '';
+	$POSSTAT =   '';
+	$RECEIVENO =   '';
+	$CHANGE_REWARD =  '';
+	$TOTAL_STOCKREWARD = 0;
+	$TOTAL_MONEYREWARD = 0;
+	$ARACC =    '';
 	$BASECURR_ID =   "USD";
 	$CURRENCY_AMOUNT = $PORef["CURRENCY_AMOUNT"];
-	$PURPOSE_ISSUE =  null;
-	$JOB_ID =  null;
+	$PURPOSE_ISSUE =  '';
+	$JOB_ID =  '';
 	$USERADD =    blueUser($author);
 	$DATEADD =   $today;
 
@@ -609,21 +658,21 @@ function receivePO($PONumber,$author)
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$line++;
 
-		$DOCNUM = "VO00000000000".$APNUM;
+		$DOCNUM = "VO000000000000".$APNUM;
 		$PRODUCTID = $item["PRODUCTID"]; 
-		$LOCID = "WH2"; 
+		$LOCID = $item["LOCID"]; 
 		$CATEGORYID = $res["CATEGORYID"];
 		$CLASSID = "LOCAL";
-		$BATCHNO = null;
-		$SERIAL = null;
-		$TIERID = null;
+		$BATCHNO = '';
+		$SERIAL = '';
+		$TIERID = '';
 		$TRANDATE = $today; 
 		$TRANTYPE = "R";
 		$LINENUM = $line;
 		$PRODUCTNAME = $item["PRODUCTNAME"];
 		$PRODUCTNAME1 = $item["PRODUCTNAME1"]; 
 		$REFERENCE = "Receive PO " . $PONumber;
-		$COMMENT = null;
+		$COMMENT = '';
 		$TRANQTY = $item["ORDER_QTY"];
 		$TRANUNIT = "UNIT";
 		$TRANFACTOR = "1";
@@ -639,7 +688,7 @@ function receivePO($PONumber,$author)
 		$CURRENTONHAND = $item["CURRENTONHAND"];
 		$CURRID = "USD";
 		$CURR_RATE = "1";
-		$CUSTID = null;
+		$CUSTID = '';
 		$VENDID = $theVENDID;
 		$WEIGHT = "1";
 		$OLDWEIGHT = "0";
@@ -651,23 +700,23 @@ function receivePO($PONumber,$author)
 		$LINK_LINE = $line;
 		$ICCLEARING_ACC =  "21400";
 		$INVENTORY_ACC = "17000";
-		$COSG_ACC = null;
+		$COSG_ACC = "";
 		$DIMENSION = "1";
-		$FILEID = null;
-		$IS_CHANGE_AVGCOST = null;
+		$FILEID = "";
+		$IS_CHANGE_AVGCOST = "";
 		$WASTE_QTY = 0;
-		$PRODUCT_PRODUCTID = null;
-		$IS_PROCCESS = null;
-		$EXPIRED_DATE = null;
+		$PRODUCT_PRODUCTID = "";
+		$IS_PROCCESS = "";
+		$EXPIRED_DATE = "";
 		$TRANQTY_NEW = $item["ORDER_QTY"];
 		$TRANCOST_NEW = $item["TRANCOST"]; 
 		$TRANEXTCOST_NEW =  $item["ORDER_QTY"] * $item["TRANCOST"];
 		$LINE_DISCAMT = "0";
-		$COST_CENTER = null;
-		$LINE_NOTE = null;
-		$CASE_PRODUCTID = null;
+		$COST_CENTER = "";
+		$LINE_NOTE = "";
+		$CASE_PRODUCTID = "";
 		$CASE_QTY =  "0";
-		$POSSTAT = "0";
+		$POSSTAT = "";
 		$DECL1 = "0";
 		$FOB = "0";
 		$FREIGHT = "0";
@@ -678,16 +727,16 @@ function receivePO($PONumber,$author)
 		$LDC = "0";
 		$FREIGHT_SG = "0";
 		$INSUR_SG = "0";
-		$RECEIVENO = "0";
+		$RECEIVENO = "";
 		$OTHER_PRICE = "0";	
-		$RETURN_DATE = null;
-		$BORROW_NUMBER = null;
-		$CHANGE_REWARD = null;
-		$MONEY_REWARD = null;
-		$IS_MONEY_REWARD = null;
+		$RETURN_DATE = "";
+		$BORROW_NUMBER = "";
+		$CHANGE_REWARD = "";
+		$MONEY_REWARD = 0;
+		$IS_MONEY_REWARD = "";
 		$PACK_RECEIVE = "0";
-		$PACK_UNIT = null;
-		$REWARD_UNIT = null;
+		$PACK_UNIT = "";
+		$REWARD_UNIT = "";
 		$COST_METHOD = "AG";
 		$BASECURR_ID = "USD";
 		$CURRENCY_AMOUNT = $item["CURRENCY_AMOUNT"];
@@ -696,8 +745,8 @@ function receivePO($PONumber,$author)
 		$CURRENCY_EXTPRICE = "0";
 		$CURRENCY_PRICE = "0";
 		$FF_LF_INDEX = "0";
-		$PURPOSE_ISSUE = "0";
-		$JOB_ID = "0";
+		$PURPOSE_ISSUE = "";
+		$JOB_ID = "";
 		$ROW_ID = "0";
 		$MAIN_PRODUCTID = $item["PRODUCTID"];
 		$USERADD = blueUser($author);
@@ -725,15 +774,24 @@ function receivePO($PONumber,$author)
 		CURRENCY_PRICE,FF_LF_INDEX,PURPOSE_ISSUE,JOB_ID,ROW_ID,
 		MAIN_PRODUCTID,USERADD,DATEADD) 
 		values(
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
-		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
+		?,?,?,?,?,
 		?,?,?)";
 
 		$req = $db->prepare($sql);
@@ -768,7 +826,7 @@ function receivePO($PONumber,$author)
 	$DUEDATE =      $today;
 	$VENDNAME =     $theVENDNAME;
 	$VENDNAME1 =     $theVENDNAME1;
-	$APSTATUS =      null;
+	$APSTATUS =      '';
 	$VAT_AMT =      $theVATAMOUNT; 
 	$VAT_PERCENT =   $theVATPERCENT;
 	$INV_AMT =      $theTOTALAMOUNT;
@@ -776,23 +834,23 @@ function receivePO($PONumber,$author)
 	$BALANCE =      $theTOTALAMOUNT;
 	$PCNAME =      "APPLICATION";
 	$CURR_RATE =    "1";   
-	$REMARK =      null;
-	$TERMID =      null;
+	$REMARK =      '';
+	$TERMID =      '';
 	$TERM_DAYS =     0;
 	$TERM_DISC =     0;
 	$TERM_NET =      0;
 	$VOUCHER_DESC =    $PONumber;
-	$VOUCHER_DESC1 = null;
+	$VOUCHER_DESC1 = '';
 	$REFERENCE =    $PONumber;
-	$VATNO =     null;
+	$VATNO =     '';
 	$PONUMBER =   $PONumber;
 	$APACCOUNT =     "20000";
 	$DISC_PERCENT =     "0";
 	$TAXACC_OUT =    "16100";
-	$FILEID =       null;
-	$EXPENSE_TYPE = null;
-	$DOCUMENTDATE = null;
-	$LOCID =       "WH2";
+	$FILEID =       '';
+	$EXPENSE_TYPE = '';
+	$DOCUMENTDATE = '';
+	$LOCID =       $THELOCATION;
 	$CURR_ID =      "USD";
 	$BASECURR_ID =   "USD";
 	$CURRENCY_AMOUNT =   $theTOTALAMOUNT;
@@ -831,15 +889,23 @@ function receivePO($PONumber,$author)
 
 	foreach($items as $item)
 	{
+		$IS_CATON = 0;
+		$REQUIREDATE = "";
+		$CURRID_ADDCOST = "";
+
 		$sql = "UPDATE PODETAIL 
-		 		set RECEIVE_DATE = ?,
+		 		set 
+				 IS_CATON = ?,
+				 REQUIREDATE = ?,
+				 CURRID_ADDCOST = ?,
+				 RECEIVE_DATE = ?,
 				[RECEIVE_QTY] = RECEIVE_QTY + ?,
 				[POSTATUS] = 'C',
 				[QTY_OVERORDER] = 0		
 		 		WHERE PONUMBER = ? 
 		 		AND PRODUCTID =?";
 		 $req = $db->prepare($sql);
-		 $req->execute(array($today, $item["ORDER_QTY"],$PONumber,$item["PRODUCTID"]));		
+		 $req->execute(array($IS_CATON,$REQUIREDATE,$CURRID_ADDCOST,$today, $item["ORDER_QTY"],$PONumber,$item["PRODUCTID"]));		
 
 		$LOCCOST = $item["TRANCOST"];
 		$LOCLASTCOST = $item["TRANCOST"];
@@ -909,7 +975,7 @@ function receivePO($PONumber,$author)
 		$VENDNAME1 = $theVENDNAME1;
 		$PONUMBER =  $PONumber;
 		$TRANDATE =  $today;
-		$APSTATUS = null;
+		$APSTATUS = "";
 		$TRANCOST =   $item["TRANCOST"]; //  Last cost of Item
 		$PURCHASEDATE = $today;
 		$LINENUM =   $line;
@@ -918,8 +984,8 @@ function receivePO($PONumber,$author)
 		$PRODUCTNAME1 = $item["PRODUCTNAME1"]; 
 		$TRANQTY =   $item["ORDER_QTY"];
 		$DIMENSION =  0;
-		$FILEID =    null;  
-		$COST_CENTER =  null;
+		$FILEID =    "";  
+		$COST_CENTER =  "";
 		$FREIGHTSG =  0;
 		$INSURSG =   0;
 		$TRANUNIT =   "UNIT";
@@ -980,7 +1046,7 @@ function receivePO($PONumber,$author)
 	$VENDID =    $theVENDID;
 	$FILEID =     null;
 	$COST_CENTER =   null;
-	$LOCID =     "WH2";
+	$LOCID =     $THELOCATION;
 
 	//+GLTRAN (Account Number 20000)
 	$sql = "INSERT INTO GLTRAN (
@@ -1019,7 +1085,7 @@ function receivePO($PONumber,$author)
 		$VENDID =    $theVENDID;
 		$FILEID =     null;
 		$COST_CENTER =   null;
-		$LOCID =     "WH2";
+		$LOCID =     $THELOCATION;
 		$sql = "
 		INSERT INTO GLTRAN(
 		GLNO,LINNO,GLDESC,GLDATE,GLYEAR,   
@@ -1059,7 +1125,7 @@ function receivePO($PONumber,$author)
 	$VENDID =    $theVENDID;
 	$FILEID =     null;
 	$COST_CENTER =   null;
-	$LOCID =     "WH2";
+	$LOCID =     $THELOCATION;
 
 	$sql = "INSERT INTO GLTRAN(
 	GLNO,LINNO,GLDESC,GLDATE,GLYEAR,    
@@ -1163,10 +1229,10 @@ function receivePO($PONumber,$author)
 	*/
 }
 
-function createAndReceivePO($items,$author)
+function createAndReceivePO($items,$author,$notes)
 {
 	$ponumber = createPO($items,$author);
-	receivePO($ponumber,$author);
+	receivePO($ponumber,$author,$notes);
 	return $ponumber;
 }
 

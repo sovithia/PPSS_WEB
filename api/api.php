@@ -2665,8 +2665,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		
 		$vendorid = $res["VENDID"];
 		$vendname = $res["VENDNAME"];
-
-		$ponumber = createAndReceivePO($items,$author);
+		$notes = $json["NOTES"];
+		$ponumber = createAndReceivePO($items,$author,$notes);
 		
 		$resp["message"] = "Po created and received with number ".$ponumber;
 		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
@@ -2679,8 +2679,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
 			VALUES (:author,:noponote,'DELIVERED','PO')";
-		if ($json["TYPE"] ==  "POPOOL"){
-			$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+		if ($json["TYPE"] ==  "NOPOPOOL"){
+			$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($json["USERID"]));	
 		}
@@ -2904,16 +2904,29 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
+
+	$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($json["PRODUCTID"],$json["LOCID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false){
+		$data["result"] = "KO";	
+		$data["message"] = "Cannot receive ".json["PRODUCTID"]." in ".$json["LOCID"];		
+		$response = $response->withJson($data);
+		return $response;
+	}
+
 	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ? LIMIT 1";
 	$req = $db->prepare($sql);
 	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
+
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST) values (?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"]));
 	}
 	else
 	{
@@ -2946,9 +2959,20 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			return $response;
 		} 
 
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST) values (?,?,?,?,?)";
+		$sql = "SELECT LOCID FROM SUPPLYRECORDNOPOPOOL WHERE LOCID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"]));
+		$req->execute(array($json["LOCID"]));
+		$res5 = $req->fetchAll(PDO::FETCH_ASSOC);
+		if ($res5 == false){
+			$data["result"] = "KO";	
+			$data["message"] = "Cannot mix location in Receive";
+			$response = $response->withJson($data);
+			return $response;
+		}
+
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -2966,8 +2990,11 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$newData = array();
+	$amountexcludevat = 0;
+	$amountvat = 0;
+	$grandtotal = 0;
 	foreach($items as $item){
-		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME, PACKINGNOTE,APVENDOR.TAX FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -2978,10 +3005,20 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 			$item["PACKING"] = $res["PACKINGNOTE"];
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 			array_push($newData,$item);	
-		}	
+
+			$amountexcludevat += ($item["COST"] * $item["QUANTITY"]);	
+			$amountvat += ($item["COST"] * ($res["TAX"] / 100)) * $item["QUANTITY"];			
+			$grandtotal +=  ($item["COST"] * (1 + ($res["TAX"] / 100))) * $item["QUANTITY"];
+		}		
 	}
+	$tmp = array();
+	$tmp["ITEMS"] = $newData;
+	$tmp["AMTEXCLVAT"] = round($amountexcludevat,2);
+	$tmp["AMTVAT"] = round($amountvat,2);
+	$tmp["GRANDTOTAL"] = round($grandtotal,2);
+
 	$data["result"] = "OK";				
-	$data["data"] = $newData;
+	$data["data"] = $tmp;
 	$response = $response->withJson($data);
 	return $response;
 });
