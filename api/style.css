@@ -748,7 +748,7 @@ renderTwoProduct{
 .A4_price_kh_b2 .A4_price_2items .strikethrough:before {
   position: absolute;
   margin-top: 12px;
-  border-top: 2px solid #1B9382 ;
+  border-top: 2px solid red ;
   opacity: 1;
   border-radius: 5px;
   
