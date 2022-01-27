@@ -63,7 +63,6 @@ $app->post('/login',function(Request $request,Response $response) {
 		else
 		{			
 			$token = bin2hex(random_bytes(64));
-			error_log($token);
 			$sql = "UPDATE USER set access_token = ? WHERE username = ? AND password = ?";			
 			$req = $db->prepare($sql);		
 			$req->execute(array($token,$json["username"],$json["password"]));

@@ -1,6 +1,6 @@
 <?php 
 
-function _createPO($items,$author)
+function createPO($items,$author)
 {
 	if(count($items) == 0){
 		return null;
@@ -59,10 +59,9 @@ function _createPO($items,$author)
 	$CURRENCY_AMOUNT = 0;
 
 	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD,
-																	TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
-																	TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
-																 ) VALUES (?,?,?,getdate(),
-																 					'','','','','','','','','','','')";
+									TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
+									TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
+									) VALUES (?,?,?,getdate(),'','','','','','','','','','','')";
 	$req = $db->prepare($sql);
 	$req->execute(array($PONUMBER,$vendorid,$USERADD)); 
 
@@ -77,25 +76,32 @@ function _createPO($items,$author)
 				$item["ORDER_QTY"] = $item["ORDERQTY"];
 			else if (isset($item["QUANTITY"]))
 				$item["ORDER_QTY"] = $item["QUANTITY"];
+			else if (isset($item["REQUEST_QUANTITY"]))
+				$item["ORDER_QTY"] = $item["REQUEST_QUANTITY"];
 		}
 			
-
-
-		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res != false){	
-			$TRANCOST = $res["TRANCOST"];	
-		}else{
-			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+		if (isset($item["COST"]))
+			$TRANCOST = $item["COST"];
+		else
+		{
+			$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$TRANCOST = $res["LASTCOST"];				
+	
+			if ($res != false){	
+				$TRANCOST = $res["TRANCOST"];	
+			}else{
+				$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+	
+				$TRANCOST = $res["LASTCOST"];				
+			}
 		}
+
+	
 		
 		$TRANDISC = $item["DISCOUNT"];
 		
@@ -145,9 +151,6 @@ function _createPO($items,$author)
 				else if (isset($item["QUANTITY"]))
 					$item["ORDER_QTY"] = $item["QUANTITY"];
 		}
-
-
-
 			
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
@@ -167,18 +170,20 @@ function _createPO($items,$author)
 		}
 		$DISCABLE = $res2["DISCABLE"];
 
-		if(isset($item["ALGOQTY"]))
+		$REASON = "ALGO";
+		if(isset($item["ALGOQTY"])){			
 			$ALGOQTY = $item["ALGOQTY"];
-		else{
-			if (isset($item["REQUEST_QUANTITY"])) // TO CLEAN
-				$ALGOQTY = $item["REQUEST_QUANTITY"];
-			else if (isset($item["QUANTITY"]))
-				$ALGOQTY = $item["QUANTITY"]; // TO CLEAN
- 		}
-			
-		
-		
-		$REASON = "";
+		}
+		else if(isset($item["REQUEST_QUANTITY"])){	 // TO CLEAN		
+			$ALGOQTY = $item["REQUEST_QUANTITY"];
+		}
+		else if (isset($item["QUANTITY"]))
+			$ALGOQTY = $item["QUANTITY"]; 
+
+		if (isset($item["FINAL_QUANTITY"])){
+			$ALGOQTY = $item["FINAL_QUANTITY"];
+			$REASON = "GROUPEDPURCHASE";
+		}		
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
 	
@@ -267,38 +272,35 @@ function _createPO($items,$author)
 		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
 		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
 		VALUES (?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?)"; 
-
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?)"; 		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
-		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
-		$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
-		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
-		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
-		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
-		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
-		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
-		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
-		$ALGOQTY,$REASON 
-		);
-
-		//$debug = var_export($params, true);
-		//error_log($debug);
+			$PONUMBER,$VENDID, $VENDNAME, $VENDNAME1, $PURCHASE_DATE,
+			$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
+			$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
+			$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
+			$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
+			$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
+			$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
+			$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
+			$ALGOQTY,$REASON );		
 
 		$req->execute($params);				
+		
+		
 		$line++;
 	}
 	return $PONUMBER;
 }
 
-function _receivePO($PONumber,$author)
+function receivePO($PONumber,$author)
 {		
     $db = getDatabase();
     $today = date("Y-m-d H:i:s");
@@ -309,7 +311,7 @@ function _receivePO($PONumber,$author)
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
 
-    $PONUM = $res["num3"];  
+    $PONUM = intval($res["num3"]);  
     $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -318,7 +320,7 @@ function _receivePO($PONumber,$author)
     $req = $db->prepare($sql);
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $APNUM = $res["num1"];
+    $APNUM = intval($res["num1"]);    
     $sql = "UPDATE SYSDATA set num1 = num1 +1  WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -996,7 +998,6 @@ function _receivePO($PONumber,$author)
 	{
 		//+GLTRAN (Account Number 16100)
 
-
 		$GLNO =    $theGLNO;
 		$LINNO =   "2";  // Line 1-2 or hav VTA 1-2-3
 		$GLDESC =    "Receive PO ". $PONumber;
@@ -1164,8 +1165,8 @@ function _receivePO($PONumber,$author)
 
 function createAndReceivePO($items,$author)
 {
-	$ponumber = _createPO($items,$author);
-	_receivePO($ponumber,$author);
+	$ponumber = createPO($items,$author);
+	receivePO($ponumber,$author);
 	return $ponumber;
 }
 

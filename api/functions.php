@@ -167,9 +167,8 @@ function pictureRecord($base64Str,$type,$id){
 
 
 function blueUser($author){
-	if($author == "thoeun_s") // TODO FUNCTION
-		return "THOEUN SOPHAL";	
-	else if ($author == "hay_s")
+	
+	if ($author == "hay_s" || $author == "SERTEST")
 		return "HAY SE";
 	else if ($author ==	"sen_s")
 		return "SOVI";
@@ -179,8 +178,7 @@ function blueUser($author){
 		return "PONLEU";
 	else if ($author == "prom_r")
 		return "RETH";
-	
-	else if ($author == "chea_s")
+	else if ($author == "chea_s" || $author == "meng_s" || $author == "in_v" || $author == "sor_p" || $author == "koem_n")
 		return "SOPHAL";
 	else if ($author == "meng_g")
 		return "GECKMEY";
@@ -193,9 +191,10 @@ function blueUser($author){
 	else if ($author == "tieng_s")
 		return "SOPHEARITH";
 	else if ($author == "hong_v")
+
 		return "VICHET";
 
-		return $author;
+	return $author;
 
 }	
 
@@ -350,12 +349,16 @@ function flagByCountry($flag){
 
 function writePicture($barcode,$b64Image)
 {
-	$state = smbclient_state_new();
+	//$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:
-	smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
-	$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
-	smbclient_write($state,$file,base64_decode($b64Image));
+	//smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
+	//$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
+	//smbclient_write($state,$file,base64_decode($b64Image));
+	$myfile = fopen("/Volumes/Image/".$barcode.".jpg", "wb") or die("Unable to open file!");    
+    fwrite($myfile, base64_decode($b64Image));    
+    fclose($myfile);
 }
+
 
 
 function getImage($path) {
@@ -1234,279 +1237,75 @@ function autoPromoForVendor($vendid){
 	return 0;
 }
 
-function createPO($items,$author)
+function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$policy,$vat ,$vendid,$picture,$plt)
 {
-
-	if(count($items) == 0){
-		return null;
-	}
+	$author = blueUser($author);
 	$db = getDatabase();
 
-	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+	if ($picture != null)
+		writePicture($barcode,$picture);
+
+	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($items[0]["PRODUCTID"]));
+	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res == false)
-		return null;
-	$vendorid = $res["VENDID"];
+	$picturePath = "Y:\\".$barcode.".jpg";
 
-	$autoPromo = autoPromoForVendor($vendorid);
-
-	$dbBLUE = getDatabase();
-	$now = date("Y-m-d H:i:s");
-
-	$sql = "SELECT VENDNAME,VENDNAME1,TAX FROM APVENDOR WHERE VENDID = ?";
-	$req = $dbBLUE->prepare($sql); 
-	$req->execute(array($vendorid));
-	$vendor = $req->fetch(PDO::FETCH_ASSOC);
-
-	$sql = "SELECT num1 FROM SYSDATA where sysid = 'PO'";
-	$req = $dbBLUE->prepare($sql);
-	$req->execute(array());	
-	$num1 = $req->fetch(PDO::FETCH_ASSOC)["num1"];
-	$newID = intval($num1);
-	$identifier = sprintf("PO%013d",$newID);
-
-	// Increment gen ID for Next	
-	$incremented = $newID + 1;
-	$sql = "UPDATE SYSDATA set num1 = ? where sysid = 'PO'"; 
-	$req = $dbBLUE->prepare($sql);
-	$req->execute(array($incremented));
-
-	$PONUMBER = $identifier;
-	$VENDID = $vendorid;
-	$VENDNAME = $vendor["VENDNAME"];
-	$VENDNAME1 = $vendor["VENDNAME1"];
-	$PODATE = $now;
-	$LOCID = 'WH2';
-	$USERADD = $author;
-	$DATEADD = $now;
-	$VAT_PERCENT = $vendor["TAX"];
-	$PCNAME = "APPLICATION";
-	$CURR_RATE = "1";
-	$CURRID = "USD";
-	$EST_ARRIVAL = $now;
-	$REQUIRE_DATE = $now;
-	$DISC_PERCENT = 0;
-	$BASECURR_ID = "USD";
-	$PURCHASE_AMT = 0;
-	$VAT_AMT = 0;
-	$CURRENCY_AMOUNT = 0;
-
-	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD,
-																	TOADDRESS1,TOVENDID,TOPHONE1,TOFAXNO,TOCOUNTRY,
-																	TOCITY,ADDRESS1,COUNTRY,PHONE1,FAXNO,CITY
-																 ) VALUES (?,?,?,getdate(),
-																 					'','','','','','','','','','','')";
-	$req = $db->prepare($sql);
-	$req->execute(array($PONUMBER,$vendorid,$USERADD)); 
-
-			
-	foreach($items as $item)
+	if($res == false)
 	{
-		if (!isset($item["DISCOUNT"])) // TO CLEAN 
-			$item["DISCOUNT"] = "0";
-		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
-			$item["ORDER_QTY"] = $item["ORDERQTY"];
-
-
-		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res != false){	
-			$TRANCOST = $res["TRANCOST"];	
-		}else{
-			$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
-			$req = $dbBLUE->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$TRANCOST = $res["LASTCOST"];				
-		}
-		
-		$TRANDISC = $item["DISCOUNT"];
-		
-		if ($TRANDISC != null && $TRANDISC != "0"){
-			$calculatedCost =  $TRANCOST - ($TRANCOST * ($TRANDISC / 100));
-		}			
-		else{
-			$calculatedCost =  $TRANCOST;
-		} 
+		$sql = "INSERT INTO ICPRODUCT (PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,BARCODE,
+										COST,PRICE,LASTCOST,TYPE,VENDID,
+										ACTIVE,DISCABLE,PURUM,PURFACTOR,SALEUM,
+										SALEFACTOR,USERADD,DATEADD,USEREDIT,DATEEDIT,
+										REVENUEACC,COGSACC,INVENTORYACC,TAXACC,SALEDISCOUNTACC,
+										SIZE, BIG_UNIT, BIG_UNIT_FACTOR, RECORD_STATUS,COST_METHOD,
+										MFG_OR_PUR,HAS_VAT,VAT_RATE,HAS_PLT,CLASSID,
+										PICTURE_PATH,STKUM,STKFACTOR,OTHER_PRICE,PLT_TAX_ACC) 
+									values (?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?,
+											?,?,?,?,?)";
+		if ($vat == "0" || $vat == "0.0" || $vat == null)
+			$has_vat = 'N';
+		else 						
+			$has_vat = 'Y';		
 			
-		$vat = ($calculatedCost * ($VAT_PERCENT / 100)) * $item["ORDER_QTY"];
-		$price =   $calculatedCost; 
-		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
-		$VAT_AMT += $vat;
-	}
-	 $CURRENCY_VATAMOUNT = $VAT_AMT;
-	 $CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
-
-	 $sql = "INSERT POHEADER (
-		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
-		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
-		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
-		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-	$req =$dbBLUE->prepare($sql);	
-
-
-	$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
-					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
-					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
-					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
-					"","",$CURRENCY_AMOUNT);
-	$req->execute($params);
-
-	$line = 1;
-	foreach($items as $item)
-	{
-		if (!isset($item["DISCOUNT"])) // TO CLEAN 
-			$item["DISCOUNT"] = "0";
-		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
-			$item["ORDER_QTY"] = $item["ORDERQTY"];
-
-		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-
-		$sql = "SELECT  LASTCOST,COST,DISCABLE FROM ICPRODUCT WHERE PRODUCTID = ?";
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
-		$res2 = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res != false){	
-			$TRANCOST = $res["TRANCOST"];	
-		}else{			
-			$TRANCOST = $res2["LASTCOST"];		
-		}
-		$DISCABLE = $res2["DISCABLE"];
-
-		if(isset($item["ALGOQTY"]))
-			$ALGOQTY = $item["ALGOQTY"];
+		if($plt == 'Y')
+			$pltacc = "16400";
 		else
-			$ALGOQTY = $item["REQUEST_QUANTITY"];
-				
-		$REASON = "";
-		if (isset($item["REASON"]))
-			$REASON = $item["REASON"];
+			$pltacc = null;
 
+		$today = date("Y-m-d");												
+		$req = $db->prepare($sql);
+		$req->execute(array(
+			$barcode, $nameen,$namekh,$category,$barcode,
+			$cost, $price,$cost,'I',$vendid,
+			1,1,'UNIT',1.0,'UNIT',
+			1.0,$author,$today,$author,$today,
+			40000,50000,17000,16100,49000,
+			$policy, 'UNIT',1.0,'E','AG',
+			'P',$has_vat,$vat,$plt,'LOCAL',
+			$picturePath,'UNIT',1.0,$price,$pltacc));
+		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
+							VALUES(?,?,?,?,?,?)";
 		
-		// PATCH SUPPLYRECORD WITH ITEMREQUEST
-		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
-			$QUANTITY = $item["SPECIALQTY"];
-			$REASON = $item["REASON"];
-		}			
-		else if (isset($item["ORDER_QTY"]))
-			$QUANTITY = $item["ORDER_QTY"];
-		else
-			$QUANTITY = $item["REQUEST_QUANTITY"];
-		//
-	
-		$PURCHASE_DATE = $now;
-		$PRODUCTID = $item["PRODUCTID"];
-		$ORDER_QTY = $QUANTITY;
-		$DATEADD = $now;
+		$req = $db->prepare($sql);
+		$req->execute(array('WH1',$barcode,$vendid,$today,$author,16100));
+		$req->execute(array('WH2',$barcode,$vendid,$today,$author,16100));
 
-		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,COST,ONHAND 
-						FROM ICPRODUCT  
-						WHERE PRODUCTID = ?";
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($item["PRODUCTID"])); 
-		$newitem = $req->fetch(PDO::FETCH_ASSOC);
+		$sql = "INSERT INTO ICVENDOR(PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD)
+				VALUES(?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode,$vendid,$barcode,$author,$today));
 
-		$PRODUCTNAME = $newitem["PRODUCTNAME"];
-		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
-		$CURRENTONHAND = $newitem["ONHAND"];
-
-		$CURRENCY_COST = floatval($TRANCOST) *  floatval( (100 - $item["DISCOUNT"]) / 100);
-		$CURRENCY_AMOUNT = floatval($CURRENCY_COST) * floatval($QUANTITY);	
-
-		$STKFACTOR = "1.00000";
-		$BASECURR_ID = "USD";
-		$VATABLE = "Y";
-		$TRANUNIT = "UNIT";
-		$TRANFACTOR = "1.00000";
-		$STKUNIT = "UNIT";
-		$USERADD = blueUser($author);
-		$CURRID = "USD";
-		$CURR_RATE = "1";
-		$WEIGHT = "1.00000";
-		$OLDWEIGHT = "1.00000";
-		$RECEIVE_QTY = "0.00000";
-
-		$TRANDISC = 0;
-		if ($DISCABLE == 1)
-		{
-			if (isset($item["DISCOUNT"]))			
-				$TRANDISC = $item["DISCOUNT"];
-			else if ($autoPromo != "0")
-				$TRANDISC = $autoPromo;	
-		}
-		
-			
-		$EXTCOST = $CURRENCY_AMOUNT;		
-		
-		$RECEIVE_QTY = "0.0000";
-		$COMMENT = "";
-		$POSTATUS = "";
-		$COST_ADD = "0.0000";
-		$DIMENSION = "0.0000";
-
-		$FILEID = "";
-		$COST_CENTER = "";
-		$INVENTORYACC = "";
-		$QTY_OVORORDER = "0.0000";
-		$FREIGHT_SG = "0.0000";
-
-
-
-		$sql = "INSERT INTO PODETAIL (
-		PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
-		PRODUCTID,LOCID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY, 	
-		TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,TRANDISC,
-		TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
-		WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
-		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
-		RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
-		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
-		PPSS_ORDER_QTY,PPSS_QTYCOMMENT) 
-		VALUES (?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?)"; 
-
-		$req = $dbBLUE->prepare($sql);
-		$params = array(
-		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME, $PURCHASE_DATE,
-		$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
-		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
-		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
-		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
-		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
-		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
-		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
-		$ALGOQTY,$REASON 
-		);
-
-		//$debug = var_export($params, true);
-		//error_log($debug);
-
-		$req->execute($params);				
-		$line++;
+		return true;	
 	}
-	return $PONUMBER;
-
+	else 
+		return false;
 }
 
 ?>
