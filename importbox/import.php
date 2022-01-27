@@ -19,13 +19,17 @@ function getInternalDatabase($base = "MAIN")
 function insertVendors()
 {
     $db = getInternalDatabase();
-    $itemsfile = fopen('items.csv', 'r');
+    $itemsfile = fopen('vendors.csv', 'r');
     while (($line = fgetcsv($itemsfile)) !== FALSE) 
-    {           
-        $linedata = explode(';',$line[0]);       
+    {               
+        $linedata = explode(';',$line[0]);
+        if($linedata[0] == "No")
+            continue;       
         $id = $linedata[0] ?? "";
         $nameen = $linedata[1] ?? "";
         $namekh = $linedata[2] ?? "";
+        if ($namekh == "N/A")
+            $namekh = null;
         $phone1 = $linedata[3] ?? "";
         $phone2 = $linedata[4] ?? "";
         $phone3 = $linedata[5] ?? "";
@@ -43,6 +47,7 @@ function insertVendors()
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if($res == false)
         {
+
             $sql = "INSERT INTO EXTERNALVENDOR (ID,
                                                 NAMEEN,NAMEKH,
                                                 PHONE1,PHONE2,
@@ -51,10 +56,12 @@ function insertVendors()
                                                 COMMUNICATIONTYPE1,COMMUNICATIONHANDLE1,
                                                 COMMUNICATIONTYPE2,COMMUNICATIONHANDLE2) 
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-            $req = $db->prepare($sql);   
-            $req->execute(array($id,$nameen,$namekh,$phone1,$phone2,
+            $req = $db->prepare($sql);
+            $params = array($id,$nameen,$namekh,$phone1,$phone2,
                                 $phone3,$phone4,$address1,$address2,
-                                $ctype1,$chandle1,$ctype2,$chandle2));            
+                                $ctype1,$chandle1,$ctype2,$chandle2);
+            $debug = var_export($params, true);  
+            $req->execute($params);            
         }
 
     }
@@ -64,16 +71,26 @@ function insertVendors()
 function insertItems()
 {
     $db = getInternalDatabase();
-    $vendorsfile = fopen('vendors.csv', 'r');
-    while (($line = fgetcsv($vendorsfile)) !== FALSE) 
-    {           
-        $linedata = explode(';',$line[0]);        
-        $barcode = $linedata[0];
-        $namekh = $linedata[1];
-        $nameen = $linedata[2];
-        $note = $linedata[3];
-        $cost = $linedata[4];
-        $vendorid = $linedata[5];
+
+    $sql = "DELETE FROM EXTERNALITEM";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+
+    $sql = "DELETE FROM EXTERNALPRICE";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+
+    $itemsfile = fopen('items.csv', 'r');
+    while (($line = fgetcsv($itemsfile)) !== FALSE) 
+    {                    
+        if($line[0] == "BARCODE")
+            continue;      
+        $barcode = $line[0] ?? "";
+        $namekh = $line[1] ?? "";
+        $nameen = $line[2] ?? "";
+        $note = $line[3] ?? "";
+        $cost = $line[4] ?? "";
+        $vendorid = $line[5] ?? "";
 
         $sql = "SELECT * FROM EXTERNALITEM WHERE NAMEEN = ?"; 
         $req = $db->prepare($sql);
@@ -97,14 +114,16 @@ function insertItems()
         $req->execute(array($vendorid,$itemid));
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if ($res == false){
-            $sql = "INSERT INTO EXTERNALPRICE (EXTERNALVENDOR_ID,EXTERNITEM_ID,PRICE) VALUES (?,?,?)";
+            $sql = "INSERT INTO EXTERNALPRICE (EXTERNALVENDOR_ID,EXTERNALITEM_ID,PRICE) VALUES (?,?,?)";
             $req = $db->prepare($sql);
             $req->execute(array($vendorid,$itemid,$cost));
         }
 
     }
-    fclose($vendorsfile);
+    fclose($itemsfile);
 }
 
+//insertVendors();
+insertItems();
 
 ?>
