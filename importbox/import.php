@@ -19,6 +19,13 @@ function getInternalDatabase($base = "MAIN")
 function insertVendors()
 {
     $db = getInternalDatabase();
+
+
+    $sql = "DELETE FROM EXTERNALVENDOR";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+
+
     $itemsfile = fopen('vendors.csv', 'r');
     while (($line = fgetcsv($itemsfile)) !== FALSE) 
     {               
@@ -26,20 +33,21 @@ function insertVendors()
         if($linedata[0] == "No")
             continue;       
         $id = $linedata[0] ?? "";
-        $nameen = $linedata[1] ?? "";
-        $namekh = $linedata[2] ?? "";
+        $website = $linedata[1] ?? "";
+        $nameen = $linedata[2] ?? "";
+        $namekh = $linedata[3] ?? "";
         if ($namekh == "N/A")
             $namekh = null;
-        $phone1 = $linedata[3] ?? "";
-        $phone2 = $linedata[4] ?? "";
-        $phone3 = $linedata[5] ?? "";
-        $phone4 = $linedata[6] ?? "";
-        $address1 = $linedata[7] ?? "";
-        $address2 = $linedata[8] ?? "";
-        $ctype1 = $linedata[9] ?? "";
-        $chandle1 = $linedata[10] ?? "";
-        $ctype2 = $linedata[11] ?? "";
-        $chandle2 = $linedata[12] ?? "";
+        $phone1 = $linedata[4] ?? "";
+        $phone2 = $linedata[5] ?? "";
+        $phone3 = $linedata[6] ?? "";
+        $phone4 = $linedata[7] ?? "";
+        $address1 = $linedata[8] ?? "";
+        $address2 = $linedata[9] ?? "";
+        $ctype1 = $linedata[10] ?? "";
+        $chandle1 = $linedata[11] ?? "";
+        $ctype2 = $linedata[12] ?? "";
+        $chandle2 = $linedata[13] ?? "";
 
         $sql = "SELECT * FROM EXTERNALVENDOR WHERE NAMEEN = ?"; 
         $req = $db->prepare($sql);
@@ -49,15 +57,17 @@ function insertVendors()
         {
 
             $sql = "INSERT INTO EXTERNALVENDOR (ID,
+                                                WEBSITE,
                                                 NAMEEN,NAMEKH,
                                                 PHONE1,PHONE2,
                                                 PHONE3,PHONE4,
                                                 ADDRESS1,ADDRESS2,
                                                 COMMUNICATIONTYPE1,COMMUNICATIONHANDLE1,
                                                 COMMUNICATIONTYPE2,COMMUNICATIONHANDLE2) 
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
             $req = $db->prepare($sql);
-            $params = array($id,$nameen,$namekh,$phone1,$phone2,
+            $params = array($id,$website,
+                                $nameen,$namekh,$phone1,$phone2,
                                 $phone3,$phone4,$address1,$address2,
                                 $ctype1,$chandle1,$ctype2,$chandle2);
             $debug = var_export($params, true);  
@@ -124,6 +134,6 @@ function insertItems()
 }
 
 //insertVendors();
-insertItems();
+insertVendors();
 
 ?>
