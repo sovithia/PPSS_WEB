@@ -43,7 +43,7 @@ function createPO($items,$author)
 	$VENDNAME = $vendor["VENDNAME"];
 	$VENDNAME1 = $vendor["VENDNAME1"];
 	$PODATE = $now;
-	if (isset($items[0]))
+	if (isset($items[0]) && isset($items[0]["LOCID"]))
 		$LOCID = $items[0]["LOCID"];
 	else 
 		$LOCID = "WH2";
@@ -970,7 +970,7 @@ function receivePO($PONumber,$author,$notes)
 			array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
 
 		$VENDID =  $theVENDID;
-		$VOUCHERNO =  "VO00000000000" . $APNUM;
+		$VOUCHERNO =  "VO000000000000" . $APNUM;
 		$VENDNAME = $theVENDNAME; 
 		$VENDNAME1 = $theVENDNAME1;
 		$PONUMBER =  $PONumber;
@@ -1023,7 +1023,7 @@ function receivePO($PONumber,$author,$notes)
 
 	//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
 	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
-	$theGLNO = date('y').date('m')."0000000".$GLNUM;
+	$theGLNO = date('y').date('m')."00000".$GLNUM;
 
 	$GLNO =     $theGLNO;
 	$LINNO =    "1"; 
@@ -1041,24 +1041,33 @@ function receivePO($PONumber,$author,$notes)
 	$GLPOST =    "N";
 	$GLTYPE =    "J"; 
 	$APPID =     "PO";
-	$REMARKS =    null;
-	$CUSTID =    null;
+	$REMARKS =    "";
+	$CUSTID =    "";
 	$VENDID =    $theVENDID;
-	$FILEID =     null;
-	$COST_CENTER =   null;
+	$FILEID =     "";
+	$COST_CENTER =   "";
 	$LOCID =     $THELOCATION;
 
 	//+GLTRAN (Account Number 20000)
 	$sql = "INSERT INTO GLTRAN (
-	GLNO,LINNO,GLDESC,GLDATE,GLYEAR    
-	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT    
-	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE     
-	APPID,REMARKS,CUSTID,VENDID,FILEID     
+	GLNO,LINNO,GLDESC,GLDATE,GLYEAR,    
+	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
+	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,     
+	APPID,REMARKS,CUSTID,VENDID,FILEID,     
 	COST_CENTER,LOCID) 
 	values (
 	?,?,?,?,?,?,?,?,?,?,
 	?,?,?,?,?,?,?,?,?,?,
-	?,?,?)";      
+	?,?)";      
+	$req = $db->prepare($sql);
+	$req->execute(array(
+		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
+		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
+		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,     
+		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,    
+		$COST_CENTER,$LOCID
+
+	));
 
 	if ($HAVEVAT)
 	{
@@ -1080,11 +1089,11 @@ function receivePO($PONumber,$author,$notes)
 		$GLPOST =    "N";
 		$GLTYPE =    "J";  
 		$APPID =     "PO";
-		$REMARKS =    null;
-		$CUSTID =    null;
+		$REMARKS =    "";
+		$CUSTID =    "";
 		$VENDID =    $theVENDID;
-		$FILEID =     null;
-		$COST_CENTER =   null;
+		$FILEID =     "";
+		$COST_CENTER =   "";
 		$LOCID =     $THELOCATION;
 		$sql = "
 		INSERT INTO GLTRAN(
@@ -1097,10 +1106,17 @@ function receivePO($PONumber,$author,$notes)
 		?,?,?,?,?,?,?,?,?,?,
 		?,?,?)";   
 
+		$req = $db->prepare($sql);
+		$req->execute(array(	
+			$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,   
+			$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
+			$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,      
+			$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
+			$COST_CENTER,$LOCID));
 	}
 
-	//+GLTRAN (Account Number 17000)
-	$GLNO =   $theGLNO;
+	//+GLTR$AN (Acc$ount Number 17000)
+	$GLNO = $theGLNO;
 	if ($HAVEVAT)
 		$LINNO = 3;
 	else 
@@ -1120,11 +1136,11 @@ function receivePO($PONumber,$author,$notes)
 	$GLPOST =     "N";
 	$GLTYPE =    "J";  
 	$APPID =     "PO";
-	$REMARKS =    null;
-	$CUSTID =    null;
+	$REMARKS =    "";
+	$CUSTID =    "";
 	$VENDID =    $theVENDID;
-	$FILEID =     null;
-	$COST_CENTER =   null;
+	$FILEID =     "";
+	$COST_CENTER =   "";
 	$LOCID =     $THELOCATION;
 
 	$sql = "INSERT INTO GLTRAN(
@@ -1132,7 +1148,19 @@ function receivePO($PONumber,$author,$notes)
 	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,    
 	APPID,REMARKS,CUSTID,VENDID,FILEID,     
-	COST_CENTER,LOCID)";
+	COST_CENTER,LOCID) 
+	values (?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array(	
+		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
+		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
+		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,    
+		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
+		$COST_CENTER,$LOCID));
 
 	//****** IF VENDOR NOT VAT INSERT 1 LINE (17000) ***********************
 	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
@@ -1176,7 +1204,8 @@ function receivePO($PONumber,$author,$notes)
 	USERADD,DATEADD) values
 	(?,?,?,?,?,?,?,?,?,?,
 	 ?,?,?,?,?,?,?,?,?,?,
-	 ?,?,?,?,?,?,?)";
+	 ?,?,?,?,?,
+	 ?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array(
 	$VENDID,$VOUCHERNO,$TRANDATE,$LINENUM,$ACCNO,
