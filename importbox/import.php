@@ -32,10 +32,10 @@ function insertVendors()
         $linedata = explode(';',$line[0]);
         if($linedata[0] == "No")
             continue;       
-        $id = $linedata[0] ?? "";
-        $website = $linedata[1] ?? "";
-        $nameen = $linedata[2] ?? "";
-        $namekh = $linedata[3] ?? "";
+        $id = $linedata[0] ?? "";        
+        $nameen = $linedata[1] ?? "";
+        $namekh = $linedata[2] ?? "";
+        $website = $linedata[3] ?? "";
         if ($namekh == "N/A")
             $namekh = null;
         $phone1 = $linedata[4] ?? "";
@@ -54,8 +54,7 @@ function insertVendors()
         $req->execute(array($linedata[1]));
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if($res == false)
-        {
-
+        {            
             $sql = "INSERT INTO EXTERNALVENDOR (ID,
                                                 WEBSITE,
                                                 NAMEEN,NAMEKH,
@@ -93,14 +92,18 @@ function insertItems()
     $itemsfile = fopen('items.csv', 'r');
     while (($line = fgetcsv($itemsfile)) !== FALSE) 
     {                    
-        if($line[0] == "BARCODE")
+        $linedata = explode(';',$line[0]);        
+        if($linedata[0] == "BARCODE")
             continue;      
-        $barcode = $line[0] ?? "";
-        $namekh = $line[1] ?? "";
-        $nameen = $line[2] ?? "";
-        $note = $line[3] ?? "";
-        $cost = $line[4] ?? "";
-        $vendorid = $line[5] ?? "";
+        
+        $barcode = $linedata[0] ?? "";
+        $namekh = $linedata[1] ?? "";
+        $nameen = $linedata[2] ?? "";
+        $note = $linedata[3] ?? "";
+        $cost = $linedata[4] ?? "";
+        $vendorid = $linedata[5] ?? "";
+
+        
 
         $sql = "SELECT * FROM EXTERNALITEM WHERE NAMEEN = ?"; 
         $req = $db->prepare($sql);
@@ -133,7 +136,7 @@ function insertItems()
     fclose($itemsfile);
 }
 
-//insertVendors();
-insertVendors();
 
+//insertVendors();
+insertItems();
 ?>
