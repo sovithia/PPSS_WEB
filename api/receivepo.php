@@ -164,11 +164,25 @@ function createPO($items,$author)
 		$req->execute(array($item["PRODUCTID"]));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
-		if ($res != false){	
-			$TRANCOST = $res["TRANCOST"];	
-		}else{			
-			$TRANCOST = $res2["LASTCOST"];		
-		}
+		if (isset($item["COST"]))
+			$TRANCOST = $item["COST"];
+		else
+		{
+			$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false){	
+				$TRANCOST = $res["TRANCOST"];	
+			}else{
+				$sql = "SELECT  LASTCOST,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				$TRANCOST = $res["LASTCOST"];	
+			}			
+		}	
+
 		$DISCABLE = $res2["DISCABLE"];
 
 		$REASON = "ALGO";
@@ -589,10 +603,10 @@ function receivePO($PONumber,$author,$notes)
 
 
 
-	$DOCNUM =   "RP000000000000".$PONUM;
+	$DOCNUM =   "RP00000000000".$PONUM;
 	$FLOCID =    $THELOCATION;
 	$TLOCID =    '';
-	$REFERENCE =   "Receive PO " . $PONumber;
+	$REFERENCE =   "Receive PO# " . $PONumber;
 	$TRANDATE =    $today;
 	$TRANTYPE =    "R";
 	$TOTAL_AMT =   $PORef["CURRENCY_AMOUNT"]; 
@@ -658,7 +672,7 @@ function receivePO($PONumber,$author,$notes)
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$line++;
 
-		$DOCNUM = "VO000000000000".$APNUM;
+		$DOCNUM = "VO00000000000".$APNUM;
 		$PRODUCTID = $item["PRODUCTID"]; 
 		$LOCID = $item["LOCID"]; 
 		$CATEGORYID = $res["CATEGORYID"];
@@ -1104,7 +1118,7 @@ function receivePO($PONumber,$author,$notes)
 		COST_CENTER,LOCID) values(
 		?,?,?,?,?,?,?,?,?,?,
 		?,?,?,?,?,?,?,?,?,?,
-		?,?,?)";   
+		?,?)";   
 
 		$req = $db->prepare($sql);
 		$req->execute(array(	
