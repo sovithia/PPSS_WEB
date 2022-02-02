@@ -137,6 +137,6 @@ function insertItems()
 }
 
 
-//insertVendors();
+insertVendors();
 insertItems();
 ?>
