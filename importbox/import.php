@@ -1,5 +1,10 @@
 <?php 
 
+function getDatabase()
+{ 	
+    $conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+	return $conn;
+}
 
 function getInternalDatabase($base = "MAIN")
 {
@@ -80,11 +85,7 @@ function insertVendors()
 function insertItems()
 {
     $db = getInternalDatabase();
-
-    $sql = "DELETE FROM EXTERNALITEM";
-    $req = $db->prepare($sql);
-    $req->execute(array());
-
+    $dbBlue = getDatabase();
     $sql = "DELETE FROM EXTERNALPRICE";
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -94,17 +95,14 @@ function insertItems()
     {                    
         $linedata = explode(';',$line[0]);        
         if($linedata[0] == "BARCODE")
-            continue;      
-        
+            continue;              
         $barcode = $linedata[0] ?? "";
-        $namekh = $linedata[1] ?? "";
-        $nameen = $linedata[2] ?? "";
-        $note = $linedata[3] ?? "";
-        $cost = $linedata[4] ?? "";
+        //$nameen = $linedata[1] ?? "";
+        //$namekh = $linedata[2] ?? "";
+        $cost = $linedata[3] ?? "";
+        //$note = $linedata[4] ?? "";
         $vendorid = $linedata[5] ?? "";
-
-        
-
+        /*
         $sql = "SELECT * FROM EXTERNALITEM WHERE NAMEEN = ?"; 
         $req = $db->prepare($sql);
         $req->execute(array($nameen));
@@ -121,17 +119,20 @@ function insertItems()
         }else{
             $itemid = $res["ID"];
         }
+        */
 
         $sql = "SELECT * FROM EXTERNALPRICE WHERE EXTERNALVENDOR_ID = ? AND EXTERNALITEM_ID = ?";
         $req = $db->prepare($sql);
-        $req->execute(array($vendorid,$itemid));
+        $req->execute(array($vendorid,$barcode));
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if ($res == false){
-            $sql = "INSERT INTO EXTERNALPRICE (EXTERNALVENDOR_ID,EXTERNALITEM_ID,PRICE) VALUES (?,?,?)";
+            $sql = "INSERT INTO EXTERNALPRICE (EXTERNALVENDOR_ID,PRODUCTID,COST) VALUES (?,?,?)";
             $req = $db->prepare($sql);
-            $req->execute(array($vendorid,$itemid,$cost));
+            $req->execute(array($vendorid,$barcode,$cost));
         }
-
+        $sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
+        $req = $dbBlue->prepare($sql);
+        $req->execute(array($barcode));
     }
     fclose($itemsfile);
 }
