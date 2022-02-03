@@ -1145,7 +1145,11 @@ function receivePO($PONumber,$author,$notes)
 		$GLAMT = $theVATAMOUNT;
 	else 
 		$GLAMT = $theTOTALAMOUNT;
-	$DEBIT =     $theVATAMOUNT;
+	
+	if ($HAVEVAT)
+		$DEBIT = $theVATAMOUNT;
+	else 
+		$DEBIT = $theTOTALAMOUNT;
 	$CREDIT =    0;
 	$DOCNO =     sprintf("VO%013d",$APNUM);
 	$USERADD =    blueUser($author); 
