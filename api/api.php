@@ -835,7 +835,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$item =$req->fetch(PDO::FETCH_ASSOC);
 	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
-
+	$item['COST'] = $item['LASTCOST'];
 	$resp = array();
 	if (isset($item["PRODUCTID"]))
 	{		
@@ -1480,7 +1480,7 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
     $sql = "SELECT PRODUCTID,BARCODE,		
 		replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 		replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',		
-		PACKINGNOTE,COST,PRICE,VENDNAME,
+		PACKINGNOTE,LASTCOST as 'COST' ,PRICE,VENDNAME,
 		(SELECT TOP(1) TRANDISC FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY DATEADD DESC)  as 'COSTPROMO',
 		(SELECT TOP(1) DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND DATEFROM <= '$today 00:00:00.000' AND DATETO >= '$today 23:59:59.999' ORDER BY DATEFROM DESC) as 'PRICEPROMO', 
 		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
@@ -1548,7 +1548,7 @@ $app->get('/itemsearch3',function(Request $request,Response $response) {
     $sql = "SELECT PRODUCTID,BARCODE,		
 		replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 		replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',		
-		PACKINGNOTE,COST,PRICE,VENDNAME,
+		PACKINGNOTE,LASTCOST as 'COST',PRICE,VENDNAME,
 		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
 		(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
 	
@@ -1803,7 +1803,7 @@ $app->get('/itemall',function(Request $request,Response $response) {
 
 	
 	$sql = "SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,
-				   COST,PRICE,COLOR,CATEGORYID,CATEGORYNEWID,
+				   LASTCOST as 'COST',PRICE,COLOR,CATEGORYID,CATEGORYNEWID,
 				   ONHAND,ACTIVE	
 			FROM
 			(SELECT ROW_NUMBER() OVER (ORDER BY CATEGORYID) as SEQ ,
