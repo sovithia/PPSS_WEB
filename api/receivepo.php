@@ -603,7 +603,7 @@ function receivePO($PONumber,$author,$notes)
 
 
 
-	$DOCNUM =   "RP00000000000".$PONUM;
+	$DOCNUM =   sprintf("RP%013d",$PONUM);  
 	$FLOCID =    $THELOCATION;
 	$TLOCID =    '';
 	$REFERENCE =   "Receive PO# " . $PONumber;
@@ -672,7 +672,7 @@ function receivePO($PONumber,$author,$notes)
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$line++;
 
-		$DOCNUM = "VO00000000000".$APNUM;
+		$DOCNUM =  sprintf("VO%013d",$APNUM); 
 		$PRODUCTID = $item["PRODUCTID"]; 
 		$LOCID = $item["LOCID"]; 
 		$CATEGORYID = $res["CATEGORYID"];
@@ -835,7 +835,7 @@ function receivePO($PONumber,$author,$notes)
 	//$sql = "UPDATE SYSSETUPCURRENCY  set HAS_TRANSACTION = ? WHERE CURR_ID = ?"; NO NEED ?
 
 	$VENDID =      $theVENDID;
-	$VOUCHERNO =   "VO00000000000".$APNUM;
+	$VOUCHERNO =   sprintf("VO%013d",$APNUM);   
 	$TRANDATE =     $today;
 	$DUEDATE =      $today;
 	$VENDNAME =     $theVENDNAME;
@@ -984,7 +984,7 @@ function receivePO($PONumber,$author,$notes)
 			array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
 
 		$VENDID =  $theVENDID;
-		$VOUCHERNO =  "VO000000000000" . $APNUM;
+		$VOUCHERNO = sprintf("VO%013d",$APNUM);
 		$VENDNAME = $theVENDNAME; 
 		$VENDNAME1 = $theVENDNAME1;
 		$PONUMBER =  $PONumber;
@@ -1049,7 +1049,7 @@ function receivePO($PONumber,$author,$notes)
 	$GLAMT =    $theTOTALAMOUNT; 
 	$DEBIT =     "0";
 	$CREDIT =    $theTOTALAMOUNT;
-	$DOCNO =     "VO00000000000" . $APNUM;
+	$DOCNO =    sprintf("VO%013d",$APNUM); 
 	$USERADD =    blueUser($author);
 	$DATEADD =    $today;
 	$GLPOST =    "N";
@@ -1097,7 +1097,7 @@ function receivePO($PONumber,$author,$notes)
 		$GLAMT =    $theVATAMOUNT;
 		$DEBIT =     $theVATAMOUNT;
 		$CREDIT =    0;
-		$DOCNO =      "VO00000000000" . $APNUM;
+		$DOCNO =    sprintf("VO%013d",$APNUM);
 		$USERADD =    blueUser($author);
 		$DATEADD =    $today;
 		$GLPOST =    "N";
@@ -1129,22 +1129,25 @@ function receivePO($PONumber,$author,$notes)
 			$COST_CENTER,$LOCID));
 	}
 
-	//+GLTR$AN (Acc$ount Number 17000)
+	//+GLTRAN (Acc$ount Number 17000)
 	$GLNO = $theGLNO;
 	if ($HAVEVAT)
 		$LINNO = 3;
 	else 
-	    $LINE = 2;
+	    $LINNO = 2;
 
 	$GLDESC =   "Receive PO ". $PONumber;
 	$GLDATE =   $today;
 	$GLYEAR =    date("Y"); 
 	$GLMONTH =   date("m");
 	$ACCNO =    "17000";
-	$GLAMT =    $theVATAMOUNT;
+	if ($HAVEVAT)
+		$GLAMT = $theVATAMOUNT;
+	else 
+		$GLAMT = $theTOTALAMOUNT;
 	$DEBIT =     $theVATAMOUNT;
 	$CREDIT =    0;
-	$DOCNO =      "VO00000000000".$APNUM;
+	$DOCNO =     sprintf("VO%013d",$APNUM);
 	$USERADD =    blueUser($author); 
 	$DATEADD =    $today; 
 	$GLPOST =     "N";
@@ -1181,28 +1184,28 @@ function receivePO($PONumber,$author,$notes)
 
 	//+APACCOUNT (Account Number 17000)
 	$VENDID = $theVENDID;
-	$VOUCHERNO = "VO00000000000" . $APNUM; 
+	$VOUCHERNO = sprintf("VO%013d",$APNUM); 
 	$TRANDATE = $today;
 	$LINENUM =   "1";
 	$ACCNO =       "17000";
 	$AMOUNT = $theTOTALAMOUNT;
-	$PERIOD = date("m");
+	$PERIOD = date("n");
 	$YEAR = date("Y");
-	$BATCH = null;
-	$REFERENCE = //     Reference from Received PO
-	$ACCNAME = //     Name Acount
-	$ACCNAME1 = //     Name Account 1
-	$STAT = null;
-	$TYPE = null;
+	$BATCH = '';
+	$REFERENCE = '';
+	$ACCNAME = 'INVENTORY ACCOUNT';
+	$ACCNAME1 = '';
+	$STAT = '';
+	$TYPE = '';
 	$BATCHDATE = $today;
-	$FILEID = null;
-	$COST_CENTER = null;
-	$LOCID = null;
-	$COMMENT_ON_LINE = null;
-	$CURR_TYPE =  null;
+	$FILEID = '';
+	$COST_CENTER = '';
+	$LOCID = '';
+	$COMMENT_ON_LINE = '';
+	$CURR_TYPE =  '';
 	$CURR_AMOUNT = $theTOTALAMOUNT;
 	$CURR_RATE =     "1";
-	$OPERATION_BASE = null;
+	$OPERATION_BASE = '';
 	$BASECURR_ID = "USD";
 	$CURR_ID = "USD";
 	$USERADD = blueUser($author);
