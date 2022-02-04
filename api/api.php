@@ -7993,8 +7993,8 @@ $app->get('/vendor', function($request,Response $response){ // VENDOR LIST
 
 $app->get('/externalvendor', function($request,Response $response){ // VENDOR LIST
 	$db = getInternalDatabase();
-	$sql = "select ID,NAMEEN,NAMEKH,PHONE1,(select count(EXTERNALITEM_ID) 
-			FROM EXTERNALPRICE WHERE EXTERNALVENDOR_ID = EXTERNALVENDOR.ID ) as 'ITEMCOUNT'  
+	$sql = "select ID,NAMEEN,NAMEKH,PHONE1,(select count(PRODUCTID) 
+			FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = EXTERNALVENDOR.ID ) as 'ITEMCOUNT'  
 			FROM EXTERNALVENDOR";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -8010,9 +8010,9 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$id = $request->getAttribute('id');
-	$sql = "SELECT EXTERNALITEM.ID,EXTERNALPRICE.PRICE 
-			FROM  EXTERNALPRICE 
-			AND EXTERNALPRICE.EXTERNALVENDOR_ID = ?";	
+	$sql = "SELECT PRODUCTID,COST 
+			FROM  EXTERNALCOST 
+			AND EXTERNALVENDOR_ID = ?";	
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8043,7 +8043,7 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 
 		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
 						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						AND EXTERNALITEM_ID = ? ORDER BY CREATED DESC";
+						AND PRODUCTID = ? ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["ID"]));
 
@@ -8052,9 +8052,9 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 		$onedata["LASTORDERQTY"] = $lastorder["QUANTITY"] ?? "N/A";
 		$onedata["LASTORDERCOST"] = $lastorder["PRICE"] ?? "N/A";
 
-		$sql = "SELECT * FROM EXTERNALPRICE,EXTERNALVENDOR 
-						 WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						 AND EXTERNALITEM_ID = ? 
+		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
+						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND PRODUCT_ID = ? 
 						 ORDER BY PRICE ASC";
 	  	$req = $db->prepare($sql);
 	  	$req->execute(array($item["ID"]));
@@ -8168,26 +8168,26 @@ $app->delete('/externalvendor/{id}', function($request,Response $response){ // D
 	return $response;
 });
 
-$app->post('/externalprice',function($request,Response $response){	// Link item with vendor
+$app->post('/externalcost',function($request,Response $response){	// Link item with vendor
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 	$PRODUCTID = $json["PRODUCTID"];
 	$VENDORID = $json["VENDORID"];
-	$PRICE = $json["PRICE"];
-	$sql = "INSERT INTO EXTERNALPRICE (EXTERNALITEM_ID, EXTERNALVENDOR_ID,PRICE) values (?,?,?)";
+	$COST = $json["COST"];
+	$sql = "INSERT INTO EXTERNALCOST (PRODUCTID, EXTERNALVENDOR_ID,COST) values (?,?,?)";
 	$req =  $db->prepare($sql);
-	$req->execute(array($PRODUCTID,$VENDORID,$PRICE));	
+	$req->execute(array($PRODUCTID,$VENDORID,$COST));	
 	$result["result"] = "OK";
 	$response = $response->withJson($result);
 	return $response;
 });
 
-$app->delete('/externalprice',function($request,Response $response){	// unLink item with vendor
+$app->delete('/externalcost',function($request,Response $response){	// unLink item with vendor
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 	$PRODUCTID = $json["PRODUCTID"];
 	$VENDORID = $json["VENDORID"];
-	$sql = "DELETE FROM EXTERNALPRICE 
+	$sql = "DELETE FROM EXTERNALCOST 
 			WHERE PRODUCTID = ? 
 			AND EXTERNALVENDOR_ID = ?";
 	$req =  $db->prepare($sql);
@@ -8230,7 +8230,7 @@ $app->post('/externalitem', function($request,Response $response){ // Add item w
 	$res = $req->execute(array($barcode,$EXTVENDORID));
 
 	if ($res == false){
-		$sql = "INSERT INTO EXTERNALCOST (EXTERNALITEM_ID, EXTERNALVENDOR_ID,COST) values (?,?,?)";
+		$sql = "INSERT INTO EXTERNALCOST (PRODUCTID, EXTERNALVENDOR_ID,COST) values (?,?,?)";
 		$req =  $db->prepare($sql);
 		$req->execute(array($barcode,$EXTVENDORID,$cost));
 		$result["result"] = "OK";
@@ -8239,6 +8239,9 @@ $app->post('/externalitem', function($request,Response $response){ // Add item w
 		$result["result"] = "KO";
 		$result["message"] = "Item already exist with external vendor";
 	}
+	$sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
 
 	$response = $response->withJson($result);
 	return $response;	
@@ -8277,7 +8280,7 @@ $app->get('/externalitemsearch', function($request,Response $response){
 
 		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
 						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						AND EXTERNALITEM_ID = ? ORDER BY CREATED DESC";
+						AND PRODUCTID = ? ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastorder = $req->fetch(PDO::FETCH_ASSOC);
@@ -8285,9 +8288,9 @@ $app->get('/externalitemsearch', function($request,Response $response){
 		$item["LASTORDERQTY"] = $lastorder["QUANTITY"] ?? "N/A";
 		$item["LASTORDERCOST"] = $lastorder["PRICE"] ?? "N/A";
 
-		$sql = "SELECT * FROM EXTERNALPRICE,EXTERNALVENDOR 
-						 WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						 AND EXTERNALITEM_ID = ? 
+		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
+						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND PRODUCTID = ? 
 						 ORDER BY PRICE ASC";
 	  	$req = $db->prepare($sql);
 	  	$req->execute(array($item["PRODUCTID"]));
@@ -8357,7 +8360,7 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 
 		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
 						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						AND EXTERNALITEM_ID = ? ORDER BY CREATED DESC";
+						AND PRODUCTID = ? ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["ID"]));
 
@@ -8366,10 +8369,10 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 		$item["LASTORDERQTY"] = $lastorder["QUANTITY"];
 		$item["LASTORDERPRICE"] = $lastorder["PRICE"];
 
-		$sql = "SELECT * FROM EXTERNALPRICE,EXTERNALVENDOR 
-						 WHERE  EXTERNALPRICE.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						 AND EXTERNALITEM_ID = ? 
-						 ORDER BY PRICE ASC";
+		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
+						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND PRODUCTID = ? 
+						 ORDER BY COST ASC";
 	  	$req = $db->prepare($sql);
 	  	$req->execute(array($item["ID"]));
 	  	$prices = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8455,7 +8458,6 @@ $app->get('/externalorder', function($request,Response $response){
 	$resp["data"] = $orders;
 	$response = $response->withJson($resp);
 });
-
 // Penalty
 
 $app->get('/penalty/{status}',function($request,Response $response) {

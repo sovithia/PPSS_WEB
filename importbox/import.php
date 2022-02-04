@@ -74,7 +74,8 @@ function insertVendors()
                                 $nameen,$namekh,$phone1,$phone2,
                                 $phone3,$phone4,$address1,$address2,
                                 $ctype1,$chandle1,$ctype2,$chandle2);
-            $debug = var_export($params, true);  
+            //$debug = var_export($params, true);  
+            //error_log($debug);        
             $req->execute($params);            
         }
 
@@ -86,7 +87,7 @@ function insertItems()
 {
     $db = getInternalDatabase();
     $dbBlue = getDatabase();
-    $sql = "DELETE FROM EXTERNALPRICE";
+    $sql = "DELETE FROM EXTERNALCOST";
     $req = $db->prepare($sql);
     $req->execute(array());
 
@@ -99,8 +100,8 @@ function insertItems()
         $barcode = $linedata[0] ?? "";
         //$nameen = $linedata[1] ?? "";
         //$namekh = $linedata[2] ?? "";
-        $cost = $linedata[3] ?? "";
-        //$note = $linedata[4] ?? "";
+        //$note = $linedata[3] ?? "";
+        $cost = $linedata[4] ?? "";
         $vendorid = $linedata[5] ?? "";
         /*
         $sql = "SELECT * FROM EXTERNALITEM WHERE NAMEEN = ?"; 
@@ -121,18 +122,19 @@ function insertItems()
         }
         */
 
-        $sql = "SELECT * FROM EXTERNALPRICE WHERE EXTERNALVENDOR_ID = ? AND EXTERNALITEM_ID = ?";
+        $sql = "SELECT * FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = ? AND PRODUCTID = ?";
         $req = $db->prepare($sql);
         $req->execute(array($vendorid,$barcode));
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if ($res == false){
-            $sql = "INSERT INTO EXTERNALPRICE (EXTERNALVENDOR_ID,PRODUCTID,COST) VALUES (?,?,?)";
+            $sql = "INSERT INTO EXTERNALCOST (EXTERNALVENDOR_ID,PRODUCTID,COST) VALUES (?,?,?)";
             $req = $db->prepare($sql);
             $req->execute(array($vendorid,$barcode,$cost));
         }
+        
         $sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
         $req = $dbBlue->prepare($sql);
-        $req->execute(array($barcode));
+        $req->execute(array($barcode));        
     }
     fclose($itemsfile);
 }
