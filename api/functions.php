@@ -1008,6 +1008,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 								}
 								else 
 								{
+									$occurence = 0;
 									if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
 										$occurence++;
 									if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
@@ -1033,9 +1034,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 															
 								$data["start"] = $today->format('Y-m-d');
 								$today->add(new DateInterval('P30D'));
-								$data["end"] = $today->format('Y-m-d');
-								$data["duration"] = $duration;
-
+								$data["end"] = $today->format('Y-m-d');								
 								break;			
 							}
 					}	
