@@ -2829,9 +2829,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			if ($res2["VENDID"] != $res3["VENDID"]){
 				$data["result"] = "KO";	
 				if (isset($data["message"]))
-					$data["message"] = $item["PRODUCTID"]." Different vendor";
+					$data["message"] .= "|".$item["PRODUCTID"]." Different vendor";					
 				else
-					$data["message"] .= "|".$item["PRODUCTID"]." Different vendor";
+					$data["message"] = $item["PRODUCTID"]." Different vendor";
 					continue;				
 			}
 
