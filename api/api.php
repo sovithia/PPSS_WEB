@@ -2912,16 +2912,37 @@ $app->delete('/supplyrecordpool', function(Request $request,Response $response) 
 // SUPPLYRECORDNPOPOOL
 $app->post('/linkproducttovendor',function(Request $request,Response $response) {
 	$db = getDatabase();
+	
 	$json = json_decode($request->getBody(),true);	
-	$vendid = $json["VENDID"];	
+	
 	$productid = $json["PRODUCTID"];
-	$author = $json["AUTHOR"];
+	$author = blueUser($json["AUTHOR"]);
 	$today = date("Y-m-d");
 	
+	$inDB = getInternalDatabase();
+	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL";
+	$req = $inDB->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false){
+		$data["result"] = "KO";	
+		$data["message"] = "Unexpected error";
+		$response = $response->withJson($data);
+		return $response;
+	}
+	$firstItemID = $res["PRODUCTID"];
+
+	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($firstItemID));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$vendid = $res["VENDID"];
+
+
 	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT) 
 			VALUES(?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute($productid,$vendid,$productid,$author,$today,$author);
+	$req->execute(array($productid,$vendid,$productid,$author,$today,$author));
 
 	$data["result"] = "OK";	
 	$response = $response->withJson($data);
@@ -2953,28 +2974,37 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX) values (?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"]));
 	}
 	else
 	{
-		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?"; // TARGET ITEM
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
-		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?"; // FIRST ITEM
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($res["PRODUCTID"]));
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
 		
 
-		if ($res2 != false && $res3 != false && $res2["VENDID"] != $res3["VENDID"]){
-			$data["result"] = "KO1";	
-			$data["message"] = "Product from different vendor";
-			$response = $response->withJson($data);
-			return $response;
+		
+		if ($res2 != false && $res3 != false && $res2["VENDID"] != $res3["VENDID"])		
+		{
+			$sql = "SELECT * FROM ICVENDOR WHERE PRODUCTID = ? AND VENDID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($json["PRODUCTID"],$res3["VENDID"]));
+			$res4 = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res4 == false){ // IF NOT PRESENT IN ICVENDOR AND DIFFERENT VENDID FROM FIRST ITEM
+				$data["result"] = "KO1";	
+				$data["message"] = "Product from different vendor";
+				$response = $response->withJson($data);
+				return $response;
+			}			
 		}
 
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE PRODUCTID = ?";
@@ -2999,9 +3029,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			return $response;
 		}
 
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX) values (?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -3011,24 +3041,27 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-
+	
 	$id = $request->getAttribute('userid');	
-	$sql = "SELECT * FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ? ORDER BY CREATED DESC";
+	$sql = "SELECT * FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ? ORDER BY CREATED DESC";	
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
 	$newData = array();
 	$amountexcludevat = 0;
 	$amountvat = 0;
 	$grandtotal = 0;
+	$amountDiscount = 0;
+	
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME, PACKINGNOTE,APVENDOR.TAX 
 				FROM ICPRODUCT,APVENDOR 
 				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
+		$req->execute(array($item["PRODUCTID"]));  
 		$res = $req->fetch(PDO::FETCH_ASSOC);
+
 		if ($res != false){
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 			$item["PRODUCTNAME1"] = $res["PRODUCTNAME1"];			
@@ -3039,8 +3072,8 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 			array_push($newData,$item);	
 
 			$amountexcludevat += ($item["COST"] * $item["QUANTITY"]);	
-			$amountvat += ($item["COST"] * ($res["TAX"] / 100)) * $item["QUANTITY"];			
-			$grandtotal +=  ($item["COST"] * (1 + ($res["TAX"] / 100))) * $item["QUANTITY"];
+			$amountvat += ($item["COST"] * ($item["TAX"] / 100)) * $item["QUANTITY"];			
+			$grandtotal +=  ($item["COST"] * (1 + ($item["TAX"] / 100))) * $item["QUANTITY"];
 			$amountDiscount += (($item["DISCOUNT"] / 100) * $item["COST"]);
 		}		
 	}
@@ -3048,8 +3081,9 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 	$tmp["ITEMS"] = $newData;
 	$tmp["AMTEXCLVAT"] = round($amountexcludevat,2);
 	$tmp["AMTVAT"] = round($amountvat,2);
-	$tmp["GRANDTOTAL"] = round($grandtotal,2);
 	$tmp["AMTDISCOUNT"] = round($amountDiscount,2);
+	$tmp["GRANDTOTAL"] = round($grandtotal,2) - $tmp["AMTDISCOUNT"];
+	
 	$data["result"] = "OK";				
 	$data["data"] = $tmp;
 	$response = $response->withJson($data);
