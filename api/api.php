@@ -7395,13 +7395,12 @@ $app->get('/expiresearch',function($request,Response $response) {
 $app->post('/expirepromoted',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-	$sql = "INSERT INTO EXPIREPROMOTED (PRODUCTID,EXPIREDATE,TYPE) values (?,?,?)";
+	$sql = "INSERT INTO EXPIREPROMOTED (PRODUCTID,EXPIREDATE,TYPE,PRODUCTNAME,AUTHOR) values (?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute($json["PRODUCTID"],$json["EXPIREDATE"],$json["TYPE"]);
-	$req->execute();
-
+	$req->execute(array($json["PRODUCTID"],$json["EXPIREDATE"],$json["TYPE"],$json["PRODUCTNAME"],$json["AUTHOR"]));
 	$resp = array();
 	$resp["result"] = "OK";		
+	$response = $response->withJson($resp);
 	return $response;
 
 });
@@ -7413,7 +7412,8 @@ $app->delete('/expirepromoted/{id}', function ($request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$resp = array();
-	$resp["result"] = "OK";		
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);	
 	return $response;
 });
 
@@ -7422,8 +7422,9 @@ $app->get('/expirereturnalert',function ($request,Response $response){
 	$dbBlue = getDatabase();
 
 	$data = array();
-	$sql = "SELECT PRODUCTID,EXPIREDATE FROM EXPIREPROMOTED WHERE SUBSTRING(TYPE,1,1) = 'R' AND CREATED > DATETIME('now', '-12 month') ";
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
+	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$data["PROMOTED"] = $items;
@@ -7474,8 +7475,9 @@ $app->get('/expirenoreturnalert',function ($request,Response $response){
 	$dbBlue = getDatabase();
 	$data = array();
 
-	$sql = "SELECT PRODUCTID,EXPIREDATE FROM EXPIREPROMOTED WHERE SUBSTRING(TYPE,1,2) = 'NR' AND CREATED > DATETIME('now', '-12 month') ";
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
+	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data["PROMOTED"] = $items;
 
@@ -8684,8 +8686,6 @@ $app->put('/externalorder',function($request,Response $response){
 	return $response;
 });
 
-
-
 $app->post('/externalorder', function($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -8712,7 +8712,8 @@ $app->get('/externalorder', function($request,Response $response){
 	$dbBLUE = getDatabase();
 	$ORDERS = array();
 	
-	$sql = "SELECT PRODUCTID,QUANTITY,COST,TYPE,AUTHOR,VENDORNAME,EXTERNALORDER.CREATED					
+	$sql = "SELECT ID,PRODUCTID,QUANTITY,COST,TYPE,
+					AUTHOR,VENDORNAME,EXTERNALORDER.CREATED					
 					FROM EXTERNALORDER					
 					WHERE STATUS = 'ORDERED' 
 					AND TYPE = 'EXTERNAL'
@@ -8731,7 +8732,8 @@ $app->get('/externalorder', function($request,Response $response){
 	}
 	$ORDERS["ORDERED"] = $newData;
 
-	$sql = "SELECT PRODUCTID,QUANTITY,COST,TYPE,VENDORNAME,EXTERNALORDER.CREATED					
+	$sql = "SELECT  ID,PRODUCTID,QUANTITY,COST,TYPE,VENDORNAME,EXTERNALORDER.CREATED,
+					DELIVERYDATE, DELIVERYQTY,DELIVERYPRICE
 					FROM EXTERNALORDER					
 					WHERE STATUS = 'DELIVERED' 
 					AND TYPE = 'EXTERNAL'
@@ -8760,9 +8762,14 @@ $app->post('/externalorderToNOPOPool', function($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
 
-	$json = json_decode($request->getBody(),true);
-	$items = $json["ITEMS"];
+	$json = json_decode($request->getBody(),true);	
+	$items =  json_decode($json["ITEMS"],true);	
 	$today = date("Y-m-d");
+
+	// Check if same vendor 
+	$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["USERID"]));
 
 	foreach($items as $item){
 	
@@ -8773,13 +8780,13 @@ $app->post('/externalorderToNOPOPool', function($request,Response $response){
 			 DELIVERYPRICE = ?
 				WHERE ID = ?";
 		$req = $db->prepare($sql);
+		error_log($item["ID"]);
 		$req->execute(array($today, $item["DELIVERYQTY"],$item["DELIVERYPRICE"],$item["ID"]));
 		
 		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["DELIVERYQTY"],$json["USERID"],0,$item["DELIVERYPRICE"],"WH2"));
 	}
-
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
