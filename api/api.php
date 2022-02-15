@@ -4346,6 +4346,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			}
 			else
 			{
+				$theQty = $item["REQUEST_QUANTITY"];
 				if (intval($theQty) > 0)
 				{
 					$sql = "UPDATE ITEMREQUESTUNGROUPEDPURCHASEPOOL SET REQUEST_QUANTITY =  ? WHERE  PRODUCTID = ?";
@@ -4378,10 +4379,12 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 					$res = $req->fetch(PDO::FETCH_ASSOC);
 				} 
 				$vendid = $res["VENDID"];			
-				// 					"MAKRO CLICK"						"SOPHIE SOK"
+				// 					"MAKRO CLICK"	"SOPHIE SOK"
 				if ($vendid != "400-429" && $vendid != "400-463")
 					$vendid = "OTHER";
 				
+
+				/*
 				if (isset($item["SPECIALQTY"]) && isset($item["REASON"])) // SPECIAL QTY AFTER SUBMIT FOR RESTOCK
 				{
 						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?,?)";
@@ -4390,31 +4393,26 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 						$theQty = $item["SPECIALQTY"];
 				}
 				else
-					$theQty = $item["REQUEST_QUANTITY"];
-
-				if(intval($item["REQUEST_QUANTITY"]) > 0)
+					$theQty = $item["REQUEST_QUANTITY"];	
+				*/
+				if(floatval($item["DECISIONQTY"]) > 0)
 				{
 					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));	
+					$req->execute(array($item["PRODUCTID"],$item["DECISIONQTY"],$vendid));	
 				}				
 			}
 			else
 			{
-				if(intval($item["REQUEST_QUANTITY"]) > 0)
+				if(intval($item["DECISIONQTY"]) > 0)
 				{
 					$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
+					$req->execute(array($item["DECISION_QTY"],$item["PRODUCTID"]));
 				}
 			}
-		}
-
-		if ($suffix == "")
-			$targetQty =$item["REQUEST_QUANTITY"];
-		else
-			$targetQty =$item["REQUEST_QUANTITY"];	
-	
+		}		
+		$targetQty =$item["REQUEST_QUANTITY"];	
 		// UPDATE POOL
 		$sql = "SELECT REQUEST_QUANTITY FROM ".$tableName." WHERE PRODUCTID = ?".$suffix.$suffix2;			
 		$req = $db->prepare($sql);
@@ -5121,9 +5119,6 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		$db = getInternalDatabase();
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
-
-
-
 		$errors = array();
 		$AUTHOR = "";
 		if(isset($json["AUTHOR"]))
@@ -5141,9 +5136,9 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		}else{			
 			$items = $json["ITEMS"];
 		}
+		$message = "";
 		foreach($items as $item)
-		{	
-	
+		{		
 			if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
 				continue;		
 			// TEST PRODUCT EXISTENCE		
@@ -5155,9 +5150,12 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$message .= "\n".$item["PRODUCTID"]." Not Found";
 				continue;
 			} 
-
-
 			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");			
+			if ($orderstats["FINALQTY"] == 0){
+				$message .= "\n".$item["PRODUCTID"]." ".$orderstats["DECISION"];
+				continue;
+			}
+
 			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));								
@@ -5176,32 +5174,14 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 			else {				
 				$vendname = "N/A";
 				$packingnote = "N/A";
-			}
-
-			if (intval($item["REQUEST_QUANTITY"]) <= 0 && intval($orderstats["FINALQTY"]) <= 0){
-				if (!isset($data["message"]))
-					$data["message"] = $item["PRODUCTID"]." cannot order, use special if really needed";
-				else
-					$data["message"] .= "|".$item["PRODUCTID"]."  cannot order, use special if really needed";
-				continue;	 				
-			}
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME,COMMENT) values(?,?,?,?,?,?,?,?)";
-			$req = $db->prepare($sql);	
-
-			if (isset($item["REQUEST_QUANTITY"]) && $item["REQUEST_QUANTITY"] != "" && $item["REQUEST_QUANTITY"] != null)
-				$qty = $item["REQUEST_QUANTITY"];
-			else if (isset($item["SPECIAL_QUANTITY"]) && $item["SPECIAL_QUANTITY"] != "" && $item["SPECIAL_QUANTITY"] != null)
-				$qty = $item["SPECIAL_QUANTITY"];
-			else 	
-				$qty = $orderstats["FINALQTY"];
-
-			if (isset($item["REASON"]))
-				$reason = $item["REASON"];
-			else 
-				$reason = "";
-
-			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"],$reason));																						
-		}		
+			}			
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
+			$req = $db->prepare($sql);				
+			$qty = $orderstats["FINALQTY"];			
+			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																						
+		}	
+	if($message != "")
+		$data["message"] = $message;	
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
@@ -5237,7 +5217,6 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 
 $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $response) {	
 	
-
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
@@ -6884,17 +6863,7 @@ $app->get('/bestseller',function($request,Response $response) {
 });
 
 $app->get('/info',function(Request $request,Response $response){
-	phpinfo();
-	/*
-	$db=getDatabase();	
-	$sql = "SELECT TOP(1) * FROM ICPRODUCT";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$item = $req->fetch();
-	$response = $response->withJson($item);
-	
-	return $response;
-	*/	
+	phpinfo();	
 });
 
 
@@ -6912,6 +6881,7 @@ $app->get('/depleteditems', function($request,Response $response) {
 					AND LOCID = 'WH1'
 					AND ONHAND < ICLOCATION.ORDERPOINT 
 					AND ICLOCATION.ORDERPOINT > 0
+					AND PPSS_IS_BLACKLIST <> 'Y'
 					GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -8242,9 +8212,7 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 		$onedata["LASTRECEIVEQTY"] =  $lastreceive["TRANQTY"] ?? "N/A";
 		$onedata["LASTRECEIVECOST"] = $lastreceive["CURRENCY_COST"] ?? "N/A";
 
-		$sql = "SELECT * FROM EXTERNALORDER,EXTERNALVENDOR 
-						WHERE EXTERNALORDER.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						AND PRODUCTID = ? ORDER BY CREATED DESC";
+		$sql = "SELECT * FROM EXTERNALORDER	WHERE PRODUCTID = ? ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 
@@ -8254,9 +8222,8 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 		$onedata["LASTORDERCOST"] = $lastorder["PRICE"] ?? "N/A";
 
 		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
-						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
-						 AND PRODUCTID = ? 
-						 ORDER BY COST ASC";
+				WHERE EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID
+				AND PRODUCTID = ? ORDER BY COST ASC";
 	  	$req = $db->prepare($sql);
 	  	$req->execute(array($item["PRODUCTID"]));
 	  	$prices = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8795,6 +8762,11 @@ $app->post('/externalorderToNOPOPool', function($request,Response $response){
 $app->post('/externalcost', function($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
+
+	$sql = "DELETE FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = ? AND PRODUCTID = ?";
+	$req =  $db->prepare($sql);
+	$req->execute(array($json["EXTERNALVENDOR_ID"],$json["PRODUCTID"])); 
+
 	$sql = "INSERT INTO EXTERNALCOST (EXTERNALVENDOR_ID,PRODUCTID,COST) values (?,?,?)";	
 	$req = $db->prepare($sql);
 	$req->execute(array($json["EXTERNALVENDOR_ID"],$json["PRODUCTID"],$json["COST"]));
@@ -9014,6 +8986,21 @@ $app->get('/discountsumlist',function ($request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+$app->post('/blacklist',function ($request,Response $response){
+	$db = getDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = 'Y' WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+
+	$resp = array();
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');

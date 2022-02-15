@@ -327,15 +327,17 @@ function renderLeftSidebar()
   
   $hide = 'style="display:none"';          
 
+  
   $sectionSTORECLERK =      '<li class="li-hover"><div class="divider"></div></li>
                              <li class="li-hover"><p class="ultra-small margin more-text">STORE CLERK</p></li>                                                        
                           
                             <li '.hoverColor("itemrequestactionlist"."itemrequestaction"."aDEMAND").'>
                             <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=aDEMAND&status=SUBMITTED">
                             <img src="images/icons/STRCLRK/ItemRequestDemandSubmittedListPage.png" width="30px" height="30px">ItemDemand(?)</a></li>
-                            ';            
+                            ';    
+                                
 
-  $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
+    $sectionSTORESUPERVISOR ='<li  class="li-hover"><div class="divider"></div></li>
                             <li class="li-hover"><p class="ultra-small margin more-text">STORE SUPERVISOR</p></li>
                                                   
                             <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."DEMAND").' >
@@ -367,12 +369,12 @@ function renderLeftSidebar()
 
                             <li  '.hoverColor("itemrequestactionlist"."itemrequestaction"."vTRANSFER").' >
                             <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=vTRANSFER&status=VALIDATED" >
-                            <img src="images/icons/STRSPVR/ItemRequestTransferValidatedListPage.png" width="30px" height="30px">ItemTransfer(#)</a></li>
-                            
-                            
+                            <img src="images/icons/STRSPVR/ItemRequestTransferValidatedListPage.png" width="30px" height="30px">ItemTransfer(#)</a></li>                                                        
                      ';
-
- $sectionVALIDATOR =     '<li class="li-hover"><div class="divider"></div></li>
+ 
+ 
+ 
+  $sectionVALIDATOR =     '<li class="li-hover"><div class="divider"></div></li>
                            <li class="li-hover"><p class="ultra-small margin more-text">VALIDATOR</p></li>
                           
                            <li '.hoverColor("supplyrecordlist"."supplyrecord"."WAITING"."VAL").' >
@@ -383,8 +385,8 @@ function renderLeftSidebar()
                            <a href="?display=supplyrecordlist&entity=supplyrecord&status=VALIDATED&action=VAL" >
                            <img src="images/icons/VAL/SupplyRecordListVALDonePage.png" width="30px" height="30px">SupplyRecord(Done)</a></li>                        
                           ';
-
-
+  $sectionVALIDATOR = '';
+  
   $sectionWAREHOUSECLERK =     '<li class="li-hover"><div class="divider"></div></li>
                            <li class="li-hover"><p class="ultra-small margin more-text">WAREHOUSE</p></li>
                           
@@ -425,9 +427,9 @@ function renderLeftSidebar()
                            <a href="?display=itemrequestactionlist&entity=itemrequestaction&type=TRANSFER&status=SUBMITTED" >
                            <img src="images/icons/WH/ItemRequestTransferSubmittedListPage.png" width="30px" height="30px">ItemTransfer(?)</a></li>
                            ';
-
+  
                         
-
+  
   $sectionPURCHASER = '<li class="li-hover"><div class="divider"></div></li>
                         <li  class="li-hover"><p class="ultra-small margin more-text">PURCHASER</p></li>
                                                 
@@ -570,18 +572,17 @@ function renderLeftSidebar()
 
 
   // SPECIFIC
-  $modulesList["STORECLERK"] = $sectionSTORECLERK;
-  $modulesList["STORESUPERVISOR"] = $sectionSTORESUPERVISOR;
+  $modulesList["STORECLERK"] = '';//$sectionSTORECLERK;
+  $modulesList["STORESUPERVISOR"] = '';//$sectionSTORESUPERVISOR;
 
-  $modulesList["VALIDATOR"] =  $sectionVALIDATOR;
-  $modulesList["WAREHOUSECLERK"] =  $sectionWAREHOUSECLERK;
-  $modulesList["PURCHASER"] = $sectionPURCHASER;
+  $modulesList["VALIDATOR"] = '';// $sectionVALIDATOR;
+  $modulesList["WAREHOUSECLERK"] = ''; //$sectionWAREHOUSECLERK;
+  $modulesList["PURCHASER"] = '';//$sectionPURCHASER;
 
   $modulesList["RECEIVER"] = $sectionRECEIVER;
   $modulesList["ACCOUNTANT"] = $sectionACCOUNTANT;
   
   
-
   // FOR ALL 
   $modulesList["COMMON"] = $sectionCOMMON;
   $modulesList["LABELS"] = $sectionLABELS;

@@ -648,7 +648,8 @@ function orderStatistics($barcode,$type = "RESTOCK")
 	if($res == false){
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($barcode));
+		$req->execute(array($barcode));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$stats["FINALQTY"] = 0;
 		$stats["PRICE"] = $res["PRICE"];				
 		if ($res == false)
