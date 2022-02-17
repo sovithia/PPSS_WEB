@@ -2129,7 +2129,6 @@ $app->get('/receivedpodetail/{poreceivenumber}', function(Request $request,Respo
 	return $response;
 });
 
-
 $app->get('/orderedCategories',function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$sql = "SELECT CATEGORYNAME FROM CATEGORY ORDER BY CATEGORYNAME ASC";
@@ -2412,8 +2411,6 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	$vendorname = $request->getParam('VENDORNAME','');
 	$vendid = $request->getParam('VENDID','');
 
-
-
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
@@ -2512,7 +2509,6 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 
 	return $response;
 });
-
 
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -2740,7 +2736,9 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	return $response;
 	});
 
-$app->post('/supplyrecordpool', function(Request $request,Response $response) {
+
+
+	$app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -2908,7 +2906,6 @@ $app->delete('/supplyrecordpool', function(Request $request,Response $response) 
 	$response = $response->withJson($data);
 	return $response;
 });
-
 // SUPPLYRECORDNPOPOOL
 $app->post('/linkproducttovendor',function(Request $request,Response $response) {
 	$db = getDatabase();
@@ -3103,6 +3100,7 @@ $app->delete('/supplyrecordnopopool', function(Request $request,Response $respon
 	$response = $response->withJson($data);
 	return $response;
 });
+
 
 
 function splitPOWithItems($ponumber,$items)
@@ -3531,7 +3529,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	else if ($json["ACTIONTYPE"] == "WHE"){
 		
 		pictureRecord($json["SIGNATURE"],"WH",$json["IDENTIFIER"]);
-
 		if (isset($json["ITEMS"]))
 		{
 
@@ -3579,6 +3576,44 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		}
 		$data["result"] = "OK";
+	}
+	else if ($json["ACTIONTYPE" == "RCVA"]){
+		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
+			$ponumber  = $json["LINKEDPO"];				
+		else
+			$ponumber  = $json["PONUMBER"];
+
+		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+			
+		if ($res["LOCID"] == "WH1")
+			$status = 'RECEIVEDFORTRANSFERFRESH';
+		else if ($res["LOCID"] == "WH2")
+			$status = 'RECEIVEDFORTRANSFER';
+
+		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
+		{
+			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+				LINKEDPO = :linkedpo WHERE ID = :identifier";			
+			$req = $db->prepare($sql);			
+			$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);								
+		}
+		else{
+			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+				 WHERE ID = :identifier";			
+			$req = $db->prepare($sql);			
+		}
+		$req->bindParam(':status',$status,PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->execute();						
+		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
+		$data["result"] = "OK";
+
+		receivePO($ponumber,$json["AUTHOR"],"");
+
 	}
 	else if ($json["ACTIONTYPE"] == "RCV"){
 
@@ -4263,6 +4298,16 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
 	$items = json_decode($json["ITEMS"],true);
+
+	if (count($items) == 0)
+	{
+		$data["result"] = "KO";
+		$data["message"] = "no items";
+		$response = $response->withJson($data);
+		return $response->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+	}
 	$suffix = "";
 	$suffix2 = "";
 	$tableName = "";
@@ -4383,18 +4428,6 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				if ($vendid != "400-429" && $vendid != "400-463")
 					$vendid = "OTHER";
 				
-
-				/*
-				if (isset($item["SPECIALQTY"]) && isset($item["REASON"])) // SPECIAL QTY AFTER SUBMIT FOR RESTOCK
-				{
-						$sql = "INSERT INTO ITEMSPECIALORDER (PRODUCTID,OLDQUANTITY,NEWQUANTITY,REASON,USER) VALUES (?,?,?,?,?)";
-						$req = $db->prepare($sql);
-						$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$item["SPECIALQTY"],$item["REASON"],$AUTHOR));						
-						$theQty = $item["SPECIALQTY"];
-				}
-				else
-					$theQty = $item["REQUEST_QUANTITY"];	
-				*/
 				if(floatval($item["DECISIONQTY"]) > 0)
 				{
 					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
@@ -4408,7 +4441,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				{
 					$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["DECISION_QTY"],$item["PRODUCTID"]));
+					$req->execute(array($item["DECISIONQTY"],$item["PRODUCTID"]));
 				}
 			}
 		}		
@@ -6875,14 +6908,14 @@ $app->get('/depleteditems', function($request,Response $response) {
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
 		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
 		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
-				  FROM ICLOCATION,ICPRODUCT 
-					WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
-					AND ACTIVE = 1
-					AND LOCID = 'WH1'
-					AND ONHAND < ICLOCATION.ORDERPOINT 
-					AND ICLOCATION.ORDERPOINT > 0
-					AND PPSS_IS_BLACKLIST <> 'Y'
-					GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";
+		FROM ICLOCATION,ICPRODUCT 
+		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ACTIVE = 1
+		AND LOCID = 'WH1'
+		AND ONHAND < ICLOCATION.ORDERPOINT 
+		AND ICLOCATION.ORDERPOINT > 0					
+		AND PPSS_IS_BLACKLIST IS NULL
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8305,13 +8338,13 @@ $app->post('/externalvendor', function($request,Response $response){ // CREATE V
 	$json["PHONE4"],$json["ADDRESS1"],$json["ADDRESS2"],$json["COMMUNICATIONTYPE1"],$json["COMMUNICATIONHANDLE1"],
 	$json["COMMUNICATIONTYPE2"],$json["COMMUNICATIONHANDLE2"],$json["COMMENT"]));
 	
-	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
-	
 	$resp = array();	
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+
 
 $app->put('/externalvendor', function($request,Response $response){ // UPDATE VENDOR
 	$db = getInternalDatabase();
@@ -8657,17 +8690,28 @@ $app->post('/externalorder', function($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
-	$PRODUCTID = $json["PRODUCTID"];
-	$AUTHOR = $json["AUTHOR"];
-	$COST = $json["COST"];
-	$TYPE = $json["TYPE"];
-	$QUANTITY = $json["QUANTITY"];
-	$VENDORNAME = $json["VENDORNAME"];
-
-	$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME) 
-					values (?,?,?,?,?,?)";
-	$req = $db->prepare($sql);
-	$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME));
+	if (isset($json["ITEMS"]))
+	{
+		$items = json_decode($json["ITEMS"],true);
+		foreach($items as $item){
+			$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME) 
+			values (?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$json["AUTHOR"],$item["COST"],$item["QUANTITY"],$item["TYPE"],$item["VENDORNAME"]));
+		}
+	}
+	else {
+		$PRODUCTID = $json["PRODUCTID"];
+		$AUTHOR = $json["AUTHOR"];
+		$COST = $json["COST"];
+		$TYPE = $json["TYPE"];
+		$QUANTITY = $json["QUANTITY"];
+		$VENDORNAME = $json["VENDORNAME"];
+		$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME) 
+						values (?,?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME));
+	}
 
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
