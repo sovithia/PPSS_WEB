@@ -630,12 +630,12 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 			if ($remains > ($multiple / 2))		
 				return  $lastrcvqty;
 			else if ($remains < ($multiple / 2))				
-				return $increasedQty + ($multiple - $remains); // -1
+				return $decreasedQty + ($multiple - $remains); // -1
 		}		 		
 	}
 }
 
-function orderStatistics($barcode,$type = "RESTOCK")
+function orderStatistics($barcode)
 {
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
@@ -702,15 +702,8 @@ function orderStatistics($barcode,$type = "RESTOCK")
 
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
-	if($type == "RESTOCK"){
-		$sql = "SELECT LOCONHAND FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
-		$req = $db->prepare($sql);
-		$req->execute(array($barcode));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$ONHAND = $res["LOCONHAND"];
-	}
-	else 
-		$ONHAND = $res["ONHAND"]; //**	
+	
+	$ONHAND = $res["ONHAND"]; //**	
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
 	

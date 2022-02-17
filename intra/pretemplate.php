@@ -98,7 +98,7 @@ function generateExcel($items)
             continue;
     	 $sheet->getRowDimension($count)->setRowHeight(50); 
    
-		$orderstats = orderStatistics($item,"RESTOCK");        
+		$orderstats = orderStatistics($item);        
 
 		$sheet->setCellValue('A'.$count, $item);                       
 		if ($orderstats == "NOT FOUND" || $orderstats == "INACTIVE"){

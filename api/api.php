@@ -1057,7 +1057,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($item != null)
 	{
 		if ($type == "ORDERSTATS"){
-			$stats = orderStatistics($barcode,"PURCHASE");
+			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
 			if(isset($stats["RCVQTY"]))
@@ -1070,7 +1070,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			else 
 				$item["DISCOUNT"] = "0";
 		}else if ($type == "RESTOCKSTATS"){
-			$stats = orderStatistics($barcode,"RESTOCK");
+			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];	
 			$item["LASTRCVQTY"] = $stats["RCVQTY"];	
@@ -2787,7 +2787,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		
-		$stats = orderStatistics($item["PRODUCTID"],"PURCHASE");
+		$stats = orderStatistics($item["PRODUCTID"]);
 		if ( ($stats["DECISION"] == "NEVER RECEIVED" || $stats["DECISION"] == "TOOEARLY" ) && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
 			$message .= "\n".$item["PRODUCTID"]." Not Added";
 			continue;
@@ -3859,7 +3859,7 @@ $app->get('/itemstatistics/{id}', function(Request $request,Response $response) 
 $app->get('/itemstats/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
   
-	$stats = orderStatistics($id,"RESTOCK");
+	$stats = orderStatistics($id);
 	
 	$resp = array();
 	$resp["result"] = "OK";
@@ -4428,20 +4428,20 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				if ($vendid != "400-429" && $vendid != "400-463")
 					$vendid = "OTHER";
 				
-				if(floatval($item["DECISIONQTY"]) > 0)
+				if(floatval($item["REQUEST_QUANTITY"]) > 0)
 				{
 					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDID) VALUES (?,?,?)";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["DECISIONQTY"],$vendid));	
+					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendid));	
 				}				
 			}
 			else
 			{
-				if(intval($item["DECISIONQTY"]) > 0)
+				if(intval($item["REQUEST_QUANTITY"]) > 0)
 				{
 					$sql = "UPDATE ITEMREQUESTUNGROUPEDRESTOCKPOOL SET REQUEST_QUANTITY = ? WHERE  PRODUCTID = ?";
 					$req = $db->prepare($sql);
-					$req->execute(array($item["DECISIONQTY"],$item["PRODUCTID"]));
+					$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"]));
 				}
 			}
 		}		
@@ -5115,8 +5115,6 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 
 	$IDS = extractIDS($items);
 
-
-
 	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
 				FROM ICPRODUCT,APVENDOR 
@@ -5159,11 +5157,7 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		if (!isset($json["ITEMS"]))
 		{
 			$item["PRODUCTID"] = $json["PRODUCTID"];		
-			$item["REQUEST_QUANTITY"] = $json["REQUEST_QUANTITY"];			
-			if(isset($json["SPECIALQTY"]) && $json["SPECIALQTY"] != ""){
-				$item["SPECIALQTY"] = $json["SPECIALQTY"];
-				$item["REASON"] = $json["REASON"];		
-			}
+			$item["REQUEST_QUANTITY"] = $json["REQUEST_QUANTITY"];									
 			$items = array($item);
 
 		}else{			
@@ -5182,14 +5176,9 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 			if ($res == false){
 				$message .= "\n".$item["PRODUCTID"]." Not Found";
 				continue;
-			} 
-			$orderstats = orderStatistics($item["PRODUCTID"],"RESTOCK");			
-			if ($orderstats["FINALQTY"] == 0){
-				$message .= "\n".$item["PRODUCTID"]." ".$orderstats["DECISION"];
-				continue;
-			}
+			} 						
 
-			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?";
+			$sql = "DELETE FROM ITEMREQUESTRESTOCKPOOL where PRODUCTID =  ? AND LISTNAME = ?"; // to avoid double
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$json["LISTNAME"]));								
 
@@ -5208,10 +5197,10 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}			
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,DECISION,DECISIONQTY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?)";
 			$req = $db->prepare($sql);				
-			$qty = $orderstats["FINALQTY"];			
-			$req->execute(array($item["PRODUCTID"],$qty,$orderstats["DECISION"],$orderstats["FINALQTY"],$vendname,$packingnote,$json["LISTNAME"]));																						
+			
+			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendname,$packingnote,$json["LISTNAME"]));																						
 		}	
 	if($message != "")
 		$data["message"] = $message;	
@@ -5225,7 +5214,7 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 		$dbBlue = getDatabase();		
 		$json = json_decode($request->getBody(),true);	
 	
-		$orderstats = orderStatistics($json["PRODUCTID"],"PURCHASE");			
+		$orderstats = orderStatistics($json["PRODUCTID"]);			
 		
 		$sql = "DELETE FROM ITEMREQUESTPURCHASEPOOL where PRODUCTID =  ?";
 		$req = $db->prepare($sql);
@@ -8104,7 +8093,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$barcode = $request->getAttribute('barcode');
 
-	$stats = orderStatistics($barcode,"PURCHASE");
+	$stats = orderStatistics($barcode);
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $stats;
@@ -8692,7 +8681,7 @@ $app->post('/externalorder', function($request,Response $response){
 
 	if (isset($json["ITEMS"]))
 	{
-		$items = json_decode($json["ITEMS"],true);
+		$items = json_decode($jsn["ITEMS"],true);
 		foreach($items as $item){
 			$sql = "DELETE FROM EXTERNALORDER WHERE PRODUCTID = ? AND STATUS = 'ORDERED'";
 			$req = $db->prepare($sql);
@@ -8712,9 +8701,9 @@ $app->post('/externalorder', function($request,Response $response){
 		$QUANTITY = $json["QUANTITY"];
 		$VENDORNAME = $json["VENDORNAME"];
 		$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME,STATUS) 
-						values (?,?,?,?,?,?)";
+						values (?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME,'ORDERED','ORDERED'));
+		$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME,'ORDERED'));
 	}
 
 	$resp["result"] = "OK";	
