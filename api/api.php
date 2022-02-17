@@ -8694,10 +8694,14 @@ $app->post('/externalorder', function($request,Response $response){
 	{
 		$items = json_decode($json["ITEMS"],true);
 		foreach($items as $item){
-			$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME) 
+			$sql = "DELETE FROM EXTERNALORDER WHERE PRODUCTID = ? AND STATUS = 'ORDERED'";
+			$req = $db->prepare($sql);
+			$req->execute(array( ) );
+
+			$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME,STATUS) 
 			values (?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$json["AUTHOR"],$item["COST"],$item["QUANTITY"],$item["TYPE"],$item["VENDORNAME"]));
+			$req->execute(array($item["PRODUCTID"],$json["AUTHOR"],$item["COST"],$item["QUANTITY"],$item["TYPE"],$item["VENDORNAME"],'ORDERED'));
 		}
 	}
 	else {
@@ -8707,10 +8711,10 @@ $app->post('/externalorder', function($request,Response $response){
 		$TYPE = $json["TYPE"];
 		$QUANTITY = $json["QUANTITY"];
 		$VENDORNAME = $json["VENDORNAME"];
-		$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME) 
+		$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME,STATUS) 
 						values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME));
+		$req->execute(array($PRODUCTID,$AUTHOR,$COST,$QUANTITY,$TYPE,$VENDORNAME,'ORDERED','ORDERED'));
 	}
 
 	$resp["result"] = "OK";	
