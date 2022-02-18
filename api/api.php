@@ -3603,7 +3603,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();						
 		
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);		
-		//receivePO($ponumber,$json["AUTHOR"],"");
+		receivePO($ponumber,$json["AUTHOR"],"");
 		$data["result"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "RCV"){
