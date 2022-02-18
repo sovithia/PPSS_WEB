@@ -3101,8 +3101,6 @@ $app->delete('/supplyrecordnopopool', function(Request $request,Response $respon
 	return $response;
 });
 
-
-
 function splitPOWithItems($ponumber,$items)
 {
 	$dbBLUE = getDatabase();
@@ -3448,9 +3446,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 			$isSplitCompany = false;
 
-			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid == "100-328" || $vendid == "100-053" || 
-				$vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || $vendid == "100-015" || $vendid == "400-037" ||	
-				$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || $vendid == "100-103" || $vendid == "100-009" ||
+			if ($vendid == "100-003" || $vendid == "100-050" || $vendid == "100-135" || $vendid = "100-010" || $vendid == "100-135" ||  
+				$vendid == "100-328" || $vendid == "100-053" || $vendid == "100-065" || $vendid == "100-022" || $vendid == "100-140" || 
+				$vendid == "100-015" || $vendid == "400-037" ||	$vendid == "100-108" || $vendid == "100-150" || $vendid == "100-999" || 
+				$vendid == "100-103" || $vendid == "100-009" ||
 				$vendid == "100-059" || $vendid == "100-123"){
 				$isSplitCompany = true;
 			}
@@ -3725,8 +3724,6 @@ $app->delete('/supplyrecord/{id}',function(Request $request,Response $response) 
 	return $response;
 });
 
-
-
 $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $response) {
 	$id = $request->getAttribute('id');
 
@@ -3746,7 +3743,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	if ($hidenoreceive == 'YES')
 	{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
-					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
@@ -3754,7 +3751,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	}
 	else{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
-					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
 				   TRANDISC,EXTCOST,PPSS_RECEPTION_QTY,PPSS_VALIDATION_QTY,PPSS_NOTE,PPSS_EXPIREDATE,PPSS_INVOICE_PRICE,PPSS_ORDER_QTY,PPSS_ORDER_PRICE 
@@ -3790,6 +3787,11 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$items = ($rr["items"] != null) ? $rr["items"] : array();
 
+	$amountexcludevat = 0;
+	$amountvat = 0;
+	$grandtotal = 0;
+	$amountDiscount = 0;
+	$amtplt = 0;
 	$tmpItems = array();
 	foreach($items as $item){
 
@@ -3820,8 +3822,32 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
  		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
  		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : ""; 		
  		array_push($tmpItems, $item); 		
+		 
+		 $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME,LASTCOST, PACKINGNOTE,HAS_PLT,APVENDOR.TAX 
+		 FROM ICPRODUCT,APVENDOR 
+		 WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		 $req = $db2->prepare($sql);
+		 $req->execute(array($item["PRODUCTID"]));
+		 $res = $req->fetch(PDO::FETCH_ASSOC);
+
+		 $amountexcludevat += ($res["LASTCOST"] * $item["ORDER_QTY"]);	
+		 $amountvat += ($res["LASTCOST"] * ($res["TAX"] / 100)) * $item["ORDER_QTY"];					 		
+		 if ($res["HAS_PLT"] == 'Y')
+		 	$amtplt += ($item["LASTCOST"] * 0.03) ;
+		$amountDiscount += (($item["TRANDISC"] / 100) * $res["LASTCOST"]);
+		$grandtotal +=  ($res["LASTCOST"] * (1 + ($res["TAX"] / 100))) * $item["ORDER_QTY"];
+		
 	}
+
+	$extradata = array();
+	$extradata["AMTEXCVAT"] = round($amountexcludevat,2);
+	$extradata["AMTVAT"] = round($amountvat,2);
+	$extradata["AMTPLT"] = round($amtplt,2);
+	$extradata["AMTDISC"] = round($amountDiscount,2);
+	$extradata["GRANDTOTAL"] = round($grandtotal,2) - $extradata["AMTDISC"];
+	
 	$rr["items"] = $tmpItems;
+	$rr["extradata"] = $extradata;
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -7436,15 +7462,30 @@ $app->get('/expirereturnalert',function ($request,Response $response){
 				  	AND datediff(day,getdate(), PPSS_EXPIREDATE) > 0
 					AND PPSS_EXPIREDATE <> '1900-01-01'
 					AND PPSS_EXPIREDATE <> '2001-01-01'
-					AND ((PPSS_EXPIREDATE = (SELECT MAX(PPSS_EXPIREDATE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-							 (PPSS_EXPIREDATE = (SELECT PPSS_EXPIREDATE FROM (SELECT PPSS_EXPIREDATE, ROW_NUMBER() OVER (ORDER BY PPSS_EXPIREDATE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND (
+						 (PPSS_EXPIREDATE = (SELECT MAX(PPSS_EXPIREDATE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+						 (PPSS_EXPIREDATE = (SELECT PPSS_EXPIREDATE FROM (SELECT PPSS_EXPIREDATE, ROW_NUMBER() OVER (ORDER BY PPSS_EXPIREDATE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
 					AND ONHAND > 0		
 					AND (convert(varchar,PPSS_EXPIREDATE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array());
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$data["ALERT"] = $allitems;
+	$filtered = array();						
+	foreach($allitems as $item){
+		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
+		$req = $db->prepare($sql);				
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if($res == false){
+			array_push($filtered,$item);
+		}
+		else{
+			if($item["PPSS_EXPIREDATE"] > $res["EXPIREDATE"])
+			array_push($filtered,$item);
+		}
+	}
+	$data["ALERT"] = $filtered;
 
 
 	$resp["result"] = "OK";
@@ -7491,8 +7532,24 @@ $app->get('/expirenoreturnalert',function ($request,Response $response){
 					AND ONHAND > 0		
 					AND (convert(varchar,PPSS_EXPIREDATE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 	$req = $dbBlue->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($item["PRODUCTID"]));
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	$filtered = array();						
+	foreach($allitems as $item){
+		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
+		$req = $db->prepare($sql);				
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if($res == false){
+			array_push($filtered,$item);
+		}
+		else{
+			if($item["PPSS_EXPIREDATE"] > $res["EXPIREDATE"])
+			array_push($filtered,$item);
+		}
+	}
+	$data["ALERT"] = $filtered;
 	
 	$data["ALERT"] = $allitems;
 
