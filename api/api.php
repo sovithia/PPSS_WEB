@@ -3988,11 +3988,12 @@ function createGroupedRestocks()
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 
+	/*
 	$sql = "SELECT DISTINCT(VENDID) FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
-
+	*/
 
 	$OTHER = array("VENDID" =>  "OTHER", "VENDNAME" => "OTHER");
 	$SOPHIESOK = array("VENDID" =>  "400-463", "VENDNAME" => "SOPHIE SOK");
@@ -4065,8 +4066,7 @@ function createGroupedRestocks()
 							$theID = $db->lastInsertId(); // ID FROM NEW
 							$db->commit();
 						}										
-					}	
-
+					}						
 					$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
 					$req = $db->prepare($sql);
 					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
@@ -8333,8 +8333,6 @@ $app->post('/externalvendor', function($request,Response $response){ // CREATE V
 	return $response;
 });
 
-
-
 $app->put('/externalvendor', function($request,Response $response){ // UPDATE VENDOR
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -8644,53 +8642,22 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	return $response;
 });
 
-$app->put('/externalorder',function($request,Response $response){
-	$db = getInternalDatabase();
-	$json = json_decode($request->getBody(),true);
-
-	$ID = $json["ID"];
-	$status = $json["STATUS"];
-	if ($status ==  "DELIVERED"){
-		$deliveryvendorid = $json["DELIVERYVENDORID_ID"];
-		$deliveryqty = $json["DELIVERYQTY"];
-		$deliveryprice = $json["DELIVERYPRICE"];
-		
-		$sql = "UPDATE EXTERNALORDER SET STATUS = ?,
-							DELIVERYVENDORID_ID = ?,
-				  					DELIVERYQTY = ?,
-				  				  DELIVERYPRICE = ?,
-					 DELIVERYDATE = DateTime('now'),
-					WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($status,$deliveryvendorid,$deliveryqty,$deliveryprice,$ID));					
-	}
-	else if ($status == "ORDERED")
-	{
-		$sql = "UPDATE EXTERNALORDER SET STATUS = ? WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($status,$ID));
-	}	
-	$resp["result"] = "OK";
-	$response = $response->withJson($resp);
-	return $response;
-});
-
 $app->post('/externalorder', function($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
 	if (isset($json["ITEMS"]))
 	{
-		$items = json_decode($jsn["ITEMS"],true);
+		$items = json_decode($json["ITEMS"],true);
 		foreach($items as $item){
 			$sql = "DELETE FROM EXTERNALORDER WHERE PRODUCTID = ? AND STATUS = 'ORDERED'";
 			$req = $db->prepare($sql);
 			$req->execute(array( ) );
 
 			$sql = "INSERT INTO EXTERNALORDER (PRODUCTID,AUTHOR,COST,QUANTITY,TYPE,VENDORNAME,STATUS) 
-			values (?,?,?,?,?,?)";
+			values (?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$json["AUTHOR"],$item["COST"],$item["QUANTITY"],$item["TYPE"],$item["VENDORNAME"],'ORDERED'));
+			$req->execute(array($item["PRODUCTID"],$json["AUTHOR"],$item["COST"],$item["QUANTITY"],'EXTERNAL',$item["VENDORNAME"],'ORDERED'));
 		}
 	}
 	else {
@@ -8762,6 +8729,37 @@ $app->get('/externalorder', function($request,Response $response){
 	return $response;
 });
 
+$app->put('/externalorder',function($request,Response $response){
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$ID = $json["ID"];
+	$status = $json["STATUS"];
+	if ($status ==  "DELIVERED"){
+		$deliveryvendorid = $json["DELIVERYVENDORID_ID"];
+		$deliveryqty = $json["DELIVERYQTY"];
+		$deliveryprice = $json["DELIVERYPRICE"];
+		
+		$sql = "UPDATE EXTERNALORDER SET STATUS = ?,
+							DELIVERYVENDORID_ID = ?,
+				  					DELIVERYQTY = ?,
+				  				  DELIVERYPRICE = ?,
+					 DELIVERYDATE = DateTime('now'),
+					WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($status,$deliveryvendorid,$deliveryqty,$deliveryprice,$ID));					
+	}
+	else if ($status == "ORDERED")
+	{
+		$sql = "UPDATE EXTERNALORDER SET STATUS = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($status,$ID));
+	}	
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 $app->post('/externalorderToNOPOPool', function($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBLUE = getDatabase();
@@ -8783,9 +8781,10 @@ $app->post('/externalorderToNOPOPool', function($request,Response $response){
 			   DELIVERYQTY = ?, 
 			 DELIVERYPRICE = ?
 				WHERE ID = ?";
-		$req = $db->prepare($sql);
-		error_log($item["ID"]);
+		$req = $db->prepare($sql);		
 		$req->execute(array($today, $item["DELIVERYQTY"],$item["DELIVERYPRICE"],$item["ID"]));
+		
+		error_log($item["PRODUCTID"]);
 		
 		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
