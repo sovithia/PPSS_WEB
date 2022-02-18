@@ -3577,13 +3577,13 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}
 		$data["result"] = "OK";
 	}
-	else if ($json["ACTIONTYPE" == "RCVA"]){
-		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
-			$ponumber  = $json["LINKEDPO"];				
-		else
-			$ponumber  = $json["PONUMBER"];
+	else if ($json["ACTIONTYPE"] == "RCVA"){
+				
+		$ponumber  = $json["PONUMBER"];
 
-		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
+		
+
+		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -3593,27 +3593,18 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
 
-		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
-		{
-			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
-				LINKEDPO = :linkedpo WHERE ID = :identifier";			
-			$req = $db->prepare($sql);			
-			$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);								
-		}
-		else{
-			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
-				 WHERE ID = :identifier";			
-			$req = $db->prepare($sql);			
-		}
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author
+		WHERE ID = :identifier";			
+   		$req = $db->prepare($sql);			
+
 		$req->bindParam(':status',$status,PDO::PARAM_STR);
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->execute();						
-		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
+		
+		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);		
+		//receivePO($ponumber,$json["AUTHOR"],"");
 		$data["result"] = "OK";
-
-		receivePO($ponumber,$json["AUTHOR"],"");
-
 	}
 	else if ($json["ACTIONTYPE"] == "RCV"){
 
@@ -4103,6 +4094,7 @@ function patchGroupedPurchases()
 		$req->execute(array($orderday,$action["ID"]));
 	}
 }
+
 
 function createGroupedPurchases()
 {
