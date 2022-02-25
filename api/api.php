@@ -7086,12 +7086,16 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	      $count++;        	    
 	  }
 	  $item["NBPROOFS"] = $nbproofs;
-		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT PRODUCTNAME,STKUM,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != null)
+		if ($res != null){
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			$item["STKUM"] = $res["STKUM"];
+			$item["PRICE"] = $res["PRICE"];			
+		}
+			
 		array_push($newItems,$item);
 	}
 
