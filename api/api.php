@@ -2674,11 +2674,17 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$vendname = $res["VENDNAME"];
 		$notes = $json["NOTES"];
 		$ponumber = createAndReceivePO($items,$author,$notes);
-		
+
+
+		if ($items[0]["LOCID"] == "WH1")
+			$status = "RECEIVEDFORTRANSFERFRESH";
+		else 
+			$status = "RECEIVEDFORTRANSFER";
+
 		$resp["message"] = "Po created and received with number ".$ponumber;
-		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO
+		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO
 		$req = $db->prepare($sql);
-		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
+		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
 
 		$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
 		$req = $dbBlue->prepare($sql);
@@ -3578,9 +3584,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	}
 	else if ($json["ACTIONTYPE"] == "RCVA"){
 				
-		$ponumber  = $json["PONUMBER"];
-
-		
+		$ponumber  = $json["PONUMBER"];		
 
 		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
@@ -3591,6 +3595,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$status = 'RECEIVEDFORTRANSFERFRESH';
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
+		else 
+			error_log("NO LOCID". $res["LOCID"]);
 
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author
 		WHERE ID = :identifier";			
@@ -3630,7 +3636,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);								
 		}
 		else{
-			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
+			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author 
 				 WHERE ID = :identifier";			
 			$req = $db->prepare($sql);			
 		}
@@ -8587,7 +8593,7 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	$excludeIDs .= ")";
 	
 
-	$sql = "SELECT TOP(1) ICPRODUCT.PRODUCTID,PRICE,
+	$sql = "SELECT  ICPRODUCT.PRODUCTID,PRICE,
 		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
 		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
 		ICLOCATION.ORDERPOINT, ORDERQTY,
