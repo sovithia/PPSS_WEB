@@ -153,6 +153,9 @@ function resetDate($date)
 	$begin = "'".$date." 00:00:00.000'";
 	$end = "'".$date." 23:59:59.999'";			
 	
+	echo "Begin:".$begin."\n";
+	echo "End:".$end."\n";
+
 	$SQL = "DELETE FROM POSHEADER WHERE POSDATE BETWEEN ".$begin. " AND ".$end;	
 	$req = $taxDB->prepare($SQL);
 	$req->execute(array());
@@ -250,20 +253,20 @@ function generateVisa($data,$visaAmt)
 		{
 			if ($key == "date" || $key == "amount" || $key == "bigtotal" || $key == "exceed")
 				continue;
-				echo $percents[$i]."\n";			
+				//echo $percents[$i]."\n";			
 			$data[$key]["visaAmt"] = $percents[$i] * $visaAmt;	
 			$count = 0;
 			 
-			echo $key."\n"; 
-			echo "RES: ".$data[$key]["visaAmt"]."\n";
-			echo "MAX: ".array_sum($data[$key]["selectedAmt"])."\n";
+			//echo $key."\n"; 
+			//echo "RES: ".$data[$key]["visaAmt"]."\n";
+			//echo "MAX: ".array_sum($data[$key]["selectedAmt"])."\n";
 			if($data[$key]["visaAmt"] > array_sum($data[$key]["selectedAmt"]))	{				
 				
-				echo "KO\n";				
+				//echo "KO\n";				
 				$errors++;
 			}
 			else {
-				echo "OK\n";				
+				//echo "OK\n";				
 			}
 			$i++;
 		}
@@ -271,7 +274,7 @@ function generateVisa($data,$visaAmt)
 		if ($pauser > 10)
 		{
 			$pauser = 0;
-			echo "sleep\n";
+			//echo "sleep\n";
 			srand(time());
 			sleep(1);
 		}
@@ -897,7 +900,6 @@ function loadAmountFromDate($date = null)
 		$canStart = true;	
 	else
 		$canStart = false;
-
 	if (($handle = fopen($filename, "r")) !== FALSE) 
 	{
 
@@ -1500,9 +1502,9 @@ function genID($date,$max)
 
 	$taxDB = getTaxDatabase();
 	
-	if ($year == "2021")
+	if ($year == "2022")
 	{
-		$sql = "SELECT  max(INVID) as mx  FROM POSHEADER WHERE POSDATE > '2020-12-31 23:59:59.999'";	
+		$sql = "SELECT  max(INVID) as mx  FROM POSHEADER WHERE POSDATE > '2021-12-31 23:59:59.999'";	
 	}
 	else 
 	{
@@ -1539,7 +1541,7 @@ function genCashINID($date,$max)
 
 	$year = explode('/',$date)[2];
 	
-	if ($year == "2021")
+	if ($year == "2021" || $year == "2022")
 	{
 		$sql = "SELECT max(CASHINNO) as mx FROM POSCASHINOUT";
 	}
@@ -1557,10 +1559,6 @@ function genCashINID($date,$max)
 		}
 	
 	}
-
-	
-
-
 	$req = $taxDB->prepare($sql);
 	$req->execute(array());
 	$extract = $req->fetch();
@@ -1667,6 +1665,7 @@ function GO(){
 	$req->execute(array());
 	$extract = $req->fetch();
 
+	/*
 	if ($extract["MX"] == null){
 		//resetTaxDB();		
 		$date = null;
@@ -1676,14 +1675,16 @@ function GO(){
 		$date = substr($extract["MX"],0,10);
 		$date = intval(explode('-',$date)[1])."/".intval(explode('-',$date)[2])."/".explode('-',$date)[0];		
 		if ($render == 0){
-			echo "RESETING :".$date."\n";		
+			echo "RESETING :".$date."\n";					
 			resetDate($date);	
 		}
 	}
+	*/
 
+	resetDate("2/7/2022");
 	if ($render == 0){				
-		$amountDates = loadAmountFromDate($date);
-		$visaDates = loadVisaFromDate($date);				
+		$amountDates = loadAmountFromDate("2/7/2022");		
+		$visaDates = loadVisaFromDate("2/7/2022");				
 	}
 	else if ($render == 1){
 		$amountDates = SampleData();
@@ -1691,10 +1692,9 @@ function GO(){
 	}
 	$i = 0;	
 
-
 	foreach($amountDates as $key => $value)
 	{
-
+		echo "Looking ".$key."...\n";
 		// MaxValue and Amount 
 		$year = explode('/',$key)[2]; 
 
@@ -1715,6 +1715,10 @@ function GO(){
 			$receiptmaxAmount = 3;
 		}
 		else if ($year == 2021){
+			$maxRecipleValue = 100;	
+			$receiptmaxAmount = 3;	
+		}
+		else if ($year == 2022){
 			$maxRecipleValue = 100;	
 			$receiptmaxAmount = 3;	
 		}
@@ -1742,62 +1746,12 @@ function GO(){
 				break;					
 			}						
 		}		
-		
+		echo "Inserting ".$key."\n";
 		insertData($data,$key);	
 		$i++;						
 	}
 }
 
-/*
-function GO3()
-{
-	$ponumbers = [		
-	"PO0000000031000",
-	"PO0000000031069",
-	"PO0000000031114",
-	"PO0000000031117",
-	"PO0000000031120",
-	"PO0000000031122",
-	"PO0000000031125",
-	"PO0000000031148",
-	"PO0000000031166",
-	"PO0000000031170",
-	"PO0000000031171",
-	"PO0000000031172",
-	"PO0000000031194",
-	"PO0000000031228",
-	"PO0000000031249",
-	"PO0000000031256",
-	"PO0000000031258",
-	"PO0000000031264",
-	"PO0000000031270",
-	"PO0000000031272",
-	"PO0000000031274",
-	"PO0000000031282",
-	"PO0000000031305",
-	"PO0000000031311",
-	"PO0000000031325"
-	];
-
-	$db = getNewDatabase();
-	foreach($ponumbers as $ponumber)
-	{
-		$sql = "UPDATE PODETAIL SET POSTATUS = 'V' WHERE PONUMBER = '".$ponumber."'";
-		$stmt = $db->prepare($sql);
-		$stmt->execute(array());
-
-		
-		$sql = "UPDATE POHEADER SET POSTATUS = 'V',VOIDBY = 'SOVI',
-			   VOIDDATE = '2020-10-28 15:00:00.000' WHERE PONUMBER = '".$ponumber."'";
-		$stmt = $db->prepare($sql);
-		$stmt->execute(array());
-		echo $ponumber."\n";
-		sleep(1);
-
-	}	
-	
-}
-*/
 
 /*
 resetDate("1/1/2021");
