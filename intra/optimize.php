@@ -113,39 +113,6 @@ function renderData($data){
 	echo "</table>";
 }
 
-function resetTaxDB()
-{
-
-	$taxDB = getTaxDatabase();
-	$SQL = "DELETE FROM POSHEADER";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM POSDETAIL";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM POSCASH";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM ICTRANHEADER";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM ICTRANDETAIL";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM POSCASHINOUT";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-
-	$SQL = "DELETE FROM POSCASHOUTCURRENCY";
-	$req = $taxDB->prepare($SQL);
-	$req->execute(array());
-}
-
 
 function resetDate($date)
 {
@@ -187,105 +154,198 @@ function resetDate($date)
 }
 
 
+function AdjustCashPercent($data ,$amount,$percents){
+	
+	//echo "<h1>".$data["date"]."|".($data["exceed"] == true ? "SUPERIOR" : "INFERIOR")."<h1><br>";
+	//echo "<h3>".$data["amount"]."|".$data["bigtotal"]." -->".($data["amount"] - $data["bigtotal"])." </h3><br>";
+	$newPercent = array();
+	foreach($percents as $percent){
+		array_push($newPercent,$percent);
+	}
+
+	$okneeded = count($percents);
+	$numberok = 0;
+	$count = 0;				
+	foreach($data as $key => $value){
+		if ($key == "date" || $key == "amount" || $key == "bigtotal" || $key == "exceed")
+			continue;		 
+		$total = array_sum($data[$key]["selectedAmt"]);
+		
+		$percent = ($total * 100) / $amount;		
+		$percentExpected = ($data[$key]["percent"] * 100);
+
+		$diffpercent = $percentExpected - $percent;
+		echo "PERCENT EXPECTED:".$percentExpected."\n";
+		echo "PERCENT :".$percent."\n";
+		echo "DIFF PERCENT ".$diffpercent."\n\n";
+		if ($diffpercent > 0.2){ // 
+			$newPercent[$count] -= 0.01;		
+			break;		
+		}else{
+			$numberok++;	
+		}
+		$count++;
+	}
+
+	if ($numberok == $okneeded)
+		return $newPercent;
+
+	$highestRes = 0;
+	$highestIndex = 0;
+	$count = 0;
+	foreach($data as $key => $value){
+		if ($key == "date" || $key == "amount" || $key == "bigtotal" || $key == "exceed")
+			continue;
+
+		$total = array_sum($data[$key]["selectedAmt"]);
+		$expected = $data[$key]["expected"];
+		$percent = ($total * 100) / $amount;		
+		$percentExpected = ($data[$key]["percent"] * 100);
+		
+		$diffpercent = $percentExpected - $percent;
+
+		if ($diffpercent < 0.2 && (($expected - $total) > $highestRes) ){ // IF IS OK
+			$highestRes = $expected - $total;
+			$highestIndex = $count;
+		}		
+		$count++;
+	}
+	$newPercent[$highestIndex] += 0.01;
+	return $newPercent;
+}
+
+function AdjustVisaPercent($results ,$percents){
+	$newPercent = array();
+
+	$okneeded = count($percents);
+	$numberok = 0;
+	$count = 0;		
+
+	foreach($percents as $percent){
+		array_push($newPercent,$percent);
+	}
+	foreach($results as $result){
+		if($result["RESULT"] == "OK")
+			$numberok++;			
+		if($result["RESULT"] == "KO"){
+			$newPercent[$count] -= 0.01;
+			break;		
+		}
+		$count++;
+	}
+	if ($numberok == $okneeded)
+		return $newPercent;
+
+	$highestRes = 0;
+	$highestIndex = 0;
+	$count = 0;
+	foreach($results as $result)
+	{
+		if (($result["RESULT"] == "OK") && ($result["MAX"] - $result["RES"]) > $highestRes){
+			$highestRes = $result["MAX"] - $result["RES"];
+			$highestIndex = $count;	
+		}
+		$count++;
+	}
+	$newPercent[$highestIndex] += 0.01;
+	return $newPercent;
+}
+
+function renderResult($results){
+	echo "=============================\n";
+	foreach($results as $result){
+		echo $result["CASHIER"].":".$result["PERCENT"]."\n";
+		echo "RES:".$result["RES"]."\n";
+		echo "MAX:".$result["MAX"]."\n";
+		echo "RESULT:".$result["RESULT"]."\n\n";		
+	}
+}
+
+
+
 function generateVisa($data,$visaAmt)
 {				
 
-	if (strtotime($data["date"]) < 1572541200)
-	{			
+	if (strtotime($data["date"]) < 1572541200){			
 		
 		$db = getOldDatabase();
 	}
-	else 
-	{					
+	else {					
 		$db = getNewDatabase();		
 	}
 
-	//1) On fait un random sur le pourcentage 
-	//2) On determine le dernier
-	$percentages["1"][0] = [1.0]; 
-	$percentages["1"][1] = [1.0]; 
-	$percentages["1"][2] = [1.0]; 
-	$percentages["1"][3] = [1.0]; 
-
-	$percentages["2"][0] = [0.5,0.5]; 
-	$percentages["2"][1] = [0.65,0.35]; 
-	$percentages["2"][2] = [0.2,0.8]; 
-	$percentages["2"][3] = [0.3,0.7]; 
-
-	$percentages["3"][0] = [0.4,0.4,0.2]; 
-	$percentages["3"][1] = [0.6,0.3,0.1]; 
-	$percentages["3"][2] = [0.33,0.32,0.35]; 
-	$percentages["3"][3] = [0.5,0.3,0.2]; 
-
-	$percentages["4"][0] = [0.27,0.1,0.4,0.23];
-	$percentages["4"][1] = [0.26,0.24,0.27,0.23];
-	$percentages["4"][2] = [0.13,0.17,0.20,0.5];
-	$percentages["4"][3] = [0.09,0.31,0.22,0.38];
+	$percentages["1"] = [1.0];  
+	$percentages["2"] = [0.5,0.5]; 
+	$percentages["3"] = [0.33,0.33,0.34]; 
+	$percentages["4"] = [0.25,0.25,0.25,0.25];
+	$percentages["5"] = [0.2,0.2,0.2,0.2,0.2];	
+	$percentages["6"] = [0.16,0.16,0.16,0.16,0.16,0.2];
 
 
-	$percentages["5"][0] = [0.1,0.17,0.24,0.28,0.21];
-	$percentages["5"][1] = [0.5,0.13,0.12,0.16,0.09];
-	$percentages["5"][2] = [0.2,0.1,0.4,0.13,0.17];
-	$percentages["5"][3] = [0.22,0.18,0.13,0.3,0.17];
-	
-	$percentages["6"][0] = [0.2,0.1,0.4,0.13,0.1,0.07];
-	$percentages["6"][1] = [0.2,0.15,0.1,0.23,0.1,0.22];
-	$percentages["6"][2] = [0.15,0.16,0.2,0.16,0.17,0.15];
-	$percentages["6"][3] = [0.17,0.15,0.1,0.36,0.22];
-	
-
-	$cashierCount = count($data) - 4;
+	// skip bigtotal and date
+	$cashierCount = count($data) - 2;
 	// ONE DAY X Cashiers
 	$pauser = 0;
 
 	echo "Total Visa EXP :".$visaAmt."\n";
+	$percents = null;
+	$results = null;
+
 	while(1) // Try percents of VISA
 	{
-		$rnd = random_int(0,3);
-		$percents = $percentages[strval($cashierCount)][$rnd];	
-		shuffle($percents);
-		if ($data["date"] == "6/10/2020")
-			$percents = [0.35,0.45,0.1,0.05,0.05];
+		//sleep(1);
+		if ($percents == null){
+			$percents = $percentages[strval($cashierCount)];
+			$attempts = 0;
+			//echo "PERCENTS NEW ";
+			//var_dump($percents);
+		}			
+		else if ($attempts > 2){
+			$percents = AdjustVisaPercent($results,$percents);
+			//echo "PERCENTS AUTO ";
+			//var_dump($percents);
+			$attempts = 0;
+		}	
 
 		$errors = 0;
 		$i = 0;		
+		$results = array();
 		foreach($data as $key => $value)
 		{
 			if ($key == "date" || $key == "amount" || $key == "bigtotal" || $key == "exceed")
 				continue;
-				//echo $percents[$i]."\n";			
+
+			$result["PERCENT"] = $percents[$i];			
 			$data[$key]["visaAmt"] = $percents[$i] * $visaAmt;	
 			$count = 0;
-			 
-			//echo $key."\n"; 
-			//echo "RES: ".$data[$key]["visaAmt"]."\n";
-			//echo "MAX: ".array_sum($data[$key]["selectedAmt"])."\n";
+
+			$result["CASHIER"] = $key;
+			$result["RES"] = $data[$key]["visaAmt"];
+			$result["MAX"] = array_sum($data[$key]["selectedAmt"]);
+			
 			if($data[$key]["visaAmt"] > array_sum($data[$key]["selectedAmt"]))	{				
-				
-				//echo "KO\n";				
+				$result["RESULT"] = "KO";	
 				$errors++;
 			}
-			else {
-				//echo "OK\n";				
-			}
+			else 
+				$result["RESULT"] = "OK";								
 			$i++;
+			array_push($results,$result);	
 		}
+		echo "\nThe Date: " .$data["date"]."\n";
+		renderResult($results);
 		$pauser++;
+		$attempts++;
 		if ($pauser > 10)
 		{
 			$pauser = 0;
-			//echo "sleep\n";
 			srand(time());
 			sleep(1);
 		}
 		if ($errors == 0)
 			break;
 	}
-
 	$extract = null;	
-	
-
-	
 	foreach($data as $key => $value)
 	{		
 		if ($key == "date" || $key == "amount" || $key == "bigtotal" || $key == "exceed")
@@ -620,27 +680,23 @@ function isInRange($value,$expected,$margin){
 	return true;
 }
 
-function generate($amount,$date,$receiptmaxValue,$receiptBiglimit,$isExceeded){	
+function generate($amount,$date,$receiptmaxValue,$receiptBiglimit){	
 	$margin = 0.5;
 	$data = array();
 	
 	$data["date"] = $date;
-	$data["amount"] = $amount;
+	//$data["amount"] = $amount;
 
-	echo "The Date: ".$date."\n";
-	echo (strtotime($date)."\n");	
+	echo "The Date: ".$date."\n";	
 			
-	if (strtotime($date) < 1572541200){							
+	if (strtotime($date) < 1572541200)						
 		$db = getOldDatabase();
-	}
-	else {				
+	else 
 		$db = getNewDatabase();
-	}
 	$begin = "'".$date." 00:00:00.000'";
 	$end = "'".$date." 23:59:59.999'";
 
 	// Get Cashiers
-	
 	try{
 		$sql = "SELECT DISTINCT(USERADD) FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end;
 		$req = $db->prepare($sql);
@@ -651,7 +707,6 @@ function generate($amount,$date,$receiptmaxValue,$receiptBiglimit,$isExceeded){
 	catch(Exception $ex){
 		echo $ex->getMessage();
 	}
-	
 
 	foreach($cashiers as $cashier){ 
 
@@ -659,11 +714,7 @@ function generate($amount,$date,$receiptmaxValue,$receiptBiglimit,$isExceeded){
 		$req = $db->prepare($sql);
 		$req->execute(array($cashier["USERADD"]));
 
-		$CNT = $req->fetch()["CNT"];		
-		//if ($CNT == 0 && $date != "3/22/2020" && $date != "3/24/2020" && $date != "3/25/2020" && $date != "3/26/2020"){			
-		//	continue;
-		//}
-		
+		$CNT = $req->fetch()["CNT"];			
 		$sql = "SELECT count(INVID) as CNT FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end. 
 			" AND PAY_TYPE = 'Cash' AND POSTYPE = 'IN' AND CUSTNAME = 'General Customer' AND USERADD = ?";
 
@@ -671,167 +722,88 @@ function generate($amount,$date,$receiptmaxValue,$receiptBiglimit,$isExceeded){
 		$req->execute(array($cashier["USERADD"]));
 		$cnt = $req->fetch();
  
-		if ($cnt["CNT"] > 10)
+		if ($cnt["CNT"] > 10) // WE ONLY TAKE CASHIER THAT HAVE MORE THAN 10 RECIPES
 			array_push($tmp,$cashier["USERADD"]);
 	}
 	$cashiers = $tmp;
 
-
-
 	echo "Count: ".count($cashiers)."\n";
 
-	if (count($cashiers) == 1){
-		$percentages = [1.0];			
-	}
-	else if (count($cashiers) == 2){
-		$rnd = random_int(0,3);
-		if ($rnd == 0)
-			$percentages = [0.72,0.28];			
-		if ($rnd == 1)
-			$percentages = [0.49,0.51];			
-		if ($rnd == 2)
-			$percentages = [0.1,0.9];			
-		if ($rnd == 3)
-			$percentages = [0.4,0.6];							
-	}	
-	else if (count($cashiers) == 3){
-		$rnd = random_int(0,3);
-		if ($rnd == 0)
-			$percentages = [0.3,0.37,0.33];
-		else if ($rnd == 1)
-			$percentages = [0.1,0.3,0.6];
-		else if ($rnd == 2)
-			$percentages = [0.16,0.35,0.49];
-		else if ($rnd == 3)
-			$percentages = [0.05,0.15,0.8];
-	}
-	else if (count($cashiers) == 4)
-	{		
-		$rnd = random_int(0,5);
-		if ($rnd == 0)
-			$percentages = [0.10,0.28,0.25,0.37];		
-		else if ($rnd == 1)
-			$percentages = [0.55,0.10,0.17,0.18];
-		else if ($rnd == 2)
-			$percentages = [0.07,0.23,0.20,0.5];
-		else if ($rnd == 3)
-			$percentages = [0.15,0.28,0.25,0.32];		
-		else if ($rnd == 4)
-			$percentages = [0.05,0.28,0.35,0.32];	
-		else if ($rnd == 5)						
-			$percentages = [0.2,0.58,0.19,0.03];						
-		
-	}
-	else if (count($cashiers) == 5)
-	{		
-		$rnd = random_int(0,4);
-		if ($rnd == 0)
-			$percentages = [0.48,0.08,0.14,0.22,0.08];	
-		else if ($rnd == 1)
-			$percentages = [0.09,0.2,0.1,0.5,0.11];	
-		else if ($rnd == 2)
-			$percentages = [0.03,0.16,0.26,0.25,0.3];
-		else if ($rnd == 3)
-			$percentages = [0.09,0.09,0.26,0.4,0.16];	
-		else if ($rnd == 4)
-			$percentages = [0.07,0.47,0.09,0.32,0.05];
-
-	
+	$percentageSplit["1"] = [1.0];			
+	$percentageSplit["2"] = [0.5,0.5];								
+	$percentageSplit["3"] = [0.34,0.33,0.33];		
+	$percentageSplit["4"] = [0.25,0.25,0.25,0.25];									
+	$percentageSplit["5"] = [0.2,0.2,0.2,0.2,0.2];	
+	$percentageSplit["6"] = [0.16,0.16,0.16,0.16,0.16,0.2];
 
 
-	}
-	else if (count($cashiers) == 6){
-		$percentages = [0.1,0.12,0.09,0.25,0.25,0.1];	
-	}
-	else {
-		echo "NB Cashiers : ".count($cashiers)."\n";
-		exit;
-	}
+	$results = null;
+	$percentages = null;
+	while(1)
+	{			
+		if ($percentages == null){						
+			$percentages = $percentageSplit[strval(count($cashiers))];
+			echo "NEW PERCENT";
+			var_dump($percentages);
+		}
+		else {			
+			$percentages = AdjustCashPercent($data,$amount,$percentages);
+			echo "AUTO PERCENT";
+			var_dump($percentages);
+		}
+
+		$data = array(); 
+		$i = 0;	
+		foreach($cashiers as $cashier){	// WE EXTRACT OPEN,CLOSE DATE AND RATE	
+			$sql = "SELECT INVID,PAID_AMT FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end. 
+				" AND PAY_TYPE = 'Cash' AND POSTYPE = 'IN' AND CUSTNAME = 'General Customer' AND USERADD = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($cashier));
+			$data[$cashier]["all"] = $req->fetchAll(PDO::FETCH_ASSOC);	
+			$data[$cashier]["selectedAmt"] = array();
+			$data[$cashier]["selectedReceipts"] = array();
+			$data[$cashier]["percent"] = $percentages[$i]; // IMPORTANT 
+			$data[$cashier]["expected"] = $amount * $percentages[$i];	// IMPORTANT
+
+			$req = $db->prepare($sql);
+			$req->execute(array($cashier));
+			$sql = "SELECT MAX(POSDATE) as CLS,MIN(POSDATE) as OPN, MAX(CURR_RATE) as RATE FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end. 
+				" AND PAY_TYPE = 'Cash' AND POSTYPE = 'IN' AND CUSTNAME = 'General Customer' AND USERADD = ?";
+			
+			$req = $db->prepare($sql);
+			$req->execute(array($cashier));
+			$extract = $req->fetch(PDO::FETCH_ASSOC);	
+
+			$data[$cashier]["openDatetime"] = $extract["OPN"];
+			$data[$cashier]["closeDatetime"] = $extract["CLS"];
+			$data[$cashier]["rate"] = $extract["RATE"];	
+			$i++;
+		 }
+
+		$receiptBigQty = 0;
+		$bigtotal = 0;
+		foreach($cashiers as $cashier)
+		{
+		 	$totalSelected = array_sum($data[$cashier]["selectedAmt"]);
+			$expected = $data[$cashier]["expected"];
+
+			// Check if the total of 
+		 	while(!isInRange($totalSelected,$expected, $margin) && count($data[$cashier]["all"]) > 0)
+		 	{				
+		 		$idx = array_rand($data[$cashier]["all"]);
+		 		$randomReceipt = $data[$cashier]["all"][$idx];	 		
 
 
-	$i = 0;
-	shuffle($percentages);
-	// EXCEPTION
-	if ($date == "6/10/2020")
-			$percentages = [0.28,0.37,0.27,0.04,0.04];
-	if ($date == "6/17/2020")
-		$percentages = [0.08,0.05,0.36,0.34,0.17];	
-	if ($date == "6/24/2020")
-		$percentages = [0.16,0.06,0.09,0.33,0.36];
-	if ($date == "7/8/2020")
-		$percentages = [0.16,0.07,0.15,0.43,0.19];
-	if ($date == "7/28/2020" || $date == "8/21/2020")
-		$percentages = [0.35,0.65];
-	if ($date == "8/13/2020")
-		$percentages = [0.1,0.25,0.65];
-	if ($date == "5/13/2020")
-			$percentages = [0.18,0.23,0.53,0.06];		
-	if ($date == "5/20/2020")
-			$percentages = [0.18,0.23,0.47,0.12];
-	if ($date == "5/16/2020")
-			$percentages = [0.24,0.52,0.24];	
+				if ($randomReceipt["PAID_AMT"] > $receiptmaxValue)	 			
+				{
+					if ($receiptBigQty >= $receiptBiglimit){
+						array_splice($data[$cashier]["all"],$idx,1);
+						continue;
+					}
+					// Check if it's too high				
+					$totalNow = array_sum($data[$cashier]["selectedAmt"]);
 
-	if ($date == "4/8/2020")
-			$percentages = [0.2,0.49,0.28,0.03];	
-
-	if ($date == "11/18/2020")
-			$percentages = [0.07,0.37,0.36,0.2];
-
-	// END EXCEPTION
-
-
-	foreach($cashiers as $cashier){		
-		$sql = "SELECT INVID,PAID_AMT FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end. 
-			" AND PAY_TYPE = 'Cash' AND POSTYPE = 'IN' AND CUSTNAME = 'General Customer' AND USERADD = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($cashier));
-		$data[$cashier]["all"] = $req->fetchAll(PDO::FETCH_ASSOC);	
-		$data[$cashier]["selectedAmt"] = array();
-		$data[$cashier]["selectedReceipts"] = array();
-		$data[$cashier]["percent"] = $percentages[$i];
-		
-		$data[$cashier]["expected"] = $amount * $percentages[$i];	
-
-		$req = $db->prepare($sql);
-		$req->execute(array($cashier));
-		$sql = "SELECT MAX(POSDATE) as CLS,MIN(POSDATE) as OPN, MAX(CURR_RATE) as RATE FROM POSHEADER WHERE POSDATE BETWEEN ".$begin." AND ".$end. 
-			" AND PAY_TYPE = 'Cash' AND POSTYPE = 'IN' AND CUSTNAME = 'General Customer' AND USERADD = ?";
-		
-		$req = $db->prepare($sql);
-		$req->execute(array($cashier));
-		$extract = $req->fetch(PDO::FETCH_ASSOC);	
-
-		$data[$cashier]["openDatetime"] = $extract["OPN"];
-		$data[$cashier]["closeDatetime"] = $extract["CLS"];
-		$data[$cashier]["rate"] = $extract["RATE"];	
-		$i++;
-	 }
-
-
-	$receiptBigQty = 0;
-	$bigtotal = 0;
-	foreach($cashiers as $cashier)
-	{
-	 	$totalSelected = array_sum($data[$cashier]["selectedAmt"]);
-		$expected = $data[$cashier]["expected"];
-
-						
-	 	while(!isInRange($totalSelected,$expected, $margin) && count($data[$cashier]["all"]) > 0)
-	 	{				
-	 		$idx = array_rand($data[$cashier]["all"]);
-	 		$randomReceipt = $data[$cashier]["all"][$idx];	 		
-
-
-			if ($randomReceipt["PAID_AMT"] > $receiptmaxValue)	 			
-			{
-				if ($receiptBigQty >= $receiptBiglimit){
-					array_splice($data[$cashier]["all"],$idx,1);
-					continue;
-				}
-				// Check if it's too high				
-				$totalNow = array_sum($data[$cashier]["selectedAmt"]);
-
-				if ($isExceeded){
+					
 					if (($totalNow + $randomReceipt["PAID_AMT"])  > $expected + $margin)
 					{
 						array_splice($data[$cashier]["all"],$idx,1);
@@ -840,51 +812,39 @@ function generate($amount,$date,$receiptmaxValue,$receiptBiglimit,$isExceeded){
 					else				
 						$receiptBigQty++;	
 				}
-				else 
-				{
-					if (($totalNow + $randomReceipt["PAID_AMT"]) > $expected)
-					{
-						array_splice($data[$cashier]["all"],$idx,1);
-						continue;
-					}
-					else				
-						$receiptBigQty++;	
-				}
-				
-			}
-	 		else
-	 		{
-	 			// Check if it's too high
-				$totalNow = array_sum($data[$cashier]["selectedAmt"]);
-				if ($isExceeded){
+		 		else
+		 		{
+		 			// Check if it's too high
+					$totalNow = array_sum($data[$cashier]["selectedAmt"]);			
 					if ( ($totalNow + $randomReceipt["PAID_AMT"]) > $expected + $margin){
-					array_splice($data[$cashier]["all"],$idx,1);
-					continue;	
+						array_splice($data[$cashier]["all"],$idx,1);
+						continue;	
 					}
-				}
-				else{
-					if ( ($totalNow + $randomReceipt["PAID_AMT"]) > $expected){
-					array_splice($data[$cashier]["all"],$idx,1);
-					continue;	
-					}
-				}
+							
+		 		}	
+		 		array_splice($data[$cashier]["all"],$idx,1);
+		 		array_push($data[$cashier]["selectedAmt"], $randomReceipt["PAID_AMT"]);
+				array_push($data[$cashier]["selectedReceipts"], $randomReceipt);
 
+				$totalSelected = array_sum($data[$cashier]["selectedAmt"]);
+				$expected = $data[$cashier]["expected"];
 				
-	 		}	
+				//echo "EX: ".$expected."|SUM: ". $totalSelected."\n";
+		 	}
+		 	$bigtotal += $totalSelected;
+		 	unset($data[$cashier]["all"]);	 	
+		}
+		$data["bigtotal"] = $bigtotal;	
 
-	 		array_splice($data[$cashier]["all"],$idx,1);
-	 		array_push($data[$cashier]["selectedAmt"], $randomReceipt["PAID_AMT"]);
-			array_push($data[$cashier]["selectedReceipts"], $randomReceipt);
 
-			$totalSelected = array_sum($data[$cashier]["selectedAmt"]);
-			$expected = $data[$cashier]["expected"];
-			
-			//echo "EX: ".$expected."|SUM: ". $totalSelected."\n";
-	 	}
-	 	$bigtotal += $totalSelected;
-	 	unset($data[$cashier]["all"]);	 	
+		$diff = $amount - $data["bigtotal"];		
+		if ($diff < 0)
+			$diff = $diff * -1;
+		//$data["exceed"] = $isExceeded; // Probably only for render	
+		echo "DIFF: ".$diff."\n";
+		if ( $diff < 5)
+			break;
 	}
-	$data["bigtotal"] = $bigtotal;	
 	return $data;
 
 }
@@ -1575,85 +1535,20 @@ function genCashINID($date,$max)
 
 function SampleData(){
 	$data = array();		
-	$data["1/22/2021"] = 4783.33;
+	$data["2/9/2022"] = 5219.6815;
 	return $data;
 
 }
 
 function SampleDataVisa(){
 	$data = array();
-	$data["1/22/2021"] = 1113;
+	$data["2/9/2022"] = 3692.11;
 	return $data;
 }
 
 
-function GO2()
-{
-	$taxDB = getTaxDatabase();	
 
-	/*
-	$switch = 30;
-	for($i = 1;$i <= 12;$i++)
-	{
-		if ($i == 1)	
-			$switch = 31;
-		else if ($i == 2)
-			$switch = 29;
-		else if ($i == 3)
-			$switch = 31;
-		else if ($i == 4)
-			$switch = 30;
-		else if ($i == 5)
-			$switch = 31;
-		else if ($i == 6)
-			$switch = 30;
-		else if ($i == 7)
-			$switch = 31;
-		else if ($i == 8)
-			$switch = 30;
 
-	
-		for($j = 1;$j <= $switch;$j++)
-		{
-			$date = $i."/".$j."/2020";
-			echo $date."\n";
-			resetDate($date);			
-		}		
-	*/ 
-	
-
-	
-
-	
-	/*
-
-	foreach($amountDates as $key => $value)
-	{
-		$maxRecipleValue = 150;	
-		$receiptmaxAmount = 4;
-
-		echo $key."\n";
-		while(1){
-			$isExceeded = (random_int(1,2) == 1) ? true : false;			
-			$data = generate($value,$key,$maxRecipleValue,$receiptmaxAmount,$isExceeded);			
-
-			
-			$diff = $data["amount"] - $data["bigtotal"];
-			echo $diff."\n";
-			if ($diff < 0)
-				$diff = $diff * -1;
-			$data["exceed"] = $isExceeded;
-			
-			if ( $diff < 5){
-				echo "VISA:".(count($data) - 4). "\n";					
-				$data = generateVisa($data,$visaDates[$key]);				
-				break;					
-			}						
-		}		
-		insertData($data,$key);	
-	}
-	*/
-}
 
 function GO(){
 	//$render = 1;
@@ -1665,26 +1560,11 @@ function GO(){
 	$req->execute(array());
 	$extract = $req->fetch();
 
-	/*
-	if ($extract["MX"] == null){
-		//resetTaxDB();		
-		$date = null;
-	}
-	else
-	{
-		$date = substr($extract["MX"],0,10);
-		$date = intval(explode('-',$date)[1])."/".intval(explode('-',$date)[2])."/".explode('-',$date)[0];		
-		if ($render == 0){
-			echo "RESETING :".$date."\n";					
-			resetDate($date);	
-		}
-	}
-	*/
 
-	resetDate("2/7/2022");
+	resetDate("2/20/2022");
 	if ($render == 0){				
-		$amountDates = loadAmountFromDate("2/7/2022");		
-		$visaDates = loadVisaFromDate("2/7/2022");				
+		$amountDates = loadAmountFromDate("2/20/2022");		
+		$visaDates = loadVisaFromDate("2/20/2022");				
 	}
 	else if ($render == 1){
 		$amountDates = SampleData();
@@ -1727,21 +1607,25 @@ function GO(){
 		
 		echo $key."\n";
 		
+
 		while(1){
-			$isExceeded = (random_int(1,2) == 1) ? true : false;			
-			$data = generate($value,$key,$maxRecipleValue,$receiptmaxAmount,$isExceeded);			
-			if ($render == 1){
-				renderData($data);
-				exit;	
-			}		
-			$diff = $data["amount"] - $data["bigtotal"];
+			//$isExceeded = (random_int(1,2) == 1) ? true : false;	
+
+			$data = generate($value,$key,$maxRecipleValue,$receiptmaxAmount);
+			$data["date"] = $key;			
+			//if ($render == 1){
+			//	renderData($data);
+			//	exit;	
+			//}		
+			$diff = $value - $data["bigtotal"];
 			echo $diff."\n";
 			if ($diff < 0)
 				$diff = $diff * -1;
-			$data["exceed"] = $isExceeded;
+
+			//$data["exceed"] = $isExceeded; // Probably only for render
+			
 			echo "DIFF: ".$diff."\n";
-			if ( $diff < 5){
-				echo "VISA:".(count($data) - 4). "\n";					
+			if ( $diff < 5){				
 				$data = generateVisa($data,$visaDates[$key]);				
 				break;					
 			}						
@@ -1752,41 +1636,6 @@ function GO(){
 	}
 }
 
-
-/*
-resetDate("1/1/2021");
-resetDate("1/2/2021");
-resetDate("1/3/2021");
-resetDate("1/4/2021");
-resetDate("1/5/2021");
-resetDate("1/6/2021");
-resetDate("1/7/2021");
-resetDate("1/8/2021");
-resetDate("1/9/2021");
-resetDate("1/10/2021");
-resetDate("1/11/2021");
-resetDate("1/12/2021");
-resetDate("1/13/2021");
-resetDate("1/14/2021");
-resetDate("1/15/2021");
-resetDate("1/16/2021");
-resetDate("1/17/2021");
-resetDate("1/18/2021");
-resetDate("1/19/2021");
-resetDate("1/20/2021");
-resetDate("1/21/2021");
-resetDate("1/22/2021");
-resetDate("1/23/2021");
-resetDate("1/24/2021");
-resetDate("1/25/2021");
-resetDate("1/26/2021");
-resetDate("1/27/2021");
-resetDate("1/28/2021");
-resetDate("1/29/2021");
-resetDate("1/30/2021");
-resetDate("1/31/2021");
-*/
 GO();
-//GO2();
 
 ?>
