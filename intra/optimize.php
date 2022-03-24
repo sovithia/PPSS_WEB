@@ -120,8 +120,8 @@ function resetDate($date)
 	$begin = "'".$date." 00:00:00.000'";
 	$end = "'".$date." 23:59:59.999'";			
 	
-	echo "Begin:".$begin."\n";
-	echo "End:".$end."\n";
+	//echo "Begin:".$begin."\n";
+	//echo "End:".$end."\n";
 
 	$SQL = "DELETE FROM POSHEADER WHERE POSDATE BETWEEN ".$begin. " AND ".$end;	
 	$req = $taxDB->prepare($SQL);
@@ -1636,6 +1636,34 @@ function GO(){
 	}
 }
 
-GO();
+//GO();
+resetDate("2/1/2022");
+resetDate("2/2/2022");
+resetDate("2/3/2022");
+resetDate("2/4/2022");
+resetDate("2/5/2022");
+resetDate("2/6/2022");
+resetDate("2/7/2022");
+resetDate("2/8/2022");
+resetDate("2/9/2022");
+resetDate("2/10/2022");
+resetDate("2/11/2022");
+resetDate("2/12/2022");
+resetDate("2/13/2022");
+resetDate("2/14/2022");
+resetDate("2/15/2022");
+resetDate("2/16/2022");
+resetDate("2/17/2022");
+resetDate("2/18/2022");
+resetDate("2/19/2022");
+resetDate("2/20/2022");
+resetDate("2/21/2022");
+resetDate("2/22/2022");
+resetDate("2/23/2022");
+resetDate("2/24/2022");
+resetDate("2/25/2022");
+resetDate("2/26/2022");
+resetDate("2/27/2022");
+resetDate("2/28/2022");
 
 ?>
