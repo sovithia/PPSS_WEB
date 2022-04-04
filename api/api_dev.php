@@ -841,12 +841,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if ($item == false){
-		$resp["message"] = "Item not found"; 
-		$resp["result"] = "OK";
-		$response = $response->withJson($resp);
-		return $response;
-	}
+
 
 	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
