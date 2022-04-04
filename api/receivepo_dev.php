@@ -124,6 +124,7 @@ function createPO($items,$author)
 
 		if (isset($item["COST"]))
 			$TRANCOST = $item["COST"];
+		$VAT_PERCENT = $item["VAT"];
    
 		$DISCABLE = $res2["DISCABLE"];
 
@@ -141,6 +142,7 @@ function createPO($items,$author)
 			$QUANTITY = $item["ORDER_QTY"];
 		//
 	
+
 		$PURCHASE_DATE = $now;
 		$PRODUCTID = $item["PRODUCTID"];
 		$ORDER_QTY = $QUANTITY;
@@ -197,7 +199,7 @@ function createPO($items,$author)
 		$QTY_OVORORDER = "0.0000";
 		$FREIGHT_SG = "0.0000";
 
-
+		
 
 		$sql = "INSERT INTO PODETAIL (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
@@ -208,7 +210,7 @@ function createPO($items,$author)
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
 		RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
 		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
-        PPSS_WAITING_CALCULATED, PPSS_WAITING_COMMENT,PPSS_WAITING_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_DISCOUNT
+        PPSS_WAITING_CALCULATED, PPSS_WAITING_COMMENT,PPSS_WAITING_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_DISCOUNT,PPSS_WAITING_VAT
 		) 
 		VALUES (?,?,?,?,?,
 				?,?,?,?,?,
@@ -218,7 +220,7 @@ function createPO($items,$author)
 				?,?,?,?,?,
 				?,?,?,?,?,
 				?,?,?,?,?,
-				?,?,?,?)"; 		
+				?,?,?,?,?)"; 		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
 			$PONUMBER,$VENDID, $VENDNAME, $VENDNAME1, $PURCHASE_DATE,
@@ -229,7 +231,7 @@ function createPO($items,$author)
 			$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
 			$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
 			$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
-			$ALGOQTY,$REASON,$TRANCOST,$ORDER_QTY,$TRANDISC);		
+			$ALGOQTY,$REASON,$TRANCOST,$ORDER_QTY,$TRANDISC,$VAT_PERCENT);		
 
 		$req->execute($params);				
 		

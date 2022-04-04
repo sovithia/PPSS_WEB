@@ -2420,6 +2420,53 @@ function createSupplyRecordForPO(){
 }	
 */
 
+function markAnomalies()
+{
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS is null and PONUMBER is not null";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach($records as $record)
+	{
+		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($record["PONUMBER"]));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+				
+		$status = "NOANOMALY";
+		foreach($items as $item)
+		{
+			if ( floatval($item["PPSS_DELIVERED_PRICE"]) != floatval($item["PPSS_WAITING_PRICE"]))
+			{
+				$status = "ANOMALYUNSOLVED";				
+				break;
+			} 						
+
+			if ( floatval($item["PPSS_DELIVERED_QUANTITY"]) != floatval($item["PPSS_WAITING_QUANTITY"]))
+			{
+				$status = "ANOMALYUNSOLVED";				
+				break;
+			} 						
+
+			if ( floatval($item["PPSS_WAITING_CALCULATED"]) != floatval($item["PPSS_WAITING_QUANTITY"]))
+			{
+				$status = "ANOMALYUNSOLVED";				
+				break;
+			} 						
+
+		}			
+		$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = ? WHERE PONUMBER = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($status,$record["PONUMBER"]));						
+	}
+}
+$app->get('/go', function(Request $request,Response $response) {
+	markAnomalies();
+});
+
 $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	
 	$ponumber = $request->getParam('PONUMBER','');
@@ -2530,19 +2577,25 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	return $response;
 });
 
+
+
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$status = $request->getAttribute('status');
-	
 
 	// ******************//
 	// ***** WITH PO ****//
 	// ******************//
 	$params = array($status); // DEFAULT STATUS
 	if ($status == "ALL"){
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
-			$params = array();
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' ORDER BY LAST_UPDATED DESC";
+		$params = array();
+	}
+	else if ($status == "ANOMALYUNSOLVED" || $status == "ANOMALYSOLVED" || $status == "NOANOMALY"){
+		markAnomalies();
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? ORDER BY LAST_UPDATED DESC";
+		$params = array($status);
 	}	
 	else if ($status == "ORDERED")
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
@@ -2674,90 +2727,88 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();
 		$lastID = $db->lastInsertId();
 		$db->commit(); 
-		
+
 		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
 		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
 		$result["result"] = "OK";
 	}
     */
-	if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "NOPOPOOL")) // NOPO CREATE AND RECEIVE
-	{
-		$author = blueUser($json["AUTHOR"]);		
-		$items = json_decode($json["ITEMS"],true);
-		$now = date("Y-m-d H:i:s");
+		if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "NOPOPOOL")) // NOPO CREATE AND RECEIVE
+		{
+			$author = blueUser($json["AUTHOR"]);		
+			$items = json_decode($json["ITEMS"],true);
+			$now = date("Y-m-d H:i:s");
 
-		$sql = "SELECT ICPRODUCT.VENDID,VENDNAME FROM ICPRODUCT,APVENDOR WHERE APVENDOR.VENDID = ICPRODUCT.VENDID AND PRODUCTID = ?";
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($items[0]["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		
-		$vendorid = $res["VENDID"];
-		$vendname = $res["VENDNAME"];
-		$notes = $json["NOTES"];
-		$ponumber = createAndReceivePO($items,$author,$notes);
+			$sql = "SELECT ICPRODUCT.VENDID,VENDNAME FROM ICPRODUCT,APVENDOR WHERE APVENDOR.VENDID = ICPRODUCT.VENDID AND PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($items[0]["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			
+			$vendorid = $res["VENDID"];
+			$vendname = $res["VENDNAME"];
+			$notes = $json["NOTES"];
+			$ponumber = createAndReceivePO($items,$author,$notes);
 
 
-		if ($items[0]["LOCID"] == "WH1")
-			$status = "RECEIVEDFORTRANSFERFRESH";
-		else 
-			$status = "RECEIVEDFORTRANSFER";
+			if ($items[0]["LOCID"] == "WH1")
+				$status = "RECEIVEDFORTRANSFERFRESH";
+			else 
+				$status = "RECEIVEDFORTRANSFER";
 
-		$resp["message"] = "Po created and received with number ".$ponumber;
-		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO
-		$req = $db->prepare($sql);
-		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
-
-		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
-			VALUES (:author,:noponote,'DELIVERED','PO')";
-		if ($json["TYPE"] ==  "NOPOPOOL"){
-			$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
+			$resp["message"] = "Po created and received with number ".$ponumber;
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO
 			$req = $db->prepare($sql);
-			$req->execute(array($json["USERID"]));	
-		}
-	} 
-	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
-	{
-		$author = blueUser($json["AUTHOR"]);
-		$items = json_decode($json["ITEMS"],true);
-		$now = date("Y-m-d H:i:s");
+			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
 
-		$sql = "SELECT ICPRODUCT.VENDID,VENDNAME FROM ICPRODUCT,APVENDOR WHERE APVENDOR.VENDID = ICPRODUCT.VENDID AND PRODUCTID = ?";
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($items[0]["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		
-		$vendorid = $res["VENDID"];
-		$vendname = $res["VENDNAME"];
-		
-		$ponumber = createPO($items,$author);
+			$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
+				VALUES (:author,:noponote,'DELIVERED','PO')";
+			if ($json["TYPE"] ==  "NOPOPOOL"){
+				$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($json["USERID"]));	
+			}
+		} 
+		else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
+		{
+			$author = blueUser($json["AUTHOR"]);
+			$items = json_decode($json["ITEMS"],true);
+			$now = date("Y-m-d H:i:s");
 
-		$resp["message"] = "Po created with number ".$ponumber;
-		$db->beginTransaction();
-		$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
-		$req = $db->prepare($sql);
-		$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
-		$lastID = $db->lastInsertId();
-		$db->commit(); 
+			$sql = "SELECT ICPRODUCT.VENDID,VENDNAME FROM ICPRODUCT,APVENDOR WHERE APVENDOR.VENDID = ICPRODUCT.VENDID AND PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($items[0]["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			
+			$vendorid = $res["VENDID"];
+			$vendname = $res["VENDNAME"];
+			
+			$ponumber = createPO($items,$author);
 
-		pictureRecord($json["PURCHASERSIGNATUREIMAGE"],"PCH",$lastID);
-
-		$sql = "UPDATE PODETAIL SET PPSS_WAITING_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($ponumber));
-
-		if ($json["TYPE"] ==  "POPOOL"){
-			$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+			$resp["message"] = "Po created with number ".$ponumber;
+			$db->beginTransaction();
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
 			$req = $db->prepare($sql);
-			$req->execute(array($json["USERID"]));	
-		}
-	}	
+			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
+			$lastID = $db->lastInsertId();
+			$db->commit(); 
 
-	$resp["result"] = "OK";
-	$response = $response->withJson($resp);
-	return $response;
-	});
+			pictureRecord($json["PURCHASERSIGNATUREIMAGE"],"PCH",$lastID);
 
+			$sql = "UPDATE PODETAIL SET PPSS_WAITING_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($ponumber));
 
+			if ($json["TYPE"] ==  "POPOOL"){
+				$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($json["USERID"]));	
+			}
+		}	
+
+		$resp["result"] = "OK";
+		$response = $response->withJson($resp);
+		return $response;
+});
 
 $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
@@ -2772,7 +2823,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		if ($json["QUANTITY"] != $json["ALGOQTY"])
 			$item["SPECIALQTY"] = $json["QUANTITY"];
 		$item["USERID"] = $userid;
-		$item["PRICE"] = $json["PRICE"];
+		$item["COST"] = $json["COST"];
 		if (isset($json["PACKING"]))
 			$item["PACKING"] = $json["PACKING"];
 		else
@@ -2819,7 +2870,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		$item["ALGOQTY"] = $stats["FINALQTY"];
 		if (isset($stats["PRICE"]))	
-			$item["PRICE"] = $stats["PRICE"];
+			$item["COST"] = $stats["PRICE"];
 
 		$item["DECISION"] = $stats["DECISION"];
 
@@ -2827,11 +2878,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$QUANTITY = $item["SPECIALQTY"];
 		else
 			$QUANTITY = $item["ALGOQTY"];
+
 		if ($res == false) // NO RECORD
 		{			
-			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,REQUEST_QUANTITY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_WAITING_PRICE,DECISION,VAT) values (?,?,?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$QUANTITY,$userid,$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$item["VAT"]));
+			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],$item["COST"],$item["DECISION"],$item["VAT"],$userid));
 		}
 		else
 		{
@@ -2861,16 +2913,16 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res4 != false){
 
-			$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,PPSS_WAITING_PRICE = ?,DECISION = ? 
+			$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
 					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
 			else
 			{
-				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,REQUEST_QUANTITY,USERID,DISCOUNT,ALGOQTY,REASON,PPSS_WAITING_PRICE,DECISION,VAT) values (?,?,?,?,?,?,?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$QUANTITY,$userid,$item["DISCOUNT"],$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$item["VAT"]));	
+				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],$item["COST"],$item["DECISION"],$item["VAT"],$userid));
 			}
 
 			
@@ -3757,7 +3809,8 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
-					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',	
+					PPSS_WAITING_CALCULATED,		
 				   TRANDISC,EXTCOST,PPSS_DELIVERED_QUANTITY,PPSS_VALIDATED_QUANTITY,PPSS_NOTE,PPSS_DELIVERED_EXPIRE,PPSS_DELIVERED_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE 
 				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
 	}
@@ -3770,8 +3823,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
 	}
 		
-	if ($rr["TYPE"] == "NOPO")
-	{
+	if ($rr["TYPE"] == "NOPO"){
 		if ($rr["LINKEDPO"] != null)
 		{
 			$req = $db2->prepare($sql);
@@ -3782,8 +3834,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
 		}
 	}
-	else 
-	{
+	else {
 		$req = $db2->prepare($sql);
 		if ($hidenoreceive == 'YES')
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
@@ -3803,40 +3854,10 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$amountDiscount = 0;
 	$amtplt = 0;
 	$tmpItems = array();
+
 	foreach($items as $item){
 
-		/*
-		$maxsql = "SELECT VENDNAME,TRANDISC, (TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as COST,TRANCOST
-				   FROM PORECEIVEDETAIL 
-				   WHERE PRODUCTID =  ? 
-				   AND TRANDISC < 100 
-				   ORDER BY TRANCOST DESC,TRANDISC ASC";
-
-		$req = $db2->prepare($maxsql); 
- 		$req->execute(array($item["PRODUCTID"]));
- 		$res = $req->fetch();
-		$item["MAXDISC"] = ($res != false) ? $res["TRANDISC"] : "";
- 		$item["MAXCOST"] = ($res != false) ? $res["COST"] : "";
- 		$item["MAXVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : "";	
- 	
-
-		$minsql = "SELECT PRODUCTID,VENDNAME,TRANDISC, (TRANCOST -  (TRANCOST * (TRANDISC / 100)) ) as COST,TRANCOST
-				   FROM PORECEIVEDETAIL 
-				   WHERE PRODUCTID =  ? 
-				   AND TRANDISC < 100 
-				   ORDER BY TRANCOST ASC,TRANDISC DESC";
-		$req = $db2->prepare($minsql);
-		$req->execute(array($item["PRODUCTID"]));
- 		$res = $req->fetch();
-
-		$item["MINDISC"] = ($res != false) ? $res["TRANDISC"] : "";
- 		$item["MINCOST"] = ($res != false) ? $res["COST"] : "";
- 		$item["MINVENDORNAME"] = ($res != false) ? $res["VENDNAME"] : ""; 		
- 		array_push($tmpItems, $item); 		
-		*/
-		 
-		 
-		 $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME,LASTCOST, PACKINGNOTE,HAS_PLT,APVENDOR.TAX,PPSS_IS_BLACKLIST,PPSS_IS_PRICEFIXED
+		 $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME,LASTCOST,PRICE,PACKINGNOTE,HAS_PLT,APVENDOR.TAX,PPSS_IS_BLACKLIST,PPSS_IS_PRICEFIXED
 		 FROM ICPRODUCT,APVENDOR 
 		 WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		 $req = $db2->prepare($sql);
@@ -3850,6 +3871,8 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$amountDiscount += (($item["TRANDISC"] / 100) * $res["LASTCOST"]);
 		$grandtotal +=  ($res["LASTCOST"] * (1 + ($res["TAX"] / 100))) * $item["ORDER_QTY"];
 		
+		$item["PRICE"] = $res["PRICE"];
+		array_push($tmpItems, $item); 	
 	}
 
 	$extradata = array();
@@ -3858,8 +3881,14 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$extradata["AMTPLT"] = round($amtplt,2);
 	$extradata["AMTDISC"] = round($amountDiscount,2);
 	$extradata["GRANDTOTAL"] = round($grandtotal,2) - $extradata["AMTDISC"];
-	
-	$rr["items"] = $items;
+	$extradata["PONUMBER"] = $rr["PONUMBER"];
+	$extradata["VENDID"] = $rr["VENDID"];
+	$extradata["VENDNAME"] = $rr["VENDNAME"];
+	$extradata["PODATE"] = $rr["PODATE"]; 
+	$extradata["PURCHASER"] = $rr["PURCHASER_USER"];
+	$extradata["ID"] = $rr["ID"];
+
+	$rr["items"] = $tmpItems;
 	$rr["extradata"] = $extradata;
 
 	$resp = array();
@@ -3870,7 +3899,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	return $response;
 });
-
 
 $app->get('/itemstatistics/{id}', function(Request $request,Response $response) {
 	
@@ -4109,6 +4137,7 @@ function createGroupedRestocks()
 	}
 }
 // ADD TO DEBT
+
 
 function patchGroupedPurchases()
 {
