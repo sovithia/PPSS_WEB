@@ -140,6 +140,8 @@ function createPO($items,$author)
 		}			
 		else if (isset($item["ORDER_QTY"]))
 			$QUANTITY = $item["ORDER_QTY"];
+		else if (isset($item["REQUEST_QUANTITY"]))
+			$QUANTITY = $item["REQUEST_QUANTITY"];
 		//
 	
 
@@ -210,8 +212,8 @@ function createPO($items,$author)
 		VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
 		RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
 		FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
-        PPSS_WAITING_CALCULATED, PPSS_WAITING_COMMENT,PPSS_WAITING_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_DISCOUNT,PPSS_WAITING_VAT
-		) 
+        PPSS_WAITING_CALCULATED, PPSS_WAITING_COMMENT,PPSS_WAITING_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_DISCOUNT,
+		PPSS_WAITING_VAT) 
 		VALUES (?,?,?,?,?,
 				?,?,?,?,?,
 				?,?,?,?,?,
@@ -220,7 +222,8 @@ function createPO($items,$author)
 				?,?,?,?,?,
 				?,?,?,?,?,
 				?,?,?,?,?,
-				?,?,?,?,?)"; 		
+				?,?,?,?,?,
+				?)"; 		
 		$req = $dbBLUE->prepare($sql);
 		$params = array(
 			$PONUMBER,$VENDID, $VENDNAME, $VENDNAME1, $PURCHASE_DATE,
@@ -231,7 +234,8 @@ function createPO($items,$author)
 			$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
 			$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
 			$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
-			$ALGOQTY,$REASON,$TRANCOST,$ORDER_QTY,$TRANDISC,$VAT_PERCENT);		
+			$ALGOQTY,$REASON,$TRANCOST,$ORDER_QTY,$TRANDISC,
+			$VAT_PERCENT);		
 
 		$req->execute($params);				
 		

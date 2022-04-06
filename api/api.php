@@ -838,20 +838,15 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if ($item == false){
-		$resp["message"] = "Item not found"; 
-		$resp["result"] = "OK";
-		$response = $response->withJson($resp);
-		return $response;
-	}
-
+	
 	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
 	$item["LASTCOST"] = round($item["LASTCOST"],2);
 	$item["COST"] = round($item["COST"],2);
 	$resp = array();
-	if (isset($item["PRODUCTID"]))
+	if (isset($item["PRODUCTID"]))		
 	{		
+
 		$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
@@ -933,6 +928,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	else
 	{
 		$packInfo = packLookup($barcode);
+
 		if ($packInfo != null) // IS  A PACK
 		{
 			$packcode = $barcode;		
