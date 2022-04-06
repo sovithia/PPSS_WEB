@@ -2597,6 +2597,10 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else if ($status == "RECEIVEDBOTH"){
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
+	}
+	else if ($status == "RECEIVEDFORTRANSFERBOTH"){
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH')  ORDER BY LAST_UPDATED DESC";	
+		$params = array();
 	}			
 	else 
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
@@ -2744,7 +2748,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$notes = $json["NOTES"];
 			$ponumber = createAndReceivePO($items,$author,$notes);
 
-
 			if ($items[0]["LOCID"] == "WH1")
 				$status = "RECEIVEDFORTRANSFERFRESH";
 			else 
@@ -2781,7 +2784,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 			$resp["message"] = "Po created with number ".$ponumber;
 			$db->beginTransaction();
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'WAITING','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
 			$req = $db->prepare($sql);
 			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
 			$lastID = $db->lastInsertId();
@@ -3431,22 +3434,22 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 						$value["PPSS_DELIVERED_QUANTITY"] = "0";
 							
 					if ($TRANDISC != null && $TRANDISC != "0")
-						$calculatedCost =  $value["PPSS_DELIVERED_QUANTITY"] - ($value["PPSS_DELIVERED_QUANTITY"] * ($TRANDISC / 100));
+						$calculatedCost =  $value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100));
 					else 
-						$calculatedCost =  $value["PPSS_DELIVERED_QUANTITY"];
+						$calculatedCost =  $value["PPSS_DELIVERED_PRICE"];
 
 					$extcost = $value["PPSS_DELIVERED_QUANTITY"] * $calculatedCost;
 					 
-					$sql = "UPDATE PODETAIL SET TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?,TRANDISC = ?,
-												 PPSS_DELIVERED_PRICE = ?, PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?,PPSS_DELIVERED_FDISCOUNT = ?
+					$sql = "UPDATE PODETAIL SET TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?,TRANDISC = ?,PPSS_DELIVERED_PRICE = ?, 
+												 PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
 					if ($value["PPSS_DELIVERED_EXPIRE"] == "NO EXPIRE")
 						$value["PPSS_DELIVERED_EXPIRE"] = null;
 
-					$req->execute(array($calculatedCost,$extcost,$value["PPSS_DELIVERED_QUANTITY"] , 
-										$value["PPSS_DELIVERED_PRICE"],$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],$value["PPSS_DELIVERED_FDISCOUNT"],
+					$req->execute(array($calculatedCost,$extcost,$value["PPSS_DELIVERED_QUANTITY"] ,$value["PPSS_DELIVERED_DISCOUNT"] , $value["PPSS_DELIVERED_PRICE"],
+										$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],
 										$key,$json["PONUMBER"]) );	
 				}					 						
 			}
@@ -3677,12 +3680,17 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-			
-		if ($res["LOCID"] == "WH1")
-			$status = 'RECEIVEDFORTRANSFERFRESH';
-		else if ($res["LOCID"] == "WH2")
+		
+		if ($res == false)
 			$status = 'RECEIVEDFORTRANSFER';
-
+		else 
+		{
+			if ($res["LOCID"] == "WH1")
+				$status = 'RECEIVEDFORTRANSFERFRESH';
+			else if ($res["LOCID"] == "WH2")
+				$status = 'RECEIVEDFORTRANSFER';
+		}
+		
 		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
 		{
 			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
@@ -5094,7 +5102,7 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($itemID));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res == false){
+		if ($res != false){
 			$item["VAT"] = $res["VAT_PERCENT"];
 			$item["DISCOUNT"] = $res["TRANDISC"];
 		}else{
@@ -9268,6 +9276,10 @@ $app->post('/pricechange',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
+	$sql = "DELETE FROM PRICECHANGE WHERE PRODUCTID = ?";;
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));	
+
 	$sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER) values(?,?,?,?,?)";	
 	$req = $db->prepare($sql);
 	$req->execute(array($json["PRODUCTID"], $json["OLDPRICE"], $json["NEWPRICE"],'CREATED',$json["AUTHOR"]));	
@@ -9301,7 +9313,6 @@ $app->put('/pricechange',function ($request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;
 });
-
 
 $app->get('/pricechange',function ($request,Response $response){	
 	$db = getInternalDatabase();	
