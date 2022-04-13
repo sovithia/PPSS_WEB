@@ -983,7 +983,8 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-
+	$item["COST"] = sprintf("%.4f",$item["COST"]);
+	
 	$resp = array();
 	if (isset($item["PRODUCTID"])){		
 		$sql="
@@ -1051,10 +1052,10 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		}			
 			
 	}
-
+	
 	if ($item != null)
 	{
-		if ($type == "ORDERSTATS"){
+		if ($type == "ORDERSTATS"){					
 			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
 			$item["DECISION"] = $stats["DECISION"];
@@ -1063,25 +1064,20 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			else 
 				$item["LASTRCVQTY"] = "0";
 
-			$sql = "SELECT TOP(1)TRANDISC,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";		
+			$sql = "SELECT TOP(1)TRANDISC,TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";		
 			$req = $conn->prepare($sql);			
 			$req->execute(array($barcode));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res == false){
-
-			}else{
-
+			if ($res != false){
+				$item["COST"] = floatval($res["TRANCOST"]);
+				$item["COST"] = round($item["COST"],4);				
 			}
-
-
+			
 			if (isset($stats["DISCOUNT"]))
 				$item["DISCOUNT"] = $stats["DISCOUNT"];
 			else 
 				$item["DISCOUNT"] = "0";
-
-
-
-
+			error_log($item["COST"]);	
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -1095,7 +1091,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$item["START"] = $stats["start"];
 			$item["END"] = $stats["end"];
 			$item["POLICY"]	= $stats["policy"];
-			$item["COST"] = $stats["cost"];			
+			$item["COST"] = round($stats["cost"],4);			
 		}
 		else if ($type == "WASTESTATS"){
 			$stats = wasteStatistics($barcode,$expiration);
@@ -2572,8 +2568,6 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	return $response;
 });
 
-
-
 $app->get('/supplyrecord/{status}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -2815,6 +2809,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	
 	$json = json_decode($request->getBody(),true);	
 	$userid = $json["USERID"];
+
 	if (!isset($json["ITEMS"])) // MANUAL
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
@@ -2851,24 +2846,41 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 			$message .= "\n".$item["PRODUCTID"]." Not Found";
 			continue;
-		} 
-			
+		} 			
 		// TEST IF POOL IS EMPTY AND PICK FIRST ITEM
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE USERID = ? LIMIT 1";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["USERID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$firstItem = $req->fetch(PDO::FETCH_ASSOC);
 
-		
 		$stats = orderStatistics($item["PRODUCTID"]);
 		if ( ($stats["DECISION"] == "NEVER RECEIVED" || $stats["DECISION"] == "TOOEARLY" ) && ($item["SPECIALQTY"] == "" || $item["SPECIALQTY"] == null) ){
 			$message .= "\n".$item["PRODUCTID"]." Not Added";
 			continue;
 		}
-
 		$item["ALGOQTY"] = $stats["FINALQTY"];
-		if (isset($stats["PRICE"]))	
-			$item["COST"] = $stats["PRICE"];
+
+		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";
+		$req = $dbBlue->prepare($sql);			
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if (!isset($item["COST"]) || $item["COST"] == "0")	
+		{			
+			if ($res != false)
+				$item["COST"] = $res["TRANCOST"];
+			else
+				$item["COST"] = "0";		
+		}
+
+		if(!isset($item["VAT"]))
+		{
+			if ($res != false)
+				$item["VAT"] = $res["VAT_PERCENT"];
+			else
+				$item["VAT"] = "0";				
+		}
+
 
 		$item["DECISION"] = $stats["DECISION"];
 
@@ -2877,7 +2889,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		else
 			$QUANTITY = $item["ALGOQTY"];
 
-		if ($res == false) // NO RECORD
+
+
+		if ($firstItem == false) // NO RECORD
 		{			
 			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
@@ -2892,10 +2906,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
-			$req->execute(array($res["PRODUCTID"]));
+			$req->execute(array($firstItem["PRODUCTID"]));
 			$res3 = $req->fetch(PDO::FETCH_ASSOC);
 			
-
 			if ($res2["VENDID"] != $res3["VENDID"]){
 				$data["result"] = "KO";	
 				if (isset($data["message"]))
@@ -2904,7 +2917,6 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					$data["message"] = $item["PRODUCTID"]." Different vendor";
 					continue;				
 			}
-
 			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
@@ -2914,7 +2926,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
 					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["PRICE"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
+				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["COST"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
 			else
 			{
@@ -2922,13 +2934,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],$item["COST"],$item["DECISION"],$item["VAT"],$userid));
 			}
-
-			
 		}
-	
-
 	}
-
 	if ($message != "")
 		$data["message"] = $message;
 	$data["result"] = "OK";				
@@ -3175,6 +3182,8 @@ $app->delete('/supplyrecordnopopool', function(Request $request,Response $respon
 
 function splitPOWithItems($ponumber,$items)
 {
+	if (count($items) == 0)
+		return;
 	$dbBLUE = getDatabase();
 
 	$now = date("Y-m-d H:i:s");
@@ -3632,10 +3641,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}
 		$data["result"] = "OK";
 	}
-	else if ($json["ACTIONTYPE"] == "RCVA"){
+	else if ($json["ACTIONTYPE"] == "RCV"){
 				
 		$ponumber  = $json["PONUMBER"];		
-
+		
 		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
@@ -3667,9 +3676,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$DISCOUNT = $json["DISCOUNT"];
 		else 
 			$DISCOUNT = 0;
+		updatePO($ponumber,$json["ITEMS"]);
 		receivePO($ponumber,$json["AUTHOR"],"",$TAX,$DISCOUNT);
 		$data["result"] = "OK";
 	}
+	/*
 	else if ($json["ACTIONTYPE"] == "RCV"){
 		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
 			$ponumber  = $json["LINKEDPO"];				
@@ -3709,7 +3720,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();						
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
 		$data["result"] = "OK";
-	}
+	}*/
 	else if ($json["ACTIONTYPE"] == "ACC"){
 		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
@@ -9370,6 +9381,66 @@ $app->delete('/pricechange/{id}',function ($request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+$app->get('/externalpayment/{status}', function ($request, Response $response) {	
+	$db = getInternalDatabase();
+	$status = $request->getAttribute('status');	
+
+	$sql = "SELECT * FROM EXTERNALPAYMENT where STATUS = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/externalpayment', function ($request, Response $response) {
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$sql = "INSERT INTO EXTERNALPAYMENT (SUPPLY_RECORD_ID,STATUS,AMOUNT,REQUESTER) VALUES (?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["SUPPLLY_RECORD_ID"],"WAITING",$json["AMOUNT"],$json["AUTHOR"]));
+	
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->put('/externalpayment', function ($request, Response $response) {
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$sql = "UPDATE EXTERNALPAYMENT SET STATUS = 'PAID',PAYER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["AUTHOR"]));
+
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->delete('/externalpayment/{id}', function ($request, Response $response) {
+	$db = getInternalDatabase();
+	$id = $request->getAttribute('id');
+
+	$sql = "DELETE FROM PRICECHANGE WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+
+
+
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
