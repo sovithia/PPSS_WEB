@@ -96,8 +96,13 @@ function createPO($items,$author)
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
 		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT,
+		
+		BUYER,RECEIVE_AMT,TERMID,TERM_DAYS,TERM_DISC,
+		TERM_NET,FOB_POINT,SHIPVIA,REQUESTBY,FILEID,
+		USER_DOCNO,SHIP_REFERENCE) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
+				?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	$req =$dbBLUE->prepare($sql);	
 
@@ -105,7 +110,7 @@ function createPO($items,$author)
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
 					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
-					"","",$CURRENCY_AMOUNT);
+					"","",$CURRENCY_AMOUNT,"",0,"",0,0,0,"","","","","","");
 	$req->execute($params);
 
 	$line = 1;
@@ -243,6 +248,39 @@ function createPO($items,$author)
 		$line++;
 	}
 	return $PONUMBER;
+}
+
+function updatePO($ponumber,$items)
+{
+	$db = getDatabase();
+	//$sql = "SELECT * FROM PODETAIL "
+	foreach($items as $item){
+		$sql = "UPDATE PODETAIL SET 
+				RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
+				ORDER_QTY = PPSS_DELIVERED_QUANTITY,
+				TRANDISC = PPSS_DELIVERED_DISCOUNT,
+				TRANCOST = PPSS_DELIVERED_PRICE, 
+				VAT_PERCENT = PPSS_DELIVERED_VAT,
+				EXTCOST = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY)
+				WHERE PONUMBER = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($ponumber));
+	}
+
+	$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($ponumber));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT sum(EXTCOST * (1 + (VAT_PERCENT/100))) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($ponumber));
+	$res2 = $req->fetch(PDO::FETCH_ASSOC);
+
+	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ? WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($res["SUM"],$res["SUM"],$res2["SUMVAT"],$ponumber));
+
 }
 
 function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
@@ -388,6 +426,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 
 	$line = 0; 
+	$CURRENCY_AMOUNT_SUM = 0;
 	foreach($items as $item)
     {
 
@@ -478,6 +517,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$CURRENCY_COST_ADD,$ORIGINAL_QTY,$QTY_PACK,$PACK_WEIGHT,$CHAMBERNG_QTY,
 		$WET_QTY,$WET_PERCENT,$DATEADD,$USERADD
 		));
+
+		$CURRENCY_AMOUNT_SUM += $CURRENCY_AMOUNT;
 	}
 	$BUYER = "";
 	$TERMID = "";
@@ -521,12 +562,12 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 						$FILEID,
 						$USER_DOCNO,
 						$SHIP_REFERENCE,
-						$CURRENCY_AMOUNT,
+						$CURRENCY_AMOUNT_SUM,
 						$notes,
 						$notes,
 						'C',
 						$PONumber));
-
+	error_log($CURRENCY_AMOUNT_SUM);
 	$sql = "UPDATE APVENDOR set TOTALREC = TOTALREC + ?,
 							LASTRECAMT = ?,
 							LASTRECDATE = ?,
@@ -535,8 +576,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 							WHERE VENDID=?";
 
 	$req = $db->prepare($sql);
-	$req->execute(array($CURRENCY_AMOUNT,$CURRENCY_AMOUNT,$today,
-					$CURRENCY_AMOUNT,$PONumber,$theVENDID));
+	$req->execute(array($CURRENCY_AMOUNT_SUM,$CURRENCY_AMOUNT_SUM,$today,
+						$CURRENCY_AMOUNT_SUM,$PONumber,$theVENDID));
 
 
 
