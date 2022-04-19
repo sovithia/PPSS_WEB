@@ -3107,6 +3107,8 @@ $app->delete('/supplyrecordnopopool', function(Request $request,Response $respon
 
 function splitPOWithItems($ponumber,$items)
 {
+	if (count($items) == 0)
+		return;
 	$dbBLUE = getDatabase();
 
 	$now = date("Y-m-d H:i:s");
