@@ -840,13 +840,14 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$item =$req->fetch(PDO::FETCH_ASSOC);
 	
 	if ($item != false && $item["OTHERCODE"] != null)
-		$item["PRODUCTID"] = $item["OTHERCODE"];
-	$item["LASTCOST"] = round($item["LASTCOST"],2);
-	$item["COST"] = round($item["COST"],2);
+		$item["PRODUCTID"] = $item["OTHERCODE"];		
+	if (isset($item["LASTCOST"]))
+		$item["LASTCOST"] = round($item["LASTCOST"],2);
+	if (isset($item["COST"]))
+		$item["COST"] = round($item["COST"],2);
 	$resp = array();
 	if (isset($item["PRODUCTID"]))		
 	{		
-
 		$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
@@ -923,10 +924,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$resp["message"] = "WH2 Location missing"; 	
 			//$response = $response->withJson($resp);
 			//return $response;
-		}
+		}		
 	}
 	else
 	{
+		error_log("PACK");
 		$packInfo = packLookup($barcode);
 
 		if ($packInfo != null) // IS  A PACK
@@ -936,7 +938,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$result["BARCODE"] = $packcode;
 			//if (file_exists("img/packs/".$packcode.".jpg"))
 			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
+			$result["PICTURE"] = base64_encode($packInfo["PICTURE"]);
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
 			$result["DISC"] = $packInfo["DISC"];
@@ -3105,6 +3107,8 @@ $app->delete('/supplyrecordnopopool', function(Request $request,Response $respon
 
 function splitPOWithItems($ponumber,$items)
 {
+	if (count($items) == 0)
+		return;
 	$dbBLUE = getDatabase();
 
 	$now = date("Y-m-d H:i:s");
@@ -4706,7 +4710,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		$CURRENTONHAND = ($type == "TRANSFER") ? $ONHANDWH1 : $ONHANDWH2;
 		$TRANQTY *= -1;	
 
-		$req->execute(array(
+		$result = $req->execute(array(
 		$DOCNUM,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
 		$TRANDATE,$TRANTYPE,$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,
 		$REFERENCE,$TRANQTY,$TRANUNIT,$TRANFACTOR,$STKFACTOR,
@@ -4716,6 +4720,24 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,
 		$COST_METHOD,$CURRENCY_COST,$CURRENCY_AMOUNT,$CURRENCY_EXTPRICE,$CURRENCY_PRICE,
 		$MAIN_PRODUCTID,$BATCHNO2,$EXPIRED_DATE2));
+
+		if ($result == false){
+			sleep(10);
+			while($result == false){
+				$result = $req->execute(array(
+				$DOCNUM,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
+				$TRANDATE,$TRANTYPE,$LINENUM,$PRODUCTNAME,$PRODUCTNAME1,
+				$REFERENCE,$TRANQTY,$TRANUNIT,$TRANFACTOR,$STKFACTOR,
+				$TRANCOST,$TRANPRICE,$PRICE_ORI,$EXTPRICE,$EXTCOST,
+				$CURRENTONHAND,$WEIGHT,$USERADD,$DATEADD,$OLDWEIGHT,
+				$CURRENTCOST,$LASTCOST,$APPLID,$LINK_LINE,$ICCLEARING_ACC,
+				$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,
+				$COST_METHOD,$CURRENCY_COST,$CURRENCY_AMOUNT,$CURRENCY_EXTPRICE,$CURRENCY_PRICE,
+				$MAIN_PRODUCTID,$BATCHNO2,$EXPIRED_DATE2));
+				sleep(5);
+			}	
+		}
+
 
 		$locsql = "UPDATE dbo.ICLOCATION set LOCONHAND = (LOCONHAND - ?) WHERE LOCID = ? AND PRODUCTID = ?";
 		$locreq  = $db->prepare($locsql);		
