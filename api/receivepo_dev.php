@@ -83,26 +83,30 @@ function createPO($items,$author)
 			$calculatedCost =  $TRANCOST;
 		} 
 			
-		$vat = ($calculatedCost * ($VAT_PERCENT / 100)) * $item["ORDER_QTY"];
+		$vat = ($calculatedCost * ($item["VAT"] / 100)) * $item["ORDER_QTY"];
 		$price =   $calculatedCost; 
 		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
 		$VAT_AMT += $vat;
-	}
+	}	
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
-	$CURRENCY_AMOUNT = $PURCHASE_AMT;// + $VAT_AMT;
+	$CURRENCY_AMOUNT = $PURCHASE_AMT; //+ $VAT_AMT;
 
 	 $sql = "INSERT INTO POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
 		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT,
-		
-		BUYER,RECEIVE_AMT,TERMID,TERM_DAYS,TERM_DISC,
+		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT,BUYER,
+		RECEIVE_AMT,TERMID,TERM_DAYS,TERM_DISC,
 		TERM_NET,FOB_POINT,SHIPVIA,REQUESTBY,FILEID,
 		USER_DOCNO,SHIP_REFERENCE) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,?,?)";
+		VALUES (?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?)";
 
 	$req =$dbBLUE->prepare($sql);	
 
@@ -110,7 +114,9 @@ function createPO($items,$author)
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
 					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
-					"","",$CURRENCY_AMOUNT,"",0,"",0,0,0,"","","","","","");
+					"","",$CURRENCY_AMOUNT,"",0,
+					"",0,0,0,"",
+					"","","","","");
 	$req->execute($params);
 
 	$line = 1;
@@ -255,31 +261,37 @@ function updatePO($ponumber,$items)
 	$db = getDatabase();
 	//$sql = "SELECT * FROM PODETAIL "
 	foreach($items as $item){
-		$sql = "UPDATE PODETAIL SET 
-				RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
-				ORDER_QTY = PPSS_DELIVERED_QUANTITY,
-				TRANDISC = PPSS_DELIVERED_DISCOUNT,
-				TRANCOST = PPSS_DELIVERED_PRICE, 
-				VAT_PERCENT = PPSS_DELIVERED_VAT,
-				EXTCOST = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY)
-				WHERE PONUMBER = ?";
+		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?, PPSS_DELIVERED_PRICE = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($ponumber));
+		$req->execute(array($item["PPSS_DELIVERED_QUANTITY"], $item["PPSS_DELIVERED_PRICE"],
+							$item["PRODUCTID"],$ponumber));		
 	}
+	$sql = "UPDATE PODETAIL SET 
+	RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
+	ORDER_QTY = PPSS_DELIVERED_QUANTITY,
+	TRANDISC = PPSS_DELIVERED_DISCOUNT,
+	TRANCOST = PPSS_DELIVERED_PRICE, 
+	VAT_PERCENT = PPSS_DELIVERED_VAT,
+	EXTCOST = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY),
+	CURRENCY_AMOUNT = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY)
+	WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($ponumber));
+
 
 	$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
-	$sql = "SELECT sum(EXTCOST * (1 + (VAT_PERCENT/100))) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
+	$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
-	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ? WHERE PONUMBER = ?";
+	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($res["SUM"],$res["SUM"],$res2["SUMVAT"],$ponumber));
+	$req->execute(array($res["SUM"],$res["SUM"],$res2["SUMVAT"],($res["SUM"] + $res2["SUMVAT"]) ,$res["SUM"], $ponumber));
 
 }
 
@@ -427,6 +439,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 	$line = 0; 
 	$CURRENCY_AMOUNT_SUM = 0;
+
 	foreach($items as $item)
     {
 
@@ -495,14 +508,19 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		LOCID,QTY_ORDER,VATABLE,VAT_PERCENT,LINE_NOTE,   
 		REQUIREDATE,TRANDISC,FROM_SERIAL,TO_SERIAL,TRANUNIT,
 		TRANFACTOR,CURRID_COSTADD,OPERATIONBASE,CURRID_EXCHRATE,CURRENCY_AMOUNT,
-		COST_ADD,CURR_ID,BASECURR_ID,CURRENCY_COST,CURRENCY_COST_ADD,
+		COST_ADD,CURR_ID,BASECURR_ID,CURRENCY_COST,CURRENCY_COST_ADD,		
 		ORIGINAL_QTY,QTY_PACK,PACK_WEIGHT,CHAMBERNG_QTY, WET_QTY,
 		WET_PERCENT,DATEADD,USERADD) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,
-				?,?,?,?,?,?,?,?,?,?,				
-				?,?,?,?,?,?,?,?)";
+		VALUES (?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,				
+				?,?,?,?,?,
+				?,?,?)";
 
 		$req = $db->prepare($sql);
 		$req->execute(array(
@@ -511,11 +529,11 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$TRANQTY,$DIMENSION,
 		$FILEID,$COST_CENTER,$INVENTORY_ACC,$POCLEARING_ACC,$EXTCOST,
 		$LOCID,$QTY_ORDER,$VATABLE,$VAT_PERCENT,$LINE_NOTE,
-		$REQUIREDATE,$TRANDISC,$FROM_SERIAL,$TO_SERIAL,
-		$TRANUNIT,$TRANFACTOR,$CURRID_COSTADD,$OPERATIONBASE,$CURRID_EXCHRATE,
-		$CURRENCY_AMOUNT,$COST_ADD,$CURR_ID,$BASECURR_ID,$CURRENCY_COST,
-		$CURRENCY_COST_ADD,$ORIGINAL_QTY,$QTY_PACK,$PACK_WEIGHT,$CHAMBERNG_QTY,
-		$WET_QTY,$WET_PERCENT,$DATEADD,$USERADD
+		$REQUIREDATE,$TRANDISC,$FROM_SERIAL,$TO_SERIAL,$TRANUNIT,	
+		$TRANFACTOR,$CURRID_COSTADD,$OPERATIONBASE,$CURRID_EXCHRATE,$CURRENCY_AMOUNT,
+		$COST_ADD,$CURR_ID,$BASECURR_ID,$CURRENCY_COST,$CURRENCY_COST_ADD,
+		$ORIGINAL_QTY,$QTY_PACK,$PACK_WEIGHT,$CHAMBERNG_QTY,$WET_QTY,
+		$WET_PERCENT,$DATEADD,$USERADD
 		));
 
 		$CURRENCY_AMOUNT_SUM += $CURRENCY_AMOUNT;
@@ -567,7 +585,23 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 						$notes,
 						'C',
 						$PONumber));
-	error_log($CURRENCY_AMOUNT_SUM);
+
+
+	$sql = "SELECT sum(EXTCOST) as SUM FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($PONumber));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$CURRENCY_AMOUNT_SUM = $res["SUM"];
+
+	$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($PONumber));
+	$res2 = $req->fetch(PDO::FETCH_ASSOC);
+	$VAT_SUM = $res2["SUMVAT"];
+
+	$GRANDTOTAL = $CURRENCY_AMOUNT_SUM + $VAT_SUM;
+	//error_log("AMT_SUM ".$CURRENCY_AMOUNT_SUM);
+	//error_log("VAT_SUM ".$VAT_SUM);
 	$sql = "UPDATE APVENDOR set TOTALREC = TOTALREC + ?,
 							LASTRECAMT = ?,
 							LASTRECDATE = ?,
@@ -575,9 +609,10 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 							LASTRECDOC = ?  
 							WHERE VENDID=?";
 
+
 	$req = $db->prepare($sql);
-	$req->execute(array($CURRENCY_AMOUNT_SUM,$CURRENCY_AMOUNT_SUM,$today,
-						$CURRENCY_AMOUNT_SUM,$PONumber,$theVENDID));
+	$req->execute(array($GRANDTOTAL ,$GRANDTOTAL ,$today,
+						$GRANDTOTAL,$PONumber,$theVENDID));
 
 
 
@@ -639,8 +674,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 	$line = 0;
 	foreach($items as $item)
-	{
-
+	{		
 		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
 				$item["ORDER_QTY"] = $item["ORDERQTY"];
 
@@ -811,7 +845,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$OTHER_PRICE,$RETURN_DATE,$BORROW_NUMBER,$CHANGE_REWARD,$MONEY_REWARD,
 		$IS_MONEY_REWARD,$PACK_RECEIVE,$PACK_UNIT,$REWARD_UNIT, $COST_METHOD,
 		$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,$CURRENCY_COST_ADD, $CURRENCY_EXTPRICE,
-		$CURRENCY_PRICE,$FF_LF_INDEX,$PURPOSE_ISSUE,$JOB_ID,$ROW_ID,
+		$CURRENCY_PRICE,$FF_LF_INDEX	,$PURPOSE_ISSUE,$JOB_ID,$ROW_ID,
 		$MAIN_PRODUCTID,$USERADD,$DATEADD));
 	}
 
@@ -896,7 +930,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 				 REQUIREDATE = ?,
 				 CURRID_ADDCOST = ?,
 				 RECEIVE_DATE = ?,
-				[RECEIVE_QTY] = RECEIVE_QTY + ?,
+				[RECEIVE_QTY] =  ?,
 				[POSTATUS] = 'C',
 				[QTY_OVERORDER] = 0		
 		 		WHERE PONUMBER = ? 

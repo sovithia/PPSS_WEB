@@ -975,16 +975,22 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$expiration = $request->getParam('expiration','');
 	$depreciationtype = $request->getParam('depreciationtype','');
 
-
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,VENDID,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	$item["COST"] = sprintf("%.4f",$item["COST"]);
-	
+	if(isset($item["COST"]))
+		$item["COST"] = sprintf("%.4f",$item["COST"]);
+	else 
+		$item["COST"] = "0";
+	if (isset($item["VENDID"]))
+		$VENDID = $item["VENDID"];
+	else 
+		$VENDID = "0";
+
 	$resp = array();
 	if (isset($item["PRODUCTID"])){		
 		$sql="
@@ -1072,6 +1078,11 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 				$item["COST"] = floatval($res["TRANCOST"]);
 				$item["COST"] = round($item["COST"],4);				
 			}
+			
+			$sql = "SELECT TAX FROM APVENDOR WHERE VENDID = ?";
+			$req = $conn->prepare($sql);
+			$req->execute(array($VENDID));
+			$item["VAT"] = $req->fetch(PDO::FETCH_ASSOC)["TAX"];
 			
 			if (isset($stats["DISCOUNT"]))
 				$item["DISCOUNT"] = $stats["DISCOUNT"];
@@ -2955,7 +2966,7 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 
 	$newData = array();
 	foreach($items as $item){
-		$sql = "SELECT PRODUCTNAME,VENDNAME, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
+		$sql = "SELECT PRODUCTNAME,VENDNAME,PPSS_HAVE_EXTERNAL, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -2963,6 +2974,7 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 		$item["VENDNAME"] = $res["VENDNAME"];
 		$item["PACKING"] = $res["PACKINGNOTE"];
 		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		$item["PPSS_HAVE_EXTERNAL"] = $res["PPSS_HAVE_EXTERNAL"];
 		array_push($newData,$item);	
 
 	}
@@ -3386,7 +3398,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$data["result"] = "OK";	
 	}	
 	else if ($json["ACTIONTYPE"] == "WH"){ // DELIVERY
-		$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
+		if (isset($json["INVOICEJSONDATA"]))
+			$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
+		else 
+			$nbinvoices = 1;	
 		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbinvoices WHERE ID = :identifier";
 		$req = $db->prepare($sql);							
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
@@ -3450,7 +3465,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$extcost = $value["PPSS_DELIVERED_QUANTITY"] * $calculatedCost;
 					 
 					$sql = "UPDATE PODETAIL SET TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?,TRANDISC = ?,PPSS_DELIVERED_PRICE = ?, 
-												 PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?
+												 PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?,PPSS_DELIVERED_VAT = ?
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
@@ -3458,7 +3473,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 						$value["PPSS_DELIVERED_EXPIRE"] = null;
 
 					$req->execute(array($calculatedCost,$extcost,$value["PPSS_DELIVERED_QUANTITY"] ,$value["PPSS_DELIVERED_DISCOUNT"] , $value["PPSS_DELIVERED_PRICE"],
-										$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],
+										$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],$value["PPSS_DELIVERED_VAT"],
 										$key,$json["PONUMBER"]) );	
 				}					 						
 			}
@@ -3482,17 +3497,37 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 			
 			// RECALCULATE AMOUNT ON POHEADER
+			$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+		
+			$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);
+		
+			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ?  WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array(($res["SUM"] + $res2["SUMVAT"]), $json["PONUMBER"]));
+
+
+			// RECALCULATE AMOUNT ON POHEADER
+			/*
 			$sql = "SELECT EXTCOST FROM PODETAIL WHERE PONUMBER = ? ";
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($json["PONUMBER"]));
 			$details = $req->fetchAll();
 			$totalAMT = 0;
+			$totalVAT = 0;
 			foreach($details as $detail)			
 				$totalAMT += $detail["EXTCOST"];
+				$totalVAT += $detail["VAT"]
 
 			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ? WHERE PONUMBER = ?";
-			$req = $dbBLUE->prepare($sql);
+			$req = $dbBLUE->prepare($sql);			
 			$req->execute(array($totalAMT,$json["PONUMBER"]));
+			*/
 
 		}
 		$data["result"] = "OK";
@@ -3825,7 +3860,11 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',	
 					PPSS_WAITING_CALCULATED,		
-				   TRANDISC,EXTCOST,PPSS_DELIVERED_QUANTITY,PPSS_VALIDATED_QUANTITY,PPSS_NOTE,PPSS_DELIVERED_EXPIRE,PPSS_DELIVERED_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE 
+				   TRANDISC,EXTCOST,
+				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
+				   PPSS_VALIDATED_QUANTITY,
+				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE
+				   PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
 	}
 	else{
@@ -3833,7 +3872,11 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
-				   TRANDISC,EXTCOST,PPSS_DELIVERED_QUANTITY,PPSS_VALIDATED_QUANTITY,PPSS_NOTE,PPSS_DELIVERED_EXPIRE,PPSS_DELIVERED_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE 
+				   TRANDISC,EXTCOST,
+				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
+				   PPSS_VALIDATED_QUANTITY,
+				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE
+				   PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
 	}
 		
@@ -4668,8 +4711,6 @@ function transferItems($items, $author,$type = "TRANSFER"){
 	$message = "";
 	foreach($items as $item)
 	{
-
-
 		$psql = "SELECT CATEGORYID,CLASSID,PRODUCTNAME,PRODUCTNAME1,SALEFACTOR,BIG_UNIT_FACTOR,STKFACTOR,COST,PRICE,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($psql);
 		$req->execute(array($item["PRODUCTID"]));	
@@ -4813,6 +4854,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 
 		$count++;
 	}
+	$message = "DOCNO:" .$identifier. " ".$message;
 	return $message;
 }
 
@@ -8802,6 +8844,10 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 
 	foreach($items as $item){		
 
+		$stats = orderStatistics($item["PRODUCTID"]);
+		$item["ORDERQTY"] = $stats["FINALQTY"];
+		$item["DECISION"] = $stats["DECISION"];
+
 		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -9418,10 +9464,7 @@ $app->put('/externalpayment', function ($request, Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute(array($json["AUTHOR"]));
 
-	$resp = array();	
-	$resp["result"] = "OK";	
-	$response = $response->withJson($resp);
-	return $response;
+	
 });
 
 $app->delete('/externalpayment/{id}', function ($request, Response $response) {
