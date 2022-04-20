@@ -2,7 +2,7 @@
 
 function getDatabase()
 { 	
-    $conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+    $conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 	return $conn;
 }
 
@@ -21,10 +21,65 @@ function getInternalDatabase($base = "MAIN")
     return $db;
 }
 
-function insertVendors()
+
+
+function loopPO()
 {
     $db = getInternalDatabase();
+    $dbBlue = getDatabase();
+    echo "START\n";
+    $pofile = fopen('po.csv','r');
+    while (($line = fgetcsv($pofile)) !== FALSE) 
+    {
+        $linedata = explode(';',$line[0]);
+        $ponumber = $linedata[0] ?? "";
+        $vendor = $linedata[1] ?? "";
+        
+        echo "PONUMBER: ". $ponumber."|VENDOR: ".$vendor."\n";
 
+        $sql = "SELECT ID FROM EXTERNALVENDOR WHERE NAMEEN = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($vendor));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $vendorid = $res["ID"]; 
+
+        $sql = "SELECT PRODUCTID,TRANCOST FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
+
+        $req = $dbBlue->prepare($sql);
+        $req->execute(array($ponumber));
+        $items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach($items as $item)
+        {            
+            echo "  ITEM: ". $item["PRODUCTID"]."\n";
+
+            $sql = "SELECT PRODUCTID FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = ? AND PRODUCTID = ?";            
+            $req = $db->prepare($sql);
+            $req->execute(array($vendorid,$item["PRODUCTID"]));
+            $res = $req->fetch(PDO::FETCH_ASSOC);            
+            
+            if ($res == false){
+                $sql = "INSERT INTO EXTERNALCOST (EXTERNALVENDOR_ID,PRODUCTID,COST) VALUES (?,?,?)";
+                $req = $db->prepare($sql);
+                $req->execute(array($vendorid,$item["PRODUCTID"],$item["TRANCOST"]));
+            }else{
+                $sql = "UPDATE EXTERNALCOST SET COST = ? WHERE EXTERNALVENDOR_ID = ? AND PRODUCTID = ?";
+                $req = $db->prepare($sql);
+                $req->execute(array($item["TRANCOST"],$vendorid,$item["PRODUCTID"]));                
+            }
+
+            $sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
+            $req = $dbBlue->prepare($sql);
+            $req->execute(array($item["PRODUCTID"]));        
+        }
+       
+        
+    }
+}
+
+
+function insertVendors(){
+    $db = getInternalDatabase();
 
     $sql = "DELETE FROM EXTERNALVENDOR";
     $req = $db->prepare($sql);
@@ -82,9 +137,7 @@ function insertVendors()
     }
     fclose($itemsfile);
 }
-
-function insertItems()
-{
+function insertItems(){
     $db = getInternalDatabase();
     $dbBlue = getDatabase();
     $sql = "DELETE FROM EXTERNALCOST";
@@ -139,7 +192,7 @@ function insertItems()
     fclose($itemsfile);
 }
 
-
-insertVendors();
-insertItems();
+//insertVendors();
+//insertItems();
+loopPO();
 ?>
