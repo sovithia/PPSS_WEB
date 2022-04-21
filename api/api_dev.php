@@ -8475,7 +8475,8 @@ $app->get('/externalvendor', function($request,Response $response){ // VENDOR LI
 	$db = getInternalDatabase();
 	$sql = "select ID,NAMEEN,NAMEKH,PHONE1,(select count(PRODUCTID) 
 			FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = EXTERNALVENDOR.ID ) as 'ITEMCOUNT'  
-			FROM EXTERNALVENDOR";	
+			FROM EXTERNALVENDOR
+			ORDER BY NAMEEN ASC";	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -8793,7 +8794,8 @@ $app->get('/externalsupplier', function($request,Response $response){
 	$sql = "select distinct(ICPRODUCT.VENDID),VENDNAME 
 			FROM ICPRODUCT,APVENDOR 
 			WHERE PPSS_HAVE_EXTERNAL = 'Y'
-			AND APVENDOR.VENDID = ICPRODUCT.VENDID";
+			AND APVENDOR.VENDID = ICPRODUCT.VENDID
+			ORDER BY VENDNAME ASC";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array()); 			
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8821,7 +8823,7 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 	$excludeIDs .= ")";
 	
 
-	$sql = "SELECT  ICPRODUCT.PRODUCTID,PRICE,
+	$sql = "SELECT TOP(1) ICPRODUCT.PRODUCTID,PRICE,
 		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
 		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
 		ICLOCATION.ORDERPOINT, ORDERQTY,
@@ -8844,9 +8846,9 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 
 	foreach($items as $item){		
 
-		$stats = orderStatistics($item["PRODUCTID"]);
-		$item["ORDERQTY"] = $stats["FINALQTY"];
-		$item["DECISION"] = $stats["DECISION"];
+		//$stats = orderStatistics($item["PRODUCTID"]);
+		//$item["ORDERQTY"] = $stats["FINALQTY"];
+		//$item["DECISION"] = $stats["DECISION"];
 
 		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);
