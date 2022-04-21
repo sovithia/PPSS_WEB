@@ -311,13 +311,13 @@ function packLookup($barcode)
 
 	$conn=getDatabase();
 	$params = array($barcode);	
-	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
+	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,PICTURE_PATH FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);	
 			
 	if ($item != false)			{
-		$item["PICTURE"]= loadPicture($barcode,true);		
+		$item["PICTURE"]= loadPictureByPath($item["PICTURE_PATH"],true);		
 		return $item;
 	}
 	else					
@@ -662,13 +662,10 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 	{
 		if ($barcode == "")
 			continue;
-		$packInfo = packLookup($barcode);
-		;
+		$packInfo = packLookup($barcode);		
 
 		if ($packInfo != null)		
 		{
-			
-		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];		
 			if (isset($percentages[$count]))
@@ -1023,6 +1020,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	}
 	else
 	{
+
 		$packInfo = packLookup($barcode);
 		if ($packInfo != null) // IS  A PACK
 		{
@@ -1031,7 +1029,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$result["BARCODE"] = $packcode;
 			//if (file_exists("img/packs/".$packcode.".jpg"))
 			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
+			$result["PICTURE"] = base64_encode($packInfo["PICTURE"]);
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
 			$result["DISC"] = $packInfo["DISC"];

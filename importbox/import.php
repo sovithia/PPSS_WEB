@@ -43,6 +43,8 @@ function loopPO()
         $res = $req->fetch(PDO::FETCH_ASSOC);
         $vendorid = $res["ID"]; 
 
+        
+
         $sql = "SELECT PRODUCTID,TRANCOST FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
 
         $req = $dbBlue->prepare($sql);
@@ -72,8 +74,7 @@ function loopPO()
             $req = $dbBlue->prepare($sql);
             $req->execute(array($item["PRODUCTID"]));        
         }
-       
-        
+        sleep(1);     
     }
 }
 
