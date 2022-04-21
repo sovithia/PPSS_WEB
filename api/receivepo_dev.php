@@ -374,9 +374,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$TO_INVOICE =  "Y";
 	$VAT_AMT =  $PORef["VAT_AMT"]; 
 	$VAT_PERCENT = $PORef["VAT_PERCENT"];
-	$INV_AMT =  $PORef["CURRENCY_AMOUNT"];
+	$INV_AMT =  $PORef["CURRENCY_AMOUNT"] + $PORef["VAT_AMT"];
 	$PAID_AMT =  "0";
-	$BALANCE =  $PORef["CURRENCY_AMOUNT"];
+	$BALANCE =  $PORef["CURRENCY_AMOUNT"] + $PORef["VAT_AMT"];
 	$PCNAME =  "Application";
 	$CURR_RATE = "1";
 	$REMARK =  "Note";
@@ -402,7 +402,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$LOC  =  $THELOCATION;
 	$CURR_ID =   "USD";
 	$BASECURR_ID =  "USD";
-	$CURRENCY_AMOUNT =  $PORef["CURRENCY_AMOUNT"]; 
+	$CURRENCY_AMOUNT =  $PORef["CURRENCY_AMOUNT"] + $PORef["VAT_AMT"]; 
 	$CURRENCY_VATAMOUNT =  $PORef["CURRENCY_VATAMOUNT"]; 
 	$SHIP_REFERENCE = "";
 	$DATEADD =  $today;

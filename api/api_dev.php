@@ -6827,7 +6827,6 @@ $app->get('/traffic/{date}',function($request,Response $response) {
 	return $response;	
 });
 
-
 $app->get('/freshsales',function(Request $request,Response $response) {    	
 	$conn=getDatabase();
 
@@ -6835,7 +6834,6 @@ $app->get('/freshsales',function(Request $request,Response $response) {
 	if ($day == '')
 		$day = date("Y-m-d");
 		
-
 	$sql =  "SELECT  PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,VENDNAME,
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE',
@@ -6952,11 +6950,6 @@ $app->get('/currentpromotion',function($request,Response $response) {
 	OR PRODUCTID in (SELECT PRODUCTID FROM [PhnomPenhSuperStore2019].[dbo].[ICNEWPROMOTION] WHERE DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ) 
 	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,PRICE,CATEGORYID,COLOR,TOTALRECEIVE,TOTALSALE,VENDID"; 
 	
-	
-	
-	
-
-
 	$req = $conn->prepare($sql);
 	$req->execute(array());
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
