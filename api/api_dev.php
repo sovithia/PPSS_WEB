@@ -8839,9 +8839,11 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 
 	foreach($items as $item){		
 
-		//$stats = orderStatistics($item["PRODUCTID"]);
-		//$item["ORDERQTY"] = $stats["FINALQTY"];
-		//$item["DECISION"] = $stats["DECISION"];
+		$stats = externalAlertStats($item["PRODUCTID"]);
+		$item["QTYLESS30"] = $stats["QTYLESS30"];
+		$item["QTYLASTRCV"] = $stats["QTYLASTRCV"];
+		$item["QTYPROMOTION"] = $stats["QTYPROMOTION"];
+		$item["NBTHROWN"] = $stats["NBTHROWN"];
 
 		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);

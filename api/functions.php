@@ -214,7 +214,7 @@ function isLocal()
 	return ($mac != "119.82.252.226");
 }
 
-function getDatabase($name = "MAIN")
+function getDatabase($name = "TRAINING")
 { 
 	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
 		$name =	"TRAINING";
@@ -633,6 +633,59 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 				return $decreasedQty + ($multiple - $remains); // -1
 		}		 		
 	}
+}
+
+function externalAlertStats($barcode){
+    $db=getDatabase();  
+    $sql = "SELECT LASTRECEIVEDATE,
+                    ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'NBTHROWN'
+                    FROM ICPRODUCT WHERE 
+                    PRODUCTID = ?";                                 
+    $req = $db->prepare($sql);
+    $req->execute(array($barcode));                 
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $data["NBTHROWN"] = $res["NBTHROWN"];
+
+    $lastrcv = $res["LASTRECEIVEDATE"];
+    $less30 = strtotime('-30 days');
+    $today = date("Y-m-d");
+    
+    echo("LESS 30" . $less30);
+    echo("LAST RCV " .$lastrcv);
+    exit;
+    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+            WHERE PRODUCTID = ? 
+            AND POSDATE >=  ? AND POSDATE <= ?";
+    $req = $db->prepare($sql);
+    $req->execute(array($barcode,$less30,$today));
+
+
+    $res = $req->fetch(PDO::FETCH_ASSOC);   
+    $data["QTYLESS30"] = $res["SUM"];
+
+
+    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+            WHERE PRODUCTID = ? 
+            AND POSDATE >=  ? AND POSDATE <= ?";
+    $req = $db->prepare($sql);
+    $req->execute(array($barcode,$lastrcv,$today));
+    $res = $req->fetch(PDO::FETCH_ASSOC);   
+    $data["QTYLASTRCV"] = $res["SUM"];
+
+    
+    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
+    WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
+    AND PRODUCTID = ? 
+    AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
+                 DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
+                 DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')";
+    $req = $db->prepare($sql);
+    $req->execute(array($barcode));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $data["QTYPROMOTION"] = $res["QTY"];
+
+    return $data;
+
 }
 
 function orderStatistics($barcode)
