@@ -8844,6 +8844,9 @@ $app->get('/externalitemalert', function($request,Response $response){ // TODO
 		$item["QTYLASTRCV"] = $stats["QTYLASTRCV"];
 		$item["QTYPROMOTION"] = $stats["QTYPROMOTION"];
 		$item["NBTHROWN"] = $stats["NBTHROWN"];
+		$item["LASTRECEIVEDATE"] = $stats["LASTRECEIVEDATE"];
+		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
+
 
 		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);

@@ -214,7 +214,7 @@ function isLocal()
 	return ($mac != "119.82.252.226");
 }
 
-function getDatabase($name = "TRAINING")
+function getDatabase($name = "MAIN")
 { 
 	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
 		$name =	"TRAINING";
@@ -379,6 +379,28 @@ switch(mime_content_type($path)) {
      $img = imagecreatefromjpeg($path);
   }
   return $img;
+}
+
+function loadPictureByPath($path,$base64 = false)
+{
+	if (!file_exists($path)){		
+		$final = file_get_contents("img/mystery.png");
+	}
+	else {
+		$final = file_get_contents($path);
+
+		file_put_contents("./tmp.jpg",$final);		
+		$data = getImage("./tmp.jpg");
+		$data = imagescale($data,$scale);
+		ob_start();
+		imagejpeg($data);
+		$contents = ob_get_contents();
+		ob_end_clean();
+		$final = $contents;
+	}
+	if ($base64 == true)
+		return base64_encode($final);
+	return $final;	
 }
 
 function loadPicture($barcode,$scale = 150,$base64 = false)
@@ -645,14 +667,11 @@ function externalAlertStats($barcode){
     $req->execute(array($barcode));                 
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $data["NBTHROWN"] = $res["NBTHROWN"];
-
+    $data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
     $lastrcv = $res["LASTRECEIVEDATE"];
-    $less30 = strtotime('-30 days');
+    $less30 = date('Y-m-d', strtotime('-30 days'));
     $today = date("Y-m-d");
-    
-    echo("LESS 30" . $less30);
-    echo("LAST RCV " .$lastrcv);
-    exit;
+    $data["DAYS30BACK"] = $less30;
     $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
             WHERE PRODUCTID = ? 
             AND POSDATE >=  ? AND POSDATE <= ?";
@@ -661,8 +680,7 @@ function externalAlertStats($barcode){
 
 
     $res = $req->fetch(PDO::FETCH_ASSOC);   
-    $data["QTYLESS30"] = $res["SUM"];
-
+    $data["QTYLESS30"] = $res["SUM"] ?? 0;
 
     $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
             WHERE PRODUCTID = ? 
@@ -670,19 +688,19 @@ function externalAlertStats($barcode){
     $req = $db->prepare($sql);
     $req->execute(array($barcode,$lastrcv,$today));
     $res = $req->fetch(PDO::FETCH_ASSOC);   
-    $data["QTYLASTRCV"] = $res["SUM"];
+    $data["QTYLASTRCV"] = $res["SUM"] ?? 0;
 
-    
+    $indb = getInternalDatabase();
     $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
     WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
     AND PRODUCTID = ? 
     AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
                  DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
                  DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')";
-    $req = $db->prepare($sql);
+    $req = $indb->prepare($sql);
     $req->execute(array($barcode));
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $data["QTYPROMOTION"] = $res["QTY"];
+    $data["QTYPROMOTION"] = $res["QTY"] ?? 0;
 
     return $data;
 
