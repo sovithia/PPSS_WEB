@@ -289,9 +289,11 @@ function updatePO($ponumber,$items)
 	$req->execute(array($ponumber));
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
+	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];
+
 	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($res["SUM"],$res["SUM"],$res2["SUMVAT"],($res["SUM"] + $res2["SUMVAT"]) ,$res["SUM"], $ponumber));
+	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,$res2["SUMVAT"],$AMT_WITH_VAT ,$AMT_WITH_VAT, $ponumber));
 
 }
 
@@ -599,9 +601,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
 	$VAT_SUM = $res2["SUMVAT"];
 
-	$GRANDTOTAL = $CURRENCY_AMOUNT_SUM + $VAT_SUM;
-	//error_log("AMT_SUM ".$CURRENCY_AMOUNT_SUM);
-	//error_log("VAT_SUM ".$VAT_SUM);
+	$GRANDTOTAL = $CURRENCY_AMOUNT_SUM + $VAT_SUM;	
 	$sql = "UPDATE APVENDOR set TOTALREC = TOTALREC + ?,
 							LASTRECAMT = ?,
 							LASTRECDATE = ?,
@@ -622,7 +622,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$REFERENCE =   "Receive PO# " . $PONumber;
 	$TRANDATE =    $today;
 	$TRANTYPE =    "R";
-	$TOTAL_AMT =   $PORef["CURRENCY_AMOUNT"]; 
+	$TOTAL_AMT =   $GRANDTOTAL; 
 	$PCNAME =    "Application";
 	$CURRID =    "USD";
 	$CURR_RATE =   "1";
@@ -643,7 +643,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$TOTAL_MONEYREWARD = 0;
 	$ARACC =    '';
 	$BASECURR_ID =   "USD";
-	$CURRENCY_AMOUNT = $PORef["CURRENCY_AMOUNT"];
+	$CURRENCY_AMOUNT = $GRANDTOTAL;
 	$PURPOSE_ISSUE =  '';
 	$JOB_ID =  '';
 	$USERADD =    blueUser($author);
@@ -678,11 +678,11 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
 				$item["ORDER_QTY"] = $item["ORDERQTY"];
 
-		$sql = "SELECT CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT CATEGORYID,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$line++;
+		
 
 		$DOCNUM =  sprintf("VO%013d",$APNUM); 
 		$PRODUCTID = $item["PRODUCTID"]; 
@@ -712,9 +712,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 		$TRANTAX = $item["VAT_PERCENT"];
 		$TRANCOST = $item["TRANCOST"];
-		$TRANPRICE = $item["TRANCOST"];
-		$PRICE_ORI = $item["TRANCOST"];
-		$EXTPRICE = $item["EXTPRICE"];
+		$TRANPRICE = $res["PRICE"];
+		$PRICE_ORI = $res["PRICE"];
+		$EXTPRICE = $res["PRICE"] * $item["ORDER_QTY"];
 		$EXTCOST = $item["EXTCOST"];
 		$CURRENTONHAND = $item["CURRENTONHAND"];
 		$CURRID = "USD";
@@ -819,7 +819,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		?,?,?,?,?,
 		?,?,?,?,?,
 		?,?,?,?,?,
-		?,?,?,?,?,
+		?,?,?,?,?, 
 		?,?,?,?,?,
 		?,?,?,?,?,
 		?,?,?,?,?,
@@ -847,6 +847,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,$CURRENCY_COST_ADD, $CURRENCY_EXTPRICE,
 		$CURRENCY_PRICE,$FF_LF_INDEX	,$PURPOSE_ISSUE,$JOB_ID,$ROW_ID,
 		$MAIN_PRODUCTID,$USERADD,$DATEADD));
+
+		$line++;
 	}
 
 	//$sql = "UPDATE SYSSETUPCURRENCY  set HAS_TRANSACTION = ? WHERE CURR_ID = ?"; NO NEED ?
@@ -860,9 +862,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$APSTATUS =      '';
 	$VAT_AMT =      $theVATAMOUNT; 
 	$VAT_PERCENT =   $theVATPERCENT;
-	$INV_AMT =      $theTOTALAMOUNT;
+	$INV_AMT =      $theTOTALAMOUNT + $theVATAMOUNT;
 	$PAID_AMT =      "0";
-	$BALANCE =      $theTOTALAMOUNT;
+	$BALANCE =      $theTOTALAMOUNT + $theVATAMOUNT;
 	$PCNAME =      "APPLICATION";
 	$CURR_RATE =    "1";   
 	$REMARK =      '';
@@ -884,9 +886,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$LOCID =       $THELOCATION;
 	$CURR_ID =      "USD";
 	$BASECURR_ID =   "USD";
-	$CURRENCY_AMOUNT =   $theTOTALAMOUNT;
+	$CURRENCY_AMOUNT =   $theTOTALAMOUNT + $theVATAMOUNT;;
 	$CURRENCY_VATAMOUNT =  $theVATAMOUNT;
-	$CURRENCY_BALANCE =  $theTOTALAMOUNT;
+	$CURRENCY_BALANCE =  $theTOTALAMOUNT + $theVATAMOUNT;;
 	$CURRENCY_PAIDAMT =   "0";
 	$DATEADD =   $today;
 	$USERADD = 	blueUser($author);
@@ -917,7 +919,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$CURRENCY_BALANCE,$CURRENCY_PAIDAMT,$DATEADD,$USERADD
 	));
 
-
+	$line = 1;
 	foreach($items as $item)
 	{
 		$IS_CATON = 0;
@@ -1050,6 +1052,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
 		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD
 		));
+
+		$line++;
 	}
 
 	//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
@@ -1063,9 +1067,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$GLYEAR =    date("Y");
 	$GLMONTH =    date("m"); 
 	$ACCNO =    "20000";
-	$GLAMT =    $theTOTALAMOUNT; 
+	$GLAMT =    $theTOTALAMOUNT + $theVATAMOUNT; 
 	$DEBIT =     "0";
-	$CREDIT =    $theTOTALAMOUNT;
+	$CREDIT =    $theTOTALAMOUNT + $theVATAMOUNT;
 	$DOCNO =    sprintf("VO%013d",$APNUM); 
 	$USERADD =    blueUser($author);
 	$DATEADD =    $today;
@@ -1158,15 +1162,16 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$GLYEAR =    date("Y"); 
 	$GLMONTH =   date("m");
 	$ACCNO =    "17000";
-	if ($HAVEVAT)
-		$GLAMT = $theVATAMOUNT;
-	else 
+	//if ($HAVEVAT)		
+		//$GLAMT = $theVATAMOUNT;
+	//else 
 		$GLAMT = $theTOTALAMOUNT;
 	
-	if ($HAVEVAT)
-		$DEBIT = $theVATAMOUNT;
-	else 
+	//if ($HAVEVAT)
+	//	$DEBIT = $theVATAMOUNT;
+	//else 
 		$DEBIT = $theTOTALAMOUNT;
+
 	$CREDIT =    0;
 	$DOCNO =     sprintf("VO%013d",$APNUM);
 	$USERADD =    blueUser($author); 
@@ -1201,7 +1206,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$COST_CENTER,$LOCID));
 
 	//****** IF VENDOR NOT VAT INSERT 1 LINE (17000) ***********************
-	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
+	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) ********
 
 	//+APACCOUNT (Account Number 17000)
 	$VENDID = $theVENDID;
@@ -1209,7 +1214,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$TRANDATE = $today;
 	$LINENUM =   "1";
 	$ACCNO =       "17000";
-	$AMOUNT = $theTOTALAMOUNT;
+	$AMOUNT = $theTOTALAMOUNT + $theVATAMOUNT;
 	$PERIOD = date("n");
 	$YEAR = date("Y");
 	$BATCH = '';
@@ -1224,7 +1229,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$LOCID = '';
 	$COMMENT_ON_LINE = '';
 	$CURR_TYPE =  '';
-	$CURR_AMOUNT = $theTOTALAMOUNT;
+	$CURR_AMOUNT = $theTOTALAMOUNT + $theVATAMOUNT;; 
 	$CURR_RATE =     "1";
 	$OPERATION_BASE = '';
 	$BASECURR_ID = "USD";
@@ -1253,6 +1258,62 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$CURR_AMOUNT,$CURR_RATE,$OPERATION_BASE,$BASECURR_ID,$CURR_ID,
 	$USERADD,$DATEADD
 	));
+
+	if ($HAVEVAT)
+	{
+
+		//+APACCOUNT (Account Number 16100)
+		$VENDID = $theVENDID;
+		$VOUCHERNO = sprintf("VO%013d",$APNUM); 
+		$TRANDATE = $today;
+		$LINENUM =   "1";
+		$ACCNO =       "16100";
+		$AMOUNT = $theVATAMOUNT;
+		$PERIOD = date("n");
+		$YEAR = date("Y");
+		$BATCH = '';
+		$REFERENCE = '';
+		$ACCNAME = 'INVENTORY ACCOUNT';
+		$ACCNAME1 = '';
+		$STAT = '';
+		$TYPE = 'T';
+		$BATCHDATE = $today;
+		$FILEID = '';
+		$COST_CENTER = '';
+		$LOCID = '';
+		$COMMENT_ON_LINE = '';
+		$CURR_TYPE =  '';
+		$CURR_AMOUNT = $theVATAMOUNT;
+		$CURR_RATE =     "1";
+		$OPERATION_BASE = '';
+		$BASECURR_ID = "USD";
+		$CURR_ID = "USD";
+		$USERADD = blueUser($author);
+		$DATEADD =$today;
+
+
+		$sql = "INSERT INTO APACCOUNT (
+		VENDID,VOUCHERNO,TRANDATE,LINENUM,ACCNO,     
+		AMOUNT,PERIOD,YEAR,BATCH,REFERENCE,    
+		ACCNAME,ACCNAME1,STAT,TYPE,BATCHDATE,    
+		FILEID,COST_CENTER,LOCID,COMMENT_ON_LINE,CURR_TYPE,    
+		CURR_AMOUNT,CURR_RATE,OPERATION_BASE,BASECURR_ID,CURR_ID,    
+		USERADD,DATEADD) values
+		(?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,?,?,?,?,?,
+		?,?,?,?,?,
+		?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array(
+		$VENDID,$VOUCHERNO,$TRANDATE,$LINENUM,$ACCNO,
+		$AMOUNT,$PERIOD,$YEAR,$BATCH,$REFERENCE,
+		$ACCNAME,$ACCNAME1,$STAT,$TYPE,$BATCHDATE,
+		$FILEID,$COST_CENTER,$LOCID,$COMMENT_ON_LINE,$CURR_TYPE,
+		$CURR_AMOUNT,$CURR_RATE,$OPERATION_BASE,$BASECURR_ID,$CURR_ID,
+		$USERADD,$DATEADD
+		));
+
+	}
 
 	/* THIS IS FOR PAY AP
 	$PAID_AMT = "";
