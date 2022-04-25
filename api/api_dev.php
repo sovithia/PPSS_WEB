@@ -7000,11 +7000,10 @@ $app->get('/bestsellerpromotion',function($request,Response $response) {
 	  OR PRODUCTID in (SELECT  PRODUCTID FROM  [PhnomPenhSuperStore2019].[dbo].[ICNEWPROMOTION]  
 	  WHERE DATEFROM >= '".$begin." 00:00:00.000' AND DATETO <= '".$end." 23:59:59.999')
 	  GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,PRICE
-	  ORDER BY COUNT DESC";
-	$result = SELECTALL($sql);	
-	//$req = $conn->prepare($sql);
-	//$req->execute(array());
-	//$result = $req->fetchAll(PDO::FETCH_ASSOC);	
+	  ORDER BY COUNT DESC";		
+	$req = $conn->prepare($sql);
+	$req->execute(array());
+	$result = $req->fetchAll(PDO::FETCH_ASSOC);	
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -8802,6 +8801,167 @@ $app->get('/externalsupplier', function($request,Response $response){
 
 });
 
+
+$app->get('/externalitemalertbyvendor/{id}', function($request,Response $response){ 
+
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$sql = "SELECT PRODUCTID FROM EXTERNALORDER WHERE STATUS = 'ORDERED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$ids = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$excludeIDs = "('XXX',";
+	foreach($ids as $theid){
+		$excludeIDs .= "'".$theid["PRODUCTID"] . "',";
+	}
+	
+	$excludeIDs = substr($excludeIDs,0,-1);
+	$excludeIDs .= ")";
+	
+	
+	$sql = "SELECT PRODUCTID FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$ids = $req->fetchAll(PDO::FETCH_ASSOC);
+	$includeIDs = "(";
+	
+	if ($ids == false){
+		$resp["result"] = "OK";
+		$resp["data"] = array();
+		$response = $response->withJson($resp);
+		return $response;
+	}
+
+	foreach($ids as $theid){
+		$includeIDs .= "'".$theid["PRODUCTID"] . "',";
+	}
+	$includeIDs = substr($includeIDs,0,-1);
+	$includeIDs .= ")";
+
+
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRICE,
+		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
+		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
+		ICLOCATION.ORDERPOINT, ORDERQTY,
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
+		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
+		FROM ICLOCATION,ICPRODUCT 
+		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ACTIVE = 1
+		AND LOCID = 'WH1'
+		AND ONHAND < ICLOCATION.ORDERPOINT 
+		AND ICLOCATION.ORDERPOINT > 0		
+		AND PPSS_HAVE_EXTERNAL = 'Y'
+		AND ICPRODUCT.PRODUCTID NOT IN $excludeIDs
+		AND ICPRODUCT.PRODUCTID IN $includeIDs
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRODUCTNAME1,LASTCOST,PRICE";				
+		$req = $dbBlue->prepare($sql);
+		error_log($sql);
+		$req->execute(array());
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$data = array();
+
+	foreach($items as $item){		
+
+		$stats = externalAlertStats($item["PRODUCTID"]);
+		$item["QTYLESS30"] = $stats["QTYLESS30"];
+		$item["QTYLASTRCV"] = $stats["QTYLASTRCV"];
+		$item["QTYPROMOTION"] = $stats["QTYPROMOTION"];
+		$item["NBTHROWN"] = $stats["NBTHROWN"];
+		$item["LASTRECEIVEDATE"] = $stats["LASTRECEIVEDATE"];
+		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
+		
+
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
+		$item["LASTRECEIVEVENDOR"] = $lastreceive["VENDNAME"] ?? "N/A";
+		$item["LASTRECEIVEQTY"] =  $lastreceive["TRANQTY"] ?? "N/A";
+		$item["LASTRECEIVECOST"] = $lastreceive["CURRENCY_COST"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALORDER 						
+						 WHERE PRODUCTID = ? ORDER BY CREATED DESC";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$lastorder = $req->fetch(PDO::FETCH_ASSOC);
+
+		$item["LASTORDERVENDOR"] = $lastorder["NAMEEN"] ?? "N/A";
+		$item["LASTORDERQTY"] = $lastorder["QUANTITY"] ?? "N/A";
+		$item["LASTORDERCOST"] = $lastorder["PRICE"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
+						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND PRODUCTID = ? 
+						 ORDER BY COST ASC";
+	  	$req = $db->prepare($sql);
+	  	$req->execute(array($item["PRODUCTID"]));
+	  	$prices = $req->fetchAll(PDO::FETCH_ASSOC);
+	  	$count = 1;
+	  	$item["VENDOR1"] = "";	  
+		$item["COST1"] = "";	  
+		$item["VENDOR2"] = "";	  
+		$item["COST2"] = "";	  
+		$item["VENDOR3"] = "";	  
+		$item["COST3"] = "";	  
+		$item["VENDOR4"] = "";	  
+		$item["COST4"] = "";	  	
+		for($i = 0;isset($prices[$i]); $i++)
+		{
+		  	if ($i == 4)
+		  		break;
+		  	$item["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
+		  	$item["COST" . ($i + 1)] = $prices[$i]["COST"];	   
+		}
+		$sql = "SELECT * FROM EXTERNALORDER WHERE PRODUCTID  = ? AND STATUS <> 'DELIVERED'";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res == false){
+			$item["STATUS"] = "NONE";
+		}else{
+			$item["STATUS"] = "Last order :" . $res["CREATED"];
+		}
+			
+		$sql = "SELECT TOP(1) CAST(TRANCOST AS decimal(7, 2)) as 'SUPPLIERCOST',VENDNAME as 'SUPPLIERNAME'
+				FROM PORECEIVEDETAIL 
+				WHERE PRODUCTID = ? 
+				AND VENDID <> ? 
+				AND VENDID <> ?
+				ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$item["SUPPLIERCOST"] = $res["SUPPLIERCOST"]; 
+			$item["SUPPLIERNAME"] = $res["SUPPLIERNAME"];
+		}else{
+			$item["SUPPLIERCOST"] = "N/A";
+			$item["SUPPLIERNAME"] = "N/A";
+		}
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res["VENDID"] == "400-463" || $res["VENDID"] == "400-106")
+			$item["LASTORDERSTATUS"] = "EXTERNAL";
+		else
+			$item["LASTORDERSTATUS"] = "SUPPLIER";
+
+
+
+		array_push($data, $item); 
+	}
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 $app->get('/externalitemalert', function($request,Response $response){ 
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -8819,7 +8979,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 	$excludeIDs .= ")";
 	
 
-	$sql = "SELECT TOP(1) ICPRODUCT.PRODUCTID,PRICE,
+	$sql = "SELECT TOP(500) ICPRODUCT.PRODUCTID,PRICE,
 		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
 		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
 		ICLOCATION.ORDERPOINT, ORDERQTY,
@@ -8842,6 +9002,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 
 	foreach($items as $item){		
 
+		/*
 		$stats = externalAlertStats($item["PRODUCTID"]);
 		$item["QTYLESS30"] = $stats["QTYLESS30"];
 		$item["QTYLASTRCV"] = $stats["QTYLASTRCV"];
@@ -8849,7 +9010,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 		$item["NBTHROWN"] = $stats["NBTHROWN"];
 		$item["LASTRECEIVEDATE"] = $stats["LASTRECEIVEDATE"];
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
-
+		*/
 
 		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);
@@ -9436,6 +9597,163 @@ $app->get('/externalfruitsupplier', function($request,Response $response){
 	$response = $response->withJson($result);
 	return $response;
 
+});
+
+$app->get('/externalfruititemalertbyvendor/{id}', function($request,Response $response){ 
+
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$sql = "SELECT PRODUCTID FROM EXTERNALFRUITORDER WHERE STATUS = 'ORDERED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$ids = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$excludeIDs = "('XXX',";
+	foreach($ids as $theid){
+		$excludeIDs .= "'".$theid["PRODUCTID"] . "',";
+	}
+	
+	$excludeIDs = substr($excludeIDs,0,-1);
+	$excludeIDs .= ")";
+	
+	
+	$sql = "SELECT PRODUCTID FROM EXTERNALFRUITCOST WHERE EXTERNALVENDOR_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$ids = $req->fetchAll(PDO::FETCH_ASSOC);
+	$includeIDs = "(";
+	
+	if ($ids == false){
+		$resp["result"] = "OK";
+		$resp["data"] = array();
+		$response = $response->withJson($resp);
+		return $response;
+	}
+
+	foreach($ids as $theid){
+		$includeIDs .= "'".$theid["PRODUCTID"] . "',";
+	}
+	$includeIDs = substr($includeIDs,0,-1);
+	$includeIDs .= ")";
+
+
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRICE,
+		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
+		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
+		ICLOCATION.ORDERPOINT, ORDERQTY,
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
+		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
+		FROM ICLOCATION,ICPRODUCT 
+		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ACTIVE = 1
+		AND LOCID = 'WH1'
+		AND ONHAND < ICLOCATION.ORDERPOINT 
+		AND ICLOCATION.ORDERPOINT > 0		
+		AND ICPRODUCT.PRODUCTID NOT IN $excludeIDs
+		AND ICPRODUCT.PRODUCTID IN $includeIDs
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRODUCTNAME1,LASTCOST,PRICE";				
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array());
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$data = array();
+
+
+	foreach($items as $item){		
+
+		$stats = externalAlertStats($item["PRODUCTID"]);
+		$item["QTYLESS30"] = $stats["QTYLESS30"];
+		$item["QTYLASTRCV"] = $stats["QTYLASTRCV"];
+		$item["QTYPROMOTION"] = $stats["QTYPROMOTION"];
+		$item["NBTHROWN"] = $stats["NBTHROWN"];
+		$item["LASTRECEIVEDATE"] = $stats["LASTRECEIVEDATE"];
+		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
+		
+
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
+		$item["LASTRECEIVEVENDOR"] = $lastreceive["VENDNAME"] ?? "N/A";
+		$item["LASTRECEIVEQTY"] =  $lastreceive["TRANQTY"] ?? "N/A";
+		$item["LASTRECEIVECOST"] = $lastreceive["CURRENCY_COST"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALORDER 						
+						 WHERE PRODUCTID = ? ORDER BY CREATED DESC";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$lastorder = $req->fetch(PDO::FETCH_ASSOC);
+
+		$item["LASTORDERVENDOR"] = $lastorder["NAMEEN"] ?? "N/A";
+		$item["LASTORDERQTY"] = $lastorder["QUANTITY"] ?? "N/A";
+		$item["LASTORDERCOST"] = $lastorder["PRICE"] ?? "N/A";
+
+		$sql = "SELECT * FROM EXTERNALCOST,EXTERNALVENDOR 
+						 WHERE  EXTERNALCOST.EXTERNALVENDOR_ID = EXTERNALVENDOR.ID  
+						 AND PRODUCTID = ? 
+						 ORDER BY COST ASC";
+	  	$req = $db->prepare($sql);
+	  	$req->execute(array($item["PRODUCTID"]));
+	  	$prices = $req->fetchAll(PDO::FETCH_ASSOC);
+	  	$count = 1;
+	  	$item["VENDOR1"] = "";	  
+		$item["COST1"] = "";	  
+		$item["VENDOR2"] = "";	  
+		$item["COST2"] = "";	  
+		$item["VENDOR3"] = "";	  
+		$item["COST3"] = "";	  
+		$item["VENDOR4"] = "";	  
+		$item["COST4"] = "";	  	
+		for($i = 0;isset($prices[$i]); $i++)
+		{
+		  	if ($i == 4)
+		  		break;
+		  	$item["VENDOR" . ($i + 1)] = $prices[$i]["NAMEEN"];	  
+		  	$item["COST" . ($i + 1)] = $prices[$i]["COST"];	   
+		}
+		$sql = "SELECT * FROM EXTERNALORDER WHERE PRODUCTID  = ? AND STATUS <> 'DELIVERED'";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($res == false){
+			$item["STATUS"] = "NONE";
+		}else{
+			$item["STATUS"] = "Last order :" . $res["CREATED"];
+		}
+			
+		$sql = "SELECT TOP(1) CAST(TRANCOST AS decimal(7, 2)) as 'SUPPLIERCOST',VENDNAME as 'SUPPLIERNAME'
+				FROM PORECEIVEDETAIL 
+				WHERE PRODUCTID = ? 
+				AND VENDID <> ? 
+				AND VENDID <> ?
+				ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$item["SUPPLIERCOST"] = $res["SUPPLIERCOST"]; 
+			$item["SUPPLIERNAME"] = $res["SUPPLIERNAME"];
+		}else{
+			$item["SUPPLIERCOST"] = "N/A";
+			$item["SUPPLIERNAME"] = "N/A";
+		}
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res["VENDID"] == "400-463" || $res["VENDID"] == "400-106")
+			$item["LASTORDERSTATUS"] = "EXTERNAL";
+		else
+			$item["LASTORDERSTATUS"] = "SUPPLIER";
+
+		array_push($data, $item); 
+	}
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 $app->get('/externalfruititemalert', function($request,Response $response){ 

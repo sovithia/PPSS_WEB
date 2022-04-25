@@ -666,8 +666,9 @@ function externalAlertStats($barcode){
     $req = $db->prepare($sql);
     $req->execute(array($barcode));                 
     $res = $req->fetch(PDO::FETCH_ASSOC);
-    $data["NBTHROWN"] = $res["NBTHROWN"];
+    $data["NBTHROWN"] = round($res["NBTHROWN"],2);
     $data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
+
     $lastrcv = $res["LASTRECEIVEDATE"];
     $less30 = date('Y-m-d', strtotime('-30 days'));
     $today = date("Y-m-d");
@@ -681,6 +682,7 @@ function externalAlertStats($barcode){
 
     $res = $req->fetch(PDO::FETCH_ASSOC);   
     $data["QTYLESS30"] = $res["SUM"] ?? 0;
+		$data["QTYLESS30"] = round($data["QTYLESS30"],2);
 
     $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
             WHERE PRODUCTID = ? 
@@ -689,6 +691,7 @@ function externalAlertStats($barcode){
     $req->execute(array($barcode,$lastrcv,$today));
     $res = $req->fetch(PDO::FETCH_ASSOC);   
     $data["QTYLASTRCV"] = $res["SUM"] ?? 0;
+		$data["QTYLASTRCV"] = round($data["QTYLASTRCV"],2);
 
     $indb = getInternalDatabase();
     $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
