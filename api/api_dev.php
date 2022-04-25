@@ -2751,6 +2751,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$vendorid = $res["VENDID"];
 			$vendname = $res["VENDNAME"];
 			$notes = $json["NOTES"];
+
+			updateVendor($items,$author);
 			$ponumber = createAndReceivePO($items,$author,$notes);
 
 			if ($items[0]["LOCID"] == "WH1")
