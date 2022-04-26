@@ -1019,6 +1019,9 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		$data["duration"] = "N/A";
 		$data["percentpromo"] = "N/A";
 		$data["percentpenalty"] = "N/A";
+		$data["status"] = "N/A";
+		$data["policy"] = "N/A";
+		$data["cost"] = "0"; 
 
 		$sql = "SELECT SIZE,CATEGORYID,COST,CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -1026,7 +1029,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if (!isset($res["SIZE"]))
-			return null;
+			return $data;
 
 
 		$data["policy"] = $res["SIZE"];
