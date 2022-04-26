@@ -1082,7 +1082,11 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$sql = "SELECT TAX FROM APVENDOR WHERE VENDID = ?";
 			$req = $conn->prepare($sql);
 			$req->execute(array($VENDID));
-			$item["VAT"] = $req->fetch(PDO::FETCH_ASSOC)["TAX"];
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+			 $item["VAT"] =  ["TAX"];
+			else 
+			 $item["VAT"] = 0; 
 			
 			if (isset($stats["DISCOUNT"]))
 				$item["DISCOUNT"] = $stats["DISCOUNT"];
