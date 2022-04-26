@@ -3467,12 +3467,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					if (!is_numeric($value["PPSS_DELIVERED_QUANTITY"]))
 						$value["PPSS_DELIVERED_QUANTITY"] = "0";
 							
-					if ($TRANDISC != null && $TRANDISC != "0")
-						$calculatedCost =  $value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100));
-					else 
-						$calculatedCost =  $value["PPSS_DELIVERED_PRICE"];
-
-					$extcost = $value["PPSS_DELIVERED_QUANTITY"] * $calculatedCost;
+					//if ($TRANDISC != null && $TRANDISC != "0")
+					//	$calculatedCost =  $value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100));
+					//else 
+					$calculatedCost =  $value["PPSS_DELIVERED_PRICE"];
+					$extcost = $value["PPSS_DELIVERED_QUANTITY"] * ($value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100)) );
 					 
 					$sql = "UPDATE PODETAIL SET TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?,TRANDISC = ?,PPSS_DELIVERED_PRICE = ?, 
 												 PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?,PPSS_DELIVERED_VAT = ?
@@ -7303,18 +7302,24 @@ $app->post('/selfpromotion', function($request,Response $response) {
 	return $response;
 
 });
-	
-	
-	
 
-
-$app->put('/promotion', function($request,Response $response) {
+// Declare next step 
+$app->put('/selfpromotion/{id}', function($request,Response $response) {
 		
+	
+
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
-	$id = $json["ID"];
+	$id = $request->getAttribute('id');
 	$status = $json["STATUS"];
 	$author = $json["AUTHOR"];	
+	$step = $json["STEP"];
+	//$date
+
+	// input 
+
+
+	/*
 	if ($status == "VALIDATED"){
 		$sql = "UPDATE DEPRECIATION SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
@@ -7328,7 +7333,7 @@ $app->put('/promotion', function($request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
 	}		
-
+	*/
 	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? OR DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));

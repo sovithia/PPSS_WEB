@@ -172,6 +172,7 @@ function createPO($items,$author)
 
 		if (isset($item["COST"]))
 			$TRANCOST = $item["COST"];
+		//error_log("TRANCOST: ".$TRANCOST."\n");
 		$VAT_PERCENT = $item["VAT"];
    
 		$DISCABLE = $res2["DISCABLE"];
@@ -209,9 +210,11 @@ function createPO($items,$author)
 		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
 		$CURRENTONHAND = $newitem["ONHAND"];
 
-		$CURRENCY_COST = floatval($TRANCOST);// *  floatval( (100 - $item["DISCOUNT"]) / 100);
+		$CURRENCY_COST = floatval($TRANCOST); // *  floatval( (100 - $item["DISCOUNT"]) / 100);
 		$CURRENCY_COST = round($CURRENCY_COST,2);
-		$CURRENCY_AMOUNT = floatval($CURRENCY_COST)  * floatval($QUANTITY);	
+
+		$CURRENCY_AMOUNT = floatval($TRANCOST)  * floatval($QUANTITY);	
+		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * ((100 - $TRANDISC) / 100); // REMOVE DISCOUNT
 		$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
 
 		$STKFACTOR = "1.00000";
@@ -235,9 +238,8 @@ function createPO($items,$author)
 			else if ($autoPromo != "0")
 				$TRANDISC = $autoPromo;	
 		}
-		// *** FIX **//
-		//$TRANCOSTWITHOUTDISC = $TRANCOST * ((100 + $TRANDISC) / 100); // ADD DISCOUNT BACK
-		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * ((100 - $TRANDISC) / 100); // REMOVE DISCOUNT
+		
+		
 
 		$EXTCOST = round($CURRENCY_AMOUNT, 2);		
 		
@@ -289,9 +291,7 @@ function createPO($items,$author)
 			$ALGOQTY,$REASON,$TRANCOST,$ORDER_QTY,$TRANDISC,
 			$VAT_PERCENT);		
 
-		$req->execute($params);				
-		
-		
+		$req->execute($params);						
 		$line++;
 	}
 	return $PONUMBER;
