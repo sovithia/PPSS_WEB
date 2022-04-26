@@ -1084,7 +1084,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			$req->execute(array($VENDID));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res != false)
-			 $item["VAT"] =  ["TAX"];
+			 $item["VAT"] =  $res["TAX"];
 			else 
 			 $item["VAT"] = 0; 
 			
