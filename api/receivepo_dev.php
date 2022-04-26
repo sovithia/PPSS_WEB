@@ -211,7 +211,7 @@ function createPO($items,$author)
 
 		$CURRENCY_COST = floatval($TRANCOST);// *  floatval( (100 - $item["DISCOUNT"]) / 100);
 		$CURRENCY_COST = round($CURRENCY_COST,2);
-		$CURRENCY_AMOUNT = floatval($CURRENCY_COST) * floatval($QUANTITY);	
+		$CURRENCY_AMOUNT = floatval($CURRENCY_COST)  * floatval($QUANTITY);	
 		$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
 
 		$STKFACTOR = "1.00000";
@@ -235,8 +235,10 @@ function createPO($items,$author)
 			else if ($autoPromo != "0")
 				$TRANDISC = $autoPromo;	
 		}
-		
-			
+		// *** FIX **//
+		//$TRANCOSTWITHOUTDISC = $TRANCOST * ((100 + $TRANDISC) / 100); // ADD DISCOUNT BACK
+		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * ((100 - $TRANDISC) / 100); // REMOVE DISCOUNT
+
 		$EXTCOST = round($CURRENCY_AMOUNT, 2);		
 		
 		$RECEIVE_QTY = "0.0000";
