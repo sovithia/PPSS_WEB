@@ -123,6 +123,7 @@ function createPO($items,$author)
 		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
 		$VAT_AMT += $vat;
 	}	
+	$VAT_AMT = round($VAT_AMT,2);
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
 	$CURRENCY_VATAMOUNT = round($CURRENCY_VATAMOUNT,2);
 	$CURRENCY_AMOUNT = round($PURCHASE_AMT, 2); //+ $VAT_AMT;
@@ -159,12 +160,12 @@ function createPO($items,$author)
 	$line = 1;
 	foreach($items as $item)
 	{
-			
+		/*	
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-
+		*/
 		$sql = "SELECT  LASTCOST,COST,DISCABLE FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
@@ -172,7 +173,7 @@ function createPO($items,$author)
 
 		if (isset($item["COST"]))
 			$TRANCOST = $item["COST"];
-		//error_log("TRANCOST: ".$TRANCOST."\n");
+		
 		$VAT_PERCENT = $item["VAT"];
    
 		$DISCABLE = $res2["DISCABLE"];
