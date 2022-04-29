@@ -1194,17 +1194,18 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 	$db=getDatabase();
 	$author = blueUser($author);
 
-
 	$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ? ";
 	$req = $db->prepare($sql);
 	$req->execute(array($productid)); 
 	$res = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	if ($res == false){
-		$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD ) 
-				VALUES (?,?,?,?,?,?,?,?,?,?,getdate())";
+		$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,DISCOUNT_VALUE,PCNAME,USERADD,DATEADD,REMARKS ) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,getdate(),?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author));	
+		$req->execute(array($start,$end,'Per Item',$productid,$PRODUCTNAME,
+							1,'DISCOUNT(%)',$percent,"APPLICATION",$author,
+						'APPLICATION'));	
 	}
 	else{
 		$sql = "UPDATE ICNEWPROMOTION SET DATEFROM = ? , 
@@ -1216,13 +1217,22 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 																			DISCOUNT_VALUE = ?,
 																			PCNAME = ?,
 																			USERADD = ?,
-																			DATEADD = getdate()
+																			DATEADD = getdate(),
+																			REMARKS = 'APPLICATION'
 						WHERE PRODUCTID = ?"; 
 		$req = $db->prepare($sql);
 		$req->execute(array($start,$end,'Per Item',$PRODUCTNAME,1,'DISCOUNT(%)',$percent,"APPLICATION",$author,$productid));
 	}
 }
 
+function endPromotion($productid){
+	$db=getDatabase();
+	$sql = "UPDATE ICNEWPROMOTION SET REMARKS = DATETO,DATETO = DATEFROM WHERE REMARKS = 'APPLICATION' AND PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+
+
+}
 
 
 function autoPromoForVendor($vendid){

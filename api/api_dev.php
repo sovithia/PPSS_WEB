@@ -7227,26 +7227,14 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$blueDB = getDatabase();
 	$params = array();	
 	$sql = "";
-	if ($type == ''){
-		$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE 
-			TYPE = ?
-	  		OR TYPE = ?
-	  		OR TYPE = ?
-	  		OR TYPE = ?";
-		array_push($params,"EXPIREPROMOTION");
-		array_push($params,"CLEARANCEMEDIUMDAMAGEDPROMOTION");
-		array_push($params,"CLEARANCEHIGHDAMAGEDPROMOTION");
-		array_push($params,"CLEARANCELOWSELLPROMOTION");			
-	}else{
-		$sql = "SELECT * FROM PROMOTION WHERE 
-			TYPE = '?'";
-		array_push($params,$type);
-	}
-	if ($status != ''){		
-		$sql .= "AND STATUS = ? ";
-		array_push($params,$status);
-	}		
-	$sql .= " ORDER BY CREATED DESC";
+
+	$sql = "SELECT *,
+			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME1)) as 'DELAYTOEXPIRE1',  
+			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME2)) as 'DELAYTOEXPIRE2',  
+			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME3)) as 'DELAYTOEXPIRE3',  
+			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME4)) as 'DELAYTOEXPIRE4',  
+	FROM SELFPROMOTIONITEM WHERE STATUS <> 'FINISHED' ORDER BY CREATED DESC";
+	
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -7270,6 +7258,50 @@ $app->get('/selfpromotion', function($request,Response $response) {
 			$item["STKUM"] = $res["STKUM"];
 			$item["PRICE"] = $res["PRICE"];			
 		}		
+	
+		if($item["DELAYTOEXPIRE1"] != null){
+			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
+			$req = $blueDB->prepare($sql);
+			if ($item["STARTTIME2"] != $item["EXPIRATION"])
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$item["STARTTIME2"]));
+			else 
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$item["EXPIRATION"]));
+				
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$item["SOLDINPERIOD1"] = $res["QTY"];
+		}
+
+		if($item["DELAYTOEXPIRE2"] != null){
+			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
+			$req = $blueDB->prepare($sql);
+			if ($item["STARTTIME2"] != $item["EXPIRATION"])
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME2"],$item["STARTTIME3"]));
+			else 
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME2"],$item["EXPIRATION"]));				
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$item["SOLDINPERIOD2"] = $res["QTY"];
+		}
+
+		if($item["DELAYTOEXPIRE3"] != null){
+			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
+			$req = $blueDB->prepare($sql);
+			if ($item["STARTTIME3"] != $item["EXPIRATION"])
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME3"],$item["STARTTIME4"]));
+			else 
+				$req->execute(array($item["PRODUCTID"],$item["STARTTIME3"],$item["EXPIRATION"]));				
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$item["SOLDINPERIOD3"] = $res["QTY"];
+		}
+
+		if($item["DELAYTOEXPIRE4"] != null){
+			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
+			$req = $blueDB->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$item["STARTTIME4"],$item["EXPIRATION"]));			
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$item["SOLDINPERIOD4"] = $res["QTY"];
+		}
+
+
 		array_push($newItems,$item);
 	}
 
@@ -7284,81 +7316,96 @@ $app->post('/selfpromotion', function($request,Response $response) {
 
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();	
-	$item  = $json["ITEM"];
-	$type = $json["TYPE"];	
-	$author = $json["AUTHOR"];
-	$userid = $json["USERID"];
-	$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,NEEDLABEL,STARTTIME1,
-										ENDTIME1,LINKTYPE1,PERCENTPENALTY1,PERCENTPROMO1,TYPE) 
-				  VALUES (?,?,?,?,?,
-				  		  ?,?,?,?,?,
-							?,?)";
+	$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,STARTTIME1,LINKTYPE1,
+										PERCENTPENALTY1,PERCENTPROMO1,TYPE,EXPIRATION,CREATOR) 
+				  VALUES (?,?,?,date('now'),?,
+				  		  ?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$item["NEEDLABEL"],$item["STARTTIME"],
-						$item["ENDTIME"],$item["LINKTYPE"],$item["PERCENTPENALTY"],$item["PERCENTPROMO"],$item["TYPE"]));			
-		
+	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["LINKTYPE"],
+						$json["PERCENTPENALTY"],$json["PERCENTPROMO"],$json["TYPE"],$json["EXPIRATION"],$json["AUTHOR"]));			
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);	
 	return $response;
 
 });
 
-// Declare next step 
-$app->put('/selfpromotion/{id}', function($request,Response $response) {
-		
+$app->put('/selfpromotionstatus', function($request,Response $response) {
 	
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$id = $json["ID"];
+	$status = $json["STATUS"];
+	$author = $json["AUTHOR"];
+	$today = date("Y-m-d");
+	$in30days = strtotime('+30 days');
+	$in30days = date("Y-m-d",$in30days);
 
+	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id)); 
+	$item = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($status == "VALIDATED"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id,$author));
+	}else if ($status == "PROMOTED"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'STEP1' WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id));
+
+		if ($item["LINKTYPE"] == "SYSTEM")
+			attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$today,$in30days,$author);	
+	}else if ($status == "FINISHED"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'FINISHED' WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		endPromotion($item["PRODUCTID"]);
+	}
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);		
+	return $response;
+});
+
+// Declare next step 
+$app->put('/selfpromotion', function($request,Response $response) {
+	
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
-	$id = $request->getAttribute('id');
-	$status = $json["STATUS"];
+
+	$id = $json["ID"];
 	$author = $json["AUTHOR"];	
 	$step = $json["STEP"];
-	//$date
 
-	// input 
+	$today = date("Y-m-d");
+	$in30days = strtotime('+30 days');
+	$in30days = date("Y-m-d",$in30days);
 
+	$QUANTITY = $json["QUANTITY"];
+	$LINKTYPE = $json["LINKTYPE"];
+	$PRODUCTID = $json["PRODUCTID"];	
+	$PERCENTPROMO = $json["PERCENTPROMO"];
 
-	/*
-	if ($status == "VALIDATED"){
-		$sql = "UPDATE DEPRECIATION SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($author,$id));
-		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);
-	  	pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
+	if ($step == "2"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,
+		STARTTIME2 = date('now'), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
+	}else if($step == "3"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,
+		STARTTIME3 = date('now'),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
+	}else if($step == "4"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,
+		STARTTIME4 = date('now'),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
 	}
-	else if ($status == "CLEARED"){
-		$sql = "UPDATE DEPRECIATION SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
-		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
-		$req = $db->prepare($sql);
-		$req->execute(array($author,$id));
-	}		
-	*/
-	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? OR DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($id));
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach ($items as $item) {
-			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){				
-				attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$item["STARTTIME1"],$item["ENDTIME1"],$author);
-			}									
-			if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
-			if ($item["DEPRECIATION_ID3"] == $id  && $item["LINKTYPE3"] == "SYSTEMLINK" && $item["STARTTIME3"] != null  && $item["ENDTIME3"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO3"],$item["STARTTIME3"],$item["ENDTIME3"],$author);
-			if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
-		
-			
-	}	
-	$req = $db->prepare($sql);
-	$req->execute(array($status,$author,$id));		
-
+	$req->execute(array($QUANTITY,$LINKTYPE,$PERCENTPROMO,$id)); 
+	if ($LINKTYPE == "SYSTEM"){
+		attachPromotion($PRODUCTID,$PERCENTPROMO,$today,$in30days,$author);	
+	}
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;																			 
 });
 
-
-
-  
 //CLEARANCETOOMUCH,CLEARANCELOWSELL,CLEARANCEDAMAGED, EXPIREPROMOTION, DAMAGEWASTE EXPIREWASTE
 $app->get('/depreciation', function($request,Response $response) {
 
@@ -7515,7 +7562,6 @@ $app->post('/depreciation', function($request,Response $response) {
 				$cnt = "2";
 			}			
 			
-		
 			$sql = "UPDATE DEPRECIATIONITEM SET QUANTITY".$cnt." = ?, STARTTIME".$cnt." = ?, ENDTIME".$cnt." = ?, DEPRECIATION_ID".$cnt." = ?,  
 							LINKTYPE".$cnt." = ?, PERCENTPENALTY".$cnt." = ?, PERCENTPROMO".$cnt." = ?, STATUS".$cnt." = ?  
 							WHERE PRODUCTID = ? AND EXPIRATION = ?";
@@ -7584,12 +7630,6 @@ $app->put('/depreciation', function($request,Response $response) {
 	return $response;																			 
 });
 
-$app->get('/promotiondashboard',function($request,Response $response) {
-
-	$row = $request->getParam('row','ALL'); // NR or R 
-
-	
-});
 
 $app->get('/depreciationalert',function($request,Response $response) {
 
