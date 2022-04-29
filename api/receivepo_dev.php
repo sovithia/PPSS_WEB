@@ -940,7 +940,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$BASECURR_ID =   "USD";
 	$CURRENCY_AMOUNT =   round($theTOTALAMOUNT);// + $theVATAMOUNT;;
 	$CURRENCY_VATAMOUNT =  $theVATAMOUNT;
-	$CURRENCY_BALANCE =  $theTOTALAMOUNT;// + $theVATAMOUNT;;
+	$CURRENCY_VATAMOUNT = round($CURRENCY_VATAMOUNT,2);
+	$CURRENCY_BALANCE =  $theTOTALAMOUNT;// + $theVATAMOUNT;
+	$CURRENCY_BALANCE = round($CURRENCY_BALANCE,2);
 	$CURRENCY_PAIDAMT =   "0";
 	$DATEADD =   $today;
 	$USERADD = 	blueUser($author);
@@ -1321,6 +1323,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$LINENUM =   "1";
 		$ACCNO =       "16100";
 		$AMOUNT = $theVATAMOUNT;
+		$AMOUNT = round($AMOUNT,2);
 		$PERIOD = date("n");
 		$YEAR = date("Y");
 		$BATCH = '';
@@ -1336,6 +1339,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$COMMENT_ON_LINE = '';
 		$CURR_TYPE =  '';
 		$CURR_AMOUNT = $theVATAMOUNT;
+		$CURR_AMOUNT = round($CURR_AMOUNT,2);
 		$CURR_RATE =     "1";
 		$OPERATION_BASE = '';
 		$BASECURR_ID = "USD";
