@@ -7,29 +7,29 @@ function updateVendor($items,$author,$vendorid = "400-463"){
 		$db = getDatabase();	
 		
 		$sql = "SELECT * FROM ICVENDOR WHERE PRODUCTID = ? AND VENDID = ?";
-		$req = $req->prepare($sql);
+		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$vendorid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res == false){
-			$sql = "INSERT INTO ICVENDOR PRODUCTID,VENDID VALUES(?,?)";
-			$req = $req->prepare($sql);
+			$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID) VALUES(?,?)";
+			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$vendorid));
 		}
 
 		$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
-		$req = $req->prepare($sql);
+		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["LOCID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if ($res == false){
 			$sql = "INSERT INTO ICLOCATION (PRODUCTID,LOCID,VENDID,USERADD,DATEADD,TAXACC) VALUES(?,?,?,?,?,?)";
-			$req = $req->prepare($sql);
+			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["LOCID"],$vendorid,$author,$now,"16100"));
 		}
 
 		$sql = "UPDATE ICPRODUCT SET VENDID = ? WHERE PRODUCTID = ?";
-		$req = $req->prepare($sql);
+		$req = $db->prepare($sql);
 		$req->execute(array($vendorid,$item["PRODUCTID"]));	
 	}
 }
@@ -106,6 +106,9 @@ function createPO($items,$author)
 			
 	foreach($items as $item)
 	{		
+		if (!isset($item["VAT"]))
+			$item["VAT"] = 0;
+
 		$TRANDISC = $item["DISCOUNT"];
         $item["ORDER_QTY"] = $item["REQUEST_QUANTITY"];		
 		$TRANCOST = $item["COST"];
@@ -118,12 +121,15 @@ function createPO($items,$author)
 			$calculatedCost =  $TRANCOST;
 		} 
 			
+		
+
 		$vat = ($calculatedCost * ($item["VAT"] / 100)) * $item["ORDER_QTY"];
 		$price =   $calculatedCost; 
 		$PURCHASE_AMT += $price * $item["ORDER_QTY"] + $vat; 
 		$VAT_AMT += $vat;
 	}	
 	$VAT_AMT = round($VAT_AMT,2);
+	$PURCHASE_AMT = round($PURCHASE_AMT,2);
 	$CURRENCY_VATAMOUNT = $VAT_AMT;
 	$CURRENCY_VATAMOUNT = round($CURRENCY_VATAMOUNT,2);
 	$CURRENCY_AMOUNT = round($PURCHASE_AMT, 2); //+ $VAT_AMT;
@@ -174,14 +180,22 @@ function createPO($items,$author)
 		if (isset($item["COST"]))
 			$TRANCOST = $item["COST"];
 		
-		$VAT_PERCENT = $item["VAT"];
+		if (isset($item["VAT"]))						
+			$VAT_PERCENT = $item["VAT"];
+		else 
+			$VAT_PERCENT = "0";
    
 		$DISCABLE = $res2["DISCABLE"];
 
 		
-		$ALGOQTY = $item["ALGOQTY"]; // FIXED				
+		if (isset($item["ALGOQTY"]))
+			$ALGOQTY = $item["ALGOQTY"]; 
+		else 
+			$ALGOQTY = 0;
 		if (isset($item["REASON"]))
 			$REASON = $item["REASON"];
+		else 
+			$REASON = "";
 	
 		// PATCH SUPPLYRECORD WITH ITEMREQUEST
 		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "0"){
@@ -326,16 +340,19 @@ function updatePO($ponumber,$items)
 	$req->execute(array($ponumber));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
+
 	$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
 
+
 	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];
+	$AMT_WITH_VAT = round($AMT_WITH_VAT,2);
 
 	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,$res2["SUMVAT"],$AMT_WITH_VAT ,$AMT_WITH_VAT, $ponumber));
+	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,round($res2["SUMVAT"],2),$AMT_WITH_VAT ,$AMT_WITH_VAT, $ponumber));
 
 }
 
@@ -603,7 +620,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$FILEID = "";
 	$USER_DOCNO = "";
 	$SHIP_REFERENCE = "";
-
+	$CURRENCY_AMOUNT_SUM = round($CURRENCY_AMOUNT_SUM,2);
 	
 	$sql = "UPDATE POHEADER  set BUYER = ?,							 	  
 							 RECEIVE_AMT = PURCHASE_AMT, 

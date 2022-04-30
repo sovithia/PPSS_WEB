@@ -2492,7 +2492,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$sql = "SELECT * FROM SUPPLY_RECORD 
-		    WHERE 1 = 1";
+		    WHERE 1 = 1 ";
 	$params = array();
 
 	if ($vendid != ''){
@@ -2550,6 +2550,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 	}
 
 	$sql .= " ORDER BY CREATED DESC";
+	error_log($sql);
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3518,7 +3519,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ?  WHERE PONUMBER = ?";
 			$req = $dbBLUE->prepare($sql);
-			$req->execute(array(($res["SUM"] + $res2["SUMVAT"]), $json["PONUMBER"]));
+			$sum = round($res["SUM"] + $res2["SUMVAT"],2);
+			$req->execute(array($sum, $json["PONUMBER"]));
 
 
 			// RECALCULATE AMOUNT ON POHEADER
@@ -6477,8 +6479,7 @@ $app->get('/sale/{date}',function(Request $request,Response $response) {
 	//$date = $splitted[1] . "/" . $splitted[0] . "/" . $splitted[2];
 	$date = str_replace("-","/",$date);
 	
-	$sql = "
-			SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+	$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
 			FROM POSDETAIL 			
 			WHERE POSDATE >= '".$date." 00:00:00.000' 
 			AND POSDATE <= '".$date." 23:59:59.999'
