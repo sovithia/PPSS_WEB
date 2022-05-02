@@ -1,26 +1,4 @@
 <?php
-/*
-function getIP()
-{
-	
-	if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-    $ip = $_SERVER['HTTP_CLIENT_IP'];
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-	} else {
-	    $ip = $_SERVER['REMOTE_ADDR'];
-	    }
-	    return $ip;
-}
-
-
-var_dump($_SERVER["SERVER_ADDR"])
-*/
-function isLocal()
-{
-	$mac = shell_exec("dig +short myip.opendns.com @resolver1.opendns.com");    
-	return ($mac != "119.82.252.226");
-}
 
 
 function getInternalDatabase($base = "MAIN")
@@ -42,31 +20,7 @@ function getInternalDatabase($base = "MAIN")
 
 function getDatabase($name = "MAIN")
 { 	
-	$conn = null;      
-	try  
-	{  		
-		if ($name == "MAIN")
-		{
-			if (isLocal()){				
-				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-			}
-			else 
-				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TRAINING")
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TMP" )
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,55008;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
-		}  		
-		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
-	}  
-	catch(Exception $e)  
-	{   
-		die( print_r( $e->getMessage( )) );   
-	} 
+	$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 	return $conn;
 }
 
@@ -74,7 +28,7 @@ function patchSupplyRecord()
 {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID > 41528";
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID > 42663";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$records = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -100,7 +54,7 @@ function patchSupplyRecord()
 									 PPSS_DELIVERED_EXPIRE = PPSS_EXPIREDATE
 									 WHERE PONUMBER = ?";
 		$req = $dbBlue->prepare($sql);
-		$req->execute(array($record["PONUMBER"]));		
+		$req->execute(array($record["PONUMBER"]));				
 	}
 
 }
@@ -156,6 +110,6 @@ function markAnomalies()
 
 
 
-markAnomalies();
-//patchSupplyRecord();
+//markAnomalies();
+patchSupplyRecord();
 ?>

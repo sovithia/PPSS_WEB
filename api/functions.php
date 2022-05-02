@@ -215,9 +215,7 @@ function isLocal()
 }
 
 function getDatabase($name = "MAIN")
-{ 
-	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
-		$name =	"TRAINING";
+{ 	
 	$conn = null;      
 	try  
 	{  		
