@@ -34,8 +34,7 @@ function updateVendor($items,$author,$vendorid = "400-463"){
 	}
 }
 
-
-function createPO($items,$author)
+function createPO($items,$author,$fromPO = null)
 {
 	if(count($items) == 0){
 		return null;
@@ -135,15 +134,17 @@ function createPO($items,$author)
 	$CURRENCY_AMOUNT = round($PURCHASE_AMT, 2); //+ $VAT_AMT;
 	$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
 
+	$REFERENCE = "";
+	if ($fromPO != null)
+		$REFERENCE = "Split from ".$fromPO;	
 	 $sql = "INSERT INTO POHEADER (
 		PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
 		LOCID,PURCHASE_AMT,USERADD,DATEADD,VAT_PERCENT,
 		PCNAME,CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,
-		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,
-		NOTES,REFERENCE,POSTATUS,CURRENCY_AMOUNT,BUYER,
-		RECEIVE_AMT,TERMID,TERM_DAYS,TERM_DISC,
-		TERM_NET,FOB_POINT,SHIPVIA,REQUESTBY,FILEID,
-		USER_DOCNO,SHIP_REFERENCE) 
+		VAT_AMT,DISC_PERCENT,BASECURR_ID,CURRENCY_VATAMOUNT,NOTES,
+		REFERENCE,POSTATUS,CURRENCY_AMOUNT,BUYER,RECEIVE_AMT,
+		TERMID,TERM_DAYS,TERM_DISC,TERM_NET,FOB_POINT,
+		SHIPVIA,REQUESTBY,FILEID,USER_DOCNO,SHIP_REFERENCE) 
 		VALUES (?,?,?,?,?,
 				?,?,?,?,?,
 				?,?,?,?,?,
@@ -158,7 +159,7 @@ function createPO($items,$author)
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
 					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
-					"","",$CURRENCY_AMOUNT,"",0,
+					$REFERENCE,"",$CURRENCY_AMOUNT,"",0,
 					"",0,0,0,"",
 					"","","","","");
 	$req->execute($params);
@@ -409,6 +410,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$theVENDID = $PORef["VENDID"];
 	$theVENDNAME = $PORef["VENDNAME"];
 	$theVENDNAME1 = $PORef["VENDNAME1"];
+
 	$theVATAMOUNT =  $PORef["CURRENCY_VATAMOUNT"];
 	$theTOTALAMOUNT = $PORef["CURRENCY_AMOUNT"];
 
@@ -780,7 +782,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 			$TRANDISC = $item["TRANDISC"];
 
 		$TRANTAX = $item["VAT_PERCENT"];
-		$TRANCOST = $item["TRANCOST"];
+		// PATCH
+		$TRANCOST = $item["TRANCOST"] - ($item["TRANCOST"] * ($TRANDISC / 100));
 		$TRANPRICE = $res["PRICE"];
 		$PRICE_ORI = $res["PRICE"];
 		$EXTPRICE = $res["PRICE"] * $item["ORDER_QTY"];
@@ -1428,6 +1431,15 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$req = $db->prepare($sql);
 	$req->execute(array($BALANCE,$LASTPAIDAMT,$VENDID));		
 	*/
+}
+
+
+function splitPOWithItems($ponumber,$items,$author)
+{
+	if (count($items) == 0)
+		return;
+	$ponumber = createPO($items,$author,$ponumber);
+	return $ponumber;
 }
 
 function createAndReceivePO($items,$author,$notes)

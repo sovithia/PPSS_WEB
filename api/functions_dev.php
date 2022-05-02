@@ -247,7 +247,7 @@ function getDatabase($name = "MAIN")
 }
 
 
-function getInternalDatabase($base = "MAIN")
+function getInternalDatabase($base = "TEST")
 {
 	try{
 		if ($base == "MAIN")
