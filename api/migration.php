@@ -100,16 +100,12 @@ function markAnomalies()
 		}		
 		echo $record["ID"]."|".$status."|".$count."\n";
 		$count++;				
-
 		$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = ? WHERE PONUMBER = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($status,$record["PONUMBER"]));		
-		
 	}
 }
 
-
-
-//markAnomalies();
-patchSupplyRecord();
+markAnomalies();
+//patchSupplyRecord();
 ?>

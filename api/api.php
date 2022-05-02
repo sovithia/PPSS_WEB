@@ -3790,6 +3790,9 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		 $req->execute(array($item["PRODUCTID"]));
 		 $res = $req->fetch(PDO::FETCH_ASSOC);
 		
+		if (!isset($item["LASTCOST"]))
+			$item["LASTCOST"] = "0";
+
 		 $amountexcludevat += ($res["LASTCOST"] * $item["ORDER_QTY"]);	
 		 $amountvat += ($res["LASTCOST"] * ($res["TAX"] / 100)) * $item["ORDER_QTY"];					 		
 		 if ($res["HAS_PLT"] == 'Y')

@@ -659,17 +659,25 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 
 function externalAlertStats($barcode){
     $db=getDatabase();  
-    $sql = "SELECT LASTRECEIVEDATE,
-                    ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'NBTHROWN'
-                    FROM ICPRODUCT WHERE 
-                    PRODUCTID = ?";                                 
-    $req = $db->prepare($sql);
-    $req->execute(array($barcode));                 
-    $res = $req->fetch(PDO::FETCH_ASSOC);
-    $data["NBTHROWN"] = round($res["NBTHROWN"],2);
-    $data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
 
-    $lastrcv = $res["LASTRECEIVEDATE"];
+	$sql = "SELECT LASTRECEIVEDATE FROM ICPRODUCT WHERE PRODUCTID = ?";                                 
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));                 
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
+	$lastrcv = $res["LASTRECEIVEDATE"];
+	
+    $sql = "SELECT SUM(TRANQTY) as NBTHROWN
+			FROM ICTRANDETAIL 
+			WHERE DOCNUM LIKE 'IS%' 
+			AND TRANTYPE = 'I' 
+			AND PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));                 
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$data["NBTHROWN"] = round($res["NBTHROWN"],2);
+
+    
     $less30 = date('Y-m-d', strtotime('-30 days'));
     $today = date("Y-m-d");
     $data["DAYS30BACK"] = $less30;
