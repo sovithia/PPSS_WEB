@@ -255,34 +255,17 @@ function transferVendorData(){
                                                 COMMUNICATIONHANDLE1,COMMUNICATIONTYPE2,COMMUNICATIONHANDLE2,COMMENT,CREATED) 
                                                 VALUES (?,?,?,?,?,
                                                         ?,?,?,?,?,
-                                                        ?,?,?,?,?)";                                                        
+                                                        ?,?,?,?,?)";
         $req = $db->prepare($sql);
         $req->execute(array(
             $res["NAMEEN"],$res["NAMEKH"],$res["WEBSITE"],$res["PHONE1"],$res["PHONE2"],
             $res["PHONE3"],$res["PHONE4"],$res["ADDRESS1"],$res["ADDRESS2"],$res["COMMUNICATIONTYPE1"],
             $res["COMMUNICATIONHANDLE1"],$res["COMMUNICATIONTYPE2"],$res["COMMUNICATIONHANDLE2"],$res["COMMENT"],$res["CREATED"]
         ));
-
-    }
-    
-    
-    
-
-}
-
-function detachOld(){
-    $db = getInternalDatabase();
-    $ids = ["35","36","40","41","42","43","57","58","62","71","72","73","74","75","76","77","78","87"];
-    foreach($ids as $id){
-        $sql = "DELETE FROM EXTERNALVENDOR WHERE ID = ?";
-        $req = $db->prepare($sql);
-        $req->execute(array($id));
-
-        $sql = "DELETE FROM EXTERNALCOST WHERE ID = ?";
-        $req = $db->prepare($sql);
-        $req->execute(array($id));
     }
 }
+
+
 
 function insertDetachedVendors()
 {
@@ -294,20 +277,23 @@ function insertDetachedVendors()
     $db = getInternalDatabase();
     $dbBlue = getDatabase();    
     
-    $vendorids = array(83,51,46,82,95);
+    //$vendorids = array(83,51,46,82,95);
+    $vendorids = array("400-461","400-470","400-626","400-599","400-625");
 
     foreach($vendorids as $vendorid)
     {
-        $sql = "SELECT PONUMBER FROM POHEADER WHERE VENDID = ";
+        echo "VENDID: ".$vendorid."\n";
+        $sql = "SELECT PONUMBER FROM POHEADER WHERE VENDID = ?";
         $req = $dbBlue->prepare($sql);
         $req->execute(array($vendorid));
 
         $pos = $req->fetchAll(PDO::FETCH_ASSOC);
         foreach($pos as $po)
         {
+            echo "PONUMBER: ".$po["PONUMBER"]."\n";
             $sql = "SELECT PRODUCTID,TRANCOST FROM PORECEIVEDETAIL WHERE PONUMBER = ?";
             $req = $dbBlue->prepare($sql);
-            $req->execute(array($po));
+            $req->execute(array($po["PONUMBER"]));
             $items = $req->fetchAll(PDO::FETCH_ASSOC);
 
             foreach($items as $item)
@@ -334,18 +320,29 @@ function insertDetachedVendors()
             }
 
         }        
-    }
-    
-
-
+    }    
 } 
 
+function detachOld(){
+    $db = getInternalDatabase();
+    $ids = ["35","36","40","41","42","43","57","58","62","71","72","73","74","75","76","77","78","87"];
+    foreach($ids as $id){
+        $sql = "DELETE FROM EXTERNALVENDOR WHERE ID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($id));
+
+        $sql = "DELETE FROM EXTERNALCOST WHERE EXTERNALVENDOR_ID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($id));
+    }
+}
 
 
-// insertDetachedVendors();
-// transferVendorData();
-// loopPOFruits();
-// detachOld();
+// transferVendorData(); DONE
+//insertDetachedVendors();
+
+//loopPOFruits();
+detachOld();
 
 //insertVendors();
 //insertItems();
