@@ -2733,29 +2733,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);
-
-    /* NO LONGER NEEDED
-	if (isset($json["TYPE"]) &&  $json["TYPE"] ==  "NOPO") 
-	{
-		$nbinvoice = count(json_decode($json["INVOICEJSONDATA"],true));					
-		$db->beginTransaction(); 
-		$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE,NBINVOICES) 
-			VALUES (:author,:noponote,'DELIVERED','NOPO',:nbinvoices)";
-		$req = $db->prepare($sql);	
-	
-		$req->bindParam(':author',$json["WAREHOUSE_USER"],PDO::PARAM_STR);
-		$req->bindParam(':noponote',$json["NOPONOTE"],PDO::PARAM_STR);
-		$req->bindParam(':nbinvoices',$nbinvoice,PDO::PARAM_STR);
-		$req->execute();
-		$lastID = $db->lastInsertId();
-		$db->commit(); 
-
-		pictureRecord($json["WAREHOUSESIGNATUREIMAGE"],"WH",$lastID);
-		pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$lastID);	
-		$result["result"] = "OK";
-	}
-    */
-		if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "NOPOPOOL")) // NOPO CREATE AND RECEIVE
+   
+	if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "NOPOPOOL")) // NOPO CREATE AND RECEIVE
 		{
 			$author = blueUser($json["AUTHOR"]);		
 			$items = json_decode($json["ITEMS"],true);
@@ -2768,8 +2747,11 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			
 			$vendorid = $res["VENDID"];
 			$vendname = $res["VENDNAME"];
-			$notes = $json["NOTES"];
-			updateVendor($items,$author);
+			if (isset($json["NOTES"]))
+				$notes = $json["NOTES"];
+	   		else 
+		   		$notes = "";
+			updateVendor($items,$author);					   
 			$ponumber = createAndReceivePO($items,$author,$notes);
 
 			if ($items[0]["LOCID"] == "WH1")
@@ -2778,17 +2760,26 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 				$status = "RECEIVEDFORTRANSFER";
 
 			$resp["message"] = "Po created and received with number ".$ponumber;
+			
+			
+			$db->beginTransaction();
 			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO
 			$req = $db->prepare($sql);
 			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
+			$supplyrecordid = $db->lastInsertId();
+			$db->commit(); 
 
-			$sql = "INSERT INTO SUPPLY_RECORD (WAREHOUSE_USER,NOPONOTE,STATUS,TYPE) 
-				VALUES (:author,:noponote,'DELIVERED','PO')";
 			if ($json["TYPE"] ==  "NOPOPOOL"){
 				$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($json["USERID"]));	
 			}
+					
+			// NEW CODE FOR PAYMENT
+			$sql = "INSERT INTO EXTERNALPAYMENT (SUPPLY_RECORD_ID,STATUS,AMOUNT,REQUESTER,ACCTYPE,ACCNUMBER,ACCNAME,REQUESTER) VALUES (?,?,?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
+			
 		} 
 		else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
 		{
@@ -2803,7 +2794,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			
 			$vendorid = $res["VENDID"];
 			$vendname = $res["VENDNAME"];
-			
+										
 			$ponumber = createPO($items,$author);
 
 			$resp["message"] = "Po created with number ".$ponumber;
@@ -2824,7 +2815,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 				$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($json["USERID"]));	
-			}
+			}			
+			
 		}	
 
 		$resp["result"] = "OK";
@@ -10626,6 +10618,7 @@ $app->get('/externalpayment/{status}', function ($request, Response $response) {
 	return $response;
 });
 
+// Should not be called
 $app->post('/externalpayment', function ($request, Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
