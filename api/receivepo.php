@@ -34,7 +34,7 @@ function updateVendor($items,$author,$vendorid = "400-463"){
 	}
 }
 
-function createPO($items,$author,$fromPO = null)
+function createPO($items,$author,$fromPO = null,$notes = null)
 {
 	if(count($items) == 0){
 		return null;
@@ -133,6 +133,9 @@ function createPO($items,$author,$fromPO = null)
 	$CURRENCY_VATAMOUNT = round($CURRENCY_VATAMOUNT,2);
 	$CURRENCY_AMOUNT = round($PURCHASE_AMT, 2); //+ $VAT_AMT;
 	$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
+	$NOTES = "";
+	if($notes != null)
+		$NOTES = $notes;	
 
 	$REFERENCE = "";
 	if ($fromPO != null)
@@ -158,7 +161,7 @@ function createPO($items,$author,$fromPO = null)
 	$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
 					$LOCID,$PURCHASE_AMT,$USERADD,$DATEADD,$VAT_PERCENT,					
 					$PCNAME,$CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,					
-					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,"AUTOVALIDATED",
+					$VAT_AMT,$DISC_PERCENT,$BASECURR_ID,$CURRENCY_VATAMOUNT,$NOTES,
 					$REFERENCE,"",$CURRENCY_AMOUNT,"",0,
 					"",0,0,0,"",
 					"","","","","");
