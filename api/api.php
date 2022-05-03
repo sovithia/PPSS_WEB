@@ -3361,7 +3361,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
 			{
-				$sql = "UPDATE PODETAIL SET EXTCOST = 0,ORDER_QTY = 0  WHERE PRODUCTID = ? AND PONUMBER = ?";
+				$sql = "DELETE PODETAIL  WHERE PRODUCTID = ? AND PONUMBER = ?";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($item["ID"],$json["PONUMBER"]));
 			}
