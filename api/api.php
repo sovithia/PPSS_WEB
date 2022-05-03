@@ -670,8 +670,6 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 
 		if ($packInfo != null)		
 		{
-			
-		
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];		
 			if (isset($percentages[$count]))
@@ -702,12 +700,13 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
 
-
 			array_push($result,$oneItem);
 		}
 		else {
-			if (isset($percentages[$count]))
+			
+			if (isset($percentages[$count]) && $percentages[$count] != ""){			
 				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
+			}				
 			else
 				$oneItem = itemLookupLabel($barcode,true);
 			
@@ -1033,9 +1032,10 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	}
 	else
 	{
+		
 		$packInfo = packLookup($barcode);
 		if ($packInfo != null) // IS  A PACK
-		{
+		{			
 			$packcode = $barcode;		
 			$result = itemLookup($packInfo["PRODUCTID"]);
 			$result["BARCODE"] = $packcode;
@@ -1058,6 +1058,8 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		}
 		else{
 			$resp["result"] = "KO";
+			$response = $response->withJson($resp);
+			return $response;
 		}			
 			
 	}
@@ -7078,7 +7080,163 @@ $app->get('/penalty',function($request,Response $response) {
 									PROMOTION								
 																				*/      
 //
+$app->get('/selfpromotionstats',function(Request $request,Response $response) {    
+	$conn=getDatabase();	 
+	
+	$item = null;
+	$barcode = $request->getParam('barcode','');
+	$type = $request->getParam('type','');
+	// NearExpiration 
+	// LateReturn
 
+	$expiration = $request->getParam('expiration','');
+	$depreciationtype = $request->getParam('depreciationtype','');
+
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,COLOR,SIZE,VENDID,	
+		  FROM dbo.ICPRODUCT  
+	      WHERE BARCODE = ?";
+	$req=$conn->prepare($sql);
+	$req->execute(array($barcode));
+	$item =$req->fetch(PDO::FETCH_ASSOC);
+	if(isset($item["COST"]))
+		$item["COST"] = sprintf("%.4f",$item["COST"]);
+	else 
+		$item["COST"] = "0";
+	if (isset($item["VENDID"]))
+		$VENDID = $item["VENDID"];
+	else 
+		$VENDID = "0";
+
+	$resp = array();
+	if (isset($item["PRODUCTID"])){		
+		$sql="
+		SELECT LOCONHAND,STORBIN,ORDERQTY 
+		FROM dbo.ICLOCATION  
+		WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+		$params = array($barcode);
+		$req=$conn->prepare($sql);
+		$req->execute($params);
+		$item1=$req->fetch();
+
+		if ($item1 != false){
+			$item["WH1"] = $item1["LOCONHAND"];
+			$item["STOREBIN1"] = $item1["STORBIN"];
+			
+		}else{
+			$item["WH1"] = "";
+			$item["STOREBIN1"] = "";			
+		}
+
+		$sql="
+		SELECT LOCONHAND,STORBIN 
+		FROM dbo.ICLOCATION  
+		WHERE LOCID = 'WH2' AND PRODUCTID = ?";
+		$params = array($barcode);
+		$req=$conn->prepare($sql);
+		$req->execute($params);
+		$item2=$req->fetch();
+
+		if ($item2 != false){
+			$item["WH2"] = $item2["LOCONHAND"];
+			$item["STOREBIN2"] = $item2["STORBIN"];	
+		}else{
+			$item["WH2"] = "";
+			$item["STOREBIN2"] = "";	
+		}		
+	}
+	else
+	{
+		
+		$packInfo = packLookup($barcode);
+		if ($packInfo != null) // IS  A PACK
+		{			
+			$packcode = $barcode;		
+			$result = itemLookup($packInfo["PRODUCTID"]);
+			$result["BARCODE"] = $packcode;			
+			$result["PICTURE"] = base64_encode($packInfo["PICTURE"]);
+			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
+			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
+			$result["DISC"] = $packInfo["DISC"];
+			$result["PRODUCTNAME"] = $packInfo["DESCRIPTION1"];
+			$result["PRODUCTNAME1"] = $packInfo["DESCRIPTION2"];
+			$result["PRICE"] = $packInfo["SALEPRICE"];	
+			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
+			// PICTURE PACK
+			$result["ISPACK"] = "PACK";
+			$item = $result; 
+
+			$resp["result"] = "OK";
+			$resp["data"] = $item;
+		}
+		else{
+			$resp["result"] = "KO";
+			$response = $response->withJson($resp);
+			return $response;
+		}			
+			
+	}
+	
+	if ($item != null)
+	{
+		if ($type == "ORDERSTATS"){					
+			$stats = orderStatistics($barcode);
+			$item["ORDERQTY"] = $stats["FINALQTY"];		
+			$item["DECISION"] = $stats["DECISION"];
+			if(isset($stats["RCVQTY"]))
+				$item["LASTRCVQTY"] = $stats["RCVQTY"];
+			else 
+				$item["LASTRCVQTY"] = "0";
+
+			$sql = "SELECT TOP(1)TRANDISC,TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";		
+			$req = $conn->prepare($sql);			
+			$req->execute(array($barcode));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false){
+				$item["COST"] = floatval($res["TRANCOST"]);
+				$item["COST"] = round($item["COST"],4);				
+			}
+			
+			$sql = "SELECT TAX FROM APVENDOR WHERE VENDID = ?";
+			$req = $conn->prepare($sql);
+			$req->execute(array($VENDID));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+			 $item["VAT"] =  $res["TAX"];
+			else 
+			 $item["VAT"] = 0; 
+			
+			if (isset($stats["DISCOUNT"]))
+				$item["DISCOUNT"] = $stats["DISCOUNT"];
+			else 
+				$item["DISCOUNT"] = "0";
+			error_log($item["COST"]);	
+		}else if ($type == "RESTOCKSTATS"){
+			$stats = orderStatistics($barcode);
+			$item["ORDERQTY"] = $stats["FINALQTY"];		
+			$item["DECISION"] = $stats["DECISION"];	
+			$item["LASTRCVQTY"] = $stats["RCVQTY"];	
+		}else if ($type == "PROMOSTATS"){
+			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
+			$item["PERCENTPROMO"] = $stats["percentpromo"];	
+			$item["START"] = $stats["start"];
+			$item["END"] = $stats["end"];
+			$item["POLICY"]	= $stats["policy"];
+			$item["COST"] = round($stats["cost"],4);			
+		}
+		else if ($type == "WASTESTATS"){
+			$stats = wasteStatistics($barcode,$expiration);
+			$item["STATUS"] = $stats["status"];
+			$item["PERCENTPENALTY"] = $stats["percentpenalty"];
+		}
+		$resp["result"] = "OK";
+		$resp["data"] = $item;
+	}
+
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 $app->get('/selfpromotion', function($request,Response $response) {
 	$status =  $request->getParam('status','');
@@ -7088,13 +7246,22 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$params = array();	
 	$sql = "";
 
-	$sql = "SELECT *,
-			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME1)) as 'DELAYTOEXPIRE1',  
-			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME2)) as 'DELAYTOEXPIRE2',  
-			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME3)) as 'DELAYTOEXPIRE3',  
-			(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME4)) as 'DELAYTOEXPIRE4',  
-	FROM SELFPROMOTIONITEM WHERE STATUS <> 'FINISHED' ORDER BY CREATED DESC";
-	
+	$sql = "SELECT *,(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME1)) as 'DELAYTOEXPIRE1',  
+					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME2)) as 'DELAYTOEXPIRE2',  
+					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME3)) as 'DELAYTOEXPIRE3',  
+					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME4)) as 'DELAYTOEXPIRE4'
+					 FROM SELFPROMOTIONITEM
+					 WHERE 1 = 1 ";  					 
+		
+	if ($status != ''){
+		$sql .= " AND status = ?";
+		array_push($params ,$status);
+	}	
+	if ($type != ''){
+		$sql .= " AND type = ?";
+		array_push($params ,$type);
+	}
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -7160,8 +7327,6 @@ $app->get('/selfpromotion', function($request,Response $response) {
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$item["SOLDINPERIOD4"] = $res["QTY"];
 		}
-
-
 		array_push($newItems,$item);
 	}
 
@@ -7176,13 +7341,19 @@ $app->post('/selfpromotion', function($request,Response $response) {
 
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();	
-	$sql = "INSERT INTO DEPRECIATIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,STARTTIME1,LINKTYPE1,
-										PERCENTPENALTY1,PERCENTPROMO1,TYPE,EXPIRATION,CREATOR) 
-				  VALUES (?,?,?,date('now'),?,
-				  		  ?,?,?,?,?,?)";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["LINKTYPE"],
-						$json["PERCENTPENALTY"],$json["PERCENTPROMO"],$json["TYPE"],$json["EXPIRATION"],$json["AUTHOR"]));			
+
+	$author = $json["AUTHOR"];
+	$items = $json["ITEMS"];
+
+	foreach($items as $item){
+		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,STARTTIME1,LINKTYPE1,
+		PERCENTPENALTY1,PERCENTPROMO1,TYPE,CREATOR,STATUS) 
+		VALUES (?,?,?,date('now'),?,?,?,?,?,?)";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$item["LINKTYPE"],
+		$item["PERCENTPROMO"],$item["TYPE"],$author,'CREATED'));			
+	}
+
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);	
 	return $response;
