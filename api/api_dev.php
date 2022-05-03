@@ -2775,8 +2775,8 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 				$req->execute(array($json["USERID"]));	
 			}
 					
-			// NEW CODE FOR PAYMENT
-			$sql = "INSERT INTO EXTERNALPAYMENT (SUPPLY_RECORD_ID,STATUS,AMOUNT,REQUESTER,ACCTYPE,ACCNUMBER,ACCNAME,REQUESTER) VALUES (?,?,?,?,?,?,?,?)";
+			// NEW CODE FOR PAYMENT			
+			$sql = "INSERT INTO EXTERNALPAYMENT (SUPPLY_RECORD_ID,STATUS,PAYMENTAMOUNT,REQUESTER,PAYMENTTYPE,PAYMENTNUMBER,PAYMENTNAME,REQUESTER) VALUES (?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
 			
