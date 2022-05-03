@@ -848,7 +848,10 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$item["LASTCOST"] = round($item["LASTCOST"],2);
 	else
 		$item["LASTCOST"] = "0";
-	$item["COST"] = round($item["COST"],2);
+	if (isset($item["COST"]))
+		$item["COST"] = round($item["COST"],2);
+	else 
+		$item["COST"] = "0";
 	$resp = array();
 	if (isset($item["PRODUCTID"]))
 	{		
@@ -3310,11 +3313,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					if (floatval($value["PPSS_DELIVERED_PRICE"]) > floatval($res["PPSS_WAITING_PRICE"]))
 						$HaveAnomaly  = true;					
 
-					if (!isset($value["PPSS_DELIVERED_QUANTITY"]) ||  $value["PPSS_DELIVERED_QUANTITY"] == null)				
-						$value["PPSS_DELIVERED_QUANTITY"] = "0";
+					//if (!isset($value["PPSS_DELIVERED_QUANTITY"]) ||  $value["PPSS_DELIVERED_QUANTITY"] == null)				
+					//	$value["PPSS_DELIVERED_QUANTITY"] = "0";
 
-					if (!is_numeric($value["PPSS_DELIVERED_QUANTITY"]))
-						$value["PPSS_DELIVERED_QUANTITY"] = "0";
+					//if (!is_numeric($value["PPSS_DELIVERED_QUANTITY"]))
+					//	$value["PPSS_DELIVERED_QUANTITY"] = "0";
 							
 					//if ($TRANDISC != null && $TRANDISC != "0")
 					//	$calculatedCost =  $value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100));
@@ -3340,8 +3343,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				}					 						
 			}
 			
-
-	
 			if ($HaveAnomaly){
 				$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = 'Y' WHERE ID = ?";
 				$req = $db->prepare($sql);
@@ -3354,16 +3355,17 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$req = $db->prepare($sql);
 				$now = date("Y-m-d H:i:s");
 				$req->execute(array($ponumber, $json["AUTHOR"], $vendid, $vendname, $now));				
-			}
-							  
+
+				
+			}				
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
 			{
-				$sql = "DELETE FROM PODETAIL WHERE PRODUCTID = ? AND PONUMBER = ?";
+				$sql = "UPDATE PODETAIL SET EXTCOST = 0,ORDER_QTY = 0  WHERE PRODUCTID = ? AND PONUMBER = ?";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($item["ID"],$json["PONUMBER"]));
 			}
-			
+
 			// RECALCULATE AMOUNT ON POHEADER
 			$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
 			$req = $dbBLUE->prepare($sql);
