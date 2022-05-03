@@ -214,10 +214,8 @@ function isLocal()
 	return ($mac != "119.82.252.226");
 }
 
-function getDatabase($name = "MAIN")
-{ 
-	if ($_SERVER["SERVER_ADDR"] == "192.168.72.40")
-		$name =	"TRAINING";
+function getDatabase($name = "TRAINING")
+{ 	
 	$conn = null;      
 	try  
 	{  		

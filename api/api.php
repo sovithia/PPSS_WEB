@@ -3326,15 +3326,15 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$extcost = $value["PPSS_DELIVERED_QUANTITY"] * ($value["PPSS_DELIVERED_PRICE"] - ($value["PPSS_DELIVERED_PRICE"] * ($TRANDISC / 100)) );
 					 
 					$sql = "UPDATE PODETAIL SET TRANCOST = ?, EXTCOST = ?, ORDER_QTY = ?,TRANDISC = ?,PPSS_DELIVERED_PRICE = ?, 
-												 PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?,PPSS_DELIVERED_VAT = ?
+												PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_EXPIRE = ?,PPSS_DELIVERED_DISCOUNT = ?,PPSS_DELIVERED_VAT = ?,VAT_PERCENT = ?
 							WHERE  PRODUCTID = ? AND PONUMBER = ? ";
 					$req = $dbBLUE->prepare($sql);
 
 					if ($value["PPSS_DELIVERED_EXPIRE"] == "NO EXPIRE")
 						$value["PPSS_DELIVERED_EXPIRE"] = null;
 
-					$req->execute(array($calculatedCost,$extcost,$value["PPSS_DELIVERED_QUANTITY"] ,$value["PPSS_DELIVERED_DISCOUNT"] , $value["PPSS_DELIVERED_PRICE"],
-										$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],$value["PPSS_DELIVERED_VAT"],
+					$req->execute(array($calculatedCost,$extcost,$value["PPSS_DELIVERED_QUANTITY"] ,$value["PPSS_DELIVERED_DISCOUNT"] ,$value["PPSS_DELIVERED_PRICE"],
+										$value["PPSS_DELIVERED_QUANTITY"],$value["PPSS_DELIVERED_EXPIRE"],$value["PPSS_DELIVERED_DISCOUNT"],$value["PPSS_DELIVERED_VAT"],$value["PPSS_DELIVERED_VAT"],
 										$key,$json["PONUMBER"]) );
 										
 					$onelineVAT = ($value["PPSS_DELIVERED_PRICE"] * ($value["PPSS_DELIVERED_VAT"] / 100));
