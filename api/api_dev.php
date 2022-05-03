@@ -3346,9 +3346,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 				$req = $db->prepare($sql);
 				$now = date("Y-m-d H:i:s");
-				$req->execute(array($ponumber, $json["AUTHOR"], $vendid, $vendname, $now));				
+				$req->execute(array($ponumber, $json["AUTHOR"], $vendid, $vendname, $now));						
 
-				
 			}				
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
@@ -3359,12 +3358,13 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 
 			// RECALCULATE AMOUNT ON POHEADER
-			$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
+			$sql = "SELECT sum(EXTCOST - (EXTCOST * (TRANDISC/100)) ) as SUM FROM PODETAIL WHERE PONUMBER = ?";
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($json["PONUMBER"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
+
 		
-			$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
+			$sql = "SELECT sum((EXTCOST - (EXTCOST * (TRANDISC/100))) * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($json["PONUMBER"]));
 			$res2 = $req->fetch(PDO::FETCH_ASSOC);
@@ -10618,7 +10618,6 @@ $app->get('/externalpayment/{status}', function ($request, Response $response) {
 	return $response;
 });
 
-// Should not be called
 $app->post('/externalpayment', function ($request, Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);

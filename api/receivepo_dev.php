@@ -1447,7 +1447,7 @@ function splitPOWithItems($ponumber,$items,$author)
 
 function createAndReceivePO($items,$author,$notes)
 {
-	$ponumber = createPO($items,$author,"",$notes);
+	$ponumber = createPO($items,$author,null,$notes);
 	receivePO($ponumber,$author,$notes);
 	return $ponumber;
 }
