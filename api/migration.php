@@ -106,6 +106,35 @@ function markAnomalies()
 	}
 }
 
-markAnomalies();
+function zeroSupplyRecord()
+{
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ID > 42663 AND STATUS = 'ORDERED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$records = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$count = 0;
+	foreach($records as $record)
+	{
+		echo $record["ID"]."|".$count."\n";
+		$count++;				
+
+
+		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = 0, 
+									 PPSS_DELIVERED_PRICE = 0,
+									 PPSS_DELIVERED_DISCOUNT = 0,
+									 PPSS_DELIVERED_VAT =  0									 
+									 WHERE PONUMBER = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($record["PONUMBER"]));				
+	}
+
+}
+
+//markAnomalies();
 //patchSupplyRecord();
+zeroSupplyRecord();
+
 ?>
