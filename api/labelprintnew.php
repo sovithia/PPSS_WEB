@@ -464,18 +464,14 @@ function renderNameKH($string,$pad = "...")
 }
 
 function PriceTag($item)
-{
-
-	
+{	
 	$rielPrice = $item["rielPrice"] . " R";
 	$dollarPrice = $item["dollarPrice"];
 	$nameKH = substr($item["nameKH"],0,82);
 	$productImg = $item["productImg"];
 
-
 	$barcodeImg = $item["barcodeImage"];
 	$unit = $item["unit"];
-
 
 	$barcodeNumber = $item["barcodeNumber"];
 	$packing = $item["packing"];
@@ -590,7 +586,7 @@ function PriceTag($item)
 			if (isset($_GET["barcodes"]))
 			{
                 $barcodes = str_replace(" ","%20",$_GET["barcodes"]);							                     
-                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/itemlabels/".$barcodes);                                 
+                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/".$barcodes);                                 
 				render($labels);				
                 
 			}		

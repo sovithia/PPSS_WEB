@@ -581,7 +581,7 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 	$conn=getDatabase();	
 	$begin = date("m-d-y");
 	$params = array($barcode,$barcode);
-	$sql="SELECT PRODUCTID,OTHERCODE,						
+	$sql="SELECT PRODUCTID,OTHERCODE,SIZE,SALEFACTOR,						
 		  (SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 					
 		  (SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTSTART',
 		  (SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENTEND', STKUM,
@@ -593,6 +593,7 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 	$item = $req->fetch(PDO::FETCH_ASSOC);
 
 	
+
 
 	if ($item != false)
 	{
@@ -606,6 +607,13 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
 		$oneItem["nameKH"] = $item["PRODUCTNAME1"];			
 		$oneItem["country"] = $item["COLOR"];
+
+		$oneItem["barcodeImage"] = generateBarcodeImage($barcode);
+		$oneItem["barcodeNumber"] = $barcode;
+		$oneItem["return"] = $item["SIZE"];
+		$oneItem["salefactor"] = $item["SALEFACTOR"];
+		$oneItem["isPack"] = "no";
+
 		if ($forceDiscount != 0)
 			$oneItem["discpercent"] = $forceDiscount;	
 		else
@@ -671,13 +679,12 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($packInfo != null)		
 		{
 			$packcode = $barcode;
-			$barcode = $packInfo["PRODUCTID"];		
+			$barcode = $packInfo["PRODUCTID"];				
 			if (isset($percentages[$count]))
 				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
 			else
-				$oneItem = itemLookupLabel($barcode,true);							
-			
-			
+				$oneItem = itemLookupLabel($barcode,true);										
+			$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
 			$oneItem["unit"] = $packInfo["SALEUNIT"];
 			$oneItem["packing"] =  $packInfo["SALEUNIT"];
 			$oneItem["barcode"] = $packcode;
@@ -10611,9 +10618,12 @@ $app->get('/externalpayment/{status}', function ($request, Response $response) {
 	$sql = "SELECT * FROM EXTERNALPAYMENT where STATUS = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($status));
-	
+	$payments = $req->fetchAll(PDO::FETCH_ASSOC);
+
 	$resp = array();	
 	$resp["result"] = "OK";	
+	$resp["data"] = $payments;
+
 	$response = $response->withJson($resp);
 	return $response;
 });

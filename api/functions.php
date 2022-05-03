@@ -415,12 +415,20 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		
 		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
 		file_put_contents("./tmp.jpg",$final);		
-		$data = getImage("./tmp.jpg");
-		$data = imagescale($data,$scale);
-		ob_start();
-		imagejpeg($data);
-		$contents = ob_get_contents();
-		ob_end_clean();
+		$gdimage = getImage("./tmp.jpg");		
+		$data = imagescale($gdimage,$scale);
+		if ($data == false){
+			ob_start();
+			imagejpeg($gdimage);
+			$contents = ob_get_contents();
+			ob_end_clean();
+		}else{
+			ob_start();
+			imagejpeg($data);
+			$contents = ob_get_contents();
+			ob_end_clean();
+		}		
+		
 		$final = $contents;		
 	}
 		
