@@ -170,6 +170,16 @@ function createPO($items,$author,$fromPO = null,$notes = null)
 	$line = 1;
 	foreach($items as $item)
 	{
+		$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($item["PRODUCTID"],$LOCID));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false){
+			$sql = "INSERT INTO ICLOCATION (PRODUCTID,LOCID,VENDID,USERADD,DATEADD,TAXACC) VALUES(?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$locid,$vendorid,$author,$now,"16100"));
+		} 
+
 		/*	
 		$sql = "SELECT TOP(1) TRANCOST,DATEADD FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";		
 		$req = $dbBLUE->prepare($sql);

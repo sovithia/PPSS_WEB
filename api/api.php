@@ -2806,23 +2806,19 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$ponumber = createPO($items,$author);
 
 			$resp["message"] = "Po created with number ".$ponumber;
-			if ($author == 'prem_v' || 'soeurng_s')
+			if ($author == 'prem_v' || $author == 'soeurng_s' || $author == 'SOPHY' || $author == 'VANNA1')
 				$status = 'ORDERED';
 			else 
 				$status = 'WAITING';
 			$db->beginTransaction();			
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,$status,'PO','YES')"; // LEAVE NBINVOICES TO ZERO		
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO		
 			$req = $db->prepare($sql);
-			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
+			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
 			$lastID = $db->lastInsertId();
 			$db->commit(); 
 
 			pictureRecord($json["PURCHASERSIGNATUREIMAGE"],"PCH",$lastID);
-
-			$sql = "UPDATE PODETAIL SET PPSS_WAITING_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($ponumber));
-
+			
 			if ($json["TYPE"] ==  "POPOOL"){
 				$sql = "DELETE FROM SUPPLYRECORDPOOL WHERE USERID = ?";
 				$req = $db->prepare($sql);

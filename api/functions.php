@@ -190,9 +190,10 @@ function blueUser($author){
 		return "KEARY";
 	else if ($author == "tieng_s")
 		return "SOPHEARITH";
-	else if ($author == "hong_v")
-
-		return "VICHET";
+	else if ($author == "prem_v")
+		return "VANNA1";
+	else if ($author == "soeurng_s")
+		return "SOPHY";
 
 	return $author;
 
