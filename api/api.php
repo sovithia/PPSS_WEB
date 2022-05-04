@@ -2609,6 +2609,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$dbBlue = getDatabase();
 	$status = $request->getAttribute('status');
 
+
 	// ******************//
 	// ***** WITH PO ****//
 	// ******************//
@@ -2742,7 +2743,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	$json = json_decode($request->getBody(),true);
    
 	if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "NOPOPOOL")) // NOPO CREATE AND RECEIVE
-		{
+	{
 			$author = blueUser($json["AUTHOR"]);		
 			$items = json_decode($json["ITEMS"],true);
 			$now = date("Y-m-d H:i:s");
@@ -2787,9 +2788,9 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$req = $db->prepare($sql);
 			$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
 			
-		} 
-		else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
-		{
+	} 
+	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
+	{
 			$author = blueUser($json["AUTHOR"]);
 			$items = json_decode($json["ITEMS"],true);
 			$now = date("Y-m-d H:i:s");
@@ -2805,8 +2806,12 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$ponumber = createPO($items,$author);
 
 			$resp["message"] = "Po created with number ".$ponumber;
-			$db->beginTransaction();
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'WAITING','PO','YES')"; // LEAVE NBINVOICES TO ZERO		
+			if ($author == 'prem_v' || 'soeurng_s')
+				$status = 'ORDERED';
+			else 
+				$status = 'WAITING';
+			$db->beginTransaction();			
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,$status,'PO','YES')"; // LEAVE NBINVOICES TO ZERO		
 			$req = $db->prepare($sql);
 			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now));
 			$lastID = $db->lastInsertId();
@@ -3583,8 +3588,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$DISCOUNT = $json["DISCOUNT"];
 		else 
 			$DISCOUNT = 0;
-		updatePO($ponumber,$json["ITEMS"]);
-		receivePO($ponumber,$json["AUTHOR"],"",$TAX,$DISCOUNT);
+		updatePO($ponumber,$json["ITEMS"],$json["NOTES"]);
+		receivePO($ponumber,$json["AUTHOR"],$json["NOTES"],$TAX,$DISCOUNT);
 		$data["result"] = "OK";
 	}
 	/*

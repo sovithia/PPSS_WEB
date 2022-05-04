@@ -316,7 +316,7 @@ function createPO($items,$author,$fromPO = null,$notes = null)
 	return $PONUMBER;
 }
 
-function updatePO($ponumber,$items)
+function updatePO($ponumber,$items,$notes = "")
 {
 	$db = getDatabase();
 	//$sql = "SELECT * FROM PODETAIL "
@@ -354,9 +354,9 @@ function updatePO($ponumber,$items)
 	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];
 	$AMT_WITH_VAT = round($AMT_WITH_VAT,2);
 
-	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?  WHERE PONUMBER = ?";
+	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?,REFERENCE = ?,NOTES = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,round($res2["SUMVAT"],2),$AMT_WITH_VAT ,$AMT_WITH_VAT, $ponumber));
+	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,round($res2["SUMVAT"],2),$AMT_WITH_VAT ,$AMT_WITH_VAT,$notes,$notes,$ponumber));
 
 }
 
@@ -444,8 +444,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$PAID_AMT =  "0";
 	$BALANCE =  round($PORef["CURRENCY_AMOUNT"], 2); //+ $PORef["VAT_AMT"];
 	$PCNAME =  "Application";
-	$CURR_RATE = "1";
-	$REMARK =  "Note";
+	$CURR_RATE = "1";	
+	$REMARK =  $notes;
 	$TERMID =  "";
 	$TERM_DAYS = 0;
 	$TERM_DISC =  0;
@@ -942,7 +942,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$BALANCE =      round($theTOTALAMOUNT, 2);// + $theVATAMOUNT;
 	$PCNAME =      "APPLICATION";
 	$CURR_RATE =    "1";   
-	$REMARK =      '';
+	$REMARK =      $notes;
 	$TERMID =      '';
 	$TERM_DAYS =     0;
 	$TERM_DISC =     0;
@@ -961,7 +961,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$LOCID =       $THELOCATION;
 	$CURR_ID =      "USD";
 	$BASECURR_ID =   "USD";
-	$CURRENCY_AMOUNT =   round($theTOTALAMOUNT);// + $theVATAMOUNT;;
+	$CURRENCY_AMOUNT =   round($theTOTALAMOUNT,2);// + $theVATAMOUNT;;
 	$CURRENCY_VATAMOUNT =  $theVATAMOUNT;
 	$CURRENCY_VATAMOUNT = round($CURRENCY_VATAMOUNT,2);
 	$CURRENCY_BALANCE =  $theTOTALAMOUNT;// + $theVATAMOUNT;
@@ -969,6 +969,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$CURRENCY_PAIDAMT =   "0";
 	$DATEADD =   $today;
 	$USERADD = 	blueUser($author);
+	$SUPPLIER_INVOICE = $notes;
 
 	$sql =  "INSERT INTO APHEADER (
 	VENDID,VOUCHERNO,TRANDATE,DUEDATE,VENDNAME,    
@@ -978,12 +979,12 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	VOUCHER_DESC1,REFERENCE,VATNO,PONUMBER,APACCOUNT,    
 	DISC_PERCENT,TAXACC_OUT,FILEID,EXPENSE_TYPE,DOCUMENTDATE,   
 	LOCID,CURR_ID,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,
-	CURRENCY_BALANCE,CURRENCY_PAIDAMT,DATEADD,USERADD) 
+	CURRENCY_BALANCE,CURRENCY_PAIDAMT,DATEADD,USERADD,SUPPLIER_INVOICE) 
 	values (
 	?,?,?,?,?,?,?,?,?,?,
 	?,?,?,?,?,?,?,?,?,?,
 	?,?,?,?,?,?,?,?,?,?,
-	?,?,?,?,?,?,?,?,?)";
+	?,?,?,?,?,?,?,?,?,?)";
 
 	$req = $db->prepare($sql);
 	$req->execute(array($VENDID,$VOUCHERNO,$TRANDATE,$DUEDATE,$VENDNAME,
@@ -993,7 +994,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$VOUCHER_DESC1,$REFERENCE,$VATNO,$PONUMBER,$APACCOUNT,
 	$DISC_PERCENT,$TAXACC_OUT,$FILEID,$EXPENSE_TYPE,$DOCUMENTDATE,
 	$LOCID,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,
-	$CURRENCY_BALANCE,$CURRENCY_PAIDAMT,$DATEADD,$USERADD
+	$CURRENCY_BALANCE,$CURRENCY_PAIDAMT,$DATEADD,$USERADD,$SUPPLIER_INVOICE
 	));
 
 	$line = 1;
@@ -1160,24 +1161,26 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$COST_CENTER =   "";
 	$LOCID =     $THELOCATION;
 
+	$REMARKS = $notes;
+
 	//+GLTRAN (Account Number 20000)
 	$sql = "INSERT INTO GLTRAN (
 	GLNO,LINNO,GLDESC,GLDATE,GLYEAR,    
 	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,     
 	APPID,REMARKS,CUSTID,VENDID,FILEID,     
-	COST_CENTER,LOCID) 
+	COST_CENTER,LOCID,REMARKS) 
 	values (
 	?,?,?,?,?,?,?,?,?,?,
 	?,?,?,?,?,?,?,?,?,?,
-	?,?)";      
+	?,?,?)";      
 	$req = $db->prepare($sql);
 	$req->execute(array(
 		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
 		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,     
 		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,    
-		$COST_CENTER,$LOCID
+		$COST_CENTER,$LOCID,$REMARKS
 
 	));
 
@@ -1213,10 +1216,10 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 		DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,      
 		APPID,REMARKS,CUSTID,VENDID,FILEID,     
-		COST_CENTER,LOCID) values(
+		COST_CENTER,LOCID,REMARKS) values(
 		?,?,?,?,?,?,?,?,?,?,
 		?,?,?,?,?,?,?,?,?,?,
-		?,?)";   
+		?,?,?)";   
 
 		$req = $db->prepare($sql);
 		$req->execute(array(	
@@ -1224,7 +1227,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 			$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 			$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,      
 			$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
-			$COST_CENTER,$LOCID));
+			$COST_CENTER,$LOCID,$REMARKS));
 	}
 
 	//+GLTRAN (Acc$ount Number 17000)
@@ -1268,19 +1271,19 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,    
 	APPID,REMARKS,CUSTID,VENDID,FILEID,     
-	COST_CENTER,LOCID) 
+	COST_CENTER,LOCID,REMARKS) 
 	values (?,?,?,?,?,
 			?,?,?,?,?,
 			?,?,?,?,?,
 			?,?,?,?,?,
-			?,?)";
+			?,?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array(	
 		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
 		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,    
 		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
-		$COST_CENTER,$LOCID));
+		$COST_CENTER,$LOCID,$REMARKS));
 
 	//****** IF VENDOR NOT VAT INSERT 1 LINE (17000) ***********************
 	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) ********
