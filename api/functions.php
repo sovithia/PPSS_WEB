@@ -1386,12 +1386,24 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 			$policy, 'UNIT',1.0,'E','AG',
 			'P',$has_vat,$vat,$plt,'LOCAL',
 			$picturePath,'UNIT',1.0,$price,$pltacc));
-		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
-							VALUES(?,?,?,?,?,?)";
+		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,
+									   TAXACC,MAXORDER,MINORDER,SALEDISCOUNTACC,REVENUEACC,
+									   COGSACC,INVENTORYACC,VENDORPARTNUM,USEREDIT,DATEEDIT,
+									   NOTES)
+							VALUES(?,?,?,?,?,
+								   ?,?,?,?,?,
+								   ?,?,?,?,?,
+								   ?)";
 		
 		$req = $db->prepare($sql);
-		$req->execute(array('WH1',$barcode,$vendid,$today,$author,16100));
-		$req->execute(array('WH2',$barcode,$vendid,$today,$author,16100));
+		$req->execute(array('WH1',$barcode,$vendid,$today,$author,
+							16100,0,0,"","",
+							"","",$barcode,$author,$today,
+							""));
+		$req->execute(array('WH2',$barcode,$vendid,$today,$author,
+							16100,0,0,"","",
+							"","",$barcode,$author,$today,
+							""));
 
 		$sql = "INSERT INTO ICVENDOR(PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD)
 				VALUES(?,?,?,?,?)";
