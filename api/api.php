@@ -1106,8 +1106,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			if (isset($stats["DISCOUNT"]))
 				$item["DISCOUNT"] = $stats["DISCOUNT"];
 			else 
-				$item["DISCOUNT"] = "0";
-			error_log($item["COST"]);	
+				$item["DISCOUNT"] = "0";			
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -2564,8 +2563,7 @@ $app->get('/supplyrecordsearch', function(Request $request,Response $response) {
 		} 
 	}
 
-	$sql .= " ORDER BY CREATED DESC";
-	error_log($sql);
+	$sql .= " ORDER BY CREATED DESC";	
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2634,7 +2632,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$params = array();
 	}			
 	else 
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 200";			
 
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -2760,7 +2758,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 	   		else 
 		   		$notes = "";
 			updateVendor($items,$author);					   
-			$ponumber = createAndReceivePO($items,$author,$notes);
+			$ponumber = createAndReceivePO($items,$author,$notes,$vendorid);
 
 			if ($items[0]["LOCID"] == "WH1")
 				$status = "RECEIVEDFORTRANSFERFRESH";
@@ -2771,7 +2769,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			
 			
 			$db->beginTransaction();
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','YES')"; // LEAVE NBINVOICES TO ZERO
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'NOPO','YES')"; // LEAVE NBINVOICES TO ZERO
 			$req = $db->prepare($sql);
 			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
 			$supplyrecordid = $db->lastInsertId();
@@ -3030,6 +3028,7 @@ $app->post('/linkproducttovendor',function(Request $request,Response $response) 
 	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL";
 	$req = $inDB->prepare($sql);
 	$req->execute(array());
+
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res == false){
 		$data["result"] = "KO";	
@@ -3046,10 +3045,10 @@ $app->post('/linkproducttovendor',function(Request $request,Response $response) 
 	$vendid = $res["VENDID"];
 
 
-	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT) 
-			VALUES(?,?,?,?,?,?)";
+	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT) VALUES (?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute(array($productid,$vendid,$productid,$author,$today,$author));
+	$params = array($productid,$vendid,$productid,$author,$today,$author);		
+	$req->execute($params);
 
 	$data["result"] = "OK";	
 	$response = $response->withJson($data);
@@ -3061,7 +3060,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
-
+	
 	$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($json["PRODUCTID"],$json["LOCID"]));
@@ -3103,7 +3102,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 		{
 			$sql = "SELECT * FROM ICVENDOR WHERE PRODUCTID = ? AND VENDID = ?";
 			$req = $dbBlue->prepare($sql);
-			$req->execute(array($json["PRODUCTID"],$res3["VENDID"]));
+			$req->execute(array($json["PRODUCTID"],$res2["VENDID"]));
 			$res4 = $req->fetch(PDO::FETCH_ASSOC);
 
 			if ($res4 == false){ // IF NOT PRESENT IN ICVENDOR AND DIFFERENT VENDID FROM FIRST ITEM
@@ -3114,9 +3113,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			}			
 		}
 
-		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE PRODUCTID = ?";
+		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE PRODUCTID = ? AND USERID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"]));
+		$req->execute(array($json["PRODUCTID"],$json["USERID"]));
 		$res4 = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res4 != false){
 			$data["result"] = "KO";	
@@ -3670,6 +3669,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
+		error_log("DANGER CANCEL !!!");
 		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = '0',PPSS_DELIVERED_PRICE = '0',PPSS_WAITING_QUANTITY = '0', PPSS_NOTE = null,PPSS_DELIVERED_EXPIRE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($json["PONUMBER"]) );	
@@ -3753,16 +3753,14 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
 	}
 		
-	if ($rr["TYPE"] == "NOPO"){
-		if ($rr["LINKEDPO"] != null)
-		{
+	if ($rr["TYPE"] == "NOPO")
+	{	
 			$req = $db2->prepare($sql);
 			if ($hidenoreceive == 'YES')
-				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));	
+				$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));	
 			else
-				$req->execute(array($rr["LINKEDPO"],$rr["LINKEDPO"],$rr["LINKEDPO"]));
-			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 
-		}
+				$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
+			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 		
 	}
 	else {
 		$req = $db2->prepare($sql);
@@ -3778,13 +3776,14 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$items = ($rr["items"] != null) ? $rr["items"] : array();
 
+
 	$amountexcludevat = 0;
 	$amountvat = 0;
 	$grandtotal = 0;
 	$amountDiscount = 0;
 	$amtplt = 0;
 	$tmpItems = array();
-
+	
 	foreach($items as $item){
 
 		 $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,VENDNAME,LASTCOST,PRICE,PACKINGNOTE,HAS_PLT,APVENDOR.TAX,PPSS_IS_BLACKLIST,PPSS_IS_PRICEFIXED
@@ -6435,7 +6434,6 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	$right = explode('.',$res["PROFIT"])[1];
 	$profit = $left.".".substr($right, 0,2);
 
-	error_log($result["SALE"]);
 	$left = explode('.',$res["SALE"])[0];
 	$right = explode('.',$res["SALE"])[1];
 	$sale = $left.".".substr($right, 0,2);
@@ -7210,8 +7208,7 @@ $app->get('/selfpromotionstats',function(Request $request,Response $response) {
 			if (isset($stats["DISCOUNT"]))
 				$item["DISCOUNT"] = $stats["DISCOUNT"];
 			else 
-				$item["DISCOUNT"] = "0";
-			error_log($item["COST"]);	
+				$item["DISCOUNT"] = "0";			
 		}else if ($type == "RESTOCKSTATS"){
 			$stats = orderStatistics($barcode);
 			$item["ORDERQTY"] = $stats["FINALQTY"];		
@@ -7779,7 +7776,6 @@ $app->get('/expiresearch',function($request,Response $response) {
 					AND ONHAND > 0	
 					AND SIZE NOT IN ('N/A','NO','NOEXPIRATION','NOEXPIRE','NR','REF:8557','RETURN')				
 					";	
-			error_log($sql);
 	}		
 
 	$params = array();
@@ -9082,8 +9078,7 @@ $app->get('/externalitemalertbyvendor/{id}', function($request,Response $respons
 		AND ICPRODUCT.PRODUCTID NOT IN $excludeIDs
 		AND ICPRODUCT.PRODUCTID IN $includeIDs
 		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRODUCTNAME1,LASTCOST,PRICE";				
-		$req = $dbBlue->prepare($sql);
-		error_log($sql);
+		$req = $dbBlue->prepare($sql);		
 		$req->execute(array());
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
 		$data = array();
@@ -9462,9 +9457,7 @@ $app->post('/externalorderToNOPOPool', function($request,Response $response){
 				WHERE ID = ?";
 		$req = $db->prepare($sql);		
 		$req->execute(array($today, $item["DELIVERYQTY"],$item["DELIVERYPRICE"],$item["ID"]));
-		
-		error_log($item["PRODUCTID"]);
-		
+						
 		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["DELIVERYQTY"],$json["USERID"],0,$item["DELIVERYPRICE"],"WH2"));
@@ -10255,9 +10248,7 @@ $app->post('/externalfruitorderToNOPOPool', function($request,Response $response
 				WHERE ID = ?";
 		$req = $db->prepare($sql);		
 		$req->execute(array($today, $item["DELIVERYQTY"],$item["DELIVERYPRICE"],$item["ID"]));
-		
-		error_log($item["PRODUCTID"]);
-		
+				
 		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID) values (?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["DELIVERYQTY"],$json["USERID"],0,$item["DELIVERYPRICE"],"WH2"));

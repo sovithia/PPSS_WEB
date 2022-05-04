@@ -34,20 +34,24 @@ function updateVendor($items,$author,$vendorid = "400-463"){
 	}
 }
 
-function createPO($items,$author,$fromPO = null,$notes = null)
+function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 {
 	if(count($items) == 0){
 		return null;
 	}
 	$db = getDatabase();
 
-	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($items[0]["PRODUCTID"]));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res == false)
-		return null;
-	$vendorid = $res["VENDID"];
+	if ($vendid == null){
+		$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($items[0]["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false)
+			return null;
+		$vendorid = $res["VENDID"];
+	}else{
+		$vendorid = $vendid;
+	}
 
 	$autoPromo = autoPromoForVendor($vendorid);
 
@@ -1164,33 +1168,31 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$GLPOST =    "N";
 	$GLTYPE =    "J"; 
 	$APPID =     "PO";
-	$REMARKS =    "";
+	$REMARKS =   $notes;
 	$CUSTID =    "";
 	$VENDID =    $theVENDID;
 	$FILEID =     "";
 	$COST_CENTER =   "";
 	$LOCID =     $THELOCATION;
-
-	$REMARKS = $notes;
-
+	
 	//+GLTRAN (Account Number 20000)
 	$sql = "INSERT INTO GLTRAN (
 	GLNO,LINNO,GLDESC,GLDATE,GLYEAR,    
 	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,     
 	APPID,REMARKS,CUSTID,VENDID,FILEID,     
-	COST_CENTER,LOCID,REMARKS) 
+	COST_CENTER,LOCID) 
 	values (
 	?,?,?,?,?,?,?,?,?,?,
 	?,?,?,?,?,?,?,?,?,?,
-	?,?,?)";      
+	?,?)";      
 	$req = $db->prepare($sql);
 	$req->execute(array(
 		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
 		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,     
 		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,    
-		$COST_CENTER,$LOCID,$REMARKS
+		$COST_CENTER,$LOCID
 
 	));
 
@@ -1214,7 +1216,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$GLPOST =    "N";
 		$GLTYPE =    "J";  
 		$APPID =     "PO";
-		$REMARKS =    "";
+		$REMARKS =    $notes;
 		$CUSTID =    "";
 		$VENDID =    $theVENDID;
 		$FILEID =     "";
@@ -1226,10 +1228,10 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 		DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,      
 		APPID,REMARKS,CUSTID,VENDID,FILEID,     
-		COST_CENTER,LOCID,REMARKS) values(
+		COST_CENTER,LOCID) values(
 		?,?,?,?,?,?,?,?,?,?,
 		?,?,?,?,?,?,?,?,?,?,
-		?,?,?)";   
+		?,?)";   
 
 		$req = $db->prepare($sql);
 		$req->execute(array(	
@@ -1237,7 +1239,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 			$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 			$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,      
 			$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
-			$COST_CENTER,$LOCID,$REMARKS));
+			$COST_CENTER,$LOCID));
 	}
 
 	//+GLTRAN (Acc$ount Number 17000)
@@ -1269,7 +1271,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$GLPOST =     "N";
 	$GLTYPE =    "J";  
 	$APPID =     "PO";
-	$REMARKS =    "";
+	$REMARKS =    $notes;
 	$CUSTID =    "";
 	$VENDID =    $theVENDID;
 	$FILEID =     "";
@@ -1281,19 +1283,19 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,    
 	DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,    
 	APPID,REMARKS,CUSTID,VENDID,FILEID,     
-	COST_CENTER,LOCID,REMARKS) 
+	COST_CENTER,LOCID) 
 	values (?,?,?,?,?,
 			?,?,?,?,?,
 			?,?,?,?,?,
 			?,?,?,?,?,
-			?,?,?)";
+			?,?)";
 	$req = $db->prepare($sql);
 	$req->execute(array(	
 		$GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,    
 		$GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,    
 		$DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,    
 		$APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,     
-		$COST_CENTER,$LOCID,$REMARKS));
+		$COST_CENTER,$LOCID));
 
 	//****** IF VENDOR NOT VAT INSERT 1 LINE (17000) ***********************
 	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) ********
@@ -1458,9 +1460,10 @@ function splitPOWithItems($ponumber,$items,$author)
 	return $ponumber;
 }
 
-function createAndReceivePO($items,$author,$notes)
+function createAndReceivePO($items,$author,$notes,$vendid = null)
 {
-	$ponumber = createPO($items,$author,null,$notes);
+	
+	$ponumber = createPO($items,$author,null,$notes,$vendid);
 	receivePO($ponumber,$author,$notes);
 	return $ponumber;
 }
