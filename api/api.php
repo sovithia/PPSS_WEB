@@ -7129,17 +7129,14 @@ $app->get('/penalty',function($request,Response $response) {
 									PROMOTION								
 																				*/      
 //
-$app->get('/selfpromotionstats',function(Request $request,Response $response) {    
+$app->get('/selfpromotionitemstats',function(Request $request,Response $response) {    
 	$conn=getDatabase();	 
 	
 	$item = null;
-	$barcode = $request->getParam('barcode','');
-	$type = $request->getParam('type','');
-	// NearExpiration 
-	// LateReturn
-
+	$barcode = $request->getParam('barcode','');		
 	$expiration = $request->getParam('expiration','');
-	$depreciationtype = $request->getParam('depreciationtype','');
+	$type = $request->getParam('type','');
+	
 
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,COST,PRICE,COLOR,SIZE,VENDID,	
 		  FROM dbo.ICPRODUCT  
@@ -7151,11 +7148,7 @@ $app->get('/selfpromotionstats',function(Request $request,Response $response) {
 		$item["COST"] = sprintf("%.4f",$item["COST"]);
 	else 
 		$item["COST"] = "0";
-	if (isset($item["VENDID"]))
-		$VENDID = $item["VENDID"];
-	else 
-		$VENDID = "0";
-
+	
 	$resp = array();
 	if (isset($item["PRODUCTID"])){		
 		$sql="
@@ -7175,11 +7168,9 @@ $app->get('/selfpromotionstats',function(Request $request,Response $response) {
 			$item["WH1"] = "";
 			$item["STOREBIN1"] = "";			
 		}
-
-		$sql="
-		SELECT LOCONHAND,STORBIN 
-		FROM dbo.ICLOCATION  
-		WHERE LOCID = 'WH2' AND PRODUCTID = ?";
+		$sql="SELECT LOCONHAND,STORBIN 
+			  FROM dbo.ICLOCATION  
+			  WHERE LOCID = 'WH2' AND PRODUCTID = ?";
 		$params = array($barcode);
 		$req=$conn->prepare($sql);
 		$req->execute($params);
@@ -7195,7 +7186,6 @@ $app->get('/selfpromotionstats',function(Request $request,Response $response) {
 	}
 	else
 	{
-		
 		$packInfo = packLookup($barcode);
 		if ($packInfo != null) // IS  A PACK
 		{			
@@ -7221,67 +7211,21 @@ $app->get('/selfpromotionstats',function(Request $request,Response $response) {
 			$resp["result"] = "KO";
 			$response = $response->withJson($resp);
 			return $response;
-		}			
-			
-	}
-	
+		}						
+	}	
 	if ($item != null)
-	{
-		if ($type == "ORDERSTATS"){					
-			$stats = orderStatistics($barcode);
-			$item["ORDERQTY"] = $stats["FINALQTY"];		
-			$item["DECISION"] = $stats["DECISION"];
-			if(isset($stats["RCVQTY"]))
-				$item["LASTRCVQTY"] = $stats["RCVQTY"];
-			else 
-				$item["LASTRCVQTY"] = "0";
-
-			$sql = "SELECT TOP(1)TRANDISC,TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";		
-			$req = $conn->prepare($sql);			
-			$req->execute(array($barcode));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res != false){
-				$item["COST"] = floatval($res["TRANCOST"]);
-				$item["COST"] = round($item["COST"],4);				
-			}
-			
-			$sql = "SELECT TAX FROM APVENDOR WHERE VENDID = ?";
-			$req = $conn->prepare($sql);
-			$req->execute(array($VENDID));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res != false)
-			 $item["VAT"] =  $res["TAX"];
-			else 
-			 $item["VAT"] = 0; 
-			
-			if (isset($stats["DISCOUNT"]))
-				$item["DISCOUNT"] = $stats["DISCOUNT"];
-			else 
-				$item["DISCOUNT"] = "0";			
-		}else if ($type == "RESTOCKSTATS"){
-			$stats = orderStatistics($barcode);
-			$item["ORDERQTY"] = $stats["FINALQTY"];		
-			$item["DECISION"] = $stats["DECISION"];	
-			$item["LASTRCVQTY"] = $stats["RCVQTY"];	
-		}else if ($type == "PROMOSTATS"){
-			$stats = calculatePenalty($barcode,$expiration,$depreciationtype);
-			$item["STATUS"] = $stats["status"];
-			$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
-			$item["PERCENTPROMO"] = $stats["percentpromo"];	
-			$item["START"] = $stats["start"];
-			$item["END"] = $stats["end"];
-			$item["POLICY"]	= $stats["policy"];
-			$item["COST"] = round($stats["cost"],4);			
-		}
-		else if ($type == "WASTESTATS"){
-			$stats = wasteStatistics($barcode,$expiration);
-			$item["STATUS"] = $stats["status"];
-			$item["PERCENTPENALTY"] = $stats["percentpenalty"];
-		}
+	{		
+		$stats = calculatePenalty($barcode,$expiration,$type);
+		$item["STATUS"] = $stats["status"];
+		$item["PERCENTPENALTY"] = $stats["percentpenalty"];	
+		$item["PERCENTPROMO"] = $stats["percentpromo"];	
+		$item["START"] = $stats["start"];
+		$item["END"] = $stats["end"];
+		$item["POLICY"]	= $stats["policy"];
+		$item["COST"] = round($stats["cost"],4);					
 		$resp["result"] = "OK";
 		$resp["data"] = $item;
 	}
-
 	$response = $response->withJson($resp);
 	return $response;
 });
@@ -7385,7 +7329,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	return $response;
 });
 
-$app->post('/selfpromotion', function($request,Response $response) {
+$app->post('/selfpromotionitems', function($request,Response $response) {
 
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();	
@@ -7406,8 +7350,6 @@ $app->post('/selfpromotion', function($request,Response $response) {
 	$response = $response->withJson($resp);	
 	return $response;
 });
-
-
 
 $app->put('/selfpromotionstatus', function($request,Response $response) {
 	
@@ -7448,7 +7390,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 });
 
 // Declare next step 
-$app->put('/selfpromotion', function($request,Response $response) {
+$app->put('/selfpromotionitemstep', function($request,Response $response) {
 	
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
@@ -7485,6 +7427,105 @@ $app->put('/selfpromotion', function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;																			 
 });
+
+$app->get('/selfpromotionitempool/{userid}', function($request,Response $response){
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM SELFPROMOTIONITEMPOOL WHERE USERID = ?";	
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
+	$newItems = array();
+	foreach($pool as $item){
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists("./img/promopool_proofs/".$item["ID"]."_".$count.".png")){       							     
+	      $nbproofs++;
+	      $count++;        	    
+	  }
+	  $item["NBPROOFS"] = $nbproofs;
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null)
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newItems,$item);
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newItems;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/selfpromotionitempool', function($request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+	// TODO : On OLd items, retrieve all info 
+	$sql = "SELECT TYPE FROM SELFPROMOTIONITEMPOOL WHERE USERID = ? LIMIT 1  ";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["USERID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != false)
+	{		
+		if($res["TYPE"] != $json["TYPE"])
+			$ok = false;					
+		else if ($res["TYPE"] == $json["TYPE"])
+			$ok = true;	
+	}
+	else {
+		$ok = true;
+	}
+	if ($ok == true){
+		$db->beginTransaction();    
+		$sql = "INSERT INTO SELFPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,ENDTIME,
+													LINKTYPE,TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,
+													USERID) 
+													VALUES (?,?,?,?,?,
+															?,?,?,?,?,
+															?)";	
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["STARTTIME"],$json["ENDTIME"],
+		$json["LINKTYPE"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],
+		$json["USERID"]));	
+		$result["result"] = "OK";
+		$lastId = $db->lastInsertId();
+		$db->commit();    
+		if (isset($json["PROOFS"]))
+			pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$lastId);
+	}
+	else{
+		$result["message"] = "Different promotion type";
+		$result["result"] = "KO";
+	}
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->delete('/selfpromotionitempool/{id}', function($request,Response $response){	
+	$id = $request->getAttribute('id');
+	$json = json_decode($request->getBody(),true);
+
+ 	$db = getInternalDatabase();		
+	$sql = "DELETE FROM SELFPROMOTIONITEMPOOL WHERE ID = ? AND USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id,$json["USERID"]));	
+
+	foreach( glob("./img/promopool_proofs/".$id."_*") as $file ){		
+		unlink($file);
+	}   
+    	
+  	
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+
+	return $response;
+});
+
 
 //CLEARANCETOOMUCH,CLEARANCELOWSELL,CLEARANCEDAMAGED, EXPIREPROMOTION, DAMAGEWASTE EXPIREWASTE
 $app->get('/depreciation', function($request,Response $response) {
