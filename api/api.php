@@ -2726,6 +2726,8 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		array_push($newNOPOData,$oneNOPOData);
 	}
 	$mixData["NOPO"] = $newNOPOData;
+	
+	$mixData["PO"] = array_merge($mixData["PO"],$mixData["NOPO"]);
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -2759,6 +2761,26 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 		   		$notes = "";
 			updateVendor($items,$author);					   
 			$ponumber = createAndReceivePO($items,$author,$notes,$vendorid);
+
+			$sql = "UPDATE PODETAIL SET PPSS_VALIDATED_QUANTITY = PPSS_WAITING_QUANTITY,		
+										PPSS_DELIVERED_QUANTITY = PPSS_WAITING_QUANTITY,
+										PPSS_DELIVERED_PRICE = PPSS_WAITING_PRICE,
+										PPSS_DELIVERED_VAT = PPSS_WAITING_VAT,
+										PPSS_DELIVERED_DISCOUNT = PPSS_WAITING_DISCOUNT,										
+										WHERE PONUMBER = ?";
+
+			// Set Expire
+			foreach($items as $item)
+			{
+				if ($item["EXPIRE"] != "NO EXPIRE"){
+					$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_EXPIRE = ? WHERE PONUMBER = ? AND PRODUCTID = ?"; 
+					$req = $db->prepare($sql);				
+					$req->execute(array($item["EXPIRE"]));	
+				}
+				
+			}										
+			$req = $db->prepare($sql);
+			$req->execute(array($ponumber));										
 
 			if ($items[0]["LOCID"] == "WH1")
 				$status = "RECEIVEDFORTRANSFERFRESH";
@@ -2918,7 +2940,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$QUANTITY = $item["ALGOQTY"];
 
 
-
+		
 		if ($firstItem == false) // NO RECORD
 		{			
 			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
@@ -2927,6 +2949,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		}
 		else
 		{
+			
+
 			$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
@@ -2945,13 +2969,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 					$data["message"] = $item["PRODUCTID"]." Different vendor";
 					continue;				
 			}
-			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ?";
+			$sql = "SELECT PRODUCTID FROM SUPPLYRECORDPOOL WHERE PRODUCTID = ? AND USERID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res4 = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res4 != false){
-
-			$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
+			$req->execute(array($item["PRODUCTID"],$userid));
+			$res4 = $req->fetch(PDO::FETCH_ASSOC);			
+			if ($res4 != false){					
+				$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
 					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["COST"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
@@ -3045,9 +3068,9 @@ $app->post('/linkproducttovendor',function(Request $request,Response $response) 
 	$vendid = $res["VENDID"];
 
 
-	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT) VALUES (?,?,?,?,?,?)";
+	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT,NOTES) VALUES (?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$params = array($productid,$vendid,$productid,$author,$today,$author);		
+	$params = array($productid,$vendid,$productid,$author,$today,$author,"");		
 	$req->execute($params);
 
 	$data["result"] = "OK";	
@@ -3061,28 +3084,22 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
 	
-	$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($json["PRODUCTID"],$json["LOCID"]));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res == false){
-		$data["result"] = "KO";	
-		$data["message"] = "Cannot receive ".$json["PRODUCTID"]." in ".$json["LOCID"];		
-		$response = $response->withJson($data);
-		return $response;
-	}
 
 	$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ? LIMIT 1";
 	$req = $db->prepare($sql);
 	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
+	if (isset($json["EXPIRE"]))
+		$expire = $json["EXPIRE"];
+	else
+		$expire = null;
 
 	if ($res == false) // NO RECORD
 	{
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,REQUEST_QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX) values (?,?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,REQUEST_QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX,EXPIRE) values (?,?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"],$expire));
 	}
 	else
 	{
@@ -3095,9 +3112,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($res["PRODUCTID"]));
 		$res3 = $req->fetch(PDO::FETCH_ASSOC);
-		
-
-		
+				
 		if ($res2 != false && $res3 != false && $res2["VENDID"] != $res3["VENDID"])		
 		{
 			$sql = "SELECT * FROM ICVENDOR WHERE PRODUCTID = ? AND VENDID = ?";
@@ -3111,6 +3126,20 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 				$response = $response->withJson($data);
 				return $response;
 			}			
+		}
+
+
+		$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["LOCID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false){		
+		
+			$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
+							VALUES(?,?,?,?,?,?)";
+			$today = date("Y-m-d");
+			$req = $db->prepare($sql);
+			$req->execute(array($json["LOCID"],$json["PRODUCTID"],$today,$author,16100));
 		}
 
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE PRODUCTID = ? AND USERID = ?";
@@ -3135,9 +3164,9 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 			return $response;
 		}
 
-		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX) values (?,?,?,?,?,?,?)";
+		$sql = "INSERT INTO SUPPLYRECORDNOPOPOOL (PRODUCTID,REQUEST_QUANTITY,USERID,DISCOUNT,COST,LOCID,TAX,EXPIRE) values (?,?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"]));
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["USERID"],$json["DISCOUNT"],$json["COST"],$json["LOCID"],$json["TAX"],$json["EXPIRE"]));
 	}
 	$data["result"] = "OK";				
 	$response = $response->withJson($data);
@@ -3177,9 +3206,9 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 			$item["DISCOUNTCOST"] = (($item["DISCOUNT"] / 100) * $item["COST"]);			
 			array_push($newData,$item);	
 
-			$amountexcludevat += ($item["COST"] * $item["QUANTITY"]);	
-			$amountvat += ($item["COST"] * ($item["TAX"] / 100)) * $item["QUANTITY"];			
-			$grandtotal +=  ($item["COST"] * (1 + ($item["TAX"] / 100))) * $item["QUANTITY"];
+			$amountexcludevat += ($item["COST"] * $item["REQUEST_QUANTITY"]);	
+			$amountvat += ($item["COST"] * ($item["TAX"] / 100)) * $item["REQUEST_QUANTITY"];			
+			$grandtotal +=  ($item["COST"] * (1 + ($item["TAX"] / 100))) * $item["REQUEST_QUANTITY"];
 			$amountDiscount += (($item["DISCOUNT"] / 100) * $item["COST"]);
 		}		
 	}
@@ -4763,6 +4792,7 @@ $app->delete('/itemrequestactionitems',function(Request $request,Response $respo
 
 $app->put('/itemrequestaction/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
+	$dbBLUE = getDatabase();
 	$json = json_decode($request->getBody(),true);
 	$id = $request->getAttribute('id');
 
@@ -4923,6 +4953,26 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			$author = blueUser($json["AUTHOR"]);
 			$ponumber = createPO($items,$author);
 			$data["message"] = "PO Created with number ".$ponumber; 
+
+			$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($ponumber));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			
+			$now = date("Y-m-d");
+			if ($res != false){
+				$vendorid = $res["VENDID"];
+				$vendid = $res["VENDNAME"];
+			}else{
+				$vendorid = "";
+				$vendid = "";
+			}			
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','NO')"; 
+			$req = $db->prepare($sql);			
+
+			$req->execute(array($ponumber,$json["AUTHOR"], $vendorid, $vendname, $now,));
+			$lastID = $db->lastInsertId();
+			
 		}	
 	}
 	else if ($json["STATUS"] == "SUBMITTED")
@@ -5000,10 +5050,7 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		if ($res != false){
 			$item["WAREHOUSE_QTY"] = floatval($res["LOCONHAND"]);		
 			$item["STOREBIN2"] = $res["LOC"];	
-}	
-
-
-
+		}	
 		// VENDNAME
 		$sql = "SELECT PRODUCTNAME,replace(VENDNAME,char(39),'') as 'VENDNAME' ,PACKINGNOTE,TAX
 				FROM dbo.ICPRODUCT,APVENDOR
@@ -5026,16 +5073,18 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		}	
 		
 		
-		$sql = "SELECT TOP(1) TRANDISC, VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) TRANDISC, VAT_PERCENT,TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($itemID));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != false){
 			$item["VAT"] = $res["VAT_PERCENT"];
 			$item["DISCOUNT"] = $res["TRANDISC"];
+			$item["COST"] = $res["TRANCOST"];
 		}else{
 			$item["VAT"] = "0";
 			$item["DISCOUNT"] = "0";
+			$item["COST"] = "0";
 		}
 
 		array_push($newData,$item);
@@ -7356,8 +7405,9 @@ $app->post('/selfpromotion', function($request,Response $response) {
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);	
 	return $response;
-
 });
+
+
 
 $app->put('/selfpromotionstatus', function($request,Response $response) {
 	

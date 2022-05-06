@@ -85,6 +85,10 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 		$LOCID = $items[0]["LOCID"];
 	else 
 		$LOCID = "WH2";
+
+	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s")
+		$LOCID = "WH1";
+		
 	$USERADD = $author;
 	$DATEADD = $now;
 	$VAT_PERCENT = $vendor["TAX"];
@@ -181,7 +185,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 		if ($res == false){
 			$sql = "INSERT INTO ICLOCATION (PRODUCTID,LOCID,VENDID,USERADD,DATEADD,TAXACC) VALUES(?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$locid,$vendorid,$author,$now,"16100"));
+			$req->execute(array($item["PRODUCTID"],$LOCID,$vendorid,$author,$now,"16100"));
 		} 
 
 		/*	
