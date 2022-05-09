@@ -706,27 +706,32 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
-
 			array_push($result,$oneItem);
 		}
-		else {
-			
+		else 
+		{			
 			if (isset($percentages[$count]) && $percentages[$count] != ""){			
 				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
 			}				
 			else
 				$oneItem = itemLookupLabel($barcode,true);
-			
-			$oneItem["packing"] = "";
-			$oneItem["ISPACK"] = "NO";	
-			array_push($result,$oneItem);
-							
+			if ($oneItem != null){
+				$oneItem["packing"] = "";
+				$oneItem["ISPACK"] = "NO";	
+				array_push($result,$oneItem);
+			}										
 		}
 		$count++;				
 			
 	}	
-	$resp["result"] = "OK";
-	$resp["data"] = $result;
+	if (count($result) == 0){
+		$resp["result"] = "KO";
+		$resp["message"] = "Product not found";
+	}else{
+		$resp["result"] = "OK";
+		$resp["data"] = $result;
+	}
+	
 	$response = $response->withJson($resp);
 	return $response;
 });
@@ -2618,21 +2623,21 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	else if ($status == "ANOMALYUNSOLVED" || $status == "ANOMALYSOLVED" || $status == "NOANOMALY"){
 		markAnomalies();
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? ORDER BY LAST_UPDATED DESC";
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";
 		$params = array($status);
 	}	
 	else if ($status == "ORDERED")
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 	else if ($status == "RECEIVEDBOTH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH') AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}
 	else if ($status == "RECEIVEDFORTRANSFERBOTH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH')  ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}			
 	else 
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? ORDER BY LAST_UPDATED DESC LIMIT 200";			
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC LIMIT 200";			
 
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -2766,21 +2771,21 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 										PPSS_DELIVERED_QUANTITY = PPSS_WAITING_QUANTITY,
 										PPSS_DELIVERED_PRICE = PPSS_WAITING_PRICE,
 										PPSS_DELIVERED_VAT = PPSS_WAITING_VAT,
-										PPSS_DELIVERED_DISCOUNT = PPSS_WAITING_DISCOUNT,										
+										PPSS_DELIVERED_DISCOUNT = PPSS_WAITING_DISCOUNT										
 										WHERE PONUMBER = ?";
-
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($ponumber));
+		
 			// Set Expire
 			foreach($items as $item)
 			{
 				if ($item["EXPIRE"] != "NO EXPIRE"){
 					$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_EXPIRE = ? WHERE PONUMBER = ? AND PRODUCTID = ?"; 
-					$req = $db->prepare($sql);				
-					$req->execute(array($item["EXPIRE"]));	
+					$req = $dbBlue->prepare($sql);				
+					$req->execute(array($item["EXPIRE"],$ponumber,$item["PRODUCTID"]));	
 				}
 				
-			}										
-			$req = $db->prepare($sql);
-			$req->execute(array($ponumber));										
+			}													
 
 			if ($items[0]["LOCID"] == "WH1")
 				$status = "RECEIVEDFORTRANSFERFRESH";
@@ -3945,6 +3950,8 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 	$db = getInternalDatabase();
 	$sql = "SELECT * FROM ITEMREQUESTACTION   
 				  WHERE ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)";
+	//$sql = "SELECT * FROM ITEMREQUESTACTION WHERE 1 = 1 ";
+
 	$params = array();
 
 	if ($type != 'ALL'){
@@ -3962,10 +3969,12 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 		array_push($params,$requestee);	
 	}
 
+	
 	if ($start != '' && $end != ''){
 		$sql .= " AND REQUEST_TIME between ? AND ?";
-		array_push($params,$start." 00:00:00.000" ,$end." 23:59:59.999");	
+		array_push($params,$start." 00:00:00" ,$end." 23:59:59");	
 	}
+	
 
 	if ($productid != '')
 	{
@@ -3989,6 +3998,9 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 		}	
 	}
 	$sql .= " ORDER BY REQUEST_TIME DESC";
+	error_log($sql);
+	$debug = var_export($params,true);
+	error_log($debug);
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9289,7 +9301,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 	$excludeIDs .= ")";
 	
 
-	$sql = "SELECT TOP(500) ICPRODUCT.PRODUCTID,PRICE,
+	$sql = "SELECT TOP(30) ICPRODUCT.PRODUCTID,PRICE,
 		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'NAMEEN',
 		PRODUCTNAME1 as 'NAMEKH',LASTCOST, 
 		ICLOCATION.ORDERPOINT, ORDERQTY,
@@ -10748,9 +10760,20 @@ $app->delete('/externalpayment/{id}', function ($request, Response $response) {
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
+});
 
+$app->post('/writekhmer',function ($request,Response $response) {
+	$db = getDatabase();
+	$json = json_decode($request->getBody(),true);
 
+	$sql = "INSERT INTO ICPRODUCT (PRODUCTID,PRODUCTNAME,USERADD) VALUES (?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["WORD"],$json["WORD"],"TEST"));
 
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 

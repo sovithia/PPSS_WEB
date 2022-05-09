@@ -86,7 +86,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 	else 
 		$LOCID = "WH2";
 
-	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s")
+	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s" || $author == "PONLEU" )
 		$LOCID = "WH1";
 		
 	$USERADD = $author;
@@ -339,9 +339,10 @@ function updatePO($ponumber,$items,$notes = "")
 	$db = getDatabase();
 	//$sql = "SELECT * FROM PODETAIL "
 	foreach($items as $item){
-		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?, PPSS_DELIVERED_PRICE = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
+		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?, PPSS_DELIVERED_PRICE = ?, PPSS_DELIVERED_DISCOUNT = ?, PPSS_DELIVERED_VAT = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PPSS_DELIVERED_QUANTITY"], $item["PPSS_DELIVERED_PRICE"],
+							$item["PPSS_DELIVERED_DISCOUNT"], $item["PPSS_DELIVERED_VAT"],
 							$item["PRODUCTID"],$ponumber));		
 	}
 	$sql = "UPDATE PODETAIL SET 
@@ -1440,7 +1441,6 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$PAID_AMT,$DISC_AMT,$BALANCE,$CURRENCY_PAIDAMT,$CURRENCY_DISCAMT,
 	$CURRENCY_BALANCE,$PAIDDATE,$VENDID,$VOUCHERNO)
 	);
-
 
 	$BALANCE = "";
 	$LASTPAIDAMT = "";

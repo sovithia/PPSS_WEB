@@ -388,6 +388,7 @@ function loadPictureByPath($path,$base64 = false)
 		$final = file_get_contents("img/mystery.png");
 	}
 	else {
+		error_log($path);
 		$final = file_get_contents($path);
 
 		file_put_contents("./tmp.jpg",$final);		
@@ -412,9 +413,17 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		$final = file_get_contents($path);
 	}
 	else 
-	{
-		
-		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
+	{		
+		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");		
+		if ($final == "" || $final == null){
+
+			$path = "img/mystery.png";					
+			$final = file_get_contents($path);
+			if ($base64 == true)
+				return base64_encode($final);
+			return $final;		
+		}
+
 		file_put_contents("./tmp.jpg",$final);		
 		$gdimage = getImage("./tmp.jpg");		
 		$data = imagescale($gdimage,$scale);
@@ -1388,7 +1397,7 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 			'P',$has_vat,$vat,$plt,'LOCAL',
 			$picturePath,'UNIT',1.0,$price,$pltacc));
 		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,
-									   TAXACC,MAXORDER,MINORDER,SALEDISCOUNTACC,REVENUEACC,
+									   TAXACC,MAX_ORDER,MIN_ORDER,SALEDISCOUNTACC,REVENUEACC,
 									   COGSACC,INVENTORYACC,VENDORPARTNUM,USEREDIT,DATEEDIT,
 									   NOTES)
 							VALUES(?,?,?,?,?,
