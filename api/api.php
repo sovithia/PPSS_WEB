@@ -2272,7 +2272,7 @@ $app->get('/calculatePrice',function(Request $request,Response $response) {
 // CCC = CATEGORY 
 // NNNN = SEQUENCE
 // PPPP = PADDING (1984)
-function GenerateCategoryNumberByName($category){
+function GenerateCategoryNumberByName($category, $occurence = 100){
 	$padding = 1984;
 	$sections = [
 		'FRESH' => '1',
@@ -2287,13 +2287,11 @@ function GenerateCategoryNumberByName($category){
 	$req->execute(array($category));
 	$result = $req->fetch(PDO::FETCH_ASSOC);
 	
-
 	$categoryName = $result["CATEGORYNAME"];
 
 	$sectionName = $result["SECTIONNAME"];
 	
 	$departmentName = $result["DEPARTMENTNAME"];
-
 
 	$sql = "SELECT distinct(DEPARTMENTNAME) FROM CATEGORY WHERE SECTIONNAME = ?";
 	$req = $database->prepare($sql);
@@ -2337,7 +2335,7 @@ function GenerateCategoryNumberByName($category){
 			$barcodes .= $final . "<br>";
 			$count++;
 		}				
-		if($count == 100)
+		if($occurence == 100)
 			break;
 	}	
 	return $barcodes;
@@ -6114,8 +6112,6 @@ $app->get('/priceprogression',function(Request $request,Response $response) {
 	}
 
 	$sql .= " ORDER BY PRODUCTNAME ASC";
-
-
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
 	$result = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -6143,6 +6139,24 @@ $app->get('/priceprogression',function(Request $request,Response $response) {
 	return $response;	
 }); 
  
+$app->get('/barcode/{categoryname}', function(Request $request, Response $response){
+
+	$categoryname = $request->getAttribute('categoryname');	
+	$generated =  GenerateCategoryNumberByName($categoryname,1);	
+	if ($generated != ""){
+		$resp = array();
+		$resp["result"] = "OK";
+		$resp["data"] = $generated;
+		$response = $response->withJson($resp);	
+	}
+	else{
+		$resp = array();
+		$resp["result"] = "KO";
+		$resp["message"] = "Wrong category name";
+		$response = $response->withJson($resp);	
+	}	
+}); 
+
 $app->post('/barcode/{categoryname}',function(Request $request,Response $response){
 	$categoryname = $request->getAttribute('categoryname');	
 	$result["BARCODES"] = GenerateCategoryNumberByName($categoryname);	
@@ -7141,6 +7155,21 @@ $app->get('/penalty',function($request,Response $response) {
 									PROMOTION								
 																				*/      
 //
+$app->get('/selfpromotionalert', function($request,Response $response) {
+	$db = getInternalDatabase();	
+	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE TYPE = 'STEP1' OR TYPE = 'STEP2' OR TYPE = 'STEP3' 
+			AND GETDATE() < EXPIRATION ";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $$items;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+
 $app->get('/selfpromotionitemstats',function(Request $request,Response $response) {    
 	$conn=getDatabase();	 
 	
@@ -7383,7 +7412,18 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($id,$author));
-	}else if ($status == "PROMOTED"){
+	}
+	else if ($status == "VALIDATEDWITHUPDATE"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ?,PERCENTPROMO = ?  WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id,$author,$json["NEWPERCENT"]));
+	}
+	else if ($status == "DENIED"){
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'DENIED',VALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id,$author));
+	}
+	else if ($status == "PROMOTED"){
 		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'STEP1' WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($id));
@@ -7400,6 +7440,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 	$response = $response->withJson($resp);		
 	return $response;
 });
+
 
 // Declare next step 
 $app->put('/selfpromotionitemstep', function($request,Response $response) {
