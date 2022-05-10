@@ -2286,6 +2286,8 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 	$req = $database->prepare($sql);
 	$req->execute(array($category));
 	$result = $req->fetch(PDO::FETCH_ASSOC);
+	if ($result == false)
+		return false;
 	
 	$categoryName = $result["CATEGORYNAME"];
 
@@ -2303,6 +2305,7 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 			break;
 		$positionDep++;		
 	}
+	
 	$positionDep = sprintf("%02d",$positionDep);
 
 	$sql = "SELECT * FROM CATEGORY WHERE DEPARTMENTNAME = ?";
@@ -2316,7 +2319,7 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 		$positionCat++;		
 	}
 	$positionCat = sprintf("%03d",$positionCat);
-
+	
 	$start = 9999;
 	$db = getDatabase();
 	$barcodes = "";
@@ -2332,12 +2335,16 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 		$result = $req->fetch(PDO::FETCH_ASSOC);
 		if ($result == null)
 		{
-			$barcodes .= $final . "<br>";
+			if ($occurence == 1)
+				$barcodes = $final;
+			else
+				$barcodes .= $final . "<br>";
 			$count++;
 		}				
-		if($occurence == 100)
+		if($count == $occurence)
 			break;
 	}	
+	error_log("Exit");
 	return $barcodes;
 }
 
@@ -6142,8 +6149,10 @@ $app->get('/priceprogression',function(Request $request,Response $response) {
 $app->get('/barcode/{categoryname}', function(Request $request, Response $response){
 
 	$categoryname = $request->getAttribute('categoryname');	
+	error_log($categoryname);
 	$generated =  GenerateCategoryNumberByName($categoryname,1);	
-	if ($generated != ""){
+	error_log($generated);
+	if ($generated != "" && $generated != null){
 		$resp = array();
 		$resp["result"] = "OK";
 		$resp["data"] = $generated;
@@ -6155,6 +6164,7 @@ $app->get('/barcode/{categoryname}', function(Request $request, Response $respon
 		$resp["message"] = "Wrong category name";
 		$response = $response->withJson($resp);	
 	}	
+	return $response;
 }); 
 
 $app->post('/barcode/{categoryname}',function(Request $request,Response $response){
