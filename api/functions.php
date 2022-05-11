@@ -627,7 +627,7 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 	}
 	else
 	{
-		$remains = $increasedQty % $multiple;	
+		$remains = $increasedQty % $multiple;			
 		if ($price < 5)
 		{		
 				$total = $increasedQty + ($multiple - $remains);
@@ -642,7 +642,7 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 				else
 					return $increasedQty + ($multiple - $remains);				
 			}						
-			else if ($remains < ($multiple / 2))				
+			else if ($remains <= ($multiple / 2))				
 				return $increasedQty + ($multiple - $remains); // +1
 		}			
 	}
@@ -857,13 +857,13 @@ function orderStatistics($barcode)
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
 			if($stats["SALESPEED"] < 30){
-				
+				error_log("A");
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
-
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				
+				error_log("B");
+				error_log($barcode."|".$RCVQTY."|".$PRICE);
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			
