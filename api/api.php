@@ -3871,6 +3871,135 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	return $response;
 });
 
+$app->post('/supplyrecordadditem', function(Request $request,Response $response) {
+	$json = json_decode($request->getBody(),true);	
+
+	$dbBLUE = getDatabase();
+	$PONUMBER = $json["PONUMBER"];
+	$PRODUCTID = $json["PRODUCTID"];
+	$author = $json["AUTHOR"];
+	$TRANCOST = $json["COST"]; 	
+	$TRANDISC = $json["DISCOUNT"];
+	$QUANTITY = $json["REQUEST_QUANTITY"];
+	$VAT_PERCENT = $json["VAT_PERCENT"];
+	$now = date("Y-m-d H:i:s");
+
+
+	$sql = "SELECT TOP(1) VENDID,VENDNAME,VENDNAME1,LOCID FROM PODETAIL WHERE PONUMBER = ?";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array($PONUMBER));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$VENDID = $res["VENDID"];
+	$VENDNAME = $res["VENDNAME"];
+	$VENDNAME1 = $res["VENDNAME1"];
+	$LOCID = $res["LOCID"];
+
+	// Insert Location if needed
+	$sql = "SELECT * FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = ?";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array($PRODUCTID,$LOCID));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false){
+		$sql = "INSERT INTO ICLOCATION (PRODUCTID,LOCID,VENDID,USERADD,DATEADD,TAXACC) VALUES(?,?,?,?,?,?)";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($PRODUCTID,$LOCID,$VENDID,$author,$now,"16100"));
+	} 
+	
+		$PURCHASE_DATE = $now;		
+		$ORDER_QTY = $QUANTITY;
+		$DATEADD = $now;
+
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,COST,ONHAND 
+						FROM ICPRODUCT  
+						WHERE PRODUCTID = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($PRODUCTID)); 
+		$newitem = $req->fetch(PDO::FETCH_ASSOC);
+
+		$PRODUCTNAME = $newitem["PRODUCTNAME"];
+		$PRODUCTNAME1 = $newitem["PRODUCTNAME1"];
+		$CURRENTONHAND = $newitem["ONHAND"];
+
+		$CURRENCY_COST = floatval($TRANCOST); // *  floatval( (100 - $item["DISCOUNT"]) / 100);
+		$CURRENCY_COST = round($CURRENCY_COST,2);
+
+		$CURRENCY_AMOUNT = floatval($TRANCOST)  * floatval($QUANTITY);	
+		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * ((100 - $TRANDISC) / 100); // REMOVE DISCOUNT
+		$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
+
+		$STKFACTOR = "1.00000";
+		$BASECURR_ID = "USD";
+		$VATABLE = "Y";
+		$TRANUNIT = "UNIT";
+		$TRANFACTOR = "1.00000";
+		$STKUNIT = "UNIT";
+		$USERADD = blueUser($author);
+		$CURRID = "USD";
+		$CURR_RATE = "1";
+		$WEIGHT = "1.00000";
+		$OLDWEIGHT = "1.00000";
+		$RECEIVE_QTY = "0.00000";
+		
+		$EXTCOST = round($CURRENCY_AMOUNT, 2);				
+		$RECEIVE_QTY = "0.0000";
+		$COMMENT = "";
+		$POSTATUS = "";
+		$COST_ADD = "0.0000";
+		$DIMENSION = "0.0000";
+		$FILEID = "";
+		$COST_CENTER = "";
+		$INVENTORYACC = "";
+		$QTY_OVORORDER = "0.0000";
+		$FREIGHT_SG = "0.0000";
+
+		$sql = "SELECT COUNT(*) as CNT FROM PODETAIL WHERE PONUMBER = ?";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array($PONUMBER));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$line = $res["CNT"] + 1;
+
+	$sql = "INSERT INTO PODETAIL (
+	PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE, 
+	PRODUCTID,LOCID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY, 	
+	TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,TRANDISC,
+	TRANCOST,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,	
+	WEIGHT,OLDWEIGHT,USERADD,DATEADD,TRANLINE,
+	VATABLE,VAT_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
+	RECEIVE_QTY,COMMENT,POSTATUS,COST_ADD,DIMENSION,
+	FILEID,COST_CENTER,INVENTORYACC,QTY_OVERORDER,FREIGHT_SG,
+	PPSS_WAITING_CALCULATED, PPSS_WAITING_COMMENT,PPSS_WAITING_PRICE,PPSS_WAITING_QUANTITY,PPSS_WAITING_DISCOUNT,
+	PPSS_WAITING_VAT) 
+	VALUES (?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?)"; 		
+	$req = $dbBLUE->prepare($sql);
+	$params = array(
+		$PONUMBER,$VENDID, $VENDNAME, $VENDNAME1, $PURCHASE_DATE,
+		$PRODUCTID, $LOCID,$PRODUCTNAME,$PRODUCTNAME1, $ORDER_QTY, 
+		$TRANUNIT, $TRANFACTOR, $STKUNIT, $STKFACTOR, $TRANDISC,
+		$TRANCOST, $EXTCOST, $CURRENTONHAND, $CURRID, $CURR_RATE,
+		$WEIGHT, $OLDWEIGHT, $USERADD, $DATEADD, $line, 
+		$VATABLE, $VAT_PERCENT,$BASECURR_ID, $CURRENCY_AMOUNT,$CURRENCY_COST,
+		$RECEIVE_QTY,$COMMENT,$POSTATUS,$COST_ADD,$DIMENSION, 
+		$FILEID,$COST_CENTER,$INVENTORYACC,$QTY_OVORORDER,$FREIGHT_SG,
+		"-1","-1","-1","-1","-1",
+		$VAT_PERCENT);		
+
+	$req->execute($params);		
+	
+	$resp = array();
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 $app->get('/itemstatistics/{id}', function(Request $request,Response $response) {
 	
 	$id = $request->getAttribute('id');
