@@ -11,7 +11,7 @@ function getDatabase()
 function extractMissingImage()
 {
 	$db=getDatabase();
-	$sql = "SELECT PRODUCTID,VENDID,PRODUCTNAME,PRODUCTNAME1 FROM ICPRODUCT WHERE ONHAND > 0";
+	$sql = "SELECT PRODUCTID,VENDID,PRODUCTNAME,PRODUCTNAME1 FROM ICPRODUCT WHERE ONHAND > 0 AND VENDID = '400-463'";
 
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -27,8 +27,11 @@ function extractMissingImage()
 			$req = $db->prepare($sql);	
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$content .= $item["PRODUCTID"].",".$item["PRODUCTNAME"].",".$item["PRODUCTNAME1"].",".$res["STORBIN"]."\n";   
+			if ($res != false)
+				$storebin = $res["STORBIN"];
+			else 
+				$storebin = "";
+			$content .= $item["PRODUCTID"].",".$item["PRODUCTNAME"].",".$item["PRODUCTNAME1"].",".$storebin."\n";   
 
 		}		
 	}

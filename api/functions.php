@@ -675,6 +675,10 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 	}
 }
 
+function externalAlertStats2($barcode){
+
+}
+
 function externalAlertStats($barcode){
     $db=getDatabase();  
 
@@ -685,6 +689,7 @@ function externalAlertStats($barcode){
 	$data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
 	$lastrcv = $res["LASTRECEIVEDATE"];
 	
+	
     $sql = "SELECT SUM(TRANQTY) as NBTHROWN
 			FROM ICTRANDETAIL 
 			WHERE DOCNUM LIKE 'IS%' 
@@ -694,23 +699,24 @@ function externalAlertStats($barcode){
 	$req->execute(array($barcode));                 
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$data["NBTHROWN"] = round($res["NBTHROWN"],2);
-
-    
+	$today = date("Y-m-d");
+    /*
     $less30 = date('Y-m-d', strtotime('-30 days'));
-    $today = date("Y-m-d");
+    
     $data["DAYS30BACK"] = $less30;
-    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+    $sql = "SELECT SUM(QTY) as SUM 
+			FROM POSDETAIL 
             WHERE PRODUCTID = ? 
             AND POSDATE >=  ? AND POSDATE <= ?";
     $req = $db->prepare($sql);
     $req->execute(array($barcode,$less30,$today));
-
-
     $res = $req->fetch(PDO::FETCH_ASSOC);   
     $data["QTYLESS30"] = $res["SUM"] ?? 0;
-		$data["QTYLESS30"] = round($data["QTYLESS30"],2);
+	$data["QTYLESS30"] = round($data["QTYLESS30"],2);
+	*/
 
-    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+    $sql = "SELECT SUM(QTY) as SUM 
+			FROM POSDETAIL 
             WHERE PRODUCTID = ? 
             AND POSDATE >=  ? AND POSDATE <= ?";
     $req = $db->prepare($sql);
@@ -720,6 +726,7 @@ function externalAlertStats($barcode){
 		$data["QTYLASTRCV"] = round($data["QTYLASTRCV"],2);
 
     $indb = getInternalDatabase();
+	/*
     $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
     WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
     AND PRODUCTID = ? 
@@ -728,8 +735,10 @@ function externalAlertStats($barcode){
                  DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')";
     $req = $indb->prepare($sql);
     $req->execute(array($barcode));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $res = $req->fetch(PDO::FETCH_ASSOC);	
     $data["QTYPROMOTION"] = $res["QTY"] ?? 0;
+	*/
+	$data["QTYPROMOTION"] = 0;
 
     return $data;
 
