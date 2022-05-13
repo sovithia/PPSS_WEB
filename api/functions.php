@@ -133,6 +133,20 @@ function pictureRecord($base64Str,$type,$id){
 			}			
 		}
 	}
+	else if ($type == "EXTERNALPAYMENT")
+	{
+		$filename = "./img/externalpayment_proofs/";	
+		$proofs = json_decode($base64Str,true);			
+		$count = 1;
+		if ($proofs != null)
+		{
+			foreach($proofs as $proof)
+			{
+				file_put_contents($filename.$id."_".$count.".png", base64_decode($proof));	
+				$count++;
+			}			
+		}
+	}
 	else 
 	{
 		$imageData = base64_decode($base64Str);

@@ -825,6 +825,8 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 	return $response;
 });
 
+
+
 /************** COMMON ***************/
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
 	$conn=getDatabase();
@@ -841,7 +843,8 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	
 	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,
 	(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'COST',
-	isnull((SELECT TOP(1) CAST(TRANCOST AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
+	
+	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
 	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',
 	(SELECT TAX FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'TAX',
@@ -981,6 +984,35 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	return $response;
 });
 
+$app->get('/curatedstats/{productid}', function (Request $request,Response $response) {
+	$db=getDatabase();	
+	$productid = $request->getAttribute('productid');	 
+
+	$sql = "SELECT PRODUCTID,PRODUCTNAME,PRODUCTNAME1,PRICE,SIZE,
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',			
+	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',
+	(SELECT TOP(1) (TRANCOST - (TRANCOST * (TRANDISC/100)) ) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
+	ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALORDERTIME',	
+	(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
+	LASTRECEIVEDATE,
+	(SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTRECEIVEQTY',			
+	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',
+	(SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND POSDATE >= dbo.ICPRODUCT.LASTRECEIVEDATE AND POSDATE <=  GETDATE()) as 'SALESINCELASTRCV'
+	FROM ICPRODUCT
+	WHERE PRODUCTID = ?";
+
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+	$item = $req->fetch(PDO::FETCH_ASSOC);
+	$item["MULTIPLE"] = calculateMultiple($productid);
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $item;
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 
 $app->get('/itemwithstats',function(Request $request,Response $response) {    
@@ -992,7 +1024,9 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$expiration = $request->getParam('expiration','');
 	$depreciationtype = $request->getParam('depreciationtype','');
 
-	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,COST,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,VENDID,
+	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,
+	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'COST'
+	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,VENDID,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
 	      WHERE BARCODE = ?";
@@ -1603,7 +1637,7 @@ $app->get('/itemsearch3',function(Request $request,Response $response) {
 		replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',		
 		PACKINGNOTE,LASTCOST as 'COST',PRICE,VENDNAME,
 		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-		(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
+		isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST',
 	
 		ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE',
 		ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE',
@@ -1663,7 +1697,7 @@ $app->post('/itemget',function(Request $request,Response $response) {
 			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST',
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-			(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',		
+			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST',		
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 		  (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',	
 		  ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',		
@@ -2343,8 +2377,7 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 		}				
 		if($count == $occurence)
 			break;
-	}	
-	error_log("Exit");
+	}		
 	return $barcodes;
 }
 
@@ -2799,7 +2832,6 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 			$resp["message"] = "Po created and received with number ".$ponumber;
 			
-			
 			$db->beginTransaction();
 			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'NOPO','YES')"; // LEAVE NBINVOICES TO ZERO
 			$req = $db->prepare($sql);
@@ -2807,16 +2839,25 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$supplyrecordid = $db->lastInsertId();
 			$db->commit(); 
 
+			if (isset($json["INVOICEJSONDATA"]))
+				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$supplyrecordid);
+
 			if ($json["TYPE"] ==  "NOPOPOOL"){
 				$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($json["USERID"]));	
 			}
 					
+
+
+
 			// NEW CODE FOR PAYMENT
 			$sql = "INSERT INTO EXTERNALPAYMENT (SUPPLY_RECORD_ID,STATUS,PAYMENTAMOUNT,REQUESTER,PAYMENTTYPE,PAYMENTNUMBER,PAYMENTNAME,REQUESTER) VALUES (?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
+			if ($json["PAYMENTTYPE"] == "PAID")
+				$req->execute(array($supplyrecordid,"PAID",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
+			else
+				$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
 			
 	} 
 	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
@@ -3790,7 +3831,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	if ($hidenoreceive == 'YES')
 	{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
-					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
+					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,					
 					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',	
 					PPSS_WAITING_CALCULATED,		
@@ -4191,10 +4232,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}	
 	}
-	$sql .= " ORDER BY REQUEST_TIME DESC";
-	error_log($sql);
-	$debug = var_export($params,true);
-	error_log($debug);
+	$sql .= " ORDER BY REQUEST_TIME DESC";		
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -6337,10 +6375,8 @@ $app->get('/priceprogression',function(Request $request,Response $response) {
  
 $app->get('/barcode/{categoryname}', function(Request $request, Response $response){
 
-	$categoryname = $request->getAttribute('categoryname');	
-	error_log($categoryname);
+	$categoryname = $request->getAttribute('categoryname');		
 	$generated =  GenerateCategoryNumberByName($categoryname,1);	
-	error_log($generated);
 	if ($generated != "" && $generated != null){
 		$resp = array();
 		$resp["result"] = "OK";
@@ -7720,8 +7756,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id)); 
-	$item = $req->fetch(PDO::FETCH_ASSOC);
-	error_log("-".$status."-");
+	$item = $req->fetch(PDO::FETCH_ASSOC);	
 	if ($status == "VALIDATED"){
 		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
@@ -8561,8 +8596,7 @@ $app->get('/depreciationsearch',function($request,Response $response) {
 		}else {
 			$sql .= " AND ID in ('IMPOSSIBLE CODE') ";
 		}
-	}	
-	error_log($sql);
+	}
 
 	$req = $db->prepare($sql);
 	$req->execute($params);
@@ -11104,9 +11138,21 @@ $app->get('/externalpayment/{status}', function ($request, Response $response) {
 	$req->execute(array($status));
 	$payments = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	$newpayments = array();
+	foreach($payments as $payment){		
+		$imgfolder = "./img/externalpayment_proofs/";					
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists($imgfolder.$payment["ID"]."_".$count.".png")){
+			$nbproofs++;
+			$count++;        	    
+		}
+		$payment["NBPROOFS"] = $nbproofs;	
+		array_push($newpayments,$payment);	
+	}
 	$resp = array();	
 	$resp["result"] = "OK";	
-	$resp["data"] = $payments;
+	$resp["data"] = $newpayments;
 
 	$response = $response->withJson($resp);
 	return $response;
@@ -11129,12 +11175,18 @@ $app->post('/externalpayment', function ($request, Response $response) {
 $app->put('/externalpayment', function ($request, Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-
-	$sql = "UPDATE EXTERNALPAYMENT SET STATUS = 'PAID',PAYER = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["AUTHOR"]));
-
 	
+
+	$sql = "UPDATE EXTERNALPAYMENT SET STATUS = 'PAID',PAYER = ? WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["AUTHOR"],$json["ID"]));
+	if(isset($json["INVOICEJSONDATA"]))
+		pictureRecord($json["INVOICEJSONDATA"],"EXTERNALPAYMENT",$json["ID"]);
+	
+	$resp = array();	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 $app->delete('/externalpayment/{id}', function ($request, Response $response) {
