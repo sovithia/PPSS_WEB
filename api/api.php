@@ -3465,6 +3465,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$now = date("Y-m-d H:i:s");
 				$req->execute(array($newponumber, $newPURCHASER,"Split: ".$newVENDID, $newVENDNAME, $now));						
 
+				$data["message"] = "PO Splitted to number ".$newponumber;
 			}				
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
@@ -3491,25 +3492,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req = $dbBLUE->prepare($sql);
 			$sum = round($res["SUM"] + $res2["SUMVAT"],2);
 			$req->execute(array($sum, $sum,$sumvat,$sumvat,$json["PONUMBER"]));
-
-
-
-			// RECALCULATE AMOUNT ON POHEADER
-			/*
-			$sql = "SELECT EXTCOST FROM PODETAIL WHERE PONUMBER = ? ";
-			$req = $dbBLUE->prepare($sql);
-			$req->execute(array($json["PONUMBER"]));
-			$details = $req->fetchAll();
-			$totalAMT = 0;
-			$totalVAT = 0;
-			foreach($details as $detail)			
-				$totalAMT += $detail["EXTCOST"];
-				$totalVAT += $detail["VAT"]
-
-			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ? WHERE PONUMBER = ?";
-			$req = $dbBLUE->prepare($sql);			
-			$req->execute(array($totalAMT,$json["PONUMBER"]));
-			*/
 
 		}
 		$data["result"] = "OK";
@@ -3697,47 +3679,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		receivePO($ponumber,$json["AUTHOR"],$json["NOTES"],$TAX,$DISCOUNT);
 		$data["result"] = "OK";
 	}
-	/*
-	else if ($json["ACTIONTYPE"] == "RCV"){
-		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
-			$ponumber  = $json["LINKEDPO"];				
-		else
-			$ponumber  = $json["PONUMBER"];
-
-		$sql = "SELECT LOCID FROM PORECEIVEHEADER WHERE PONUMBER = ?";
-		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($ponumber));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		
-		if ($res == false)
-			$status = 'RECEIVEDFORTRANSFER';
-		else 
-		{
-			if ($res["LOCID"] == "WH1")
-				$status = 'RECEIVEDFORTRANSFERFRESH';
-			else if ($res["LOCID"] == "WH2")
-				$status = 'RECEIVEDFORTRANSFER';
-		}
-		
-		if (isset($json["LINKEDPO"]) && $json["LINKEDPO"] != "")		
-		{
-			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author, 
-				LINKEDPO = :linkedpo WHERE ID = :identifier";			
-			$req = $db->prepare($sql);			
-			$req->bindParam(':linkedpo',$json["LINKEDPO"],PDO::PARAM_STR);								
-		}
-		else{
-			$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author 
-				 WHERE ID = :identifier";			
-			$req = $db->prepare($sql);			
-		}
-		$req->bindParam(':status',$status,PDO::PARAM_STR);
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
-		$req->execute();						
-		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);
-		$data["result"] = "OK";
-	}*/
 	else if ($json["ACTIONTYPE"] == "ACC"){
 		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
