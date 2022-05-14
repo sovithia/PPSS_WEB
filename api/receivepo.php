@@ -1460,8 +1460,8 @@ function splitPOWithItems($ponumber,$items,$author)
 {
 	if (count($items) == 0)
 		return;
-	$ponumber = createPO($items,$author,$ponumber);
-	return $ponumber;
+	$newponumber = createPO($items,$author,$ponumber);
+	return $newponumber;
 }
 
 function createAndReceivePO($items,$author,$notes,$vendid = null)

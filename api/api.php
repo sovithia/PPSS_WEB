@@ -3451,11 +3451,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 
 			if ($isSplitCompany  == true){
-				$ponumber = splitPOWithItems($json["PONUMBER"],$absentitems,$json["AUTHOR"]);
+				$sql = "SELECT VENDID,VENDNAME,USERADD FROM POHEADER WHERE PONUMBER = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($json["PONUMBER"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				$newVENDID = $res["VENDID"];
+				$newVENDNAME = $res["VENDNAME"];
+				$newPURCHASER = $res["USERADD"];
+				$newponumber = splitPOWithItems($json["PONUMBER"],$absentitems,$newPURCHASER);
+
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
 				$req = $db->prepare($sql);
 				$now = date("Y-m-d H:i:s");
-				$req->execute(array($ponumber, $json["AUTHOR"], $vendid, $vendname, $now));						
+				$req->execute(array($newponumber, $newPURCHASER,"Split: ".$newVENDID, $newVENDNAME, $now));						
 
 			}				
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
@@ -3771,10 +3779,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
-		error_log("DANGER CANCEL !!!");
+		error_log("DANGER CANCEL !!! ".$json["PONUMBER"]);
 		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = '0',PPSS_DELIVERED_PRICE = '0',PPSS_WAITING_QUANTITY = '0', PPSS_NOTE = null,PPSS_DELIVERED_EXPIRE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
-		$req->execute(array($json["PONUMBER"]) );	
+		if (isset($json["PONUMBER"]))
+			$req->execute(array($json["PONUMBER"]) );	
 
 		$data["result"] = "OK";	 			
 	}
