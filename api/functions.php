@@ -172,6 +172,8 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
 		else if ($type == "DEPRECIATION_CLEARER")
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
+		else if ($type == "EXTPAYMENTPAY")
+			$filename = "./img/externalpayment_signatures/PAY_".$id.".png";
 		else
 			error_log("UNKNOWN TYPE :". $type);
 		

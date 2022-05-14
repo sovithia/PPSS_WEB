@@ -11176,13 +11176,14 @@ $app->put('/externalpayment', function ($request, Response $response) {
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 	
-
-	$sql = "UPDATE EXTERNALPAYMENT SET STATUS = 'PAID',PAYER = ? WHERE ID = ?";
+	$now = date("Y-m-d");
+	$sql = "UPDATE EXTERNALPAYMENT SET STATUS = 'PAID',PAYER = ?,PAID = ? WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($json["AUTHOR"],$json["ID"]));
 	if(isset($json["INVOICEJSONDATA"]))
 		pictureRecord($json["INVOICEJSONDATA"],"EXTERNALPAYMENT",$json["ID"]);
-	
+	pictureRecord($json["SIGNATURE"],"EXTPAYMENTPAY",$json["ID"]);
+
 	$resp = array();	
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
