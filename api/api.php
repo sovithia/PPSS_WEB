@@ -847,7 +847,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
 	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',
-	(SELECT TAX FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'TAX',
+	isnull((SELECT TAX FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID),0) as 'TAX',
 	HAS_VAT,HAS_PLT,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 	FROM dbo.ICPRODUCT  
@@ -855,8 +855,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-
-
+	
 	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
 	if ($item != false && isset($item["LASTCOST"]))
@@ -935,17 +934,11 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$resp["data"] = $item;
 
 		if ($res1 < 1)
-		{
-			//$resp["result"] = "KO";
-			$resp["message"] = "WH1 Location missing"; 
-			//$response = $response->withJson($resp);
-			//return $response;
+		{			
+			$resp["message"] = "WH1 Location missing"; 			
 		}
-		else if ($res2 < 1){
-			//$resp["result"] = "KO";
-			$resp["message"] = "WH2 Location missing"; 	
-			//$response = $response->withJson($resp);
-			//return $response;
+		else if ($res2 < 1){		
+			$resp["message"] = "WH2 Location missing"; 			
 		}
 	}
 	else
@@ -3386,11 +3379,24 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$nbinvoices = count(json_decode($json["INVOICEJSONDATA"],true));					
 		else 
 			$nbinvoices = 1;	
-		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = 'DELIVERED',NBINVOICES = :nbinvoices WHERE ID = :identifier";
-		$req = $db->prepare($sql);							
-		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
+
+		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($json["PONUMBER"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);		
+		$LOCID = $res["LOCID"];
+		
+		if ($LOCID == "WH1")
+			$status = "DELIVEREDFRESH";
+		else 
+			$status = "DELIVERED";
+
+		$sql = "UPDATE SUPPLY_RECORD SET WAREHOUSE_USER = :author, STATUS = :status,NBINVOICES = :nbinvoices WHERE ID = :identifier";
+		$req = $db->prepare($sql);									
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':status',$status,PDO::PARAM_STR);
 		$req->bindParam(':nbinvoices',$nbinvoices,PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
 		$req->execute();			
 
 		if(isset($json["INVOICEJSONDATA"]))
@@ -3707,6 +3713,35 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		receivePO($ponumber,$json["AUTHOR"],$json["NOTES"],$TAX,$DISCOUNT);
 		$data["result"] = "OK";
 	}
+	else if ($json["ACTIONTYPE"] == "RCVF")
+	{
+		$ponumber  = $json["PONUMBER"];		
+		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
+		$req = $dbBLUE->prepare($sql);
+		$req->execute(array($ponumber));
+		$res = $req->fetch(PDO::FETCH_ASSOC);		
+		$status = "RECEIVEDFORTRANSFERFRESH";
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author
+		WHERE ID = :identifier";			
+		   $req = $db->prepare($sql);			
+		$req->bindParam(':status',$status,PDO::PARAM_STR);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
+		$req->execute();								
+		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);		
+		if (isset($json["TAX"]))
+			$TAX = $json["TAX"];
+		else 
+			$TAX = 0;
+		if (isset($json["DISCOUNT"]))
+			$DISCOUNT = $json["DISCOUNT"];
+		else 
+			$DISCOUNT = 0;	
+		updatePO($ponumber,$json["ITEMS"],$json["NOTES"]);
+		receivePO($ponumber,$json["AUTHOR"],$json["NOTES"],$TAX,$DISCOUNT);
+		$data["result"] = "OK";	
+	}
+
 	else if ($json["ACTIONTYPE"] == "ACC"){
 		$sql = "UPDATE SUPPLY_RECORD SET 
 					   ACCOUNTANT_USER = :author,
@@ -8105,8 +8140,10 @@ $app->put('/depreciation', function($request,Response $response) {
 		$sql = "UPDATE DEPRECIATION SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
-		pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);
-	  	pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
+		if (isset($json["VALIDATORSIGNATUREIMAGE"]))
+			pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);
+		if (isset($json["WITNESSSIGNATUREIMAGE"]))
+	  		pictureRecord($json["WITNESSSIGNATUREIMAGE"],"DEPRECIATION_WITNESS",$id);
 	}
 	else if ($status == "CLEARED"){
 		$sql = "UPDATE DEPRECIATION SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
