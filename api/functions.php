@@ -194,8 +194,14 @@ function blueUser($author){
 		return "PONLEU";
 	else if ($author == "prom_r")
 		return "RETH";
-	else if ($author == "chea_s" || $author == "meng_s" || $author == "in_v" || $author == "sor_p" || $author == "koem_n")
+	else if ($author == "chea_s")	
 		return "SOPHAL";
+	else if ($author == "sor_p")
+		return "SOR PHEARITH";		
+	else if ($author == "in_v")
+		return "VISOTH";
+	else if ($author == "meng_s")
+		return "SOVANNARA";
 	else if ($author == "meng_g")
 		return "GECKMEY";
 	else if ($author == "vireak_n")
@@ -210,6 +216,10 @@ function blueUser($author){
 		return "VANNA1";
 	else if ($author == "soeurng_s")
 		return "SOPHY";
+	else if ($author == "Peuv")
+		return "RITH MONY";
+	else if ($author == "heng_s")
+		return "SARAVUTH";
 
 	return $author;
 
@@ -379,6 +389,9 @@ function writePicture($barcode,$b64Image)
 
 
 function getImage($path) {
+
+//error_log(mime_content_type($path));
+
 switch(mime_content_type($path)) {
   case 'image/png':
     $img = imagecreatefrompng($path);
@@ -389,12 +402,21 @@ switch(mime_content_type($path)) {
   case 'image/jpeg':
     $img = imagecreatefromjpeg($path);
     break;
+  case 'image/jpg':
+	$img = imagecreatefromjpeg($path);
+	break;
   case 'image/bmp':
     $img = imagecreatefrombmp($path);
     break;
+case 'image/x-ms-bmp':
+	$img = imagecreatefrombmp($path);
+	break;
   default:
-     $img = imagecreatefromjpeg($path);
+     $img = @imagecreatefromjpeg($path);
   }
+  
+  if (!$img)
+  	$img = imagecreatefrombmp($path);
   return $img;
 }
 
@@ -441,7 +463,8 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		}
 
 		file_put_contents("./tmp.jpg",$final);		
-		$gdimage = getImage("./tmp.jpg");		
+		$gdimage = getImage("./tmp.jpg");	
+	
 		$data = imagescale($gdimage,$scale);
 		if ($data == false){
 			ob_start();
@@ -881,14 +904,11 @@ function orderStatistics($barcode)
 	
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
-			if($stats["SALESPEED"] < 30){
-				error_log("A");
+			if($stats["SALESPEED"] < 30){				
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
-			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				error_log("B");
-				error_log($barcode."|".$RCVQTY."|".$PRICE);
+			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){								
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			

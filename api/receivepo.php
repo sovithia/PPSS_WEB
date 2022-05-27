@@ -82,7 +82,11 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 	$VENDNAME1 = $vendor["VENDNAME1"];
 	$PODATE = $now;
 	if (isset($items[0]) && isset($items[0]["LOCID"]))
+	{
 		$LOCID = $items[0]["LOCID"];
+		if ($LOCID == 0 || $LOCID == "0")
+			$LOCID = "WH2";
+	}		
 	else 
 		$LOCID = "WH2";
 
@@ -339,11 +343,16 @@ function updatePO($ponumber,$items,$notes = "")
 	$db = getDatabase();
 	//$sql = "SELECT * FROM PODETAIL "
 	foreach($items as $item){
-		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?, PPSS_DELIVERED_PRICE = ?, PPSS_DELIVERED_DISCOUNT = ?, PPSS_DELIVERED_VAT = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
+		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?, PPSS_DELIVERED_PRICE = ?, PPSS_DELIVERED_DISCOUNT = ?, PPSS_DELIVERED_VAT = ?, PPSS_DELIVERED_EXPIRE = ? WHERE PRODUCTID = ? AND PONUMBER = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PPSS_DELIVERED_QUANTITY"], $item["PPSS_DELIVERED_PRICE"],
 							$item["PPSS_DELIVERED_DISCOUNT"], $item["PPSS_DELIVERED_VAT"],
-							$item["PRODUCTID"],$ponumber));		
+							$item["PPSS_DELIVERED_EXPIRE"],
+							$item["PRODUCTID"],$ponumber));
+		//echo "PONUMBER:".$ponumber."|DEL_QTY:".$item["PPSS_DELIVERED_QUANTITY"]."|DEL_PRICE:".$item["PPSS_DELIVERED_PRICE"].
+		//						   "|DEL_DISC:".$item["PPSS_DELIVERED_DISCOUNT"]."|DEL_VAT:".$item["PPSS_DELIVERED_VAT"];	
+		
+									
 	}
 	$sql = "UPDATE PODETAIL SET 
 	RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
@@ -1458,6 +1467,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 function splitPOWithItems($ponumber,$items,$author)
 {
+	error_log("Split From ".$ponumber);
 	if (count($items) == 0)
 		return;
 	$newponumber = createPO($items,$author,$ponumber);
