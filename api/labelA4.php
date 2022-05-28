@@ -265,7 +265,7 @@ function renderOneProduct($product)
 	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
 	";
     }
-      elseif($percent != "0" && $percent == "1."){
+  elseif($percent != "0" && $percent == "1."){
     	if (strpos($percent,"1.") === false)
     		   $percentSize = "60";
     else 
@@ -353,9 +353,96 @@ function renderOneProduct($product)
 	</br>
 	<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
     ";
+    }else if ($percent == -1) {
+    	echo "
+    	<div class='A4' id='A4_Image'>
+		<div class='tag-wrap'>
+			<div class='clip4'>
+				<img src='bg/bg-header.png'>
+		</div>
+		</div>
+			<div class='logo'>
+				<div class='tag-wrap'>
+					<img src='img/logo-text1.png'>
+				</div>
+				<div class='tag-wrap'></div>
+			</div>
+		<div class='box'>
+			<div class='box1'>
+				<div class='name_kh'>
+					<p>$nameKH</p>
+				</div>
+				<div class='name_En'>
+					<p>$nameEN</p>
+				</div> 
+				<div class='itemcode'>
+					<p>Code: $barcode</p>
+				</div>
+				<div class='itemcode'>
+					<p>Origin: $country</p>
+				</div>
+				
+			</div>
+			<div class='box2'>
+				<div class='box_img'>
+					<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+				</div>
+			</div>
+			<div class='box3'>
+				<div class='box4'>
+					<img src='bg/bg-sale.png'>
+					<div class='tag-wrap'>
+							<p style='font-size: 42px; margin-top: 25px;'>SALE OFF</p>
+						<div class='till'>
+							<p style='margin-top: -5px;'>Pro.Till: $till</p>
+						</div>
+					</div>
+					
+				</div>
+				<div class='box_price'>
+					<div class='box_price1'>
+						<div class='box_price2'>
+							<div class='promot2'>
+								<div class='symbool'>
+									<p>$</p>
+								</div>
+								<div class='promot3'>
+									<span class='strikethrough'>
+										<p>$oldPrice</p>
+									</span>
+								</div>
+							</div>
+							<div class='promot5'>
+								<div class='unit1'>
+									$factor
+								</div>
+								<div class='unit2'>
+									<p>$rielPrice</p>
+								</div>
+								<div class='unit3'>
+									<p>៛</p>
+								</div>
+							</div>
+							<div class='promot6'>
+								<div class='promot_price7'>
+									<p>$</p>
+								</div>
+								<div class='promot_price8'>
+									<p>$dollarPrice</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+	</div>
+	
+</div>
+</br>
+<center><button class='btngenerate' id='save_image_locally'>Download</button></center>
+    	";
     }
-else
-    {
+else{
   if (strpos($percent,".") === false)
     $percentSize = "60";
   else 
@@ -501,28 +588,44 @@ function _renderTwoProductPromoLeft($product)
     else 
       $percentSize = "45";
 
+    if ($percent == -1) {
+    	?>
+    		<?php
+    			$sale_off = "<p style='font-size: 70px; margin-right:-300px; margin-top: 8px'>SALE OFF</p>";
+    			$sell_disc = 		""; 
+    		?>
+    	<?php
+    }else{
+    	?>
+    	<?php
+    			$sale_off = "<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>";
+    			 	$sell_disc = 
+				    	"<div class='discount_percent'>
+											<div class='percent'>
+												<div class='percent1'>
+													<p>$percent</p>
+												</div>
+												<div class='percent2'>
+													<p>OFF</p>
+												</div>
+												<div class='percent3'>
+													<p>%</p>
+												</div>
+											</div>
+									</div>";
+    		?>
+    	<?php
+    }
     return "
     		<div class='box-sale'>
 					<img src='bg/bg-sale.png'>
 					<div class='tag-wrap'>
-						<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>
+						$sale_off
 					</div>
 				</div>
      		<div class='barcode1'>
 					<div class='box-image'>
-						<div class='discount_percent'>
-						<div class='percent'>
-							<div class='percent1'>
-								<p>$percent</p>
-							</div>
-							<div class='percent2'>
-								<p>OFF</p>
-							</div>
-							<div class='percent3'>
-								<p>%</p>
-							</div>
-						</div>
-					</div>
+						$sell_disc
 						<img class='product whitecontour' style='margin-right: -10px;' src='data:image/jpeg;base64, $image'>
 					</div>
 
@@ -592,7 +695,7 @@ function _renderTwoProductPromoLeft($product)
         	<div class='box-sale'>
 					<img src='bg/bg-sale.png'>
 					<div class='tag-wrap'>
-						<p>SALE</p>
+						$sale_off
 					</div>
 				</div>
         <div class='barcode1'>
@@ -679,6 +782,34 @@ function _renderTwoProductPromoRight($product)
                 ?>
         <?php
         }
+      if ($percent == -1) {
+    	?>
+    		<?php
+    			$sale_off = "<p style='font-size: 70px; margin-right:-300px; margin-top: 8px'>SALE OFF</p>";
+    			$sell_disc = 		""; 
+    		?>
+    	<?php
+    }else{
+    	?>
+    	<?php
+    			$sale_off = "<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>";
+    			 	$sell_disc = 
+				    	"<div class='discount_percent'>
+											<div class='percent'>
+												<div class='percent1'>
+													<p>$percent</p>
+												</div>
+												<div class='percent2'>
+													<p>OFF</p>
+												</div>
+												<div class='percent3'>
+													<p>%</p>
+												</div>
+											</div>
+									</div>";
+    		?>
+    	<?php
+    }
 
   if ($percent != "0" && $percent != ".")
   {    
@@ -689,19 +820,7 @@ function _renderTwoProductPromoRight($product)
   return "
   	<div class='barcode1'>
 					<div class='box-image'>
-						<div class='discount_percent'>
-						<div class='percent'>
-							<div class='percent1'>
-								<p>$percent</p>
-							</div>
-							<div class='percent2'>
-								<p>OFF</p>
-							</div>
-							<div class='percent3'>
-								<p>%</p>
-							</div>
-						</div>
-					</div>
+						$sell_disc
 						<img class='product whitecontour' style='margin-right: -10px;' src='data:image/jpeg;base64, $image'>
 					</div>
 
@@ -913,6 +1032,34 @@ function _renderThreeProductUp($product)
                 ?>
         <?php
         }
+if ($percent == -1) {
+    	?>
+    		<?php
+    			$sale_off = "<p style='font-size: 70px; margin-right:-300px; margin-top: 8px'>SALE OFF</p>";
+    			$sell_disc = 		""; 
+    		?>
+    	<?php
+    }else{
+    	?>
+    	<?php
+    			$sale_off = "<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>";
+    			 	$sell_disc = 
+				    	"<div class='discount_percent'>
+											<div class='percent'>
+												<div class='percent1'>
+													<p>$percent</p>
+												</div>
+												<div class='percent2'>
+													<p>OFF</p>
+												</div>
+												<div class='percent3'>
+													<p>%</p>
+												</div>
+											</div>
+									</div>";
+    		?>
+    	<?php
+    }
 
   if ($percent == "0")
   {
@@ -989,19 +1136,7 @@ function _renderThreeProductUp($product)
 					<div class='img-3item'>
 						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
 					</div>
-					<div class='disc_percent'>
-						<div class='disc_percent1'>
-							<div class='percent'>
-								<p>$percent</p>
-							</div>
-							<div class='off_3item'>
-								<p>OFF</p>
-							</div>
-							<div class='percent_3item'>
-								<p>%</p>
-							</div>
-						</div>
-				</div>
+						$sell_disc
 				</div>
 				<div class='price_3item'>
 						<div class='price_3item1'>
@@ -1081,6 +1216,34 @@ function _renderThreeProductDown($product)
                 ?>
         <?php
         }
+  if ($percent == -1) {
+    	?>
+    		<?php
+    			$sale_off = "<p style ='margin-top: -110px; float: right; margin-right:40px; font-size: 60px; font-weight: bold; font-family: Fjalla One; color: #fff;'>SALE OFF</p>";
+    			$sell_disc = 		""; 
+    		?>
+    	<?php
+    }else{
+    	?>
+    	<?php
+    			$sale_off = "<p style ='margin-top: -100px; float: right; margin-right:55px; font-size: 40px; font-weight: bold; font-family: Fjalla One; color: #fff;'>PROMOTION</p>";
+    			 	$sell_disc = 
+				    	"<div class='discount_percent'>
+											<div class='percent'>
+												<div class='percent1'>
+													<p>$percent</p>
+												</div>
+												<div class='percent2'>
+													<p>OFF</p>
+												</div>
+												<div class='percent3'>
+													<p>%</p>
+												</div>
+											</div>
+									</div>";
+    		?>
+    	<?php
+    }
 
   if ($percent == "0")
   {
@@ -1145,7 +1308,7 @@ function _renderThreeProductDown($product)
       else 
         $percentSize = "20";
       return "
-      	<p style ='margin-top: -100px; float: right; margin-right:55px; font-size: 40px; font-weight: bold; font-family: Fjalla One; color: #fff;'>PROMOTION</p>
+      	$sale_off
     	<div class='product1_3item'>
 				<div class='A4_3item_text'>
 					<div class='A4_3item_namekh'>
@@ -1159,19 +1322,7 @@ function _renderThreeProductDown($product)
 					<div class='img-3item'>
 						<img class='product whitecontour' style='margin-right: 2px;' src='data:image/jpeg;base64, $image'>
 					</div>
-					<div class='disc_percent'>
-						<div class='disc_percent1'>
-							<div class='percent'>
-								<p>$percent</p>
-							</div>
-							<div class='off_3item'>
-								<p>OFF</p>
-							</div>
-							<div class='percent_3item'>
-								<p>%</p>
-							</div>
-						</div>
-				</div>
+						$sell_disc
 				</div>
 				<div class='price_3item'>
 						<div class='price_3item1'>

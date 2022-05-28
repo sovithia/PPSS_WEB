@@ -393,6 +393,19 @@ function _renderPromoProduct($product)
                 ?>
         <?php
         }
+    if ($percent == -1) {
+    ?>
+          <?php
+            $sell_off = "<p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>SALE OFF</p>";
+          ?>
+    <?php
+  }else{
+    ?>
+        <?php
+            $sell_off = "<p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>";
+        ?>
+    <?php
+  }
   if(strpos($percent,".") === false)
     $percentSize = "32";
   else 
@@ -409,7 +422,7 @@ function _renderPromoProduct($product)
         <div class='sale_img'>
             <img src='bg/bg-sale.png'>
             <div class='A6_sale'>
-              <p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>
+              $sell_off
               <p style='font-size: 8px; margin-top: -12px; margin-left: 60px; '>Till: $till</p>
             </div>
           </div>
@@ -521,6 +534,19 @@ function _renderPromoSpecialProduct($product)
                 ?>
         <?php
         }
+     if ($percent == -1) {
+    ?>
+          <?php
+            $sell_off = "<p style='font-size: 25px; margin-top: -45px; margin-left: 45px; '>SALE OFF</p>";
+          ?>
+    <?php
+  }else{
+    ?>
+        <?php
+            $sell_off = "<p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>";
+        ?>
+    <?php
+  }
   if(strpos($percent,".") === false)
     $percentSize = "32";
   else 
@@ -537,7 +563,7 @@ function _renderPromoSpecialProduct($product)
         <div class='sale_img'>
             <img src='bg/bg-sale.png'>
             <div class='A6_sale'>
-              <p style='font-size: 20px; margin-top: -40px; margin-left: 45px; '>PROMOTION</p>
+              $sell_off
               <p style='font-size: 8px; margin-top: -12px; margin-left: 60px; '>Till: $till</p>
             </div>
           </div>
