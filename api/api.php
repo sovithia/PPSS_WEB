@@ -601,8 +601,8 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 	$isSpecial = false;
 	if ($res != false){
 		$item['DISCPERCENTSTART'] = $res['PROSTARTDATE'];
-		$item['DISCPERCENTEND'] = $res['PROSTARTEND'];
-		$item['DISPERCENT'] = 0;
+		$item['DISCPERCENTEND'] = $res['PROENDDATE'];
+		$item['DISCPERCENT'] = "-1";
 		$specialPrice = $res['PROPRICE'];
 		$isSpecial = true;
 	}
@@ -628,9 +628,8 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		$oneItem["isPack"] = "no";
 
 		if ($forceDiscount != 0)
-			$oneItem["discpercent"] = $forceDiscount;	
-		
-		else
+			$oneItem["discpercent"] = $forceDiscount;				
+		else 
 			$oneItem["discpercent"] = floatval($item["DISCPERCENT"]);
 
 
@@ -660,13 +659,14 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		$oldPrice = floatval(truncateDollarPrice($item["PRICE"]));					
 		$percent = (100 - floatval($oneItem["discpercent"])) ;		
 
-		if ($percent != 100)
+		if ($percent != 100 && $percent != 101)
 		{
 			$percent  /= 100;
-			$newPrice = $percent * $oldPrice; 				
+			$newPrice = $percent * $oldPrice; 			
+			
 		}
 		else if ($isSpecial){
-			$newPrice = $specialPrice;
+			$newPrice = $specialPrice;		
 		}
 		else			
 			$newPrice = $oldPrice * 1; 	
@@ -691,7 +691,6 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
-		;
 
 		if ($packInfo != null)		
 		{
@@ -5496,7 +5495,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		// DEMAND
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as DEMAND_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
-				AND TYPE = 'DEMAND'
+				AND ITEMREQUESTACTION.TYPE = 'DEMAND'
 				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -5506,7 +5505,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		// RESTOCK
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as RESTOCK_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
-				AND TYPE = 'RESTOCK'
+				AND ITEMREQUESTACTION.TYPE = 'RESTOCK'
 				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
@@ -5517,7 +5516,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		// TRANSFER
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as TRANSFER_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
-				AND TYPE = 'TRANSFER'
+				AND ITEMREQUESTACTION.TYPE = 'TRANSFER'
 				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";
@@ -5528,7 +5527,7 @@ $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $re
 		// PURCHASE
 		$sql = "SELECT IFNULL(sum(REQUEST_QUANTITY),0) as PURCHASE_QTY FROM ITEMREQUEST,ITEMREQUESTACTION 
 				WHERE ITEMREQUEST.ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID
-				AND TYPE = 'PURCHASE'
+				AND ITEMREQUESTACTION.TYPE = 'PURCHASE'
 				AND REQUESTEE IS NULL
 				AND PRODUCTID = ?
 				";

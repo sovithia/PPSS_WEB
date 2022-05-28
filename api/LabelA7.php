@@ -206,8 +206,8 @@ function renderEightProduct($products)
             ";
             if   ($percent1 == "0" )
               $render .= _renderProduct(isset($products[0]) ? $products[0] : null);
-            // else if($percent1 == "1")
-            //     $render .="Buy one get one free";
+            else if($percent1 == "-1")
+              $render .= _renderPromoSpecialProduct(isset($products[0]) ? $products[0] : null);
             else 
               $render .= _renderPromoProduct(isset($products[0]) ? $products[0] : null);
             $render .= 
@@ -307,6 +307,129 @@ function renderEightProduct($products)
 }
 
 
+
+function _renderPromoSpecialProduct($product)
+{
+  if ($product == null)
+    return "";
+  $nameKH = $product["nameKH"];
+  $nameEN = $product["nameEN"];
+  $flag = flagByCountry($product["country"]);
+  $dollarPrice = $product["dollarPrice"];
+  $rielPrice = $product["rielPrice"];  
+  $country = $product["country"];
+  $image = $product["productImg"];  
+  $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
+  $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
+  $percent = "DISCOUNT";
+  $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
+  $barcode = $product["barcode"];
+
+  $unit = $product['unit'];
+  $packing = $product['packing'];
+  $ispack = $product['ISPACK'];
+  if ($ispack == 'NO') {
+     ?>
+              <?php
+                  $factor = "<p>1 $unit</p>";
+                ?>
+        <?php
+    }else{
+        ?>
+              <?php
+                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+                ?>
+        <?php
+        }
+
+
+  return "
+  <div class='A7_box'>
+        <div class='A7_header'>
+          <img src='bg/bg-header.png'>
+          <div class='tag-wrap'>
+            <img src='img/logo-text1.png'>
+          </div>
+        </div>
+          <div class='A7_body'>
+          <div class='A7_box1'>
+            <div class='A7_text1'>
+              <p>$nameKH</p>
+            </div>
+            <div class='A7_text2'>
+              <p>$nameEN</p>
+            </div>
+            <div class='A7_code'>
+              <p>Code: $barcode</p>
+            </div>
+            <div class='A7_code'>
+              <p>Origin: $country</p>
+            </div>
+          </div>
+          <div class='A7_box2'>
+            <img class='product whitecontour' src='data:image/jpeg;base64, $image' >
+          </div>
+          <div class='A7_box3'>
+            <div class='A7_box3_box1'>
+              <img src='bg/bg-sale.png'>
+              <div class='A7_promot'>
+                <div class='A7_promot1'>
+                  <div class='A7_promot2' style='float:right;padding-top:12px'>
+                    <p style='font-size:15px;font-family:acumin'>$percent</p>
+                  </div>
+                  
+                </div>
+                <div class='A7_till'>
+                  <p>Promotion Till: $till</p>
+                </div>
+              </div>
+            </div>
+            <div class='A7_box_price1'>
+              <div class='A7_box_price2'>
+                <div class='A7_box_price3'>
+                  <div class='A7_box_price4'>
+                    <div class='oldprice_symbool'>
+                      <p>$</p>
+                    </div>
+                    <div class='A7_oldprice'>
+                      <div class='strikethrough'>
+                        <p>$oldPrice</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class='A7_box_price5'>
+                    <div class='A7_box_price6'>
+                      <div class='A7_promot_4'>
+                        <div class='A7_promot_unit'>
+                            $factor
+                        </div>
+                        <div class='A7_promot_price_en'>
+                          <div class='A7_promot_price_en1'>
+                            <p>$rielPrice</p>
+                          </div>
+                          <div class='A7_promot_price_symbool'>
+                            <p>៛</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class='A7_box_price7'>
+                      <div class='symbool_en'>
+                        <p>$</p>
+                      </div>
+                      <div class='A7_box_price_en'>
+                        <p>$dollarPrice</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+   ";
+}
 
 function _renderPromoProduct($product)
 {
@@ -440,6 +563,7 @@ function _renderPromoProduct($product)
       </div>
    ";
 }
+
 function _renderProduct($product)
 {
   if ($product == null)
