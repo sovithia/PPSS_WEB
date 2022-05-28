@@ -321,7 +321,7 @@ function _renderPromoSpecialProduct($product)
   $image = $product["productImg"];  
   $from = ($product["discpercentstart"] != null) ? $product["discpercentstart"] : "N/A";
   $till = ($product["discpercentend"] != null) ? $product["discpercentend"] : "N/A";
-  $percent = "DISCOUNT";
+  $percent = ($product["discpercent"] != null) ? $product["discpercent"] : "0";
   $oldPrice = ($product["oldPrice"] != null) ? $product["oldPrice"]  : $dollarPrice;
   $barcode = $product["barcode"];
 
@@ -342,7 +342,23 @@ function _renderPromoSpecialProduct($product)
         <?php
         }
 
-
+  if ($percent == -1) {
+    ?>
+        <?php
+          $sell_off ="<div class='A7_promot1' style='width: 150px;'>
+                            <div class='A7_promot2'>
+                              <p style='font-family: Fjalla One; font-weight: bold; font-size: 19px; margin-top: 1px;'>SALE OFF</p>
+                            </div>
+                      </div>";
+        ?>
+    <?php
+  }else{
+    ?>
+      <?php
+        $sell_off = "<p style='font-size:15px;font-family:acumin'>PROMOTION</p>";
+      ?>
+    <?php
+  }
   return "
   <div class='A7_box'>
         <div class='A7_header'>
@@ -373,12 +389,7 @@ function _renderPromoSpecialProduct($product)
             <div class='A7_box3_box1'>
               <img src='bg/bg-sale.png'>
               <div class='A7_promot'>
-                <div class='A7_promot1'>
-                  <div class='A7_promot2' style='float:right;padding-top:12px'>
-                    <p style='font-size:15px;font-family:acumin'>$percent</p>
-                  </div>
-                  
-                </div>
+                    $sell_off
                 <div class='A7_till'>
                   <p>Promotion Till: $till</p>
                 </div>
@@ -464,7 +475,23 @@ function _renderPromoProduct($product)
                 ?>
         <?php
         }
-
+  if ($percent == -1) {
+    ?>
+        <?php
+          $sell_off ="<div class='A7_promot1' style='width: 150px;'>
+                            <div class='A7_promot2'>
+                              <p style='font-family: Fjalla One; font-weight: bold; font-size: 19px; margin-top: 1px;'>SALE OFF</p>
+                            </div>
+                      </div>";
+        ?>
+    <?php
+  }else{
+    ?>
+      <?php
+        $sell_off = "<p style='font-size:15px;font-family:acumin'>PROMOTION</p>";
+      ?>
+    <?php
+  }
    if (strpos($percent,".") === false)
     $percentSize = "28";
   else 
@@ -499,19 +526,7 @@ function _renderPromoProduct($product)
             <div class='A7_box3_box1'>
               <img src='bg/bg-sale.png'>
               <div class='A7_promot'>
-                <div class='A7_promot1'>
-                  <div class='A7_promot2'>
-                    <p>$percent</p>
-                  </div>
-                  <div class='A7_promot3'>
-                    <div class='A7_percent'>
-                      <p>%</p>
-                    </div>
-                    <div class='A7_off'>
-                      <p>OFF</p>
-                    </div>
-                  </div>
-                </div>
+                  $sell_off
                 <div class='A7_till'>
                   <p>Promotion Till: $till</p>
                 </div>
