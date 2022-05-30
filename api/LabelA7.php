@@ -355,7 +355,11 @@ function _renderPromoSpecialProduct($product)
   }else{
     ?>
       <?php
-        $sell_off = "<p style='font-size:15px;font-family:acumin'>PROMOTION</p>";
+        $sell_off = "<div class='A7_promot1' style='width: 150px;'>
+                            <div class='A7_promot2'>
+                              <p style='font-family: Fjalla One; font-weight: bold; font-size: 15px; margin-top: 1px;'>PROMOTION</p>
+                            </div>
+                    </div>";
       ?>
     <?php
   }
@@ -488,7 +492,11 @@ function _renderPromoProduct($product)
   }else{
     ?>
       <?php
-        $sell_off = "<p style='font-size:15px;font-family:acumin'>PROMOTION</p>";
+        $sell_off = "<div class='A7_promot1' style='width: 150px;'>
+                            <div class='A7_promot2'>
+                              <p style='font-family: Fjalla One; font-weight: bold; font-size: 15px; margin-top: 1px;'>PROMOTION</p>
+                            </div>
+                    </div>";
       ?>
     <?php
   }
