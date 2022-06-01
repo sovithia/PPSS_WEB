@@ -492,9 +492,18 @@ function _renderPromoProduct($product)
   }else{
     ?>
       <?php
-        $sell_off = "<div class='A7_promot1' style='width: 150px;'>
+        $sell_off = "<div class='A7_promot1'>
                             <div class='A7_promot2'>
-                              <p style='font-family: Fjalla One; font-weight: bold; font-size: 15px; margin-top: 1px;'>PROMOTION</p>
+                              <p>
+                              $percent</p>
+                            </div>
+                            <div class='A7_promot3'>
+                              <div class='A7_percent'>
+                                <p>OFF</p>
+                              </div>
+                              <div class='A7_off'>
+                                <p>%</p>
+                              </div>
                             </div>
                     </div>";
       ?>

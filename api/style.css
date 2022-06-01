@@ -2739,15 +2739,16 @@ float: left;
 	width: 50%;
 	height: 100%;
 	box-sizing: border-box;
+
 }
 .A7_box3_box1 .A7_promot .A7_promot1 .A7_promot2 p{
 	float: right;
-	font-size: 24px;
+	font-size: 25px;
 	margin-top: -7px;
 	color: #fff;
 	font-family: khb;
 	font-weight: bold;
-	margin-right: 1px;
+	margin-right: 2px;
 }
 .A7_box3_box1 .A7_promot .A7_promot1 .A7_promot3{
 	float: left;
@@ -2766,6 +2767,7 @@ float: left;
 	font-family: acumin;
 	float: left;
 	color: #fff;
+	margin-top: 2px;
 }
 .A7_box3_box1 .A7_promot .A7_promot1 .A7_promot3 .A7_off{
 	width: 100%;
@@ -2779,6 +2781,7 @@ float: left;
 	float: left;
 	color: #fff;
 	margin-top: -2px;
+	margin-left: 5px;
 }
 .A7_box3_box1 .A7_promot .A7_till{
 	float: left;
