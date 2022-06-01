@@ -198,7 +198,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		*/
-		$sql = "SELECT  LASTCOST,COST,DISCABLE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT  LASTCOST,COST,DISCABLE,STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
@@ -213,7 +213,8 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
    
 		$DISCABLE = $res2["DISCABLE"];
 
-		
+		$STKUNIT = $res2["STKUM"];	
+
 		if (isset($item["ALGOQTY"]))
 			$ALGOQTY = $item["ALGOQTY"]; 
 		else 
@@ -232,9 +233,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 			$QUANTITY = $item["ORDER_QTY"];
 		else if (isset($item["REQUEST_QUANTITY"]))
 			$QUANTITY = $item["REQUEST_QUANTITY"];
-		//
-	
-
+		//	
 		$PURCHASE_DATE = $now;
 		$PRODUCTID = $item["PRODUCTID"];
 		$ORDER_QTY = $QUANTITY;
@@ -261,9 +260,9 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 		$STKFACTOR = "1.00000";
 		$BASECURR_ID = "USD";
 		$VATABLE = "Y";
-		$TRANUNIT = "UNIT";
+		$TRANUNIT = $STKUNIT;
 		$TRANFACTOR = "1.00000";
-		$STKUNIT = "UNIT";
+		
 		$USERADD = blueUser($author);
 		$CURRID = "USD";
 		$CURR_RATE = "1";
@@ -459,8 +458,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$VENDID =  $theVENDID;
-	$RECEIVENO =  "RP00000000000".$PONUM;
-	$VOUCHERNO =  "VO00000000000".$APNUM;
+	$RECEIVENO =  sprintf("RP%013d",$PONUM);  
+	$VOUCHERNO =  sprintf("VO%013d",$APNUM);    
 	$TRANDATE = $today;
 	$DUEDATE = $today;
 	$VENDNAME = $theVENDNAME; 
@@ -548,7 +547,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$line++;
 
 		$VENDID =      $PORef["VENDID"];
-		$RECEIVENO =   "RP00000000000".$PONUM;
+		$RECEIVENO =   sprintf("RP%013d",$PONUM);  
 		$VENDNAME =    $PORef["VENDNAME"];
 		$VENDNAME1 =   $PORef["VENDNAME1"];
 		$PONUMBER =    $PONumber;
@@ -580,7 +579,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 			$TRANDISC = $item["TRANDISC"];
 		$FROM_SERIAL =  "";
 		$TO_SERIAL =    "";
-		$TRANUNIT =     "UNIT";
+		$TRANUNIT =     $item["STKUNIT"];
 		$TRANFACTOR =   "1";
 		$CURRID_COSTADD =  "";
 		$OPERATIONBASE =   "";
@@ -640,6 +639,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 		$CURRENCY_AMOUNT_SUM += $CURRENCY_AMOUNT + ($CURRENCY_AMOUNT *  ($VAT_PERCENT / 100) );
 		
+		$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = null WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($PRODUCTID));
 	}
 	
 	$BUYER = "";

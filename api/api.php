@@ -594,7 +594,7 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 	$item = $req->fetch(PDO::FETCH_ASSOC);
 
 
-	$sql = "SELECT PROSTARTDATE,PROENDDATE,PROPRICE FROM ICGROUPPRICE WHERE PRODUCTID = ?";
+	$sql = "SELECT PROSTARTDATE,PROENDDATE,PROPRICE FROM ICGROUPPRICE WHERE PRODUCTID = ? AND PROENDDATE > GETDATE() ";
 	$req = $conn->prepare($sql);
 	$req->execute($params); 
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -858,7 +858,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,
+	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,
 	(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'COST',
 	
 	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
@@ -966,9 +966,6 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$packcode = $barcode;		
 			$result = itemLookup($packInfo["PRODUCTID"]);
 			$result["BARCODE"] = $packcode;
-			//if (file_exists("img/packs/".$packcode.".jpg"))
-			//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-			$result["PICTURE"] = $packInfo["PICTURE"];
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
 			$result["DISC"] = $packInfo["DISC"];
@@ -1035,7 +1032,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$depreciationtype = $request->getParam('depreciationtype','');
 
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,
-	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'COST'
+	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC),LASTCOST) as 'COST'
 	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,VENDID,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
@@ -1043,10 +1040,22 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if(isset($item["COST"]))
-		$item["COST"] = sprintf("%.4f",$item["COST"]);
+		
+	if(isset($item["COST"]))		
+		$item["COST"] = sprintf("%.4f",$item["COST"]);	
 	else 
 		$item["COST"] = "0";
+
+	$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $conn->prepare($sql);
+	$req->execute(array($item["PRODUCTID"]));
+	$res2 = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
+		$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);
+		
+
+
+
 	if (isset($item["VENDID"]))
 		$VENDID = $item["VENDID"];
 	else 
@@ -1134,7 +1143,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 			else 
 				$item["LASTRCVQTY"] = "0";
 
-			$sql = "SELECT TOP(1)TRANDISC,TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";		
+			$sql = "SELECT TOP(1)TRANDISC,TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";		
 			$req = $conn->prepare($sql);			
 			$req->execute(array($barcode));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -1268,9 +1277,7 @@ function getSaleByLocations($start,$end,$userid)
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	//var_export($sql);
-	//var_export($params);
-	//exit;
+
 	return $items;
 }
 
@@ -1671,7 +1678,7 @@ $app->get('/itemsearch2',function(Request $request,Response $response) {
 		(SELECT TOP(1) TRANDISC FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY DATEADD DESC)  as 'COSTPROMO',
 		(SELECT TOP(1) DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND DATEFROM <= '$today 00:00:00.000' AND DATETO >= '$today 23:59:59.999' ORDER BY DATEFROM DESC) as 'PRICEPROMO', 
 		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-		(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOSTX',
+		(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC) as 'LASTCOSTX',
 		LASTCOST,
 		ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',
 		ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE BETWEEN ? AND ?),0) as 'THROWNINPERIOD',
@@ -1737,7 +1744,7 @@ $app->get('/itemsearch3',function(Request $request,Response $response) {
 		replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',		
 		PACKINGNOTE,LASTCOST as 'COST',PRICE,VENDNAME,
 		(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-		isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST',
+		isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC),LASTCOST) as 'LASTCOST',
 	
 		ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE',
 		ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE',
@@ -1756,7 +1763,7 @@ $app->get('/itemsearch3',function(Request $request,Response $response) {
 		(SELECT COUNT(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSDATE BETWEEN  '$year-6-1' AND '$year-6-30' GROUP BY PRODUCTID) as 'SALEDECEMBER',
 
 		PRICE,LASTRECEIVEDATE, 
-		(SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTRECEIVEQTY',
+		(SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC) as 'LASTRECEIVEQTY',
 		LASTSALEDATE,dbo.ICPRODUCT.DATEADD
 		FROM dbo.ICPRODUCT,dbo.APVENDOR  
 		WHERE dbo.ICPRODUCT.VENDID = dbo.APVENDOR.VENDID";
@@ -1794,10 +1801,10 @@ $app->post('/itemget',function(Request $request,Response $response) {
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',	
 			PACKING,PRICE,VENDNAME,
-			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST',
+			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY COLID DESC) as 'COST',
 			(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE',
 			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST',		
+			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC),LASTCOST) as 'LASTCOST',		
 			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 		  (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',	
 		  ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE',		
@@ -1848,7 +1855,7 @@ $app->get('/tinyitemsearch',function(Request $request,Response $response) {
 	$sql =  "SELECT PRODUCTID,BARCODE,
 			replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME',
 			replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1',				
-			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST',
+			(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY COLID DESC) as 'COST',
 			PRICE,ONHAND 
 			FROM dbo.ICPRODUCT
 			WHERE PRODUCTID = ?"; 
@@ -2120,6 +2127,10 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	}
 	else if ($field == "PICTURE"){				
 		writePicture($barcode,$value);
+		$sql = "UPDATE ICPRODUCT SET PICTURE_PATH = ? WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$imagePath = "Y:\\".$barcode.".jpg";	
+		$req->execute(array($imagePath,$barcode));	
 	}	
 	else if ($field == "PACKPICTURE")	{
 		writePicture($barcode,$value);
@@ -2143,6 +2154,11 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	}	
 	else if ($field == "PPSS_IS_BLACKLIST"){
 		$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = ? WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );			
+	}
+	else if ($field == "PPSS_NEW_COST"){
+		$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST = ? WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$result = $req->execute(array($value,$barcode) );			
 	}
@@ -2750,7 +2766,6 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	$dbBlue = getDatabase();
 	$status = $request->getAttribute('status');
 
-
 	// ******************//
 	// ***** WITH PO ****//
 	// ******************//
@@ -2773,7 +2788,11 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	else if ($status == "RECEIVEDFORTRANSFERBOTH"){
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
-	}			
+	}	
+	else if ($status == "DELIVERED"){
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED' OR STATUS = 'DELIVEREDFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		$params = array();
+	}		
 	else 
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC LIMIT 200";			
 
@@ -3056,7 +3075,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		}
 		$item["ALGOQTY"] = $stats["FINALQTY"];
 
-		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE";
+		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);			
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -3922,32 +3941,31 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,					
-					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
-					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',	
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVECOST',
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVEQTY',	
 					PPSS_WAITING_CALCULATED,		
 				   TRANDISC,EXTCOST,
 				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
 				   PPSS_VALIDATED_QUANTITY,
-				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE
-				   PPSS_NOTE
+				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE,PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
 	}
 	else{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
 					VENDNAME,VAT_PERCENT,ORDER_QTY,TRANCOST,TRANDISC,
-					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVECOST',
-					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID) as 'RECEIVEQTY',			
+					(SELECT  TOP(1)(TRANCOST - (TRANCOST * TRANDISC/100))  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVECOST',
+					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVEQTY',			
 					PPSS_WAITING_CALCULATED,
 					TRANDISC,EXTCOST,
 				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
 				   PPSS_VALIDATED_QUANTITY,
-				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE
-				   PPSS_NOTE
+				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE,PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
 	}
 		
 	if ($rr["TYPE"] == "NOPO")
 	{	
+		error_log("A");
 			$req = $db2->prepare($sql);
 			if ($hidenoreceive == 'YES')
 				$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));	
@@ -3956,19 +3974,17 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 		
 	}
 	else {
+		error_log("B");
 		$req = $db2->prepare($sql);
 		if ($hidenoreceive == 'YES')
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		else
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 		$poitems  = $req->fetchAll(PDO::FETCH_ASSOC);
-
-
 		$rr["items"] = $poitems;
 	}
 
 	$items = ($rr["items"] != null) ? $rr["items"] : array();
-
 
 	$amountexcludevat = 0;
 	$amountvat = 0;
@@ -4053,7 +4069,7 @@ $app->post('/supplyrecordadditem', function(Request $request,Response $response)
 	$now = date("Y-m-d H:i:s");
 
 
-	$sql = "SELECT TOP(1) VENDID,VENDNAME,VENDNAME1,LOCID FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ?";
+	$sql = "SELECT TOP(1) VENDID,VENDNAME,VENDNAME1,LOCID FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID = ? ORDER BY COLID DESC";
 	$req = $dbBLUE->prepare($sql);
 	$req->execute(array($PONUMBER,$PRODUCTID));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -4061,7 +4077,9 @@ $app->post('/supplyrecordadditem', function(Request $request,Response $response)
 	if ($res == false){
 		$sql = "SELECT TOP(1) APVENDOR.VENDID,APVENDOR.VENDNAME,APVENDOR.VENDNAME1 
 				FROM ICPRODUCT,APVENDOR WHERE PRODUCTID = ?
-				AND APVENDOR.VENDID = ICPRODUCT.VENDID";
+				AND APVENDOR.VENDID = ICPRODUCT.VENDID
+				ORDER BY COLID DESC
+				";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($PRODUCTID));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -4551,15 +4569,30 @@ function createGroupedPurchases()
 			$req->execute(array($item["PRODUCTID"],$theID));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
-			$sql = "SELECT TOP(1)TRANCOST,TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";			
+			$sql = "SELECT TOP(1)TRANCOST,TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
+			$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);	
+
+			if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
+				$TRANCOST = $res["TRANCOST"];
+			else{
+				if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
+					$TRANCOST = $res2["PPSS_NEW_COST"];
+				else 
+					$TRANCOST = $res["TRANCOST"];
+			}
+
+
 			if ($res != false){
 				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,ITEMREQUESTACTION_ID,REQUESTTYPE) VALUES (?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"], $res["TRANCOST"],$res["TRANDISC"] ,$theID,'MANUAL'));
+				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"], $TRANCOST,$res["TRANDISC"] ,$theID,'MANUAL'));
 			}
 			else{
 				$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ?, 
@@ -4567,7 +4600,7 @@ function createGroupedPurchases()
 						DISCOUNT = ?
 						WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$res["TRANCOST"],$res["TRANDISC"],$theID));
+				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$TRANCOST,$res["TRANDISC"],$theID));
 			}
 			$sql = "DELETE FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
@@ -4611,7 +4644,8 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$data = array();
 				foreach($days as $day)
 				{
-					$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' 
+					$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2',
+					(SELECT COUNT(ID) as CNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ITEMREQUESTACTION.ID) as 'ITEMCOUNT' 
 					FROM ITEMREQUESTACTION 
 					WHERE REQUESTEE IS NULL 
 					AND ARG3 = ?
@@ -5309,7 +5343,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			$data["message"] = "PO Created with number ".$ponumber; 
 
 			$sql = "SELECT VENDID,VENDNAME FROM POHEADER WHERE PONUMBER = ?";
-			$req = $db->prepare($sql);
+			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($ponumber));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			
@@ -5422,19 +5456,11 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 			$item["PACKINGNOTE"] = "";
 			$item["PRODUCTNAME"] = "";
 		}	
-		
-		/*
-		$sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,
-				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
-				(SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID AND POSDATE >= dbo.PORECEIVEDETAIL.TRANDATE AND POSDATE <=  GETDATE()) as 'SALESINCELASTRCV',
-				ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID),0) as 'TOTALORDERTIME',	
-				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'
-				FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
-		*/
+				
 		$sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,
 				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
 				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'				
-				FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+				FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		
 		$req->execute(array($itemID));
@@ -6362,13 +6388,13 @@ $app->get('/lowseller',function($request,Response $response) {
 			,replace(replace(replace(PRODUCTNAME1,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME1'	
 			,PRICE
 			,CATEGORYID
-			,(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'LASTCOST'
+			,(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANTYPE = 'R' ORDER BY ICTRANDETAIL.COLID DESC) as 'LASTCOST'
 			
 			,ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE'
 			,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE'			
 			,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN'
 			, (select ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0)  * 100 / ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0)) as 'PERCENTSALE'		
-			,ISNULL((SELECT TOP(1) DISCOUNT_VALUE FROM dbo.ICNEWPROMOTION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'DISCPERCENT'
+			,ISNULL((SELECT TOP(1) DISCOUNT_VALUE FROM dbo.ICNEWPROMOTION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY dbo.ICNEWPROMOTION.COLID DESC),0) as 'DISCPERCENT'
 			,ISNULL((SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as  'WH1'
 			,ISNULL((SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as  'WH2'			
 			,ONHAND
@@ -7368,8 +7394,8 @@ $app->get('/selection',function($request,Response $response) {
 		,ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE'
 		,ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE'
 		, (select ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID) * -1),0)  * 100 / ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.POSDETAIL.PRODUCTID),0)) as 'PERCENTSALE'		
-		,(SELECT TOP(1) (PRICE_ORI - PRICE) FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID) as 'DISCAMOUNT' 
-		,(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID) as 'DISCPERCENT'
+		,(SELECT TOP(1) (PRICE_ORI - PRICE) FROM [PhnomPenhSuperStore2019].[dbo].ICPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID ORDER BY ICPROMOTION.COLID DESC) as 'DISCAMOUNT' 
+		,(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = dbo.POSDETAIL.PRODUCTID ORDER BY ICNEWPROMOTION.COLID DESC) as 'DISCPERCENT'
 		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
 		,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
 		,VENDNAME		
@@ -8131,14 +8157,17 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	      $count++;        	    
 	  }
 	  $item["NBPROOFS"] = $nbproofs;
-		$sql = "SELECT PRODUCTNAME,STKUM,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,
+			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
+		 FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != null){
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 			$item["STKUM"] = $res["STKUM"];
-			$item["PRICE"] = $res["PRICE"];			
+			$item["PRICE"] = $res["PRICE"];	
+			$item["LASTCOST"] = $res["LASTCOST"];		
 		}
 			
 		array_push($newItems,$item);
@@ -8293,7 +8322,6 @@ $app->put('/depreciation', function($request,Response $response) {
 	return $response;																			 
 });
 
-
 $app->get('/depreciationalert',function($request,Response $response) {
 
 	$db = getInternalDatabase();
@@ -8319,7 +8347,6 @@ $app->get('/depreciationalert',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
 
 // CREATED
 $app->get('/depreciationlabelneed', function($request,Response $response) {  
@@ -9408,7 +9435,7 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 		$onedata = $req->fetch(PDO::FETCH_ASSOC);
 
 
-		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -9452,7 +9479,7 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9463,7 +9490,7 @@ $app->get('/externalvendordetails/{id}', function($request,Response $response){ 
 			$onedata["SUPPLIERCOST"] = "N/A";
 			$onedata["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9633,7 +9660,7 @@ $app->get('/externalitemsearch', function($request,Response $response){
 		
 		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY 
 				FROM PORECEIVEDETAIL 
-				WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+				WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($productid));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -9773,7 +9800,7 @@ $app->get('/externalitemalertbyvendor/{id}', function($request,Response $respons
 		//$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -9830,7 +9857,7 @@ $app->get('/externalitemalertbyvendor/{id}', function($request,Response $respons
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9841,7 +9868,7 @@ $app->get('/externalitemalertbyvendor/{id}', function($request,Response $respons
 			$item["SUPPLIERCOST"] = "N/A";
 			$item["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9910,7 +9937,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		*/
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -9967,7 +9994,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9978,7 +10005,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 			$item["SUPPLIERCOST"] = "N/A";
 			$item["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10276,7 +10303,7 @@ $app->get('/externalfruitvendordetails/{id}', function($request,Response $respon
 		$onedata = $req->fetch(PDO::FETCH_ASSOC);
 
 
-		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,CURRENCY_COST,TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -10320,7 +10347,7 @@ $app->get('/externalfruitvendordetails/{id}', function($request,Response $respon
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10331,7 +10358,7 @@ $app->get('/externalfruitvendordetails/{id}', function($request,Response $respon
 			$onedata["SUPPLIERCOST"] = "N/A";
 			$onedata["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10567,7 +10594,7 @@ $app->get('/externalfruititemalertbyvendor/{id}', function($request,Response $re
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -10624,7 +10651,7 @@ $app->get('/externalfruititemalertbyvendor/{id}', function($request,Response $re
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10635,7 +10662,7 @@ $app->get('/externalfruititemalertbyvendor/{id}', function($request,Response $re
 			$item["SUPPLIERCOST"] = "N/A";
 			$item["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10701,7 +10728,7 @@ $app->get('/externalfruititemalert', function($request,Response $response){
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -10758,7 +10785,7 @@ $app->get('/externalfruititemalert', function($request,Response $response){
 				WHERE PRODUCTID = ? 
 				AND VENDID <> ? 
 				AND VENDID <> ?
-				ORDER BY TRANDATE DESC";
+				ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],'400-463','400-106'));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -10769,7 +10796,7 @@ $app->get('/externalfruititemalert', function($request,Response $response){
 			$item["SUPPLIERCOST"] = "N/A";
 			$item["SUPPLIERNAME"] = "N/A";
 		}
-		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$sql = "SELECT TOP(1) VENDID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -11400,15 +11427,15 @@ $app->get('/purchaseamounts', function(Request $request,Response $response) {
 	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$data = array();
 	foreach($vendors as $vendor){
-		$sql = "SELECT sum(INV_AMT) as SUM FROM PORECEIVEHEADER WHERE RECEIVEDATE BETWEEN ? AND ? WHERE VENDID = ?";
+		$sql = "SELECT sum(INV_AMT) as SUM FROM PORECEIVEHEADER WHERE RECEIVEDATE BETWEEN ? AND ? AND VENDID = ?";
 		$req = $db->prepare($sql);
-		$req->execute($start,$end,$vendor["VENDID"]);		
+		$req->execute(array($start,$end,$vendor["VENDID"]));		
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		$obj = array();
 		$obj["VENDID"] =  $vendor["VENDID"];
-		$obj["VENDNAME"] =  $vendor["VENDNAME"];
-		$obj["AMOUNT"] = $res["SUM"];
+		$obj["VENDNAME"] =  $vendor["VENDNAME"];		
+		$obj["AMOUNT"] = $res["SUM"] ?? "0";
 		array_push($data,$obj);		
 	}
 	$resp["result"] = "OK";

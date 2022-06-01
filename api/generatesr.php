@@ -41,10 +41,6 @@ function go()
     }
 }
 
-function patchPODetail()
-{
-    $sql = "SELECT PONUMBER"
-}
 
 go();
 
