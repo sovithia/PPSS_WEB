@@ -336,9 +336,9 @@ var zkSignature = (function () {
 					                {
 					                  var oneItem = {};
 					                  oneItem['ID'] = fields[i].value;  
-					                  oneItem["PPSS_INVOICE_PRICE"] =  document.getElementById('invoiceprice_' + fields[i].value).value;               
-					                  oneItem['PPSS_VALIDATION_QTY'] = document.getElementById('validationqty_' + fields[i].value).value;
-					                  oneItem['PPSS_RECEPTION_QTY'] = document.getElementById('receptionqty_' + fields[i].value).value;
+					                  oneItem["PPSS_WAITING_PRICE"] =  document.getElementById('invoiceprice_' + fields[i].value).value;               
+					                  oneItem['PPSS_VALIDATED_QUANTITY'] = document.getElementById('validationqty_' + fields[i].value).value;
+					                  oneItem['PPSS_DELIVERED_QUANTITY'] = document.getElementById('receptionqty_' + fields[i].value).value;
 					                  oneItem['PPSS_NOTE'] = document.getElementById('note_' + fields[i].value).value;
 					                  allItems[fields[i].value] = oneItem; 
 					                }

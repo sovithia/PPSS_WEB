@@ -4903,10 +4903,10 @@ function renderSupplyRecordDetail($data,$action){
           $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["ORDER_QTY"]);
           }
           else if ($supplyrecord["STATUS"] == "VALIDATED"){  
-             $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATION_QTY"]);     
+             $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_VALIDATED_QUANTITY"]);     
           }
           else if ($supplyrecord["STATUS"] == "DELIVERED" || $supplyrecord["STATUS"] == "RECEIVED" || $supplyrecord["STATUS"] == "PAID"){
-            $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_RECEPTION_QTY"]);     
+            $item["AMT"] = floatval($item["TRANCOST"]) * floatval($item["PPSS_DELIVERED_QUANTITY"]);     
           }  
         }
         else if ($supplyrecord["TYPE"] == "NOPO")
@@ -4940,7 +4940,7 @@ function renderSupplyRecordDetail($data,$action){
         else 
           $color = "#0D1EE0"; // 
         
-        if ( abs($item["TRANCOST"] - $item["PPSS_ORDER_PRICE"]) > 0.01)
+        if ( abs($item["TRANCOST"] - $item["PPSS_WAITING_PRICE"]) > 0.01)
           $colorOrderQty = "#FF5933";
         else 
           $colorOrderQty = "#0D1EE0";
@@ -4963,12 +4963,12 @@ function renderSupplyRecordDetail($data,$action){
               \"".$item["MAXCOST"]."\",
               \"".$item["TRANDISC"]."\",
               
-              '<span style=\"color:".$colorOrderQty."\">".$item["PPSS_ORDER_PRICE"]."</span>',
-              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"invoiceprice_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_ORDER_PRICE"]."\">',      
+              '<span style=\"color:".$colorOrderQty."\">".$item["PPSS_WAITING_PRICE"]."</span>',
+              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"invoiceprice_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_WAITING_PRICE"]."\">',      
               '<span style=\"color:".$color."\">".$item["TRANCOST"]."</span>',      
               \"".$order."\",
               '<input ".$valdisable." style=\"text-align:center\" type=\"text\" id=\"validationqty_".$item["PRODUCTID"]."\" value=\"".$item["ORDER_QTY"]."\">',                            
-              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"receptionqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_RECEPTION_QTY"]."\">',              
+              '<input ".$whdisable." style=\"text-align:center\" type=\"text\" id=\"receptionqty_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_DELIVERED_QUANTITY"]."\">',              
               '<input  style=\"text-align:center\" type=\"text\" id=\"note_".$item["PRODUCTID"]."\" value=\"".$item["PPSS_NOTE"]."\">',              
               \"".$item["AMT"]."\"               
               ],";

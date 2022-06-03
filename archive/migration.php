@@ -116,8 +116,8 @@ function goIRR()
 	$count = 1;
 
 	foreach($items as $item){
-		$uSQL = "UPDATE PODETAIL SET PPSS_VALIDATION_QTY = ?,
-									 PPSS_RECEPTION_QTY = ?
+		$uSQL = "UPDATE PODETAIL SET PPSS_VALIDATED_QUANTITY = ?,
+									 PPSS_DELIVERED_QUANTITY = ?
 									 WHERE PRODUCTID = ? 
 									 AND PONUMBER = ?";
 		$req1=$db->prepare($uSQL);

@@ -159,8 +159,10 @@ $app->post('/login',function(Request $request,Response $response) {
 	$username = $json["username"];
 	$password = $json["password"];
 
-	
+    $stmt->execute(array($login,$password));
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);	
  	$session = getUserSession($username,$password); 
+
     if ($session != null)
 	{			
 			$data = array();
@@ -170,6 +172,15 @@ $app->post('/login',function(Request $request,Response $response) {
 			$data["ID"] = $session["ID"];
 			$result["data"] = $data;
 			$result["result"] = "OK";
+
+			if(isset($json["fcmtoken"]))
+			{
+				$fcmtoken = $json["fcmtoken"];
+				$db = getInternalDatabase();
+				$sql = "UPDATE USER SET fcmtoken = ? WHERE ID = ?";
+    			$req = $db->prepare($sql);	
+				$req->execute(array($json["fcmtoken"],$session["ID"]));
+			}			
 	}
     else
     	$result["result"] = "KO";
@@ -314,12 +325,15 @@ function packLookup($barcode)
 
 	$conn=getDatabase();
 	$params = array($barcode);	
-	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 	
+	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,GETDATE() as 'NOW' FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 		
 	$req = $conn->prepare($sql);
 	$req->execute($params);
 	$item=$req->fetch(PDO::FETCH_ASSOC);		
-	if ($item != false){
-		$item["DISC"] = round($item["DISC"],2);
+	if ($item != false){		
+		if ($item["EXPIRED_DATE"] > $item["NOW"])
+			$item["DISC"] = round($item["DISC"],2);
+		else
+			$item["DISC"] = "0";
 		$item["PICTURE"]= loadPicture($barcode,true);		
 		return $item;
 	}
@@ -527,6 +541,7 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 
 				$oneItem["country"] = null;			
 				$oneItem["packing"] = null;
+				$oneitem["discpercent"] = $packinfo["DISC"];
 				// PICTURE PACK
 				//$tmp["ISPACK"] = "PACK";
 				//$tmp["result"] = "OK";		
@@ -723,6 +738,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
 			$oneItem["discpercent"] = $packInfo["DISC"];
+			error_log("Percent:".$oneItem["discpercent"]);
 			array_push($result,$oneItem);
 		}
 		else 
@@ -2538,71 +2554,7 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 								   SUPPLY RECORD                               */
 
 
-/*                                   
-function createSupplyRecordForPO(){
-	$db = getDatabase();		
-	$indb = getInternalDatabase();
 
-	// ALL
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = '' AND VENDID <> '400-463'";	
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($data as $onePO)
-	{
-		$sql = "SELECT count(*) as CNT FROM SUPPLY_RECORD WHERE PONUMBER = ?"; 
-		$req = $indb->prepare($sql);
-		$req->execute(array($onePO["PONUMBER"]));
-		$cnt = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-		if ($cnt == 0)
-		{
-
-			if($onePO["NOTES"] == "AUTOVALIDATED")
-			{
-
-				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','PO','YES')";
-				$req = $indb->prepare($sql);
-				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-
-				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($onePO["PONUMBER"]));
-
-			}
-			else if($onePO["NOTES"] == "NOPO")
-			{
-				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'ORDERED','NOPO','YES')";
-				$req = $indb->prepare($sql);
-				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-
-				$sql = "UPDATE PODETAIL SET PPSS_ORDER_PRICE = CONVERT(varchar,TRANCOST) WHERE PONUMBER = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($onePO["PONUMBER"]));
-			}
-			else 
-			{
-				// HERE WAITING WILL BECOME VALIDATED
-				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE) VALUES (?,?,?,?,?,'WAITING','PO')";
-				$req = $indb->prepare($sql);
-				$req->execute(array($onePO["PONUMBER"], $onePO["USERADD"], $onePO["VENDID"], $onePO["VENDNAME"], $onePO["DATEADD"]));
-			}
-		}		
-	}
-
-	// CLEAN
-	$sql = "SELECT * FROM POHEADER WHERE POSTATUS = 'V'";	
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$data = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($data as $onePO)
-	{
-		$sql = "DELETE FROM SUPPLY_RECORD WHERE PONUMBER = ?";
-		$req = $indb->prepare($sql);
-		$req->execute(array($onePO["PONUMBER"]));
-	}
-	// RETROACTIVE DELETE THE ONE VOIDED 
-}	
-*/
 
 function markAnomalies()
 {
@@ -2635,11 +2587,11 @@ function markAnomalies()
 				break;
 			} 						
 
-			if ( floatval($item["PPSS_WAITING_CALCULATED"]) != floatval($item["PPSS_WAITING_QUANTITY"]))
-			{
-				$status = "ANOMALYUNSOLVED";				
-				break;
-			} 						
+			//if ( floatval($item["PPSS_WAITING_CALCULATED"]) != floatval($item["PPSS_WAITING_QUANTITY"])) // WE DONT CONSIDER THIS AS AN ANOMALY ANYMORE
+			//{
+			//	$status = "ANOMALYUNSOLVED";				
+			//	break;
+			//} 						
 
 		}			
 		$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = ? WHERE PONUMBER = ?";
@@ -3508,17 +3460,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$vendid = $vendres["VENDID"];
 			$vendname = $vendres["VENDNAME"];
 
+			$isSplitCompany = true;
 			error_log("PONUMBER: ".$json["PONUMBER"]."|VENDID:".$vendid."|VENDNAME:".$vendname);
-			$isSplitCompany = false;
-			$splitcompanies = array("100-003", "100-050", "100-135", "100-010","100-135",
-									"100-328","100-053","100-065","100-022","100-140",
-									"100-015","400-037","100-108","100-150","100-999",
-									"100-103","100-009","100-059","100-123");
-									
-			if (in_array($vendid, $splitcompanies)) {
-				$isSplitCompany = true;
-				error_log("Is Split");
-			}
+
+			$isSplitCompany = true;
 			$absentitems = array();
 			$HaveAnomaly = false;
 
@@ -3576,12 +3521,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			}
 			
 			if ($HaveAnomaly){
-				$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = 'Y' WHERE ID = ?";
+				$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = 'ANOMALYUNSOLVED' WHERE ID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($json["IDENTIFIER"]));				
 			}
 
-			if ($isSplitCompany  == true){
+			if ($isSplitCompany  == true && count($absentitems) != 0){
 				$sql = "SELECT VENDID,VENDNAME,USERADD FROM POHEADER WHERE PONUMBER = ?";
 				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($json["PONUMBER"]));
@@ -3964,8 +3909,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	}
 		
 	if ($rr["TYPE"] == "NOPO")
-	{	
-		error_log("A");
+	{			
 			$req = $db2->prepare($sql);
 			if ($hidenoreceive == 'YES')
 				$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));	
@@ -3973,8 +3917,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 				$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
 			$rr["items"] = $req->fetchAll(PDO::FETCH_ASSOC);			 		
 	}
-	else {
-		error_log("B");
+	else {		
 		$req = $db2->prepare($sql);
 		if ($hidenoreceive == 'YES')
 			$req->execute(array($rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"],$rr["PONUMBER"]));
@@ -5350,12 +5293,12 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 			$now = date("Y-m-d");
 			if ($res != false){
 				$vendorid = $res["VENDID"];
-				$vendid = $res["VENDNAME"];
+				$vendname = $res["VENDNAME"];
 			}else{
 				$vendorid = "";
-				$vendid = "";
+				$vendname = "";
 			}			
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'PO','NO')"; 
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'WAITING','PO','NO')"; 
 			$req = $db->prepare($sql);			
 
 			$req->execute(array($ponumber,$json["AUTHOR"], $vendorid, $vendname, $now,));
@@ -9262,7 +9205,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 	$tocreditnote = array();
 	foreach($items as $item)
 	{
-		$sql = "UPDATE RETURNRECORDITEM SET = STATUS = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
+		$sql = "UPDATE RETURNRECORDITEM SET  STATUS = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["STATUS"],$item["PRODUCTID"],$item["EXPIRATION"]));
 		if ($item["STATUS"] == "CREDITNOTE")
