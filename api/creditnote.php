@@ -450,7 +450,7 @@ function createCreditNote($items,$author){
 	$ACCNAME = "PO Clearing";
 	$TYPE = null;
 	$BATCHDATE = $today;
-	$CURR_AMOUNT = ""; //??
+	$CURR_AMOUNT = AMOUNT; //??
 	$CURR_RATE = 1;
 	$BASECURR_ID;
 	$CURR_ID = "USD";

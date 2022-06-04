@@ -159,8 +159,8 @@ $app->post('/login',function(Request $request,Response $response) {
 	$username = $json["username"];
 	$password = $json["password"];
 
-    $stmt->execute(array($login,$password));
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);	
+    //$stmt->execute(array($login,$password));
+    //$user = $stmt->fetch(PDO::FETCH_ASSOC);	
  	$session = getUserSession($username,$password); 
 
     if ($session != null)
