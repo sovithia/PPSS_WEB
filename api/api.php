@@ -4553,6 +4553,33 @@ function createGroupedPurchases()
 	}	
 }
 
+$app->get('/transfer/{userid}',  function(Request $request,Response $response){
+	$db = getInternalDatabase();
+	$userid = $request->getAttribute('userid');
+	
+	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$locations = $res["location"];
+	$locations = explode('|',$locations);
+
+	$data = array();
+	foreach($locations as $location){
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($location));
+		$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+		array_push($data,$actions);
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $actions;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 
 $app->get('/patch', function(Request $request,Response $response) {
 	patchGroupedPurchases();
@@ -4654,24 +4681,52 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	}	
 });
 
+// 
 $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
 
 	$db->beginTransaction();    
-	if($json["TYPE"] == "PURCHASE" || $json["TYPE"] == "RESTOCK") 
-		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";
-	else 
+	if($json["TYPE"] == "PURCHASE" || $json["TYPE"] == "RESTOCK") {
+		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";		
+		$req = $db->prepare($sql);
+	}	
+	else if (substr($json["TYPE"],0,6) == "DEMAND")
+	{
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
-	$req = $db->prepare($sql);
-
-	if (substr($json["TYPE"],0,6) == "DEMAND")
+		$req = $db->prepare($sql);
 		$req->execute(array("DEMAND",$json["REQUESTER"]));
-	else 
+	}
+	else if ($json["TYPE"] == "TRANSFER"){
+		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES(?,?,?)";
+		$req = $db->prepare($sql);
+		if (isset($json["LOCATION"]))
+			$location = $json["LOCATION"];
+		else
+			$location = "";
+
+		$req->execute(array("TRANSFER",$json["REQUESTER"],$location));
+		$sql = "SELECT fcmtoken from USER WHERE location LIKE ?";
+		$req = $db->prepare($sql);
+		$location .= "%";
+		$req->execute(array($location));
+		$users = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($users as $user){
+			sendPush("TRANSFER READY", $user["fcmtoken"]);
+		}
+	}
+	else {
+		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
+		$req = $db->prepare($sql);
 		$req->execute(array($json["TYPE"],$json["REQUESTER"]));
+	}
+		
 	$lastID = $db->lastInsertId();
-	$db->commit();    
+	$db->commit();  
+	
+	
+	
 
 	$imageData = base64_decode($json["REQUESTERSIGNATURE"]);
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
@@ -4718,10 +4773,10 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			continue;
 		if ($item["REQUEST_QUANTITY"] == 0 && $suffix == "")
 			continue;
-		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
+		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],
-					(isset($item["LOCATION"]) ? $item["LOCATION"] : null),$lastID));
+					(isset($item["LOCATION"]) ? $item["LOCATION"] : null),'MANUAL',$lastID));
 
 		// IF PURCHASE CLONE TO ITEMREQUESTUNGROUPEDPURCHASEPOOL
 		if($json["TYPE"] == "PURCHASE") 
@@ -8508,12 +8563,16 @@ $app->delete('/expirepromoted/{id}', function ($request,Response $response){
 	return $response;
 });
 
-$app->get('/expirereturnalert/{rownumber}',function ($request,Response $response){
+$app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 
-	$rownumber = $request->getAttribute('rownumber');
-
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT LOCATION FROM USER WHERE ID = ?";
+	$req = $db->prepare($sql); 	
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$locations = $res["LOCATION"];
+	$locations = explode('|',$locations);
 
 	$data = array();
 	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
@@ -8552,11 +8611,12 @@ $app->get('/expirereturnalert/{rownumber}',function ($request,Response $response
 						 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
 					AND ONHAND > 0		
 					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
-	if ($rownumber != "ALL"){
-		$sql .= " AND PRODUCTID IN (SELECT * FROM ICLOCATION WHERE STORBIN LIKE ?)";
-		array_push($params,$rownumber);
+	if (count($locations) != 0){
+		foreach($locations as $location){
+			$sql .= " AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?)";
+			array_push($params,$location);
+		}		
 	}
-
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8577,19 +8637,24 @@ $app->get('/expirereturnalert/{rownumber}',function ($request,Response $response
 	}
 	$data["ALERT"] = $filtered;
 
-
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
 	$response = $response->withJson($resp);
 	return $response;
 });
 
-$app->get('/expirenoreturnalert/{rownumber}',function ($request,Response $response){
+$app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $response){
 	
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 
-	$rownumber = $request->getAttribute('rownumber');
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT LOCATION FROM USER WHERE ID = ?";
+	$req = $db->prepare($sql); 	
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$locations = $res["LOCATION"];
+	$locations = explode('|',$locations);
+
 
 	$data = array();
 
@@ -8626,9 +8691,11 @@ $app->get('/expirenoreturnalert/{rownumber}',function ($request,Response $respon
 					AND ONHAND > 0		
 					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 	
-	if ($rownumber != "ALL"){
-		$sql .= " AND PRODUCTID IN (SELECT * FROM ICLOCATION WHERE STORBIN LIKE ?)";
-		array_push($params,$rownumber);
+    if (count($locations) != 0){
+		foreach($locations as $location){
+			$sql .= " AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?)";
+			array_push($params,$location);
+		}		
 	}
 	
 	$req = $dbBlue->prepare($sql);
@@ -11245,6 +11312,84 @@ $app->get('/pricechange',function ($request,Response $response){
 
 	$items["CREATED"] = $created;
 	$items["VALIDATED"] = $validated;
+
+	$resp = array();
+	$resp["data"] = $items;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->get('/pricechange/{userid}',function ($request,Response $response){	
+	$db = getInternalDatabase();	
+	$dbBlue = getDatabase();	
+
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT LOCATION FROM USER WHERE ID = ?";
+	$req = $db->prepare($sql); 	
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$locations = $res["LOCATION"];
+	$locations = explode('|',$locations);
+
+	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'CREATED'";
+
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$created = array();
+	foreach($items as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($created,$item);
+	}
+
+	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$validated = array();
+	foreach($items as $item){
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($validated,$item);
+	}
+	$items["CREATED"] = $created;
+	$items["VALIDATED"] = $validated;
+
+	$tmpCreated = array();
+	foreach($items["CREATED"] as $oneitem)
+	{
+		foreach($locations as $location){
+			$sql = "SELECT PRODUCTID FROM ICLOCATION WHERE STORIN LIKE ? AND PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($location,$oneitem["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+				array_push($tmpCreated,$oneitem);
+		}				
+	}
+	$items["CREATED"] = $tmpCreated;
+
+	$tmpValidated = array();
+	foreach($items["CREATED"] as $oneitem)
+	{
+		foreach($locations as $location){
+			$sql = "SELECT PRODUCTID FROM ICLOCATION WHERE STORIN LIKE ? AND PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($location,$oneitem["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false)
+				array_push($tmpCreated,$oneitem);
+		}				
+	}
+	$items["VALIDATED"] = $tmpValidated;
 
 	$resp = array();
 	$resp["data"] = $items;

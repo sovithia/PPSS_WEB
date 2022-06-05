@@ -1471,4 +1471,33 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 		return false;
 }
 
+function sendPush($message, $fcmtoken) {
+    $url = 'https://fcm.googleapis.com/fcm/send';
+
+    $fields = array (
+            'registration_ids' => array (
+                    $fcmtoken
+            ),
+            'data' => array (
+                    "message" => $message
+            )
+    );
+    $fields = json_encode ( $fields );
+
+    $headers = array (
+            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+            'Content-Type: application/json'
+    );
+    $ch = curl_init ();
+    curl_setopt ( $ch, CURLOPT_URL, $url );
+    curl_setopt ( $ch, CURLOPT_POST, true );
+    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+    $result = curl_exec ( $ch );
+    echo $result;
+    curl_close ( $ch );
+}
+
+
 ?>
