@@ -6,22 +6,22 @@
 // Alert on Transfer request (Push Notification)
 // Generate EmptyRestock based on item WH2 have and WH1 not have
 // KPI By Row
-
-
-
-
-function AlertStoreClerkByRow($row)
-{
-    $db = getInternalDatabase();
-    $sql = "SELECT fcm_token FROM USER WHERE LOCATION LIKE ?";
-    $req = $db->prepare($sql);
-    $req->execute(array($row));
-
-    $user = $req->fetch(PDO::FETCH_ASSOC);
-    
-    // Device Token
-    // Push
+function getDatabase($name = "MAIN")
+{ 	
+	$conn = null;      
+	$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+	$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
+	return $conn;
 }
+
+function getInternalDatabase($base = "MAIN")
+{	
+	$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
+	$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+	$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	return $db;
+}
+
 
 function GenerateRestock()
 {
@@ -85,24 +85,25 @@ function GenerateRestock()
         "FVEG%"
     ];
 
-    foreach($storebins as $storebin){
-        $sql = "SELECT PRODUCTNAME,PRODUCTID,		
+    foreach($storebins as $storebin){        
+        $sql = "SELECT PRODUCTID
 		FROM ICPRODUCT 
         WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND <= 0)
 		AND PRODUCTID IN  (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND > 0)
-        AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND STORBIN LIKE ?";
+        AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND STORBIN LIKE ?)";
 
+        $storebinquery = '%'.$storebin.'%';
     	$req = $dbBlue->prepare($sql);
-	    $req->execute(array($storebin));
+	    $req->execute(array($storebinquery));
 	    $items = $req->fetchAll(PDO::FETCH_ASSOC);
         if (count($items) > 0){
             $db->beginTransaction();    
-            $sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE,ARG1) VALUES('RESTOCK','AUTO','AUTO',?)";	
+            $sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES('RESTOCK','AUTO',?)";	
             $req = $db->prepare($sql);	
             $req->execute(array($storebin));
             $lastID = $db->lastInsertId();
             $db->commit();    
-            echo "ItemRequestAction with ID: ".$lastID;
+            echo "ItemRequestAction with ID: ".$lastID." for StoreBin: ".$storebin;
             
             foreach($items as $item)
             {	
@@ -110,18 +111,17 @@ function GenerateRestock()
                 if ($item["PRODUCTID"] == null || $item["PRODUCTID"] == "")
                     continue;
                 
-                $sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,TYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
+                $sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
                 $req = $db->prepare($sql);
                 $req->execute(array($item["PRODUCTID"],0,"AUTOMATIC",$lastID));
             }
+            break;
         }
+      
     }
  }
 
-
-
-	
-
+GenerateRestock();
 
 
 ?>

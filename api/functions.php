@@ -181,59 +181,20 @@ function pictureRecord($base64Str,$type,$id){
 	}	
 }
 
-
 function blueUser($author){
 	
-	if ($author == "hay_s" || $author == "SERTEST")
-		return "HAY SE";
-	else if ($author ==	"sen_s")
-		return "SOVI";
-	else if ($author == "em_c")
-		return "CHEN";
-	else if ($author == "prum_p")	
-		return "PONLEU";
-	else if ($author == "prom_r")
-		return "RETH";
-	else if ($author == "chea_s")	
-		return "SOPHAL";
-	else if ($author == "sor_p")
-		return "SOR PHEARITH";		
-	else if ($author == "in_v")
-		return "VISOTH";
-	else if ($author == "meng_s")
-		return "SOVANNARA";
-	else if ($author == "meng_g")
-		return "GECKMEY";
-	else if ($author == "vireak_n")
-		return "NORIN";
-	else if ($author == "ith_p")
-		return "PUTHEAVY";
-	else if ($author == "ke_k")
-		return "KEARY";
-	else if ($author == "tieng_s")
-		return "SOPHEARITH";
-	else if ($author == "prem_v")
-		return "VANNA1";
-	else if ($author == "soeurng_s")
-		return "SOPHY";
-	else if ($author == "Peuv")
-		return "RITH MONY";
-	else if ($author == "heng_s")
-		return "SARAVUTH";
-
-	return $author;
-
-}	
-
-function CVUserByLogin($login)
-{
-	$conn=getInternalDatabase();
+	$db=getInternalDatabase();
 	$sql = "SELECT clearview_identifier from USER where login = ?";
-	$req = $conn->prepare($sql);
-	$req->execute(array($login));
+	$req = $db->prepare($sql);
+	$req->execute(array($author));
 	$result = $req->fetch(PDO::FETCH_ASSOC);	
-	return $result["clearview_identifier"];
-}
+	if ($result == false){
+		//error_log($author." NOT FOUND");
+		return $author;
+	}
+	else	
+		return $result["clearview_identifier"];
+}	
 
 function isLocal()
 {
@@ -313,8 +274,6 @@ function findTmpUser($login,$password)
 		return null;
 }
 
-
-
 function truncatePrice($price)
 {
   if (strpos($price, 'E') !== false)
@@ -359,7 +318,6 @@ function truncateDollarPrice($price){
 		return number_format(substr($price,0,$pos + 3),2);
 }
 
-
 function generateRielPrice($price){
 
 	$priceStr = strval(getCurrentRate() *$price);
@@ -386,11 +344,7 @@ function writePicture($barcode,$b64Image)
     fclose($myfile);
 }
 
-
-
 function getImage($path) {
-
-//error_log(mime_content_type($path));
 
 switch(mime_content_type($path)) {
   case 'image/png':
@@ -464,19 +418,28 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 
 		file_put_contents("./tmp.jpg",$final);		
 		$gdimage = getImage("./tmp.jpg");	
-	
-		$data = imagescale($gdimage,$scale);
-		if ($data == false){
-			ob_start();
-			imagejpeg($gdimage);
-			$contents = ob_get_contents();
-			ob_end_clean();
-		}else{
-			ob_start();
-			imagejpeg($data);
-			$contents = ob_get_contents();
-			ob_end_clean();
-		}		
+		if ($gdimage == false){
+			$path = "img/mystery.png";					
+			$final = file_get_contents($path);
+			if ($base64 == true)
+				return base64_encode($final);
+			return $final;		
+		}
+		else{
+			$data = imagescale($gdimage,$scale);
+			if ($data == false){
+				ob_start();
+				imagejpeg($gdimage);
+				$contents = ob_get_contents();
+				ob_end_clean();
+			}else{
+				ob_start();
+				imagejpeg($data);
+				$contents = ob_get_contents();
+				ob_end_clean();
+			}			
+		}
+		
 		
 		$final = $contents;		
 	}
@@ -1471,17 +1434,17 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 		return false;
 }
 
-function sendPush($message, $fcmtoken) {
-    $url = 'https://fcm.googleapis.com/fcm/send';
 
-    $fields = array (
-            'registration_ids' => array (
-                    $fcmtoken
-            ),
-            'data' => array (
-                    "message" => $message
-            )
-    );
+function sendPush($title,$body, $fcmtoken) {
+    $url = 'https://fcm.googleapis.com/fcm/send';	
+	$fields = array (
+		'registration_ids' => array($fcmtoken),
+		'notification' => array(
+			'title' => $title,
+			'body' => $body,                
+			'sound' => 'default'
+		)		
+	);    
     $fields = json_encode ( $fields );
 
     $headers = array (
@@ -1493,11 +1456,84 @@ function sendPush($message, $fcmtoken) {
     curl_setopt ( $ch, CURLOPT_POST, true );
     curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
     curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
-    $result = curl_exec ( $ch );
-    echo $result;
+    $result = curl_exec ( $ch );    
     curl_close ( $ch );
 }
+
+
+function getSaleByLocation($start,$end,$location)
+{
+	$db=getDatabase();	
+
+	$sql = "SELECT 
+	POSDETAIL.PRODUCTID
+	,POSDETAIL.PRODUCTNAME
+	,POSDETAIL.PRODUCTNAME1	
+	,POSDETAIL.CATEGORYID	
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
+	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	FROM dbo.POSDETAIL WHERE STORBIN LIKE ?
+	AND POSDATE BETWEEN ? AND ?
+	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID
+	";
+	array_push($params,$start);
+	array_push($params,$end);
+
+	$req = $db->prepare($sql);
+	$req->execute($location,$start,$end);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	return $items;
+}
+
+function getSaleByTeam($start,$end,$userid)
+{
+	$db=getDatabase();	
+
+	$sql = "SELECT 
+	POSDETAIL.PRODUCTID
+	,POSDETAIL.PRODUCTNAME
+	,POSDETAIL.PRODUCTNAME1	
+	,POSDETAIL.CATEGORYID	
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
+	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	FROM dbo.POSDETAIL WHERE 1=1 ";	
+	$params = array();
+	if ($userid != 0){
+		$indb = getInternalDatabase();
+		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$req = $indb->prepare($sql2);
+		$req->execute(array($userid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$allloc = $res["location"];
+		$locs = explode('|',$allloc);
+		$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
+		
+		foreach($locs as $loc){
+			$sql .= ' STORBIN LIKE ? OR';
+			array_push($params, '%'.$loc.'%' );
+		}
+		$sql = substr($sql,0,-2);
+		$sql .= "))";		
+	}
+	$sql .= "
+	AND POSDATE BETWEEN ? AND ?
+	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID
+	";
+	array_push($params,$start);
+	array_push($params,$end);
+
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
+	return $items;
+}
+
 
 
 ?>
