@@ -5371,10 +5371,10 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				$vendorid = "";
 				$vendname = "";
 			}			
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'WAITING','PO','NO')"; 
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,'WAITING','PO','NO')"; 
 			$req = $db->prepare($sql);			
 
-			$req->execute(array($ponumber,$json["AUTHOR"], $vendorid, $vendname, $now,));
+			$req->execute(array($ponumber,$json["AUTHOR"], $vendorid, $vendname, $now));
 			$lastID = $db->lastInsertId();
 			
 		}	
