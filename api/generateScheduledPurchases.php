@@ -91,7 +91,7 @@ function GenerateDailyGroupedPurchases()
 			$req->execute(array($item["PRODUCTID"],$theID));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
-			$sql = "SELECT TOP(1)TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
+			$sql = "SELECT TOP(1) TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -102,7 +102,13 @@ function GenerateDailyGroupedPurchases()
 			$req->execute(array($item["PRODUCTID"]));
 			$res2 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
-				$TRANCOST = $res["TRANCOST"];
+			{
+				if ($res == false)
+					$TRANCOST = 0;
+				else
+					$TRANCOST = $res["TRANCOST"];
+			}
+				
 			else{
 				if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
 					$TRANCOST = $res2["PPSS_NEW_COST"];

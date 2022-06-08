@@ -29,65 +29,65 @@ function GenerateRestock()
     $db = getInternalDatabase();
 
     $storebins = [        
-        "G01A%",
-        "G01B%",
-        "G02A%",
-        "G02B%",
-        "G03A%",
-        "G03B%",
-        "G04A%",
-        "G04B%",
-        "G05A%",
-        "G05B%",
-        "G06A%",
-        "G06B%",
-        "G07A%",
-        "G07B%",
-        "G08A%",
-        "G08B%",
-        "N09A%",
-        "N09B%",
-        "N10A%",
-        "N10B%",
-        "N11A%",
-        "N11B%",
-        "N12A%",
-        "N12B%",
-        "N13A%",
-        "N13B%",
-        "N14A%",
-        "N14B%",
-        "N15A%",
-        "N15B%",
-        "N16A%",
-        "N16B%",
-        "N17A%",
-        "N17B%",
-        "N18A%",
-        "N18B%",
-        "N19A%",
-        "N19B%",
-        "N20A%",
-        "N20B%",
-        "N21A%",
-        "N21B%",
-        "N22A%",
-        "N22B%",
-        "CHIL%",
-        "FROZ%",
-        "NBAB%",
-        "NCHA%",
-        "NRAC%",
-        "GSOF%",
-        "CIGA%",
-        "FFRU%",
-        "FMET%",
-        "FVEG%"
+        "G01A",
+        "G01B",
+        "G02A",
+        "G02B",
+        "G03A",
+        "G03B",
+        "G04A",
+        "G04B",
+        "G05A",
+        "G05B",
+        "G06A",
+        "G06B",
+        "G07A",
+        "G07B",
+        "G08A",
+        "G08B",
+        "N09A",
+        "N09B",
+        "N10A",
+        "N10B",
+        "N11A",
+        "N11B",
+        "N12A",
+        "N12B",
+        "N13A",
+        "N13B",
+        "N14A",
+        "N14B",
+        "N15A",
+        "N15B",
+        "N16A",
+        "N16B",
+        "N17A",
+        "N17B",
+        "N18A",
+        "N18B",
+        "N19A",
+        "N19B",
+        "N20A",
+        "N20B",
+        "N21A",
+        "N21B",
+        "N22A",
+        "N22B",
+        "CHIL",
+        "FROZ",
+        "NBAB",
+        "NCHA",
+        "NRAC",
+        "GSOF",
+        "CIGA",
+        "FFRU",
+        "FMET",
+        "FVEG"
     ];
 
     foreach($storebins as $storebin){        
-        $sql = "SELECT PRODUCTID
-		FROM ICPRODUCT 
+        $sql = "SELECT PRODUCTID,(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'
+		FROM ICPRODUCT
         WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND <= 0)
 		AND PRODUCTID IN  (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND > 0)
         AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND STORBIN LIKE ?)";
@@ -98,12 +98,12 @@ function GenerateRestock()
 	    $items = $req->fetchAll(PDO::FETCH_ASSOC);
         if (count($items) > 0){
             $db->beginTransaction();    
-            $sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES('RESTOCK','AUTO',?)";	
+            $sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES('AUTOMATICRESTOCK','AUTO',?)";	
             $req = $db->prepare($sql);	
             $req->execute(array($storebin));
             $lastID = $db->lastInsertId();
             $db->commit();    
-            echo "ItemRequestAction with ID: ".$lastID." for StoreBin: ".$storebin;
+            echo "ItemRequestAction with ID: ".$lastID." for StoreBin: ".$storebin."\n";
             
             foreach($items as $item)
             {	
@@ -113,7 +113,7 @@ function GenerateRestock()
                 
                 $sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
                 $req = $db->prepare($sql);
-                $req->execute(array($item["PRODUCTID"],0,"AUTOMATIC",$lastID));
+                $req->execute(array($item["PRODUCTID"],$item["WH2"],"AUTOMATIC",$lastID));
             }
             break;
         }
