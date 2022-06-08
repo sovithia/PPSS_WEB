@@ -63,6 +63,7 @@ error_reporting(E_ALL);
 						<th>Retail Price</th>
 						<th>Pro.Percent</th>
 						<th>New Price</th>
+						<th>Packing Note</th>
 					</tr>
 
 					<tr>
@@ -82,6 +83,7 @@ error_reporting(E_ALL);
 						<td>6.85</td>
 						<td>20%</td>
 						<td>5.48</td>
+						<td>NR</td>
 					</tr>
 						<tr>
 						<td>2</td>
@@ -100,6 +102,7 @@ error_reporting(E_ALL);
 						<td>6.85</td>
 						<td>20%</td>
 						<td>5.48</td>
+						<td>NR</td>
 					</tr>
 				</table>
 			</div>
