@@ -2901,7 +2901,64 @@ float: left;
 /*A7 Promotion Style End*/
 
 
+.container .data-container{
+	width: 100%;
+	height: 100%;
+	float: left;
+	margin-top: 5px;
+}
+.data-container .container-2{
+	width: 100%;
+	float: left;
+	display: none;
+/*	margin-top: 61px;*/
+}
+.data-container table.tblData{
+	width: 100%;
+	margin-top: -5px;
+	border-collapse: collapse;
+	float: left;
+}
+.data-container table.tblData tr th{
+	background-color: #cccc;
+	color: #333;
+	border: 1px solid #ccc;
+	padding: 8px;
 
-
+}
+.data-container table.tblData tr td{
+	background-color: #fff;
+	border: 1px solid #ccc;
+	padding: 8px;
+	font-size: 12px;
+}
+.data-container table.tblData tr td .btnEdit {
+	/*width: 100%;
+	background-color: orange;
+	color: #fff;
+	font-size: 15px;
+	border-radius: 5px;*/
+	border: 1px solid #fff;
+	background-color: #008CBA; 
+  color: white;
+  padding: 10px 22px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.data-container table.tblData tr:nth-child(odd) td{
+	background-color: rgb(224, 243, 255);
+}
+.data-container table.tblData tr:hover td{
+	background-color: rgb(221, 221, 207);
+}
+.data-container table.tblData tr td img{
+	height: 60px;
+	float: left;
+}
 
 
