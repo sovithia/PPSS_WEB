@@ -8,11 +8,18 @@ function issueStocks($items,$author,$note,$locid)
     $now = date("Y-m-d H:i:s");
     $nowdate = date("Y-m-d");
 
+    $sql = "SELECT num2 FROM SYSDATA where sysid = 'IC'";
+	$req = $dbBLUE->prepare($sql);
+	$req->execute(array());	
+	$num1 = $req->fetch(PDO::FETCH_ASSOC)["num1"];
+	$newID = intval($num1);
+	$docnum = sprintf("IS%013d",$newID);
+
     $totalamount = 0;
     foreach($items as $item){        
-        // Calculate Total Amount
-    }
-    $DOCNUM;
+        // Calculate Total Amount from lastreceive
+     }
+    $DOCNUM = $docnum;
     $FLOCID = $locid;
     $TLOCID = "";
     $REFERENCE = $note;
@@ -39,7 +46,7 @@ function issueStocks($items,$author,$note,$locid)
     $TOTAL_MONEYREWARD = 0;
     $ARACC = "";
     $BASECURR_ID = "USD";
-    $CURRENCY_AMOUNT = ""; // ?? 
+    $CURRENCY_AMOUNT = $totalamount; 
     $PURPOSE_ISSUE = "";
     $JOB_ID = "";
     $USERADD = $author;
@@ -126,7 +133,7 @@ foreach($items as $item)
     $req->execute(array($item["PRODUCTID"]));
     $itemDetailLastReceive = $req->fetch(PDO::FETCH_ASSOC);
 
-    $DOCNUM;
+    $DOCNUM = $docnum;
     $PRODUCTID = $item["PRODUCTID"];
     $LOCID = $locid;
     $CATEGORYID = $itemDetail["CATEGORYID"];
@@ -139,15 +146,15 @@ foreach($items as $item)
     $LINENUM = $line;
     $PRODUCTNAME = $itemDetail["PRODUCTNAME"];;
     $PRODUCTNAME1 = $itemDetail["PRODUCTNAME1"];
-    $REFERENCE = ""; //??
-    $COMMENT = ""; //??
+    $REFERENCE = $note; 
+    $COMMENT = ""; 
     $TRANQTY = $item["QUANTITY"];
     $TRANUNIT = $item["STKUM"];
     $TRANFACTOR = 1;
     $STKUNIT = $item["STKUM"];;
     $STKFACTOR = 1; 
     $TRANDISC = $itemDetailLastReceive["TRANDISC"];
-    $TRANTAX = $itemDetailLastReceive["VATPERCENT"]; // 0 ??
+    $TRANTAX = 0;
     $TRANCOST = $itemDetailLastReceive["TRANCOST"];
     $TRANPRICE = $item["PRICE"];
     $PRICE_ORI = $item["PRICE"];
@@ -398,11 +405,11 @@ foreach($items as $item)
     set [ONHAND] = [ONHAND]-@1,[TOTALUSE] = [TOTALUSE]+@2  WHERE [PRODUCTID]=@3"
     */
 
-    $LASTUSE;
+    
     $sql = "UPDATE ICLOCATION set LOCONHAND = LOCONHAND - ?,TOTALUSE = TOTALUSE + ?,LASTUSE = ? 
             WHERE LOCID = ? AND PRODUCTID = ?";
     $req = $db->prepare($sql);  
-    $req->execute(array($QUANTITY,$QUANTITY,$LASTUSE,$LOCID,$PRODUCTID));
+    $req->execute(array($QUANTITY,$QUANTITY,$now,$LOCID,$PRODUCTID));
     /*        
     + UPDATE [ICLOCATION] 
     set [LOCONHAND] = [LOCONHAND]-@1,[TOTALUSE] = [TOTALUSE]+@2,[LASTUSE] = @3  WHERE [LOCID]=@4 AND [PRODUCTID]=@5"
@@ -410,8 +417,19 @@ foreach($items as $item)
 
      $line++; 
     }
+    $sql = "SELECT GLNO FROM GLSYS";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $GLNUM = $res["GLNO"];
 
-    $GLNO;
+    $sql = "UPDATE GLSYS set GLNO = GLNO + 1";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $theGLNO = date('y').date('m')."00000".$GLNUM;
+
+
+    $GLNO = $theGLNO;
     $LINNO = 1;
     $GLDESC = "Issue";
     $GLDATE = $nowdate;
@@ -421,7 +439,7 @@ foreach($items as $item)
     $GLAMT = $totalamount;
     $DEBIT = $totalamount;
     $CREDIT = 0;
-    $DOCNO;
+    $DOCNO = $docnum;
     $USERADD = $author;
     $DATEADD = $now;
     $GLPOST = "N";
@@ -489,9 +507,9 @@ foreach($items as $item)
 
     [LINK_LINE],     => 0
     */
+    
 
-
-    $GLNO;
+    $GLNO = $theGLNO;
     $LINNO = 2;
     $GLDESC = "Issue";
     $GLDATE = $nowdate;
@@ -501,7 +519,7 @@ foreach($items as $item)
     $GLAMT = $totalamount;
     $DEBIT = 0;
     $CREDIT = $totalamount;
-    $DOCNO;
+    $DOCNO = $docnum;
     $USERADD = $author;
     $DATEADD = $now;
     $APPID = "IC";
@@ -561,7 +579,7 @@ foreach($items as $item)
     [LINK_LINE],     => 0
     */
 
-    $sql = "UPDATE SYSDATA SET NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='AR’";
+    $sql = "UPDATE SYSDATA SET NUM1=NUM1+1 WHERE ltrim(rtrim(SYSID))='AR'";
     $req = $db->prepare($sql);
     $req->execute(array());
     /*
@@ -570,7 +588,7 @@ foreach($items as $item)
     WHERE ltrim(rtrim(SYSID))='AR'
     */
 
-    $sql = "UPDATE SYSDATE SET NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='IC'";
+    $sql = "UPDATE SYSDATA SET NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='IC'";
     $req = $db->prepare($sql);
     $req->execute(array());
     /*
@@ -578,24 +596,7 @@ foreach($items as $item)
     NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='IC'
     */
 
-    $HAS_TRANSACTION;
-    $CURR_ID;
-    $sql = "UPDATE SYSSETUPCURRENCY set HAS_TRANSACTION = ? WHERE CURR_ID =?";
-    $req = $db->prepare($sql);
-    $req->execute(array(HAS_TRANSACTION,$CURR_ID));
-    /*
-    + UPDATE [SYSSETUPCURRENCY] 
-    set [HAS_TRANSACTION] = @1  WHERE [CURR_ID]=@2"
-    */
 
-    $GLNO;
-    $sql = "UPDATE GLSYS set GLNO = GLNO+?";
-    $req = $db->prepare($sql);
-    $req->execute(array($GLNO));
-    /*
-        + UPDATE [GLSYS] 
-        set [GLNO] = [GLNO]+@1
-        */
 }
 
  

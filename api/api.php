@@ -48,6 +48,7 @@ require_once 'vendor/autoload.php';
 require_once 'RestEngine.php';
 require_once 'functions.php';
 require_once 'receivepo.php';
+require_once 'generator.php';
 
 
 use \Psr\Http\Message\ServerRequestInterface as Request;
@@ -2761,7 +2762,10 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		$params = array();
 	}	
 	else if ($status == "DELIVERED"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED' OR STATUS = 'DELIVEREDFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		$params = array();
+	}else if ($status == "DELIVEREDFRESH"){
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVEREDFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}		
 	else 
@@ -3555,13 +3559,16 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 				$newPURCHASER = $res["USERADD"];
 				$newponumber = splitPOWithItems($json["PONUMBER"],$absentitems,$newPURCHASER);
 
+				$db->beginTransaction();    
 				$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$now = date("Y-m-d H:i:s");
 				error_log("new po number:".$newponumber);
 				$req->execute(array($newponumber, $newPURCHASER,"Split: ".$newVENDID."|PO:".$newponumber, $newVENDNAME, $now,'ORDERED','PO','YES'));						
-
+				$lastid = $db->lastInsertId();	
+				$db->commit();    
 				$data["message"] = "PO Splitted to number ".$newponumber;
+				copySignatures($json["IDENTIFIER"],$lastid);							
 			}				
 			// CLEAN ALL ZERO : IMPORTANT DO AFTER SPLIT 
 			foreach($absentitems as $item)
@@ -3612,20 +3619,50 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
 		foreach($items as $item)
 		{
-			$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ?";
+			// NEW METHOD 
+			
+			$sql = "SELECT PRODUCTID FROM ITEMREQUESTUNGROUPEDROWRESTOCKPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res == false ){
+				$sql = "SELECT LOCONHAND,STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));				
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				if ($res != false){
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDROWRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,STORBIN,COMMENT) VALUES (?,?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$res["LOCONHAND"],$res["STORBIN"],$ponumber));
+				}else{
+					error_log("Error with productid ".$item["PRODUCTID"]. " not found in ICLOCATION with WH1");
+				}
+			}
+			
+			// OLD METHOD 
+			/*
+			if(isset($json["USERID"]))
+				$userid = $json["USERID"];
+			else
+				$userid = null;
+
+			$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERPOOL WHERE PRODUCTID = ? AND USERID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]),$userid);
 			$res = $req->fetch(PDO::FETCH_ASSOC);		
 
 			if ($res["CNT"] == 0){
-				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
+				$sql = "INSERT INTO ITEMREQUESTTRANSFERPOOL (PRODUCTID,REQUEST_QUANTITY,USERID) VALUES (?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"]));		
+				$req->execute(array($item["PRODUCTID"],$item["TRANQTY"],$userid));		
 			}else{
-				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
+				$sql = "UPDATE ITEMREQUESTTRANSFERPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE USERID = ? AND  PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["TRANQTY"],$item["PRODUCTID"]));			
+				$req->execute(array($item["TRANQTY"],$userid,$item["PRODUCTID"]));			
 			}
+			*/
+
 		}	
 	
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
@@ -3651,6 +3688,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$ponumber = $res["LINKEDPO"];
 
+		if(isset($json["USERID"]))
+			$userid = $json["USERID"];
+		else
+			$userid = null;
+
 		$sql = "SELECT * FROM PODETAIL WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
@@ -3658,20 +3700,42 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
 		foreach($items as $item)
 		{
+			// NEW METHOD
+			$sql = "SELECT PRODUCTID FROM ITEMREQUESTUNGROUPEDROWRESTOCKPOOL WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+
+			if ($res == false ){
+				$sql = "SELECT LOCONHAND,STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' WHERE PRODUCTID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));				
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				if ($res != false){
+					$sql = "INSERT INTO ITEMREQUESTUNGROUPEDROWRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,STORBIN,COMMENT) VALUES (?,?,?,?)";
+					$req = $db->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$res["LOCONHAND"],$res["STORBIN"],$ponumber));
+				}else{
+					error_log("Error with productid ".$item["PRODUCTID"]. " not found in ICLOCATION with WH1");
+				}
+			}
+			// OLD METHOD
+			/*
 			$sql = "SELECT *,count(*) as 'CNT' FROM ITEMREQUESTTRANSFERFRESHPOOL WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);		
 
 			if ($res["CNT"] == 0){
-				$sql = "INSERT INTO ITEMREQUESTTRANSFERFRESHPOOL (PRODUCTID,REQUEST_QUANTITY) VALUES (?,?)";
+				$sql = "INSERT INTO ITEMREQUESTTRANSFERFRESHPOOL (PRODUCTID,REQUEST_QUANTITY,USERID) VALUES (?,?,?)";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"]));		
+				$req->execute(array($item["PRODUCTID"],$item["RECEIVE_QTY"],$userid));		
 			}else{
-				$sql = "UPDATE ITEMREQUESTTRANSFERFRESHPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ?";
+				$sql = "UPDATE ITEMREQUESTTRANSFERFRESHPOOL SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE USERID = ?AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["RECEIVE_QTY"],$item["PRODUCTID"]));			
+				$req->execute(array($item["RECEIVE_QTY"],$userid,$item["PRODUCTID"]));			
 			}
+			*/
 		}	
 	
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVEDFRESH', TRANSFERER_USER = :author 
@@ -4003,6 +4067,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 	$extradata["VENDNAME"] = $rr["VENDNAME"];
 	$extradata["PODATE"] = $rr["PODATE"]; 
 	$extradata["PURCHASER"] = $rr["PURCHASER_USER"];
+	$extradata["VALIDATOR"] = $rr["VALIDATOR_USER"];
 	$extradata["ID"] = $rr["ID"];
 
 	$rr["items"] = $tmpItems;
@@ -4326,251 +4391,6 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 });
 
 
-function createGroupedRestocks()
-{
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-
-	/*
-	$sql = "SELECT DISTINCT(VENDID) FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
-	*/
-
-	$OTHER = array("VENDID" =>  "OTHER", "VENDNAME" => "OTHER");
-	$SOPHIESOK = array("VENDID" =>  "400-463", "VENDNAME" => "SOPHIE SOK");
-	$MAKROCLICK = array("VENDID" => "400-429", "VENDNAME" => "MAKRO CLICK");
-	$vendors = array($SOPHIESOK,$MAKROCLICK,$OTHER);
-	$maxItem = 30;
-
-	foreach($vendors as $vendor)
-	{				
-			$sql = "SELECT * FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE VENDID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($vendor["VENDID"]));
-			$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-			foreach($items as $item)
-			{
-				//itemIsInGroupedRestock
-				$sql = "SELECT ITEMREQUESTACTION_ID,count(*) as 'CNT' FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID IN 
-				 (SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND REQUESTEE IS NULL)"; 
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"]));
-				$res = $req->fetch(PDO::FETCH_ASSOC);
-				if ($res['CNT'] == 0)
-					$irID =  false;
-				else	
-					$irID = $res["ITEMREQUESTACTION_ID"];	
-
-				
-				if ($irID != false)// JUST UPDATE
-				{						
-						$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ? WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
-						$req = $db->prepare($sql);
-						$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$irID));
-				}
-				else 
-				{
-					$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND ARG1 = ? AND REQUESTEE IS NULL"; 
-					$req = $db->prepare($sql);
-					$req->execute(array($vendor["VENDID"]));
-					$irs = $req->fetchAll(PDO::FETCH_ASSOC);
-
-					$theID = null;
-					// ID SEARCHING
-					if (count($irs) == 0)// NEW 
-					{
-						$db->beginTransaction();
-						$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
-						$req = $db->prepare($sql);
-						$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
-						$theID = $db->lastInsertId(); // ID FROM NEW
-						$db->commit();
-					}
-					else
-					{
-						foreach($irs as $ir){
-							$sql = "SELECT COUNT(*) as 'CNT' FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
-							$req = $db->prepare($sql);
-							$req->execute(array($ir["ID"]));
-							$requests = $req->fetch(PDO::FETCH_ASSOC); 
-							if ($requests['CNT'] < $maxItem){ // 
-								$theID = $ir["ID"]; // ID FROM OLD WITH ROOM
-								break;
-							}
-						}
-						if ($theID == null){ // ALL FULL			
-							$db->beginTransaction();			
-							$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2) VALUES ('GROUPEDRESTOCK','AUTO',?,?)";
-							$req = $db->prepare($sql);
-							$req->execute(array($vendor["VENDID"],$vendor["VENDNAME"]));	
-							$theID = $db->lastInsertId(); // ID FROM NEW
-							$db->commit();
-						}										
-					}						
-					$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,ITEMREQUESTACTION_ID) VALUES (?,?,?)";
-					$req = $db->prepare($sql);
-					$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$theID));
-				}
-				// TREATED
-				$sql = "DELETE FROM ITEMREQUESTUNGROUPEDRESTOCKPOOL WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"]));
-		  }
-	}
-}
-// ADD TO DEBT
-
-
-function patchGroupedPurchases()
-{
-	$db = getInternalDatabase();	
-
-	$dbBlue = getDatabase();
-	$sql = "SELECT * FROM ITEMREQUESTACTION WHERE ARG3 IS NULL AND TYPE = 'GROUPEDPURCHASE'";
-	$req = $db->prepare($sql);
-	$req->execute();
-	$actions = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($actions as $action)
-	{		
-		$sql = "SELECT orderday FROM SUPPLIER WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($action["ARG1"]));	
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false)
-			$orderday = $res["orderday"];
-		else 
-			$orderday = null;		
-		$sql = "UPDATE ITEMREQUESTACTION SET ARG3 = ? WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($orderday,$action["ID"]));
-
-		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($action["ID"]));
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-		foreach($items as $item){
-			$sql = "SELECT TRANDISC,TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			if ($res != false){
-				$sql = "UPDATE ITEMREQUEST SET DISCOUNT = ?, COST = ?,ORDER_QTY = REQUEST_QUANTITY";
-				$req = $db->prepare($sql);
-				$req->execute(array($res["TRANDISC"],$res["TRANCOST"]));
-			}
-
-			
-		}
-	}
-}
-
-
-
-function createGroupedPurchases()
-{
-	//patchGroupedPurchases();
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-
-	$sql = "SELECT DISTINCT(VENDID) FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$vendors = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	foreach($vendors as $vendor)
-	{
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ? AND REQUESTEE IS null"; 
-		$req = $db->prepare($sql);
-		$req->execute(array($vendor["VENDID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-
-		if ($res == false)
-		{
-			$sql = "SELECT VENDNAME FROM APVENDOR WHERE VENDID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($vendor["VENDID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-		
-			if ($res != false)
-				$vendorname = $res["VENDNAME"];
-			else 
-				$vendorname = "";
-
-			$sql = "SELECT orderday FROM SUPPLIER WHERE ID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($vendor["VENDID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res != false)
-				$orderday = $res["orderday"];
-			else 
-				$orderday = false;
-
-			$db->beginTransaction();
-			$sql = "INSERT INTO ITEMREQUESTACTION (TYPE,REQUESTER,ARG1,ARG2,ARG3) VALUES ('GROUPEDPURCHASE','AUTO',?,?,?)";
-			$req = $db->prepare($sql);
-			$req->execute(array($vendor["VENDID"],$vendorname,$orderday));
-			$theID = $db->lastInsertId();
-			$db->commit();
-		}
-		else		
-			$theID = $res["ID"];	
-
-		$sql = "SELECT * FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE VENDID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($vendor["VENDID"]));
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-		foreach($items as $item)
-		{
-			$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$theID));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$sql = "SELECT TOP(1)TRANCOST,TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-
-			$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-			$res2 = $req->fetch(PDO::FETCH_ASSOC);	
-
-			if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
-				$TRANCOST = $res["TRANCOST"];
-			else{
-				if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
-					$TRANCOST = $res2["PPSS_NEW_COST"];
-				else 
-					$TRANCOST = $res["TRANCOST"];
-			}
-
-			if ($res != false){
-				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,ITEMREQUESTACTION_ID,REQUESTTYPE) VALUES (?,?,?,?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"], $TRANCOST,$res["TRANDISC"] ,$theID,'MANUAL'));
-			}
-			else{
-				$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = REQUEST_QUANTITY + ?, 
-						COST = ?,
-						DISCOUNT = ?
-						WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["REQUEST_QUANTITY"],$item["PRODUCTID"],$TRANCOST,$res["TRANDISC"],$theID));
-			}
-			$sql = "DELETE FROM ITEMREQUESTUNGROUPEDPURCHASEPOOL WHERE PRODUCTID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));
-		}
-
-	}	
-}
-
 $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 	$db = getInternalDatabase();
 	$userid = $request->getAttribute('userid');
@@ -4599,12 +4419,7 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 });
 
 
-$app->get('/patch', function(Request $request,Response $response) {
-	patchGroupedPurchases();
-	$resp["RES"] = "OK";
-	$response = $response->withJson($resp);
-	return $response;		
-});
+
 
 $app->get('/lastid', function(Request $request,Response $response) {
 	$db = getDatabase();	
@@ -4626,7 +4441,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 
 	if ($type == "GROUPEDPURCHASE")
 	{	
-		createGroupedPurchases();
+		GenerateGroupedPurchases();
 	
 		$days = array("MON","TUE","WED","THU","FRI","SAT");
 		$data = array();
@@ -4651,12 +4466,12 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	}
 	else if ($type == "GROUPEDRESTOCK")
 	{
-		createGroupedRestocks();
+		GenerateGroupedRestocks();		
 		if (substr($type,0,1) == "v")	{
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 		}				
 		else{
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
 		} 
 		$req = $db->prepare($sql);
 		$req->execute(array());
@@ -4738,12 +4553,13 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$location = "";		
 		$req->execute(array("TRANSFER",$json["REQUESTER"],$location));
 
-		$sql = "SELECT ID,fcmtoken from USER WHERE location LIKE ?";
+		$sql = "SELECT ID,fcmtoken,login from USER WHERE location LIKE ?";
 		$req = $db->prepare($sql);
 		$req->execute(array('%'.$location.'%'));
 		$users = $req->fetchAll(PDO::FETCH_ASSOC);
 		foreach($users as $user)
 		{			
+			error_log("login:".$user["login"]);
 			if ($user["fcmtoken"] != "" && $user["fcmtoken"] != null)
 				sendPush("TRANSFER READY", "Grab your items at warehouse for location " .$json["LOCATION"] ,$user["fcmtoken"]);
 		}
@@ -5250,7 +5066,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 				}
 			}
 		}	
-		else if ($ira["TYPE"] == "RESTOCK" || $ira["TYPE"] == "GROUPEDRESTOCK" || $ira["TYPE"] == "AUTOMATICRESTOCK")  // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
+		else if ($ira["TYPE"] == "RESTOCK" || $ira["TYPE"] == "GROUPEDRESTOCK" || $ira["TYPE"] == "AUTOMATICRESTOCK" || $ira["TYPE"] == "AUTOMATICRESTOCKWH")  // WAREHOUSE VALIDATE RESTOCK AND TO TRANFER POOL & PURCHASE POOL
 		{
 			foreach($items as $item)
 			{
@@ -11766,8 +11582,7 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 		error_log($token["fcmtoken"]);
 		array_push($fcmtokens,$token["fcmtoken"]);
 	}
-    $url = 'https://fcm.googleapis.com/fcm/send';
-
+    $url = 'https://fcm.googleapis.com/fcm/send';	
 	$fields = array (
 		'registration_ids' => $fcmtokens,
 		'notification' => array(

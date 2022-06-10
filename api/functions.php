@@ -59,6 +59,15 @@ function cleanPictures($id,$type)
 	}
 }
 
+function copySignatures($old,$new){
+	if (file_exists("./img/supplyrecords_signatures/PCH_".$old.".png"))
+		copy("./img/supplyrecords_signatures/PCH_".$old.".png","./img/supplyrecords_signatures/PCH_".$new.".png");	
+
+	if (file_exists("./img/supplyrecords_signatures/VAL_".$old.".png"))
+		copy("./img/supplyrecords_signatures/VAL_".$old.".png","./img/supplyrecords_signatures/VAL_".$new.".png");	
+	
+}
+
 function movePicture($depreciationItemId,$poolitemId,$type)
 {
 	if($type == "WASTE")
@@ -1461,7 +1470,6 @@ function sendPush($title,$body, $fcmtoken) {
     $result = curl_exec ( $ch );    
     curl_close ( $ch );
 }
-
 
 function getSaleByLocation($start,$end,$location)
 {

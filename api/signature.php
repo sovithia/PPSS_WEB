@@ -20,17 +20,23 @@ switch(mime_content_type($path)) {
   return $img;
 }
 
-function loadPicture($id,$scale = 150,$base64 = false)
+
+
+function loadPicture($id,$scale = 150,$type = "PCH",$base64 = false)
 {
-	if (!file_exists("./img/supplyrecords_signatures/PCH_".$id.".png"))
+	if ($type == "PCH")
+		$basePath = "./img/supplyrecords_signatures/PCH_";
+	else if ($type == "VAL")
+		$basePath = "./img/supplyrecords_signatures/VAL_";
+
+	if (!file_exists($basePath.$id.".png"))
 	{
 		$path = "./img/mystery.png";		
 		$final = file_get_contents($path);
 	}
 	else 
 	{
-		
-		$final = file_get_contents("./img/supplyrecords_signatures/PCH_".$id.".png");
+		$final = file_get_contents($basePath.$id.".png");
 		file_put_contents("./tmp.jpg",$final);		
 		$data = getImage("./tmp.jpg");
 		if ($data != false){
@@ -57,6 +63,10 @@ function loadPicture($id,$scale = 150,$base64 = false)
 
 $name = './tmp.png';
 $id = $_GET["id"];
+$type = "PCH";
+if (isset( $_GET["type"]))
+	$type = $_GET["type"];
+
 $data = loadPicture($id);
 file_put_contents($name,$data);
 $fp = fopen($name, 'rb');
