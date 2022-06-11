@@ -1,8 +1,26 @@
 <?php 
 
+require_once 'functions.php';
+
+
+function cutFromDepreciation($id)
+{
+    $db = getInternalDatabase();
+
+    $sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ?";
+
+    $req = $db->prepare($sql);
+	$req->execute(array($id));	
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+}
+
 
 function issueStocks($items,$author,$note,$locid)
 {
+ 
+    $dbBLUE = getDatabase("TRAINING");
+    
     $author = blueUser($author);
     $db = getDatabase();
     $now = date("Y-m-d H:i:s");
@@ -11,8 +29,8 @@ function issueStocks($items,$author,$note,$locid)
     $sql = "SELECT num2 FROM SYSDATA where sysid = 'IC'";
 	$req = $dbBLUE->prepare($sql);
 	$req->execute(array());	
-	$num1 = $req->fetch(PDO::FETCH_ASSOC)["num1"];
-	$newID = intval($num1);
+	$num2 = $req->fetch(PDO::FETCH_ASSOC)["num2"];
+	$newID = intval($num2);
 	$docnum = sprintf("IS%013d",$newID);
 
     $totalamount = 0;
@@ -68,8 +86,8 @@ function issueStocks($items,$author,$note,$locid)
               ?,?,?,?,?,
               ?,GETDATE())";
 
-    $db->prepare($sql);
-    $req = $db->execute(array(
+    $req = $db->prepare($sql);
+    $req->execute(array(
         $DOCNUM,$FLOCID,$TLOCID,$REFERENCE,$TRANDATE,
         $TRANTYPE,$TOTAL_AMT,$PCNAME,$CURRID,$CURR_RATE,
         $CUSTID,$VENDID,$DISC_PERCENT,$VAT_PERCENT,$APPLID,
@@ -122,8 +140,10 @@ function issueStocks($items,$author,$note,$locid)
 */
 $line = 1;
 foreach($items as $item)
-{
-    $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,CATEGORYID,CLASSID,STKUM,PRICE,ONHAND WHERE PRODUCTID = ?";
+{    
+
+
+    $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,CATEGORYID,CLASSID,STKUM,PRICE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
     $req = $db->prepare($sql);
     $req->execute(array($item["PRODUCTID"]));
     $itemDetail = $req->fetch(PDO::FETCH_ASSOC);
@@ -149,18 +169,18 @@ foreach($items as $item)
     $REFERENCE = $note; 
     $COMMENT = ""; 
     $TRANQTY = $item["QUANTITY"];
-    $TRANUNIT = $item["STKUM"];
+    $TRANUNIT = $itemDetail["STKUM"];
     $TRANFACTOR = 1;
-    $STKUNIT = $item["STKUM"];;
+    $STKUNIT = $itemDetail["STKUM"];;
     $STKFACTOR = 1; 
     $TRANDISC = $itemDetailLastReceive["TRANDISC"];
     $TRANTAX = 0;
     $TRANCOST = $itemDetailLastReceive["TRANCOST"];
-    $TRANPRICE = $item["PRICE"];
-    $PRICE_ORI = $item["PRICE"];
+    $TRANPRICE = $itemDetail["PRICE"];
+    $PRICE_ORI = $itemDetail["PRICE"];
     
     $EXTPRICE = $itemDetail["PRICE"] * $item["QUANTITY"];
-    $EXTCOST = itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+    $EXTCOST = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
     $CURRENTONHAND = $itemDetail["ONHAND"];    
     $CURRID = "USD";
     $CURR_RATE = 1;
@@ -186,7 +206,7 @@ foreach($items as $item)
     $EXPIRED_DATE = null;
     $TRANQTY_NEW = $item["QUANTITY"];
     $TRANCOST_NEW = $itemDetailLastReceive["TRANCOST"];
-    $TRANEXTCOST_NEW = itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+    $TRANEXTCOST_NEW = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
     $LINE_DISCAMT = "";
     $COST_CENTER = "";
     $LINE_NOTE = "";
@@ -216,8 +236,8 @@ foreach($items as $item)
     $REWARD_UNIT = "";
     $COST_METHOD = "AG";
     $BASECURR_ID = "USD";
-    $CURRENCY_AMOUNT = itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
-    $CURRENCY_COST = itemDetailLastReceive["TRANCOST"];
+    $CURRENCY_AMOUNT = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+    $CURRENCY_COST = $itemDetailLastReceive["TRANCOST"];
     $CURRENCY_COST_ADD = 0;
     $CURRENCY_EXTPRICE = $itemDetail["PRICE"] * $item["QUANTITY"];
     $CURRENCY_PRICE = $itemDetail["PRICE"];
@@ -399,7 +419,7 @@ foreach($items as $item)
     $LOCID;
     $sql = "UPDATE ICPRODUCT set ONHAND = ONHAND - ?,TOTALUSE = TOTALUSE + ? WHERE PRODUCTID = ?";
     $req = $db->prepare($sql);
-    $req->execute(array($QUANTITY,$QUANTITY,$PRODUCTID));
+    $req->execute(array($item["QUANTITY"],$item["QUANTITY"],$item["PRODUCTID"]));
     /* 
     + UPDATE [ICPRODUCT] 
     set [ONHAND] = [ONHAND]-@1,[TOTALUSE] = [TOTALUSE]+@2  WHERE [PRODUCTID]=@3"
@@ -409,7 +429,7 @@ foreach($items as $item)
     $sql = "UPDATE ICLOCATION set LOCONHAND = LOCONHAND - ?,TOTALUSE = TOTALUSE + ?,LASTUSE = ? 
             WHERE LOCID = ? AND PRODUCTID = ?";
     $req = $db->prepare($sql);  
-    $req->execute(array($QUANTITY,$QUANTITY,$now,$LOCID,$PRODUCTID));
+    $req->execute(array($item["QUANTITY"],$item["QUANTITY"],$now,$LOCID,$item["PRODUCTID"]));
     /*        
     + UPDATE [ICLOCATION] 
     set [LOCONHAND] = [LOCONHAND]-@1,[TOTALUSE] = [TOTALUSE]+@2,[LASTUSE] = @3  WHERE [LOCID]=@4 AND [PRODUCTID]=@5"
@@ -598,6 +618,19 @@ foreach($items as $item)
 
 
 }
+
+function test()
+{
+    $json = '[
+        {
+            "PRODUCTID" : "TEST2",
+            "QUANTITY" : 1
+        }
+    ]';
+    $items = json_decode($json,true);    
+    issueStocks($items,"SOVI","Damaged Items","WH1");
+}
+//test();
 
  
 ?>

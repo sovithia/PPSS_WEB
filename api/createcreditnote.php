@@ -2,7 +2,7 @@
 
 // ITEMS : PRODUCTID,QUANTITY
 function createCreditNote($items,$author){
-	$db = getDatabase();
+	$db = getDatabase("TRAINING");
 
 	$sql = "SELECT num2 FROM SYSDATA WHERE sysid = 'PO'";
     $req = $db->prepare($sql);
@@ -895,8 +895,6 @@ function createCreditNote($items,$author){
 	*UDPATE APVENDOR SET BALANCE = BALANCE - AMOUNT RETURN WHER VENDID = VENDID RETURN
 	*/
 
-
-	
 	$USERADD = $author;
 	$DATEADD = $today;
 	$sql = "INSERT INTO POLOCATION (PONUMBER,VENDID,USERADD,DATEADD) 
@@ -923,5 +921,18 @@ function createCreditNote($items,$author){
 	[DATEADD]);   => Date Return
 	*/
 }
+
+function test()
+{
+    $json = '[
+        {
+            "PRODUCTID" : "TEST2",
+            "QUANTITY" : 1
+        }
+    ]';
+    $items = json_decode($json,true);    
+    createCreditNote($items,"SOVI");
+}
+//test();
 
 ?>

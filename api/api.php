@@ -889,7 +889,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,
+	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,VENDID,
 	(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'COST',
 	
 	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
@@ -8169,21 +8169,23 @@ $app->put('/depreciation', function($request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
 	}		
-
+	/*
 	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? OR DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach ($items as $item) {
+	foreach ($items as $item) 
+	{
 			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){				
 				attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$item["STARTTIME1"],$item["ENDTIME1"],$author);
 			}									
-			if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
-			if ($item["DEPRECIATION_ID3"] == $id  && $item["LINKTYPE3"] == "SYSTEMLINK" && $item["STARTTIME3"] != null  && $item["ENDTIME3"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO3"],$item["STARTTIME3"],$item["ENDTIME3"],$author);
-			if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
+			//if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
+			//if ($item["DEPRECIATION_ID3"] == $id  && $item["LINKTYPE3"] == "SYSTEMLINK" && $item["STARTTIME3"] != null  && $item["ENDTIME3"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO3"],$item["STARTTIME3"],$item["ENDTIME3"],$author);
+			//if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
 		
 			
-	}	
+	}
+	*/	
 	$req = $db->prepare($sql);
 	$req->execute(array($status,$author,$id));		
 
@@ -9191,7 +9193,7 @@ $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
 		$response = $response->withJson($resp);
 		return $response;
 });
-
+/*
 $app->get('/returnrecordalert',function($request,Response $response) {
 	$db = getInternalDatabase();
 
@@ -9211,12 +9213,14 @@ $app->get('/returnrecordalert',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
+*/
 $app->get('/returnrecordpool', function($request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM RETURNRECORDPOOL";	
+	$userid = $request->getParam('USERID',null);	
+	$sql = "SELECT * FROM RETURNRECORDPOOL WHERE USERID = ?";	
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($userid));
+
 	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
 	
 
@@ -9231,27 +9235,34 @@ $app->post('/returnrecordpool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
 
-	$sql = "SELECT VENDID FROM RETURNRECORDPOOL";
+	// IF POOL EMPTY
+	$sql = "SELECT * FROM RETURNRECORDPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$ok = false;
-
 	if ($res == false)
-		$ok = true; 
-	if (isset($res["VENDID"]) && $res["VENDID"] == $json["VENDID"] ) 
-		$ok = true;
-
-	if ($ok == true){
-		$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,QUANTITY,EXPIRATION,VENDID,VENDORNAME) VALUES (?,?,?,?,?)";	
+	{
+		$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID) VALUES (?,?,?,?,?,?,?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],$json["VENDORNAME"]));
+		$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],$json["VENDNAME"],$json["USERID"]));
 		$result["result"] = "OK";
 	}
-	else{
-		$result["result"] = "KO";
+	else
+	{
+		$sql = "SELECT * FROM RETURNRECORDPOOL WHERE USERID = ? AND VENDID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["USERID"],$json["VENDID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID) VALUES (?,?,?,?,?,?,?)";	
+			$req = $db->prepare($sql);
+			$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],$json["VENDNAME"],$json["USERID"]));
+			$result["result"] = "OK";
+		}else{
+			$result["result"] = "KO";
+			$result["message"] = "Cannot mix products from different vendors";
+		}
 	}
-	
 	$response = $response->withJson($result);
 	return $response;
 });
