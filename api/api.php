@@ -9078,16 +9078,16 @@ $app->post('/returnrecord',function($request,Response $response) {
 
 	$items = $json["ITEMS"];
 	foreach($items as $item){
-
+		/*
 		$penalty = calculatePenalty($item["PRODUCTID"],$item["EXPIRATION"]);
 		if($penalty["status"] == "OK")
 			$penaltypercent = 0;
 		else 
 			$penaltypercent = $penalty["percent"];
-
-		$sql = "INSERT INTO RETURNRECORDITEM (PRODUCTID,QUANTITY,EXPIRATION,STATUS,PENALTYPERCENT,RETURNRECORD_ID) VALUES (?,?,?,?)";
+		*/
+		$sql = "INSERT INTO RETURNRECORDITEM (PRODUCTID,QUANTITY,EXPIRATION,STATUS,RETURNRECORD_ID) VALUES (?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$penaltypercent,$lastId));
+		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$lastId));
 	}
 
 	$resp = array();
