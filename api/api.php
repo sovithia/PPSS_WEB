@@ -1071,7 +1071,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-		
+	
 	if(isset($item["COST"]))		
 		$item["COST"] = sprintf("%.4f",$item["COST"]);	
 	else 
@@ -1084,9 +1084,6 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
 		$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);
 		
-
-
-
 	if (isset($item["VENDID"]))
 		$VENDID = $item["VENDID"];
 	else 
@@ -6883,13 +6880,8 @@ $app->post('/item/{barcode}',function(Request $request,Response $response) {
 		
 	// RECORD TRANSACTION
 	$now = date("Y-m-d H:i:s");
-	if($author == "thoeun_s") // TODO FUNCTION
-		$userBLUE = "THOEUN SOPHAL";	
-	else if ($author == "hay_s")
-		$userBLUE = "HAY SE";
-	else if ($author ==	"sen_s")
-		$userBLUE = "SOVI";
-
+	$userBLUE = blueUser($author);
+	
 	// GENERATE ID
 	$sql = "SELECT num4 FROM SYSDATA where sysid = 'IC'";
 	$req = $conn->prepare($sql);
@@ -9068,6 +9060,8 @@ $app->post('/returnrecord',function($request,Response $response) {
 	$VENDID = $json["VENDID"];
 	$VENDNAME = $json["VENDNAME"];
 	$AUTHOR = $json["AUTHOR"];
+	$USERID = $json["USERID"];
+
 
 	$db->beginTransaction();
 	$sql = "INSERT INTO RETURNRECORD (VENDID,VENDNAME,STATUS,CREATOR) VALUES (?,?,?,?)";
@@ -9090,6 +9084,12 @@ $app->post('/returnrecord',function($request,Response $response) {
 		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$lastId));
 	}
 
+	$sql = "DELETE FROM RETURNRECORDPOOL WHERE USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($USERID));
+
+
+
 	$resp = array();
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
@@ -9104,7 +9104,7 @@ $app->get('/returnrecord/{status}',function($request,Response $response) {
 	$status = $request->getAttribute('status');
 	$sql = "SELECT * FROM RETURNRECORD WHERE STATUS = ?";
 	$req = $db->prepare($sql);
-
+	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$resp = array();
@@ -9182,14 +9182,28 @@ $app->get('/returnrecordsearch',function($request,Response $response) {
 
 // DETAIL VIEW 
 $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
+		$db = getInternalDatabase();
+		$dbBlue = getDatabase();
+
 		$id = $request->getAttribute('id');
-		$sql = "SELECT * FROM RETURNRECORDITEM WHERE RETUTNRECORD_ID = ?";
+		$sql = "SELECT * FROM RETURNRECORDITEM WHERE RETURNRECORD_ID = ?";
 		$req = $db->prepare($sql);
+		$req->execute(array($id));
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);		
+
+		$data = array();
+		foreach($items as $item){
+			$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			array_push($data,$item);
+		}
 
 		$resp = array();
 		$resp["result"] = "OK";
-		$resp["data"] = $items;
+		$resp["data"] = $data;
 		$response = $response->withJson($resp);
 		return $response;
 });
@@ -9293,20 +9307,23 @@ $app->delete('/returnrecordpool/{id}', function($request,Response $response){
 	return $response;
 });
 
-function receiveItems($items){
-}
-
 $app->put('/returnrecord',function($request,Response $response) {
 		// CREATE CREDIT NOTE AND RETURN ID 
 	$json = json_decode($request->getBody(),true);
 	$db=getInternalDatabase();
 	
-
 	$id = $json["ID"];
+	$sql = "SELECT * FROM RETURNRECORD WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$returnrecord = $req->fetch(PDO::FETCH_ASSOC);
+
+
 	$items = $json["items"];
 	$author = $json["author"];
 	$toexchange = array();
 	$tocreditnote = array();
+
 	foreach($items as $item)
 	{
 		$sql = "UPDATE RETURNRECORDITEM SET  STATUS = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
@@ -9316,11 +9333,11 @@ $app->put('/returnrecord',function($request,Response $response) {
 			array_push($tocreditnote,$item);
 		else if($item["STATUS"] == "EXCHANGE")
 			array_push($toexchange,$item);
-	}
-
-	$creditNoteId = createCreditNote($tocreditnote);
-	exchangeItems($toexchange);
-	$data["CREDITNOTE"] = $creditNoteId;
+	}	
+	if (count($toexchanges) > 0)
+		$data["PONUMBER"] = createAndReceivePO($toexchange,$author,"Exchange items for ". $returnrecord["VENDNAME"],$returnrecord["VENDID"]);
+	if (count($tocreditnote) )
+		$data["CREDITNOTEID"] = createCreditNote($tocreditnote);
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -11623,6 +11640,31 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+
+$app->get('/storeclerkkpi',function(Request $request,Response $response){
+	
+	$db = getInternalDatabase();	
+	$userid = $request->getParam('userid','');
+	$start = $request->getParam('start','');
+	$end = $request->getParam('end','');
+
+	$sql = "";
+
+	// userid
+	// Start - End
+	//- SaleByRow
+	//- PriceChange
+	//- Number of item promoted
+	//- Number of itemCode Transfered
+
+
+	$resp["result"] = "OK";
+	$resp["data"] = $data;	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
