@@ -47,6 +47,7 @@
 require_once 'vendor/autoload.php';
 require_once 'RestEngine.php';
 require_once 'functions.php';
+require_once 'issuestock.php';
 require_once 'receivepo.php';
 require_once 'generator.php';
 
@@ -735,24 +736,29 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$oneItem["packing"] =  $packInfo["SALEUNIT"];
 			$oneItem["barcode"] = $packcode;
 			$oneItem["oldPrice"] = 	truncateDollarPrice($packInfo["SALEPRICE"]);			
-
+			$oneItem["discpercent"] = $packInfo["DISC"];
 			// CALCULATE PROMO
 			$oldPrice = floatval(truncateDollarPrice($packInfo["SALEPRICE"]));					
-			$percent = (100 - intval($oneItem["discpercent"])) ;		
+			$percent = (100 - intval($oneItem["discpercent"])) ;
+			error_log("P:".$percent);		
 			if ($percent != 100)
 			{
+				error_log("ici");
 				$percent = floatval("0.".$percent);
 				$newPrice = $percent * $oldPrice; 				
 			}
-			else			
+			else			{
+				error_log("la");
 				$newPrice = $oldPrice * 1; 	
+			}
+				
 			
 			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
 			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
-			$oneItem["discpercent"] = $packInfo["DISC"];
+			
 			error_log("Percent:".$oneItem["discpercent"]);
 			array_push($result,$oneItem);
 		}
@@ -5582,6 +5588,7 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 		$json = json_decode($request->getBody(),true);	
 		$errors = array();
 		$AUTHOR = "";
+		$userid = $json["USERID"];
 		if(isset($json["AUTHOR"]))
 			$AUTHOR = $json["AUTHOR"];
 		if (!isset($json["ITEMS"]))
@@ -5627,10 +5634,10 @@ $app->post('/itemrequestitemspool/RESTOCK', function(Request $request,Response $
 				$vendname = "N/A";
 				$packingnote = "N/A";
 			}			
-			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDNAME,PACKINGNOTE,LISTNAME) values(?,?,?,?,?)";
+			$sql = "INSERT INTO ITEMREQUESTRESTOCKPOOL (PRODUCTID,REQUEST_QUANTITY,VENDNAME,PACKINGNOTE,LISTNAME,USERID) values(?,?,?,?,?,?)";
 			$req = $db->prepare($sql);				
 			
-			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendname,$packingnote,$json["LISTNAME"]));																						
+			$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],$vendname,$packingnote,$json["LISTNAME"],$userid));																						
 		}	
 	if($message != "")
 		$data["message"] = $message;	
@@ -8020,6 +8027,8 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 	  }
 	  $item["NBPROOFS"] = $nbproofs;
 		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
 			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
 		 FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $blueDB->prepare($sql);
@@ -8030,8 +8039,7 @@ $app->get('/depreciationdetails/{id}',function($request,Response $response) {
 			$item["STKUM"] = $res["STKUM"];
 			$item["PRICE"] = $res["PRICE"];	
 			$item["LASTCOST"] = $res["LASTCOST"];		
-		}
-			
+		}	
 		array_push($newItems,$item);
 	}
 
@@ -8146,6 +8154,11 @@ $app->put('/depreciation', function($request,Response $response) {
 	$id = $json["ID"];
 	$status = $json["STATUS"];
 	$author = $json["AUTHOR"];	
+	if(isset($json["LOCID"]))
+		$locid = $json["LOCID"];
+	else
+		$locid = "";
+		
 	if ($status == "VALIDATED"){
 		$sql = "UPDATE DEPRECIATION SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
@@ -8160,24 +8173,14 @@ $app->put('/depreciation', function($request,Response $response) {
 		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
+
+		$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		//issueStocks($items,$author,"Damaged item APP WASTE",$locid);
 	}		
-	/*
-	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE DEPRECIATION_ID1 = ? OR DEPRECIATION_ID2 = ? OR DEPRECIATION_ID3 = ? OR DEPRECIATION_ID4 = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($id));
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach ($items as $item) 
-	{
-			if ($item["DEPRECIATION_ID1"] == $id  && $item["LINKTYPE1"] == "SYSTEMLINK" && $item["STARTTIME1"] != null  && $item["ENDTIME1"] != null){				
-				attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$item["STARTTIME1"],$item["ENDTIME1"],$author);
-			}									
-			//if ($item["DEPRECIATION_ID2"] == $id  && $item["LINKTYPE2"] == "SYSTEMLINK" && $item["STARTTIME2"] != null  && $item["ENDTIME2"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO2"],$item["STARTTIME2"],$item["ENDTIME2"],$author);
-			//if ($item["DEPRECIATION_ID3"] == $id  && $item["LINKTYPE3"] == "SYSTEMLINK" && $item["STARTTIME3"] != null  && $item["ENDTIME3"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO3"],$item["STARTTIME3"],$item["ENDTIME3"],$author);
-			//if ($item["DEPRECIATION_ID4"] == $id  && $item["LINKTYPE4"] == "SYSTEMLINK" && $item["STARTTIME4"] != null  && $item["ENDTIME4"] != null)									attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO4"],$item["STARTTIME4"],$item["ENDTIME4"],$author);
-		
-			
-	}
-	*/	
+	
 	$req = $db->prepare($sql);
 	$req->execute(array($status,$author,$id));		
 
@@ -9193,11 +9196,15 @@ $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
 
 		$data = array();
 		foreach($items as $item){
-			$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+
+			$sql = "SELECT TOP(1)PRODUCTNAME,TRANDISC as 'DISCOUNT',TRANCOST as 'COST' FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			$item["COST"] = $res["COST"];
+			$item["DISCOUNT"] = $res["DISCOUNT"];
+
 			array_push($data,$item);
 		}
 
@@ -9311,6 +9318,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 		// CREATE CREDIT NOTE AND RETURN ID 
 	$json = json_decode($request->getBody(),true);
 	$db=getInternalDatabase();
+	$dbBLUE=getDatabase();
 	
 	$id = $json["ID"];
 	$sql = "SELECT * FROM RETURNRECORD WHERE ID = ?";
@@ -9334,8 +9342,18 @@ $app->put('/returnrecord',function($request,Response $response) {
 		else if($item["STATUS"] == "EXCHANGE")
 			array_push($toexchange,$item);
 	}	
-	if (count($toexchanges) > 0)
-		$data["PONUMBER"] = createAndReceivePO($toexchange,$author,"Exchange items for ". $returnrecord["VENDNAME"],$returnrecord["VENDID"]);
+	if (count($toexchanges) > 0){	
+		foreach($toexchange as $exchangedItem)
+		{
+			$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_EXPIRE = ? WHERE PRODUCTID = ? AND PPSS_DELIVERED_EXPIRE = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($exchangedItem["NEWEXPIRATION"],$exchangedItem["PRODUCTID"],$exchangedItem["EXPIRATION"]));
+
+			$sql = "INSERT INTO EXCHANGEDITEM (PRODUCTID,OLDEXPIRATION,NEWEXPIRATION,QUANTITY) VALUES (?,?,?,?)";
+			$req = $db->prepare($sql); 
+			$req->execute(array($exchangedItem["PRODUCTID"],$exchangedItem["EXPIRATION"],$exchangedItem["NEWEXPIRATION"],$exchangedItem["QUANTITY"]));
+		}			
+	}		
 	if (count($tocreditnote) )
 		$data["CREDITNOTEID"] = createCreditNote($tocreditnote);
 
@@ -9346,7 +9364,6 @@ $app->put('/returnrecord',function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
 
 $app->get('/orderstats/{barcode}',function($request,Response $response) {
 	$barcode = $request->getAttribute('barcode');

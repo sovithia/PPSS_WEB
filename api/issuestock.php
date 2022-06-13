@@ -1,7 +1,7 @@
 <?php
 function issueStocks($items,$author,$note,$locid)
 { 
-    /*
+    
     $dbBLUE = getDatabase("TRAINING");
     
     $author = blueUser($author);
@@ -17,8 +17,13 @@ function issueStocks($items,$author,$note,$locid)
 	$docnum = sprintf("IS%013d",$newID);
 
     $totalamount = 0;
-    foreach($items as $item){                
-        // Calculate Total Amount from lastreceive
+    foreach($items as $item){    
+        $sql = "SELECT TOP(1)TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY LOCID DESC ";
+        $req = $db->prepare($sql);
+        $req->execute(array($item["PRODUCTID"]));
+        $itemDetailLastReceive = $req->fetch(PDO::FETCH_ASSOC);
+        $THEQUANTITY = $item["QUANTITY1"];
+        $totalamount += $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;       
      }
     $DOCNUM = $docnum;
     $FLOCID = $locid;
@@ -78,11 +83,13 @@ function issueStocks($items,$author,$note,$locid)
         $POSSTAT,$RECEIVENO,$CHANGE_REWARD,$TOTAL_STOCKREWARD,$TOTAL_MONEYREWARD,
         $ARACC,$BASECURR_ID,$CURRENCY_AMOUNT,$PURPOSE_ISSUE,$JOB_ID,$USERADD
     ));    
-    */
-    /*
+
+    
     $line = 1;
     foreach($items as $item)
     {    
+        $THEQUANTITY = $item["QUANTITY1"];
+
         $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,CATEGORYID,CLASSID,STKUM,PRICE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
         $req->execute(array($item["PRODUCTID"]));
@@ -119,8 +126,8 @@ function issueStocks($items,$author,$note,$locid)
         $TRANPRICE = $itemDetail["PRICE"];
         $PRICE_ORI = $itemDetail["PRICE"];
         
-        $EXTPRICE = $itemDetail["PRICE"] * $item["QUANTITY"];
-        $EXTCOST = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+        $EXTPRICE = $itemDetail["PRICE"] * $THEQUANTITY;
+        $EXTCOST = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
         $CURRENTONHAND = $itemDetail["ONHAND"];    
         $CURRID = "USD";
         $CURR_RATE = 1;
@@ -146,7 +153,7 @@ function issueStocks($items,$author,$note,$locid)
         $EXPIRED_DATE = null;
         $TRANQTY_NEW = $item["QUANTITY"];
         $TRANCOST_NEW = $itemDetailLastReceive["TRANCOST"];
-        $TRANEXTCOST_NEW = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+        $TRANEXTCOST_NEW = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
         $LINE_DISCAMT = "";
         $COST_CENTER = "";
         $LINE_NOTE = "";
@@ -176,10 +183,10 @@ function issueStocks($items,$author,$note,$locid)
         $REWARD_UNIT = "";
         $COST_METHOD = "AG";
         $BASECURR_ID = "USD";
-        $CURRENCY_AMOUNT = $itemDetailLastReceive["TRANCOST"] * $item["QUANTITY"];
+        $CURRENCY_AMOUNT = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
         $CURRENCY_COST = $itemDetailLastReceive["TRANCOST"];
         $CURRENCY_COST_ADD = 0;
-        $CURRENCY_EXTPRICE = $itemDetail["PRICE"] * $item["QUANTITY"];
+        $CURRENCY_EXTPRICE = $itemDetail["PRICE"] * $THEQUANTITY;
         $CURRENCY_PRICE = $itemDetail["PRICE"];
         $FF_LF_INDEX = 0;
         $PURPOSE_ISSUE = "";
@@ -236,13 +243,13 @@ function issueStocks($items,$author,$note,$locid)
        
         $sql = "UPDATE ICPRODUCT set ONHAND = ONHAND - ?,TOTALUSE = TOTALUSE + ? WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
-        $req->execute(array($item["QUANTITY"],$item["QUANTITY"],$item["PRODUCTID"]));
+        $req->execute(array($THEQUANTITY,$THEQUANTITY,$item["PRODUCTID"]));
        
         
         $sql = "UPDATE ICLOCATION set LOCONHAND = LOCONHAND - ?,TOTALUSE = TOTALUSE + ?,LASTUSE = ? 
                 WHERE LOCID = ? AND PRODUCTID = ?";
         $req = $db->prepare($sql);  
-        $req->execute(array($item["QUANTITY"],$item["QUANTITY"],$now,$LOCID,$item["PRODUCTID"]));
+        $req->execute(array($THEQUANTITY,$THEQUANTITY,$now,$LOCID,$item["PRODUCTID"]));
     
         $line++; 
     }
@@ -351,7 +358,6 @@ function issueStocks($items,$author,$note,$locid)
     $sql = "UPDATE SYSDATA SET NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='IC'";
     $req = $db->prepare($sql);
     $req->execute(array());
-    */
+    
 } 
 ?>
-
