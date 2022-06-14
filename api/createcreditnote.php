@@ -1,7 +1,7 @@
 <?php 
 
 // ITEMS : PRODUCTID,QUANTITY
-function createCreditNote($items,$author){
+function createCreditNote($items,$author,$locid,$note){
 	$db = getDatabase("TRAINING");
 
 	$sql = "SELECT num2 FROM SYSDATA WHERE sysid = 'PO'";
@@ -13,7 +13,7 @@ function createCreditNote($items,$author){
 	$todayYear = date("Y");
 	$todayMonth = date("m");
 
-    $PONUMBER = intval($res["num2"]); 
+    $PONUMBER = sprintf("RT%013d",intval($res["num2"])); ; 
 
     $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
@@ -40,16 +40,10 @@ function createCreditNote($items,$author){
 	else 
 		$HAVEVAT = false;
 
-	$VENDID = $res["VENDID"];
-	$VENDNAME = $res["VENDNAME"];
-	$VENDNAME1 = $res["VENDNAME"];
-	$PODATE = $today;
-	$LOCID = 'WH2';
-
-	$PURCHASE_AMT = 0;
-	$RECEIVE_AMT = 0;
-	$CURRENCY_AMOUNT = 0;
-	$CURRENCY_VATAMOUNT = 0;
+	$purchase_amt = 0;
+	$receive_amt = 0;
+	$currency_amount = 0;
+	$currency_vatamount = 0;
 	$CURRENCY_RECEIVEAMOUNT = 0;
 	$VAT_AMT = 0;
 	foreach($items as $item){
@@ -60,34 +54,70 @@ function createCreditNote($items,$author){
 		
 		$amt = ($item["QUANTITY"] * $oneitem["CURRENCY_COST"]) * ( (100 - $oneitem["TRANDISC"]) / 100);
 
-		$PURCHASE_AMT += $amt;
-		$RECEIVE_AMT +=  $amt; 
-		$CURRENCY_AMOUNT -= $amt;
-		$CURRENCY_VATAMOUNT -= $oneitem["CURRENCY_COST"] * ((100 - $oneitem["VAT_PERCENT"])/100); // TODO CHECK
+		$purchase_amt += $amt;
+		$receive_amt +=  $amt; 
+		$currency_amount -= $amt;
+		$currency_vatamount -= $oneitem["CURRENCY_COST"] * ((100 - $oneitem["VAT_PERCENT"])/100); // TODO CHECK
 		$CURRENCY_RECEIVEAMOUNT -= $amt;		
 	}
+	
 
-	$NOTE = "Return";
+	$VENDID = $res["VENDID"];
+	$VENDNAME = $res["VENDNAME"];
+	$VENDNAME1 = $res["VENDNAME1"];
+	$PODATE = $today;
+	$LOCID = $locid;
+	$PURCHASE_AMT = $purchase_amt;
+	$RECEIVE_AMT = $receive_amt;
+	$TERMID = "";
+	$TERM_DAYS = 0;
+	$TERM_DISC = 0;
+	$TERM_NET = 0;
+	$FOB_POINT = "";
+	$SHIPVIA = "";
+	$NOTE = $note;
 	$USERADD = $author;
 	$DATEADD = $today;
 	$POSTATUS = "R";
 	$VAT_PERCENT = $res["TAX"];
+
 	$PCNAME = "APPLICATION";
 	$CURR_RATE = "1";
 	$CURRID = "USD";
 	$EST_ARRIVAL = $today;
-	$REQUIRE_DATE = $today;	
-	$REFERENCE = $PONUMBER;
-	$DISC_PERCENT = "0";
-	$BASECURR_ID = "USD";
-	
+	$REQUIRE_DATE = $today;
+	$REQUESTBY	= "";
+	$VAT_AMT = $currency_vatamount;
+	$REFERENCE = $note;
 
-	$sql = "INSERT INTO POHEADER (PONUMBER,VENID,VENDNAME,VENDNAME1,PODATE,
-				  LOCID,PURCHASE_AMT,RECEIVE_AMT,NOTE,USERADD,
-				  DATEADD,POSTATUS,VAT_PERCENT,PCNAME,CURR_RATE,
-					CURRID,EST_ARRIVAL,REQUIRE_DATE,VAT_AMT,REFERENCE,
-					DISC_PERCENT,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,CURRENCY_RECEIVEAMOUNT) 
-					VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+	$DISC_PERCENT = "0";
+
+	$FILEID = "";
+	$BASECURR_ID = "USD";
+	$CURRENCY_AMOUNT = $currency_amount;
+	$CURRENCY_VATAMOUNT = "";
+	$CURRENCY_RECEIVEAMOUNT = "";
+	$DISC_AMT_HEADER = 0;
+	$COST_ADD_HEADER = 0;
+	$COST_ADD_HEADER2 = 0;
+
+	$sql = "INSERT INTO POHEADER (
+					PONUMBER,VENID,VENDNAME,VENDNAME1,PODATE,
+					LOCID,PURCHASE_AMT,RECEIVE_AMT,TERMID,TERM_DAYS,
+					TERM_DISC,TERM_NET,FOB_POINT,SHIPVIA,NOTE,
+					USERADD,DATEADD,POSTATUS,VAT_PERCENT,PCNAME,
+					CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,REQUESTBY
+					VAT_AMT,REFERENCE,DISC_PERCENT,FILEID,BASECURR_ID,
+					CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,CURRENCY_RECEIVEAMOUNT,DISC_AMT_HEADER,COST_ADD_HEADER,
+					COST_ADD_HEADER2) 
+					VALUES (?,?,?,?,?,
+							?,?,?,?,?,
+							?,?,?,?,?,
+							?,?,?,?,?,
+							?,?,?,?,?,
+							?,?,?,?,?,
+							?,?,?,?,?,
+							?)";
 
     $req = $db->prepare($sql);
 	$req->execute(array( $PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PODATE,
@@ -95,58 +125,7 @@ function createCreditNote($items,$author){
 											 $DATEADD,$POSTATUS,$VAT_PERCENT,$PCNAME,$CURR_RATE,
 										   $CURRID,$EST_ARRIVAL,$REQUIRE_DATE,$VAT_AMT,$REFERENCE,
 											 $DISC_PERCENT,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,$CURRENCY_RECEIVEAMOUNT));
-		/*
-	===========Return PO===============
-	+ INSERT INTO POHEADER
-	INSERT INTO [POHEADER]
-	([PONUMBER],  => Return Number    —> Count From SYSDATA num2++
-	[VENID],    => VENID Return.     —> Select Vendor That return
-	[VENDNAME],  => Vendor Name  ENGLISH return  ———Vendor Name——
-	[VENDNAME1],  => Vendor name KHMER return 
-	[PODATE],   => Date Return
-	[LOCID],    => Location Return
-	[PURCHASE_AMT], => Total Amount Return (Menus)
-	[RECEIVE_AMT],  => Total  Amount Return (Menus)
-	[TERMID],   => (Null) 
-	[TERM_DAYS],  => (0)
-	[TERM_DISC],  => (0)
-	[TERM_NET],   => (0)
-	[FOB_POINT],  => (Null)
-	[SHIPVIA],   => (Null)
-	[NOTE],    => Note Return
-	[USERADD],   => User Return —> User Log in
-	[DATEADD],   => Date Return —> Current Date
-	[USEREDIT],   => (Null) 
-	[DATEEDIT],   => (Null)
-	[COLID],    => Auto
-	[POSTATUS],   => (R)
-	[VAT_PERCENT],  => VAT VENDOR —> Check from APVENDOR
-	[PCNAME],   => PC Return.     —> PC Return
-	[CURR_RATE],  => (1)
-	[CURRID],   => (USD)
-	[EST_ARRIVAL],  => Date Return (Current Date)
-	[REQUIRE_DATE],  => Date Return (Current Date)
-	[REQUSTBY],   => (Null)
-	[VAT_AM],   => Vat Amount Return —> (PURCHASE_AMT - (PURCHASE_AMT/1.1))
-	[REFERENCE],  => Reference Return   —> The same Note
 	
-	[DISC_PERCENT],  => Total Disc        —> From Header 
-	[FILEID],    => (Null) —> Blank
-	[USER_DOCNO],  => (Null) —> Blank
-	[CLOSEBY],   => (Null) —> Blank
-	[CLOSEDATE],  => (Null) —> Blank
-	[VOIDBY],   => (Null) —> Blank
-	[VOIDDATE],   => (Null) —> Blank
-	[BASECURR_ID],  => (USD) 
-	[CURRENCY_AMOUNT],   => Minus Total Amount
-	[CURRENCY_VATAMOUNT],  => (Mnius) Total Vat Amount 
-	[CURRENCY_RECEIVEAMOUNT], => Minus Total Amount
-	[SHIP_REFERENCE],    => (Null)
-	[DISC_AMT_HEADER],    => (0)    
-	[COST_ADD_HEADER],   => (0)
-	[COST_ADD_HEADER2]   => (0)
-	);
-	*/
 
 	$linecount = 1;
 	foreach($items as $item){
@@ -221,48 +200,6 @@ function createCreditNote($items,$author){
 	}
 
 	
-	/*
-	+INSERT INTO PODETAIL
-	INSERT INTO [PODETAIL]
-	([PONUMBER],  => Return Number    —> Count From SYSDATA num2++   
-	[VENDID],   => VENID Return.     —> Select Vendor That return 
-	[VENDNAME],  => Vendor Name  ENGLISH return  ———Vendor Name——
-	[VENDNAME1],  => Vendor name KHMER return 
-	[PURCHASE_DATE], => Date Return
-
-	[LOCID],    => Location Return
-	[PRODUCTID],  => ProductID
-	[PRODUCTNAME], => ProductName
-	[PRODUCTNAME1], => ProductName1
-	[COMMENT],   => (Null)
-	[ORDER_QTY],  => Qty Return (Minus)
-	[RECEIVE_QTY],  => Qty Return (Minus)
-	[TRANUNIT],   => (UNIT)
-	[TRANFACTOR],  => (1)
-	[STKFACTOR],  => (1)
-	[STKUNIT],   => (UNIT)
-
-	[TRANDISC],   =>  Disc_Line
-	[TRANCOST],   => Cost Product
-	[EXTCOST],   => Cost after Discount
-	[CURRENTONHAND], => Onhand Before Return
-	[CURR_RATE],  => (USD)
-
-	[CURRID],   => (1)
-	[WEIGHT],   => (1)
-	[OLDWEIGHT],  => (1)
-	[COST_ADD],   => (0)
-	[TRANLINE],   => Count Line Discount
-	[VATABLE],   => (Y)
-	[VAT_PERCENT],  => (10)
-	[POSTATUS],   => (R)
-	[FILEID],    => (Null)
-	[BASECURR_ID],  => (USD)
-	[CURRENCY_AMOUNT], => Cost after Discount
-	[CURRENCY_COST],  => Cost Before Discount
-	[USERADD],    => User Return
-	[DATEADD]);    => Current Daten Retur
-	*/
 	$sql = "SELECT num1 FROM SYSDATA WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
 	$req->execute(array());
@@ -297,45 +234,7 @@ function createCreditNote($items,$author){
 	$TOTAL_AMT,$PCNAME,$CURRID,$CURR_RATE,$VENDID,
 	$DISC_PERCENT,$VAT_PERCENT,$APPLID,$BASECURR_ID,$CURRENCY_AMOUNT,
 	$USERADD,$DATEADD));
-											 
-	/*
-	+ INSERT ICTRANHEADER
-
-	INSERT INTO [ICTRANHEADER]
-	([DOCNUM],    => VO000000000030 (AUTO VO+…) —> AP: num1
-	[FLOCID],    => Return Location
-	[TLOCID],    => (Null)
-	[REFERENCE],   => (Return) +( PO) + Return Number
-	[TRANDATE],    => Date Return
-	[TRANTYPE],    => (I)
-	[TOTAL_AMT],   => Menus Total Amount Return = (SubTotal + VAT Amount)
-	[PCNAME],    => Machine Return
-	[CURRID],    => (USD)
-
-	[CURR_RATE],   => (1)
-	[CUSTID],    => (Null)
-	[VENDID],    => Vendor ID 
-	[DISC_PERCENT],   => (0) Discount  Header from vendor  
-	[VAT_PERCENT],   => (0)Vat Vendor
-	[APPLID],    => (PO)
-	[FILEID],     => (Null)
-	[TOFILEID],    => (Null)
-	[IS_CHANGE_AVGCOST], => (Null)
-	[REF_DOCUMENT],  => (Null) 
-	[IS_PROCCESS],   => (Null)
-	[POSSTAT],    => (Null)
-	[RECEIVENO],   => (Null)
-	[CHANGE_REWARD],  => (Null)
-	[TOTAL_STOCKREWARD], => (0)
-	[TOTAL_MONEYREWARD], => (0)
-	[ARACC],    => (Null)
-	[BASECURR_ID],   => (USD) 
-	[CURRENCY_AMOUNT], => Minus Total Amount (Sub Total + VAT)
-	[PURPOSE_ISSUE],  => (Null)
-	[JOB_ID],    => (Null)
-	[USERADD],    => User Return
-	[DATEADD]);    => Date Return
-	*/
+	
 	$linenum = 1;	
 	$_AMT_WITHOUTDISCOUNT = 0;
 	$_AMT_WITHDISCOUNT = 0;
@@ -427,105 +326,6 @@ function createCreditNote($items,$author){
 		$TRANCOST_NEW,$TRANEXTCOST_NEW,$COST_METHOD,$BASECURR_ID,$CURRENCY_AMOUNT,
 		$CURRENCY_COST,$MAIN_PRODUCTID,$USERADD,$DATEADD));
 	
-	
-		/*
-		+ INSERT ICTRANDETAIL
-		INSERT INTO [ICTRANDETAIL]
-		([DOCNUM],     => VO000000000030 (AUTO VO+…) —> AP: num1
-		[PRODUCTID],    =>ProductID (List)
-		[LOCID],     => LOCATION ID RETURE
-		[CATEGORYID],   => CATEGORY ITEMS
-		[CLASSID],    => CLASS ITEMS
-		[BATCHNO],    => (NULL)
-		[SERIAL],    => (NULL)
-		[TIERID],     => (NULL)
-		[TRANDATE],    => DATE RETURN
-		[TRANTYPE],    => (I)
-		[LINENUM],    => LINE NUMBER ITEMS 
-		[PRODUCTNAME],  => PRODUCT NAME
-		[PRODUCTNAME1],  => PRODUCT NAME1
-		[REFERENCE],   => (Return) + (PO) + RETURN NUMBER
-		[COMMENT],    => (NULL)
-		[TRANQTY],    =>  QTY RETURN (Menus return qty)
-		[TRANUNIT],    => (NUIT)
-		[TRANFACTOR],   => (1)
-		[STKUNIT],    => (UNIT)
-		[STKFACTOR],   => (1)
-		[TRANDISC],    => TRANDISC BY LINE 
-		[TRANTAX],    => TRANTAX BY LINE (VENDOR)
-		[TRANCOST],    => COST ITEM (Cost Original )
-		[TRANPRICE],   => PRICE ITEM  (Price Item)
-		[PRICE_ORI],    => PRICE ITEM (Selling Price)
-		[EXTPRICE],    => PRICE ITEM (Menus Selling Price)
-		[EXTCOST],    => COST ITEM (Menus Original Cost)
-		[CURRENTONHAND],  => ADD CURRENT ONHAND (Onhand Before Return)
-		[CURRID],    => (USD)
-		[CURR_RATE],   => (1)
-		[CUSTID],    => (NULL)
-		[VENDID],    => VENDER RETURN 
-		[WEIGHT],    => (1)
-		[OLDWEIGHT],   => (0)
-		[APPLID],    => (PO)
-		[CURRENTCOST],   => COST ITEM (Cost Original)
-		[LASTCOST],    => LASTCOST ITEM 
-		[COST_ADD],    => (0) 
-		[COST_RIEL],    => (0)
-		[LINK_LINE],    => (0)
-		[ICCLEARING_ACC],  => DEFAULT ACCOUNT (21400)
-		[INVENTORY_ACC],  => DEFAULT ACCOUNT  (17000)
-		[COSG_ACC],   => (Null)
-		[DIMENSION],   => (1)
-		[FILEID],     => (Null)
-		[IS_CHANGE_AVGCOST], => (Null)
-		[WASTE_QTY],   => (Null)
-		[PRODUCT_PRODUCTID], => (Null)
-		[IS_PROCCESS],   => (Null)
-		[EXPIRED_DATE],   => (Null)
-		[TRANQTY_NEW],   => Qty Return (Minus of qty return by line)
-		[TRANCOST_NEW],  => Cost Item (Original  Cost)
-		[TRANEXTCOST_NEW], =>  Menus Total Cost ( Qty * Cost)
-		[LINE_DISCAMT],   =>  (0) 
-		[COST_CENTER],   => (Null)
-		[LINE_NOTE],    => (Null)
-		[CASE_PRODUCTID],  => (Null)
-		[CASE_QTY],    => (0)
-		[POSSTAT],    => (Null)
-		[DECL1],     => (0)
-		[FOB],     => (0)
-		[FREIGHT],    => (0)
-		[INSUR],     => (0)
-		[DECL2],     => (0)
-		[DUTY_VAT],    => (0)
-		[MCC_EXP],    => (0)
-		[LDC],     => (0)
-		[FREIGHT_SG],   => (0)
-		[INSUR_SG],    => (0)
-		[RECEIVENO],   => (Null)
-		[OTHER_PRICE],   => (0)
-		[PO_COLID],    => (0)
-		[RETURN_DATE],   => (Null)
-		[BORROW_NUMBER],  => (Null)
-		[CHANGE_REWARD],  => (Null)
-		[MONEY_REWARD],  => (0)
-		[IS_MONEY_REWARD], => (Null)
-		[PACK_RECEIVE],   => (0)
-		[PACK_UNIT],   => (Null)
-		[REWARD_UNIT],   => (Null)
-		[COST_METHOD],   => (AG)
-		[BASECURR_ID],   => (USD)
-		[CURRENCY_AMOUNT], => Menus Total amount return  after Discount ( Qty *  Cost)
-		[CURRENCY_COST],  => Total amount return  Original ( Qty *  Cost)
-		[CURRENCY_COST_ADD], => (0)
-		[CURRENCY_EXTPRICE], => (0)
-		[CURRENCY_PRICE],  => (0)
-		[FF_LF_INDEX],   => (0)
-		[PURPOSE_ISSUE],  => (Null)
-		[JOB_ID],    => (Null)
-		[ROW_ID],    => (0)
-		[MAIN_PRODUCTID],  => Product ID
-		[USERADD],    => User Return
-		[DATEADD]);    => Date Return
-		*/
 		$linenum++;
 		// TODO !!!// 	
 		/*

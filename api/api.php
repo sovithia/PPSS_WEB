@@ -183,6 +183,10 @@ $app->post('/login',function(Request $request,Response $response) {
 				$sql = "UPDATE USER SET fcmtoken = ? WHERE ID = ?";
     			$req = $db->prepare($sql);	
 				$req->execute(array($json["fcmtoken"],$session["ID"]));
+				error_log("TOKEN FOR ".$session["ID"]." ".$json["fcmtoken"]);
+			}
+			else{
+				error_log("NO TOKEN AVAILABLE FOR ".$session["ID"]);
 			}			
 	}
     else
@@ -11627,30 +11631,35 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 		error_log($token["fcmtoken"]);
 		array_push($fcmtokens,$token["fcmtoken"]);
 	}
-    $url = 'https://fcm.googleapis.com/fcm/send';	
-	$fields = array (
-		'registration_ids' => $fcmtokens,
-		'notification' => array(
-			'title' => "Title",
-			'body' => $message,                
-			'sound' => 'default'
-		)		
-	);   
-    $fields = json_encode ( $fields );
 
-    $headers = array (
-            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
-            'Content-Type: application/json'
-    );
-    $ch = curl_init ();
-    curl_setopt ( $ch, CURLOPT_URL, $url );
-    curl_setopt ( $ch, CURLOPT_POST, true );
-    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
-    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
-    $result = curl_exec ( $ch );    
-    curl_close ( $ch );
+	
+		$url = 'https://fcm.googleapis.com/fcm/send';	
+		$fields = array (
+			'registration_ids' => $fcmtokens,
+			'notification' => array(
+				'title' => "Title",
+				'body' => $message,                
+				'sound' => 'default'
+			)		
+		);   
+		$fields = json_encode ( $fields );
+	
+		$headers = array (
+				'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+				'Content-Type: application/json'
+		);
+		$ch = curl_init ();
+		curl_setopt ( $ch, CURLOPT_URL, $url );
+		curl_setopt ( $ch, CURLOPT_POST, true );
+		curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+		$result = curl_exec ( $ch );    
+		curl_close ( $ch );
+
+
+  
 	$resp = array();	
 	$resp["result"] = "OK";	
 	$resp["message"] = $result;
