@@ -5656,21 +5656,21 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 		$json = json_decode($request->getBody(),true);	
 	
 		$orderstats = orderStatistics($json["PRODUCTID"]);			
-		
+		$userid = $json["USERID"];
 		$sql = "DELETE FROM ITEMREQUESTPURCHASEPOOL where PRODUCTID =  ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));								
 
 		if(isset($json["SPECIALQTY"]) && isset($json["REASON"]))
 		{
-				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,SPECIALQTY,REASON) values(?,?,?,?)";
+				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,SPECIALQTY,REASON,USERID) values(?,?,?,?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($json["PRODUCTID"],$json["SPECIALQTY"],$json["SPECIALQTY"],$json["REASON"]));
+				$req->execute(array($json["PRODUCTID"],$json["SPECIALQTY"],$json["SPECIALQTY"],$json["REASON"],$userid));
 		}
 		else{
-				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));																	
+				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));																	
 		}	
 		$data["result"] = "OK";
 		$response = $response->withJson($data);
@@ -5684,6 +5684,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
+
+
 
 	$suffix = "";		
 	if($type == "TRANSFER")
@@ -5702,9 +5704,13 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
 
 	if ($suffix == ""){
-		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+		if(isset($json["USERID"]))
+			$userid = $json["USERID"];
+		else
+			$userid = null;
+		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
+		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));		
 	}
 	else{
 		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
