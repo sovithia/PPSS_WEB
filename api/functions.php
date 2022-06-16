@@ -1471,6 +1471,56 @@ function sendPush($title,$body, $fcmtoken) {
     curl_close ( $ch );
 }
 
+function sendPushToUser($title,$body,$userid)
+{
+	error_log($userid);
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$TOKEN = $res["fcmtoken"];
+	$url = 'https://fcm.googleapis.com/fcm/send';	
+	$fields = array (
+		'to' => $TOKEN,
+		'data' => array(
+			'type' => 104,
+			'type_name' => 'post',
+			'title' => $title,
+			'badge' => '1',			
+			'body' => $body,
+			'vibrate' => 1,
+			'sound' => 1			
+
+		),
+		'notification' => array(
+			'title' => $title,
+			'body' => $body,                
+			'sound' => 'default',
+			'badge' => '1'
+		),
+		'priority' => 'high'		
+	);    
+    $fields = json_encode ( $fields );
+
+    $headers = array (
+            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+            'Content-Type: application/json'
+    );
+    $ch = curl_init ();
+    curl_setopt ( $ch, CURLOPT_URL, $url );
+    curl_setopt ( $ch, CURLOPT_POST, true );
+    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+    $result = curl_exec ( $ch );    
+    curl_close ( $ch );
+	$result.= " TOKEN = ".$TOKEN;
+	return $result;
+}
+
 function getSaleByLocation($start,$end,$location)
 {
 	$db=getDatabase();	
@@ -1507,7 +1557,7 @@ function getSaleByTeam($start,$end,$userid)
 	,POSDETAIL.CATEGORYID	
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
-	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 	FROM dbo.POSDETAIL WHERE 1=1 ";	
 	$params = array();
 	if ($userid != 0){

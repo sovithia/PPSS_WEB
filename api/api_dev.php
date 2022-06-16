@@ -183,6 +183,10 @@ $app->post('/login',function(Request $request,Response $response) {
 				$sql = "UPDATE USER SET fcmtoken = ? WHERE ID = ?";
     			$req = $db->prepare($sql);	
 				$req->execute(array($json["fcmtoken"],$session["ID"]));
+				error_log("TOKEN FOR ".$session["ID"]." ".$json["fcmtoken"]);
+			}
+			else{
+				error_log("NO TOKEN AVAILABLE FOR ".$session["ID"]);
 			}			
 	}
     else
@@ -526,7 +530,6 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 		}
 		else // PACK
 		{			
-
 			$packInfo = packLookup($barcode);			
 			if ($packInfo != null) // IS  A PACK
 			{
@@ -538,10 +541,12 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 				$oneItem["rielPrice"] = generateRielPrice($packInfo["SALEPRICE"]);
 				$oneItem["dollarPrice"] = "$". truncateDollarPrice($packInfo["SALEPRICE"]);
 				// PICTURE
-				if (file_exists("img/packs/".$packcode.".jpg"))
-					$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-				else
-					$oneItem["productImg"] = $packInfo["PICTURE"];
+				$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
+				//if (file_exists("img/packs/".$packcode.".jpg"))
+				//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
+				//else
+				//	$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
+
 				$oneItem["salefactor"] = $packInfo["SALEFACTOR"];				
 				$oneItem["return"] = $packInfo["SALEUNIT"];		
 				$oneItem["productImg"] = loadPicture($barcode,300,true);		
@@ -557,7 +562,7 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 
 				$oneItem["country"] = null;			
 				$oneItem["packing"] = null;
-				$oneitem["discpercent"] = $packinfo["DISC"];
+				$oneitem["discpercent"] = $packinfo["DISC"] ?? "";
 				// PICTURE PACK
 				//$tmp["ISPACK"] = "PACK";
 				//$tmp["result"] = "OK";		
@@ -644,8 +649,6 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		if ($withImage == true)
 			$oneItem["productImg"] = loadPicture($barcode,150,true);
 
-		if ($item["OTHERCODE"] != null)
-			$item["BARCODE"] = $item["OTHERCODE"]; 
 		$oneItem["unit"] = $item["STKUM"];	
 		$oneItem["barcode"] = $item["BARCODE"];
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
@@ -722,7 +725,6 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
-
 		if ($packInfo != null)		
 		{
 			$packcode = $barcode;
@@ -742,13 +744,11 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$percent = (100 - intval($oneItem["discpercent"])) ;
 			error_log("P:".$percent);		
 			if ($percent != 100)
-			{
-				error_log("ici");
+			{				
 				$percent = floatval("0.".$percent);
 				$newPrice = $percent * $oldPrice; 				
 			}
-			else			{
-				error_log("la");
+			else{				
 				$newPrice = $oldPrice * 1; 	
 			}
 				
@@ -5348,7 +5348,6 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	return $response;
 });
 
-
 $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -5652,21 +5651,21 @@ $app->post('/itemrequestitemspool/PURCHASE', function(Request $request,Response 
 		$json = json_decode($request->getBody(),true);	
 	
 		$orderstats = orderStatistics($json["PRODUCTID"]);			
-		
+		$userid = $json["USERID"];
 		$sql = "DELETE FROM ITEMREQUESTPURCHASEPOOL where PRODUCTID =  ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"]));								
 
 		if(isset($json["SPECIALQTY"]) && isset($json["REASON"]))
 		{
-				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,SPECIALQTY,REASON) values(?,?,?,?)";
+				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,SPECIALQTY,REASON,USERID) values(?,?,?,?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($json["PRODUCTID"],$json["SPECIALQTY"],$json["SPECIALQTY"],$json["REASON"]));
+				$req->execute(array($json["PRODUCTID"],$json["SPECIALQTY"],$json["SPECIALQTY"],$json["REASON"],$userid));
 		}
 		else{
-				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+				$sql = "INSERT INTO ITEMREQUESTPURCHASEPOOL (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
 				$req = $db->prepare($sql);				
-				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));																	
+				$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));																	
 		}	
 		$data["result"] = "OK";
 		$response = $response->withJson($data);
@@ -5680,6 +5679,8 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$dbBlue = getDatabase();
 	$type = $request->getAttribute('type');
 	$json = json_decode($request->getBody(),true);	
+
+
 
 	$suffix = "";		
 	if($type == "TRANSFER")
@@ -5698,9 +5699,13 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
 
 	if ($suffix == ""){
-		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY) values(?,?)";
+		if(isset($json["USERID"]))
+			$userid = $json["USERID"];
+		else
+			$userid = null;
+		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"]));		
+		$req->execute(array($json["PRODUCTID"],$json["REQUEST_QUANTITY"],$userid));		
 	}
 	else{
 		$sql = "INSERT INTO ".$tableName." (PRODUCTID,REQUEST_QUANTITY,USERID) values(?,?,?)";
@@ -11627,30 +11632,35 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 		error_log($token["fcmtoken"]);
 		array_push($fcmtokens,$token["fcmtoken"]);
 	}
-    $url = 'https://fcm.googleapis.com/fcm/send';	
-	$fields = array (
-		'registration_ids' => $fcmtokens,
-		'notification' => array(
-			'title' => "Title",
-			'body' => $message,                
-			'sound' => 'default'
-		)		
-	);   
-    $fields = json_encode ( $fields );
 
-    $headers = array (
-            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
-            'Content-Type: application/json'
-    );
-    $ch = curl_init ();
-    curl_setopt ( $ch, CURLOPT_URL, $url );
-    curl_setopt ( $ch, CURLOPT_POST, true );
-    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
-    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
-    $result = curl_exec ( $ch );    
-    curl_close ( $ch );
+	
+		$url = 'https://fcm.googleapis.com/fcm/send';	
+		$fields = array (
+			'registration_ids' => $fcmtokens,
+			'notification' => array(
+				'title' => "Title",
+				'body' => $message,                
+				'sound' => 'default'
+			)		
+		);   
+		$fields = json_encode ( $fields );
+	
+		$headers = array (
+				'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+				'Content-Type: application/json'
+		);
+		$ch = curl_init ();
+		curl_setopt ( $ch, CURLOPT_URL, $url );
+		curl_setopt ( $ch, CURLOPT_POST, true );
+		curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+		$result = curl_exec ( $ch );    
+		curl_close ( $ch );
+
+
+  
 	$resp = array();	
 	$resp["result"] = "OK";	
 	$resp["message"] = $result;

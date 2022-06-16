@@ -586,7 +586,7 @@ function PriceTag($item)
 			if (isset($_GET["barcodes"]))
 			{
                 $barcodes = str_replace(" ","%20",$_GET["barcodes"]);							                     
-                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/".$barcodes);                                 
+                $labels = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/itemlabels/".$barcodes);                                 
 				render($labels);				
                 
 			}		

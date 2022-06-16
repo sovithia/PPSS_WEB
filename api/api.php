@@ -154,7 +154,20 @@ $app->get('/image/{id}',function(Request $request,Response $response) {
 	return $response;
 });
 
-
+$app->post('/refreshtoken',function(Request $request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$userid = $json["USERID"];
+	$fcmtoken = $json["fcmtoken"];
+	$db = getInternalDatabase();
+	$sql = "UPDATE USER SET fcmtoken = ? WHERE ID = ?";
+    $req = $db->prepare($sql);	
+	$req->execute(array($json["fcmtoken"],$userid));
+	error_log("TOKENREFRESHED FOR ".$user." ".$json["fcmtoken"]);
+		
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+}); 
 	
 $app->post('/login',function(Request $request,Response $response) { 
 
@@ -530,7 +543,6 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 		}
 		else // PACK
 		{			
-
 			$packInfo = packLookup($barcode);			
 			if ($packInfo != null) // IS  A PACK
 			{
@@ -542,10 +554,12 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 				$oneItem["rielPrice"] = generateRielPrice($packInfo["SALEPRICE"]);
 				$oneItem["dollarPrice"] = "$". truncateDollarPrice($packInfo["SALEPRICE"]);
 				// PICTURE
-				if (file_exists("img/packs/".$packcode.".jpg"))
-					$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
-				else
-					$oneItem["productImg"] = $packInfo["PICTURE"];
+				$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
+				//if (file_exists("img/packs/".$packcode.".jpg"))
+				//	$result["PICTURE"] = base64_encode(file_get_contents("img/packs/".$packcode.".jpg"));
+				//else
+				//	$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
+
 				$oneItem["salefactor"] = $packInfo["SALEFACTOR"];				
 				$oneItem["return"] = $packInfo["SALEUNIT"];		
 				$oneItem["productImg"] = loadPicture($barcode,300,true);		
@@ -561,7 +575,7 @@ $app->get('/itemlabels/{barcodes}', function(Request $request,Response $response
 
 				$oneItem["country"] = null;			
 				$oneItem["packing"] = null;
-				$oneitem["discpercent"] = $packinfo["DISC"];
+				$oneitem["discpercent"] = $packinfo["DISC"] ?? "";
 				// PICTURE PACK
 				//$tmp["ISPACK"] = "PACK";
 				//$tmp["result"] = "OK";		
@@ -648,8 +662,6 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		if ($withImage == true)
 			$oneItem["productImg"] = loadPicture($barcode,150,true);
 
-		if ($item["OTHERCODE"] != null)
-			$item["BARCODE"] = $item["OTHERCODE"]; 
 		$oneItem["unit"] = $item["STKUM"];	
 		$oneItem["barcode"] = $item["BARCODE"];
 		$oneItem["nameEN"] = $item["PRODUCTNAME"];
@@ -726,7 +738,6 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 		if ($barcode == "")
 			continue;
 		$packInfo = packLookup($barcode);
-
 		if ($packInfo != null)		
 		{
 			$packcode = $barcode;
@@ -746,13 +757,11 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$percent = (100 - intval($oneItem["discpercent"])) ;
 			error_log("P:".$percent);		
 			if ($percent != 100)
-			{
-				error_log("ici");
+			{				
 				$percent = floatval("0.".$percent);
 				$newPrice = $percent * $oldPrice; 				
 			}
-			else			{
-				error_log("la");
+			else{				
 				$newPrice = $oldPrice * 1; 	
 			}
 				
@@ -1081,18 +1090,21 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	
+
 	if(isset($item["COST"]))		
 		$item["COST"] = sprintf("%.4f",$item["COST"]);	
 	else 
 		$item["COST"] = "0";
 
-	$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
-	$req = $conn->prepare($sql);
-	$req->execute(array($item["PRODUCTID"]));
-	$res2 = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
-		$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);
+	if ($item != false){
+		$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $conn->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res2 = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
+			$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);	
+	}
+	
 		
 	if (isset($item["VENDID"]))
 		$VENDID = $item["VENDID"];
@@ -2224,9 +2236,9 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$req-> execute(array($barcode,$productname,$productname1, $comment,$oldprice,
 							 $value,$author,$now,"APPLICATION",$oldprice,$value));		
 
-		$sql = "UPDATE dbo.ICPRODUCT set ".$field." = ?,USEREDIT = ?,DATEEDIT = ? WHERE BARCODE = ?";
+		$sql = "UPDATE dbo.ICPRODUCT set PRICE = ?, OTHER_PRICE = ?,USEREDIT = ?,DATEEDIT = ? WHERE BARCODE = ?";
 		$req = $db->prepare($sql);
-		$result = $req->execute(array($value,$author,$now,$barcode) ); 										
+		$result = $req->execute(array($value,$value,$author,$now,$barcode) ); 										
 	}
 	$result = array();
 	$result["result"] = "OK";	
@@ -4560,7 +4572,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$location = "";		
 		$req->execute(array("TRANSFER",$json["REQUESTER"],$location));
 
-		$sql = "SELECT ID,fcmtoken,login from USER WHERE location LIKE ?";
+		$sql = "SELECT ID,fcmtoken,login from USER WHERE location LIKE ? OR location = 'ALL'";
 		$req = $db->prepare($sql);
 		$req->execute(array('%'.$location.'%'));
 		$users = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -5351,7 +5363,6 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 
 	return $response;
 });
-
 
 $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
@@ -6739,7 +6750,7 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
 	,VENDNAME
-	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 	FROM dbo.POSDETAIL,dbo.ICPRODUCT,dbo.APVENDOR
 	WHERE dbo.POSDETAIL.PRODUCTID = dbo.ICPRODUCT.PRODUCTID
 	AND dbo.APVENDOR.VENDID = dbo.ICPRODUCT.VENDID
@@ -7430,11 +7441,42 @@ $app->get('/penalty',function($request,Response $response) {
 $app->get('/selfpromotionalert', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
+
+	$userid = $request->getParam('USERID',null);		
+
 	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE STATUS = 'STEP1' OR STATUS = 'STEP2' OR STATUS = 'STEP3' OR STATUS = 'STEP4'
 			AND DATE() < EXPIRATION ";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	if ($userid != null){
+		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$req = $db->prepare($sql2);
+		$req->execute(array($userid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$params = array();
+		if ($res["location"] != 'ALL'){
+			$locations = explode("|",$res["location"]);
+			$count = 0;			
+			foreach($locations as $location){
+				if ($count == 0){
+					$sql .= " AND (LOCATION LIKE ? ";	
+					array_push($params,'%'.$location.'%');
+				}else{
+					$sql .= " OR LOCATION LIKE ? ";	
+					array_push($params,'%','%'.$location.'%');
+				}
+				$count++;
+			}
+			$sql .= ")";			
+		}
+		$req = $db->prepare($sql);
+		$req->execute($params);
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	}else{
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	}		
+	
 
 	$newItems = array();
 	foreach($items as $item){		
@@ -7545,14 +7587,16 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	if(isset($item["COST"]))
-		$item["COST"] = sprintf("%.4f",$item["COST"]);
-	else 
-		$item["COST"] = "0";
-	
+		
 	$resp = array();
-	if (isset($item["PRODUCTID"])){		
-		$sql="
+	if($item != false)
+	{		
+		if(isset($item["COST"]))
+			$item["COST"] = sprintf("%.4f",$item["COST"]);
+		else 
+			$item["COST"] = "0";
+		
+			$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
 		WHERE LOCID = 'WH1' AND PRODUCTID = ?";
@@ -7609,11 +7653,14 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 			$resp["data"] = $item;
 		}
 		else{
+			$resp["message"] = "Code not found";
 			$resp["result"] = "KO";
 			$response = $response->withJson($resp);
 			return $response;
 		}						
 	}	
+
+
 	if ($item != null)
 	{		
 		$stats = calculatePenalty($barcode,$expiration,$type);
@@ -7626,7 +7673,8 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 		$item["COST"] = round($stats["cost"],4);					
 		$resp["result"] = "OK";
 		$resp["data"] = $item;
-	}
+	}	
+
 	$response = $response->withJson($resp);
 	return $response;
 });
@@ -7634,6 +7682,8 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 $app->get('/selfpromotion', function($request,Response $response) {
 	$status =  $request->getParam('status','');
 	$type =  $request->getParam('type','');
+	$userid = $request->getParam('USERID',null);
+	
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
 	$params = array();	
@@ -7655,10 +7705,39 @@ $app->get('/selfpromotion', function($request,Response $response) {
 		array_push($params ,$type);
 	}
 	$sql .= " AND CREATED > date('now','-45 day')";
-	$req = $db->prepare($sql);
-	$req->execute($params);
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	if ($userid != null){
+		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$req = $db->prepare($sql2);
+		$req->execute(array($userid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);		
+		if ($res["location"] != 'ALL')
+		{
+			$locations = explode("|",$res["location"]);
+			$count = 0;			
+			foreach($locations as $location){
+				if ($count == 0){
+					$sql .= " AND (LOCATION LIKE ? ";	
+					array_push($params,'%'.$location.'%');
+				}else{
+					$sql .= " OR LOCATION LIKE ? ";	
+					array_push($params,'%','%'.$location.'%');
+				}
+				$count++;
+			}
+			$sql .= ")";			
+		}
+		$req = $db->prepare($sql);
+		$req->execute($params);
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	}
+	else
+	{
+		$req = $db->prepare($sql);
+		$req->execute($params);
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	}
+		
 	$newItems = array();
 	foreach($items as $item){		
 		$imgfolder = "./img/promo_proofs/";					
@@ -7750,12 +7829,15 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 		$db->beginTransaction();    
 		
 		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,STARTTIME1,LINKTYPE1,
-		PERCENTPENALTY,PERCENTPROMO1,TYPE,CREATOR,STATUS) 
+		PERCENTPENALTY,PERCENTPROMO1,TYPE,CREATOR,STATUS,
+		LOCATION) 
 		VALUES (?,?,?,?,?,
-				?,?,?,?,?)";
+				?,?,?,?,?,
+				?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$now,$item["LINKTYPE"],
-		$item["PERCENTPENALTY"],$item["PERCENTPROMO"],$item["TYPE"],$author,'CREATED'));
+		$item["PERCENTPENALTY"],$item["PERCENTPROMO"],$item["TYPE"],$author,'CREATED',
+		($item["LOCATION"]??"") ));
 
 		$lastId = $db->lastInsertId();
 		$db->commit();    
@@ -7769,6 +7851,7 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 		 $count++;        
 	  	}				
 	}
+	sendPushToUser("SELFPROMOTION","New promotion to validate",66);	
 
 	$sql = "DELETE FROM SELFPROMOTIONITEMPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
@@ -7910,6 +7993,7 @@ $app->get('/selfpromotionitempool/{userid}', function($request,Response $respons
 $app->post('/selfpromotionitempool', function($request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
 	// TODO : On OLd items, retrieve all info 
 	$sql = "SELECT TYPE FROM SELFPROMOTIONITEMPOOL WHERE USERID = ? LIMIT 1  ";
 	$req = $db->prepare($sql);
@@ -7927,16 +8011,25 @@ $app->post('/selfpromotionitempool', function($request,Response $response){
 		$ok = true;
 	}
 	if ($ok == true){
+
+		$sql = "SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$storbin = $res["STORBIN"] ?? "";
+
 		$db->beginTransaction();    
 		$now = date("Y-m-d");
 		$sql = "INSERT INTO SELFPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
-													TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID) 
+													TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID,
+													LOCATION) 
 													VALUES (?,?,?,?,?,
-															?,?,?,?,?)";	
+															?,?,?,?,?,
+															?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,
-		$json["LINKTYPE"],$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],
-		$json["USERID"]));	
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,$json["LINKTYPE"],
+		$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"],
+		$storbin));	
 		$result["result"] = "OK";
 		$lastId = $db->lastInsertId();
 		$db->commit();    
@@ -11625,6 +11718,8 @@ $app->get('/purchaseamounts', function(Request $request,Response $response) {
 	return $response;			
 });
 
+
+
 $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$message = $request->getAttribute('message');
 	$db=getInternalDatabase(); 
@@ -11632,42 +11727,22 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$tokens = $req->fetchAll(PDO::FETCH_ASSOC);
-	$fcmtokens = array();
+	
 	foreach($tokens as $token){
-		error_log($token["fcmtoken"]);
-		array_push($fcmtokens,$token["fcmtoken"]);
+		sendPush("Title",$message,$token);		
 	}
-
-	
-		$url = 'https://fcm.googleapis.com/fcm/send';	
-		$fields = array (
-			'registration_ids' => $fcmtokens,
-			'notification' => array(
-				'title' => "Title",
-				'body' => $message,                
-				'sound' => 'default'
-			)		
-		);   
-		$fields = json_encode ( $fields );
-	
-		$headers = array (
-				'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
-				'Content-Type: application/json'
-		);
-		$ch = curl_init ();
-		curl_setopt ( $ch, CURLOPT_URL, $url );
-		curl_setopt ( $ch, CURLOPT_POST, true );
-		curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
-		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
-		$result = curl_exec ( $ch );    
-		curl_close ( $ch );
-
-
-  
 	$resp = array();	
 	$resp["result"] = "OK";	
+	$resp["message"] = $result;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->get('/pushone/{userid}',function(Request $request,Response $response){
+	$userid = $request->getAttribute('userid');
+	$result = sendPushToUser("Title","Test",$userid);					
+	$resp = array();	
+	$resp["result"] = "OK";		
 	$resp["message"] = $result;
 	$response = $response->withJson($resp);
 	return $response;
