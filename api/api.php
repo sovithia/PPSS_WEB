@@ -7717,7 +7717,8 @@ $app->get('/selfpromotion', function($request,Response $response) {
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);		
-		if ($res["location"] != 'ALL')
+		error_log("USERID:".$userid);
+		if ($res["location"] != 'ALL' && $userid != "66" && $userid != "10")
 		{
 			$locations = explode("|",$res["location"]);
 			$count = 0;			
@@ -8069,6 +8070,271 @@ $app->delete('/selfpromotionitempool/{id}', function($request,Response $response
 
 	return $response;
 });
+
+
+
+// WASTE // 
+$app->get('/waste', function($request,Response $response) {
+	$type = $request->getParam('type','');
+	$status =  $request->getParam('status','');
+	$db = getInternalDatabase();	
+	$params = array();	
+	$sql = "SELECT * FROM WASTE WHERE 1 = 1 ";
+	if ($type != '')
+	{
+		$sql .= " AND TYPE = ?";			
+		array_push($params,$type);		
+	}
+	if ($status != ''){		
+		$sql .= "AND STATUS = ? ";
+		array_push($params,$status);
+	}
+	$sql .= " ORDER BY CREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->get('/wastedetails/{id}',function($request,Response $response) {
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+	$id = $request->getAttribute('id');
+	$sql = "SELECT * FROM WASTEITEM WHERE DEPRECIATION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id,$id,$id,$id));																			     
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$newItems = array();
+	foreach($items as $item)
+	{
+		$imgfolder = "./img/waste_proofs/";		
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists($imgfolder.$item["ID"]."_".$count.".png")){
+  		$nbproofs++;
+  		$count++;        	    
+		}
+		$item["NBPROOFS"] = $nbproofs;
+			$sql = "SELECT PRODUCTNAME,STKUM,PRICE,
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+			isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
+		FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null){
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			$item["STKUM"] = $res["STKUM"];
+			$item["PRICE"] = $res["PRICE"];	
+			$item["LASTCOST"] = $res["LASTCOST"];		
+		}	
+		array_push($newItems,$item);
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newItems;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/waste', function($request,Response $response) {
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+
+	$items = $json["ITEMS"];
+	$type = $json["TYPE"];	
+	$author = $json["AUTHOR"];
+	$userid = $json["USERID"];
+	$db->beginTransaction();    
+	$sql = "INSERT INTO WASTE (TYPE,CREATOR,STATUS) VALUES (?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($type,$author,"CREATED"));
+	$lastId = $db->lastInsertId();
+	$db->commit();    
+	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
+
+	foreach($items as $item)
+	{			
+		$sql = "SELECT * FROM WASTEITEM WHERE EXPIRATION = ? AND PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["EXPIRATION"],$item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$PRODUCTID = $item["PRODUCTID"];
+		$EXPIRATION = isset($item["EXPIRATION"]) ?  $item["EXPIRATION"] : "";
+		$QUANTITY = isset($item["QUANTITY"]) ? $item["QUANTITY"] : "";		
+
+		if ($res == false)
+		{	
+			$db->beginTransaction();    
+			$sql = "INSERT INTO WASTEITEM (PRODUCTID,QUANTITY,EXPIRATION,TYPE,DEPRECIATION_ID) 
+							VALUES (?,?,?,?,?,?)";
+			$req = $db->prepare($sql);
+			$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$item["TYPE"],$lastId));			
+			$depreciationItemId =  $db->lastInsertId();
+			$db->commit();    
+		}
+		else
+		{			
+			$sql = "UPDATE WASTEITEM 
+						SET QUANTITY = ?,
+							WASTE_ID  = ?,  							  
+						WHERE PRODUCTID = ? AND EXPIRATION = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($QUANTITY,$lastId,$PRODUCTID,$EXPIRATION));		
+			$depreciationItemId =  $res["ID"];
+		}
+		movePicture($depreciationItemId,$item["ID"],"WASTE");					
+	}
+	$resp = array();		
+	$sql = "DELETE FROM WASTEPOOL where USERID = ?";			
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));	
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->put('/waste', function($request,Response $response) {
+			
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+	$id = $json["ID"];
+	$status = $json["STATUS"];
+	$author = $json["AUTHOR"];	
+	if(isset($json["LOCID"]))
+		$locid = $json["LOCID"];
+	else
+		$locid = "";
+		
+	if ($status == "VALIDATED"){
+		$sql = "UPDATE WASTE SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($author,$id));
+		if (isset($json["VALIDATORSIGNATUREIMAGE"]))
+			pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);		
+	}
+	else if ($status == "CLEARED"){
+		$sql = "UPDATE WASTE SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
+		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
+		$req = $db->prepare($sql);
+		$req->execute(array($author,$id));
+
+		$sql = "SELECT * FROM WASTEITEM WHERE DEPRECIATION_ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		issueStocks($items,$author,"Damaged item APP WASTE",$locid);
+	}		
+	
+	$req = $db->prepare($sql);
+	$req->execute(array($status,$author,$id));		
+
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;	
+});
+
+$app->get('/wastepool/{userid}', function($request,Response $response){
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+	$userid = $request->getAttribute('userid');
+	$sql = "SELECT * FROM DEPRECIATIONWASTEPOOL WHERE USERID = ?";		
+
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+
+	$pool = $req->fetchAll(PDO::FETCH_ASSOC);
+	$newItems = array();
+	foreach($pool as $item){
+		$nbproofs = 0;
+		$count = 1;
+		while(file_exists("./img/wastepool_proofs/".$item["ID"]."_".$count.".png")){       							     
+	      $nbproofs++;
+	      $count++;        	    
+	  }
+	  $item["NBPROOFS"] = $nbproofs;
+		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != null)
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+		array_push($newItems,$item);
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newItems;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/wastepool', function($request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$db = getInternalDatabase();
+
+	$sql = "SELECT TYPE FROM WASTEPOOL WHERE USERID = ? LIMIT 1 ";
+
+	$req = $db->prepare($sql);
+	$req->execute(array($json["USERID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != false){
+		if($res["TYPE"] != $json["TYPE"])
+			$ok = false;					
+		else if ($res["TYPE"] == $json["TYPE"])
+			$ok = true;	
+	}
+	else 
+		$ok = true;
+
+	if ($ok == true){
+		$db->beginTransaction();
+		$sql = "INSERT INTO WASTEPOOL (PRODUCTID,QUANTITY,EXPIRATION,TYPE,USERID) VALUES (?,?,?,?,?)";	
+			$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["TYPE"],$json["USERID"]));	
+		$result["result"] = "OK";
+		$lastId = $db->lastInsertId();
+		$db->commit();    
+		if (isset($json["PROOFS"]))
+			pictureRecord($json["PROOFS"],"WASTEPOOLPROOFS",$lastId);
+	}
+	else{
+		$result["message"] = "Waste needs to be of same type";
+		$result["result"] = "KO";
+	}
+	
+	$response = $response->withJson($result);
+	return $response;
+});
+
+$app->delete('/wastepool/{id}', function($request,Response $response){	
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+
+	$sql = "DELETE FROM WASTEPOOL WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));	
+		foreach( glob("./img/wastepool_proofs/".$id."_*") as $file )   
+    	unlink($file);
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+
+
+
+
+
 
 
 //CLEARANCETOOMUCH,CLEARANCELOWSELL,CLEARANCEDAMAGED, EXPIREPROMOTION, DAMAGEWASTE EXPIREWASTE
