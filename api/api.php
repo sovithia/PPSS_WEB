@@ -3100,7 +3100,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		{			
 			$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],$item["COST"],$item["DECISION"],$item["VAT"],$userid));
+			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],trim($item["COST"],'$'),$item["DECISION"],$item["VAT"],$userid));
 		}
 		else
 		{
@@ -3130,13 +3130,13 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 				$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
 					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],$item["COST"],$item["DECISION"],$userid,$item["PRODUCTID"]));	
+				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],trim($item["COST"],'$'),$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
 			else
 			{
 				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],$item["COST"],$item["DECISION"],$item["VAT"],$userid));
+			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],trim($item["COST"],'$'),$item["DECISION"],$item["VAT"],$userid));
 			}
 		}
 	}
@@ -4418,18 +4418,24 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$locations = $res["location"];
-	$locations = explode('|',$locations);
-
-	$data = array();
-	foreach($locations as $location){
-		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ? AND REQUESTEE IS NULL";
+	if ($res["location"] == "ALL"){
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUESTEE IS NULL";
 		$req = $db->prepare($sql);
-		$req->execute(array('%'.$location.'%'));
-		$actions = $req->fetchAll(PDO::FETCH_ASSOC);
-		$data = array_merge($data,$actions);
+		$req->execute();
+		$data = $req->fetchAll(PDO::FETCH_ASSOC);
+	}else{
+		$locations = $res["location"];
+		$locations = explode('|',$locations);
+		$data = array();	
+		foreach($locations as $location){
+			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ? AND REQUESTEE IS NULL";
+			$req = $db->prepare($sql);
+			$req->execute(array('%'.$location.'%'));
+			$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+			$data = array_merge($data,$actions);
+		}
 	}
-
+	
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
