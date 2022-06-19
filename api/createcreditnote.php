@@ -628,7 +628,7 @@ function createCreditNote($items,$author,$locid,$note){
 		$req->execute(array($item["QUANTITY"],$item["QUANTITY"],$PRODUCTID));
 				
 		$LASTUSE = $today;
-		$LOCID = "WH2";
+		$LOCID = $locid;
 		$PRODUCTID = $item["PRODUCTID"];
 		$sql = "UPDATE ICLOCATION 
 		set LOCONHAND = LOCONHAND - ?, 
@@ -748,8 +748,6 @@ function createCreditNote($items,$author,$locid,$note){
 	$sql = "UPDATE APVENDOR SET BALANCE = BALANCE - ? WHERE VENDID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($BALANCE,$VENDID));
-
-
 	
 	//PONUMBER
 	//VENDID
@@ -779,20 +777,8 @@ function createCreditNote($items,$author,$locid,$note){
 		$PONUMBER,$VENDID,$TOADDRESS1,$TOVENDID,$TOPHONE1,
 		$TOFAXNO,$TOCOUNTRY,$TOCITY,$ADDRESS1,$COUNTRY,
 		$PHONE1,$FAXNO,$CITY,$USERADD,$DATEADD));
-
+	return $PONUMBER;
 }
 
-function test()
-{
-    $json = '[
-        {
-            "PRODUCTID" : "8859006401388",
-            "QUANTITY" : 1
-        }
-    ]';
-    $items = json_decode($json,true);    
-    createCreditNote($items,"SOVI","WH2","Credit Note");
-}
-test();
 
 ?>

@@ -22,7 +22,7 @@ function issueStocks($items,$author,$note,$locid)
         $req = $db->prepare($sql);
         $req->execute(array($item["PRODUCTID"]));
         $itemDetailLastReceive = $req->fetch(PDO::FETCH_ASSOC);
-        $THEQUANTITY = $item["QUANTITY1"];
+        $THEQUANTITY = $item["QUANTITY"];
         $totalamount += $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;       
      }
     $DOCNUM = $docnum;
@@ -88,7 +88,7 @@ function issueStocks($items,$author,$note,$locid)
     $line = 1;
     foreach($items as $item)
     {    
-        $THEQUANTITY = $item["QUANTITY1"];
+        $THEQUANTITY = $item["QUANTITY"];
 
         $sql = "SELECT PRODUCTNAME,PRODUCTNAME1,CATEGORYID,CLASSID,STKUM,PRICE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
