@@ -181,8 +181,23 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
 		else if ($type == "DEPRECIATION_CLEARER")
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
+
+		else if ($type == "WASTE_CREATOR")
+			$filename = "./img/waste_signatures/CRE_".$id.".png";
+		else if ($type == "WASTE_VALIDATOR")
+			$filename = "./img/waste_signatures/VAL_".$id.".png";
+		else if ($type == "WASTE_CLEARER")
+			$filename = "./img/waste_signatures/CRE_".$id.".png";
+
 		else if ($type == "EXTPAYMENTPAY")
 			$filename = "./img/externalpayment_signatures/PAY_".$id.".png";
+		else if ($type == "RRCRE")	
+			$filename = "./img/returnrecords_signatures/CRE_".$id.".png";
+		else if ($type == "RRVAL")	
+			$filename = "./img/returnrecords_signatures/VAL_".$id.".png";
+		else if ($type == "RRCLR")	
+			$filename = "./img/returnrecords_signatures/CLR_".$id.".png";
+
 		else
 			error_log("UNKNOWN TYPE :". $type);
 		
@@ -1532,7 +1547,7 @@ function getSaleByLocation($start,$end,$location)
 	,POSDETAIL.CATEGORYID	
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
 	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
-	,COUNT(dbo.POSDETAIL.PRODUCTID) AS 'COUNT'
+	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 	FROM dbo.POSDETAIL WHERE STORBIN LIKE ?
 	AND POSDATE BETWEEN ? AND ?
 	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID

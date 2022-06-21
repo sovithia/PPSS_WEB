@@ -156,8 +156,22 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/VAL_".$id.".png";
 		else if ($type == "DEPRECIATION_WITNESS")
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
-		else if ($type == "DEPRECIATION_CLEARER")
+		else if ($type == "DEPRECIATION_CLEARER")		
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
+
+		else if ($type == "WASTE_CREATOR")
+			$filename = "./img/waste_signatures/CRE_".$id.".png";
+		else if ($type == "WASTE_VALIDATOR")
+			$filename = "./img/waste_signatures/VAL_".$id.".png";
+		else if ($type == "WASTE_CLEARER")
+			$filename = "./img/waste_signatures/CRE_".$id.".png";
+
+		else if ($type == "RRCRE")	
+			$filename = "./img/returnrecords_signatures/CRE_".$id.".png";
+		else if ($type == "RRVAL")	
+			$filename = "./img/returnrecords_signatures/VAL_".$id.".png";
+		else if ($type == "RRCLR")	
+			$filename = "./img/returnrecords_signatures/CLR_".$id.".png";
 		else
 			error_log("UNKNOWN TYPE :". $type);
 		

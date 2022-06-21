@@ -911,7 +911,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	
 	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,VENDID,
 	(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'COST',
-	
+	(SELECT TOP(1) TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'DISCOUNT',
 	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
 	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,
 	(SELECT VENDNAME FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID) as 'VENDNAME',
@@ -4843,7 +4843,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		else if(isset($item["QUANTITY"]))
 			$THEQUANTITY = $item["QUANTITY"];
 		else
-			$THEQUANTITY = "0";
+			$THEQUANTITY = "0";		
 
 		$psql = "SELECT LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($psql);
@@ -4882,6 +4882,8 @@ function transferItems($items, $author,$type = "TRANSFER"){
 			$THEQUANTITY = $item["QUANTITY"];
 		else
 			$THEQUANTITY = "0";
+
+
 
 		$psql = "SELECT CATEGORYID,CLASSID,PRODUCTNAME,PRODUCTNAME1,SALEFACTOR,BIG_UNIT_FACTOR,STKFACTOR,COST,PRICE,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($psql);
@@ -6756,6 +6758,8 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	
 	$db=getDatabase();	
 	$date = $request->getParam('date','');
+
+	
 	$category = $request->getParam('category','ALL');
 	
 	$from = $date . ' 00:00:00.000';
@@ -6791,11 +6795,11 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);		
 	$result["ITEMS"] = $items;
-
-	// SALE 
 	
+	// SALE 
 	if($category == 'ALL'){
-		$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+		$sql = "SELECT ISNULL((SUM(TOTAL_AMT) - SUM(COST * QTY)),0) AS PROFIT, 
+				ISNULL(SUM(TOTAL_AMT),0) AS SALE
 					FROM POSDETAIL 			
 					WHERE POSDATE >= ?
 					AND POSDATE <= ?
@@ -6803,7 +6807,8 @@ $app->get('/salereport',function(Request $request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($from,$to));
 	}else{
-		$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+		$sql = "SELECT ISNULL((SUM(TOTAL_AMT) - SUM(COST * QTY)),0) AS PROFIT, 
+						ISNULL(SUM(TOTAL_AMT),0) AS SALE
 					FROM POSDETAIL 			
 					WHERE POSDATE >= ?
 					AND POSDATE <= ?
@@ -6814,13 +6819,21 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	}
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
-	$left = explode('.',$res["PROFIT"])[0];
-	$right = explode('.',$res["PROFIT"])[1];
-	$profit = $left.".".substr($right, 0,2);
+	if ($res["PROFIT"] != 0 && $res["PROFIT"] != "0"){
+		$left = explode('.',$res["PROFIT"])[0];
+		$right = explode('.',$res["PROFIT"])[1];
+		$profit = $left.".".substr($right, 0,2);
+	}else{
+		$profit = "N/A"; 
+	}
 
-	$left = explode('.',$res["SALE"])[0];
-	$right = explode('.',$res["SALE"])[1];
-	$sale = $left.".".substr($right, 0,2);
+	if ($res["SALE"] != 0 && $res["SALE"] != "0"){
+		$left = explode('.',$res["SALE"])[0];
+		$right = explode('.',$res["SALE"])[1];
+		$sale = $left.".".substr($right, 0,2);
+	}else{
+		$sale = "N/A";
+	}
 
 	$result["PROFIT"] = $profit;
 	$result["SALE"] = $sale;
@@ -8120,7 +8133,7 @@ $app->get('/wastedetails/{id}',function($request,Response $response) {
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
 	$id = $request->getAttribute('id');
-	$sql = "SELECT * FROM WASTEITEM WHERE DEPRECIATION_ID = ?";
+	$sql = "SELECT * FROM WASTEITEM WHERE WASTE_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));																			     
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8175,7 +8188,8 @@ $app->post('/waste', function($request,Response $response) {
 	$req->execute(array($type,$author,"CREATED"));
 	$lastId = $db->lastInsertId();
 	$db->commit();    
-	pictureRecord($json["CREATORSIGNATUREIMAGE"],"DEPRECIATION_CREATOR",$lastId);
+	if (isset($json["SIGNATURE"]))
+		pictureRecord($json["SIGNATURE"],"WASTE_CREATOR",$lastId);
 
 	foreach($items as $item)
 	{			
@@ -8190,7 +8204,7 @@ $app->post('/waste', function($request,Response $response) {
 		if ($res == false)
 		{	
 			$db->beginTransaction();    
-			$sql = "INSERT INTO WASTEITEM (PRODUCTID,QUANTITY,EXPIRATION,TYPE,DEPRECIATION_ID) 
+			$sql = "INSERT INTO WASTEITEM (PRODUCTID,QUANTITY,EXPIRATION,TYPE,WASTE_ID) 
 							VALUES (?,?,?,?,?)";
 			$req = $db->prepare($sql);
 			$req->execute(array($PRODUCTID,$QUANTITY,$EXPIRATION,$item["TYPE"],$lastId));			
@@ -8201,7 +8215,7 @@ $app->post('/waste', function($request,Response $response) {
 		{			
 			$sql = "UPDATE WASTEITEM 
 						SET QUANTITY = ?,
-							WASTE_ID  = ?,  							  
+							WASTE_ID  = ?  							  
 						WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($QUANTITY,$lastId,$PRODUCTID,$EXPIRATION));		
@@ -8234,16 +8248,17 @@ $app->put('/waste', function($request,Response $response) {
 		$sql = "UPDATE WASTE SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
-		if (isset($json["VALIDATORSIGNATUREIMAGE"]))
-			pictureRecord($json["VALIDATORSIGNATUREIMAGE"],"DEPRECIATION_VALIDATOR",$id);		
+		if (isset($json["SIGNATURE"]))
+			pictureRecord($json["SIGNATURE"],"WASTE_VALIDATOR",$id);		
 	}
 	else if ($status == "CLEARED"){
 		$sql = "UPDATE WASTE SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
-		pictureRecord($json["CLEARERSIGNATUREIMAGE"],"DEPRECIATION_CLEARER",$id);
+		if (isset($json["SIGNATURE"]))
+			pictureRecord($json["SIGNATURE"],"WASTE_CLEARER",$id);
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
 
-		$sql = "SELECT * FROM WASTEITEM WHERE DEPRECIATION_ID = ?";
+		$sql = "SELECT * FROM WASTEITEM WHERE WASTE_ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($id));
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9463,27 +9478,21 @@ $app->post('/returnrecord',function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute(array($VENDID,$VENDNAME,'CREATED',$TYPE,$AUTHOR,$NOTE));
 	$lastId = $db->lastInsertId();
-	$db->commit();    
-
+	$db->commit();   
+	
+	pictureRecord($json["SIGNATURE"],"RRCRE",$lastId);
+	
 	$items = $json["ITEMS"];
 	foreach($items as $item){
-		/*
-		$penalty = calculatePenalty($item["PRODUCTID"],$item["EXPIRATION"]);
-		if($penalty["status"] == "OK")
-			$penaltypercent = 0;
-		else 
-			$penaltypercent = $penalty["percent"];
-		*/
-		$sql = "INSERT INTO RETURNRECORDITEM (PRODUCTID,QUANTITY,EXPIRATION,STATUS,RETURNRECORD_ID) VALUES (?,?,?,?,?)";
+		
+		$sql = "INSERT INTO RETURNRECORDITEM (PRODUCTID,QUANTITY,EXPIRATION,STATUS,RETURNRECORD_ID,COST,VAT,DISCOUNT) VALUES (?,?,?,?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$lastId));
+		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],'REQUESTED',$lastId,$item["COST"],$item["VAT"],$item["DISCOUNT"]));
 	}
 
 	$sql = "DELETE FROM RETURNRECORDPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($USERID));
-
-
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -9530,6 +9539,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute(array($id));
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);		
+		pictureRecord($json["SIGNATURE"],"RRVAL",$id);
 
 		transferItems($items, $author,"TRANSFERBACK");
 		$data["VALIDATED"] = "1";
@@ -9539,11 +9549,9 @@ $app->put('/returnrecord',function($request,Response $response) {
 		$sql = "UPDATE RETURNRECORD SET STATUS = 'CLEARED' WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($id));
-	
-		//$sql = "SELECT * FROM RETURNRECORD WHERE ID = ?";
-		//$req = $db->prepare($sql);
-		//$req->execute(array());
-		//$returnrecord = $req->fetch(PDO::FETCH_ASSOC);
+			
+		pictureRecord($json["SIGNATURE"],"RRCLR",$id);
+
 		$items = $json["ITEMS"];
 		$locid = $json["LOCID"];
 		$note = $json["NOTE"];	
@@ -9551,16 +9559,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 		$toexchange = array();
 		$tocreditnote = array();
 
-		foreach($items as $item){
-			/*
-			$sql = "UPDATE RETURNRECORDITEM SET  STATUS = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["STATUS"],$item["PRODUCTID"],$item["EXPIRATION"]));			
-			if ($item["STATUS"] == "CREDITNOTE")
-				array_push($tocreditnote,$item);
-			else if($item["STATUS"] == "EXCHANGE")
-				array_push($toexchange,$item);
-			*/
+		foreach($items as $item){			
 			if ($item["RETURNQTY"] > 0){
 				$item["QUANTITY"] = $item["RETURNQTY"];
 				array_push($tocreditnote,$item);
@@ -9690,13 +9689,11 @@ $app->get('/returnrecorddetails/{id}',function($request,Response $response) {
 		$data = array();
 		foreach($items as $item){
 
-			$sql = "SELECT TOP(1)PRODUCTNAME,TRANDISC as 'DISCOUNT',TRANCOST as 'COST' FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+			$sql = "SELECT TOP(1)PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ? ORDER BY COLID DESC";
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$item["PRODUCTNAME"] = $res["PRODUCTNAME"] ?? "";
-			$item["COST"] = $res["COST"] ?? "0";
-			$item["DISCOUNT"] = $res["DISCOUNT"] ?? "0";
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"] ?? "";			
 			$item["TYPE"] = $type;
 			array_push($data,$item);
 		}
@@ -9755,9 +9752,10 @@ $app->post('/returnrecordpool', function($request,Response $response){
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res == false)
 	{
-		$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID) VALUES (?,?,?,?,?,?,?)";	
+		$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID,COST,VAT,DISCOUNT) VALUES (?,?,?,?,?,?,?,?,?,?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],$json["VENDNAME"],$json["USERID"]));
+		$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],
+							$json["VENDNAME"],$json["USERID"],$json["COST"],$json["VAT"],$json["DISCOUNT"]));
 		$result["result"] = "OK";
 	}
 	else
@@ -9772,14 +9770,16 @@ $app->post('/returnrecordpool', function($request,Response $response){
 			$req->execute(array($json["USERID"],$json["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res != false){
-				$sql = "UPDATE RETURNRECORDPOOL SET QUANTITY = ?,EXPIRATION = ? WHERE USERID = ? AND PRODUCTID = ?";	
+				$sql = "UPDATE RETURNRECORDPOOL SET QUANTITY = ?,EXPIRATION = ?,COST = ?,VAT = ?,DISCOUNT = ? WHERE USERID = ? AND PRODUCTID = ?";	
 				$req = $db->prepare($sql);
-				$req->execute(array($json["QUANTITY"],$json["EXPIRATION"],$json["USERID"], $json["PRODUCTID"]));
+				$req->execute(array($json["QUANTITY"],$json["EXPIRATION"],$json["COST"],$json["VAT"],$json["DISCOUNT"],			
+									$json["USERID"],$json["PRODUCTID"]));
 			}
 			else{
-				$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID) VALUES (?,?,?,?,?,?,?)";	
+				$sql = "INSERT INTO RETURNRECORDPOOL (PRODUCTID,PRODUCTNAME,QUANTITY,EXPIRATION,VENDID,VENDNAME,USERID,COST,VAT,DISCOUNT) VALUES (?,?,?,?,?,?,?,?,?,?)";	
 				$req = $db->prepare($sql);
-				$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],$json["VENDNAME"],$json["USERID"]));
+				$req->execute(array($json["PRODUCTID"],$json["PRODUCTNAME"],$json["QUANTITY"],$json["EXPIRATION"],$json["VENDID"],
+									$json["VENDNAME"],$json["USERID"],$json["COST"],$json["VAT"],$json["DISCOUNT"]));
 			}
 			$result["result"] = "OK";
 		}else{

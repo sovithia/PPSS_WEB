@@ -782,7 +782,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
 				$item["ORDER_QTY"] = $item["ORDERQTY"];
 
-		$sql = "SELECT CATEGORYID,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT CATEGORYID,PRICE,STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -804,9 +804,9 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$REFERENCE = "Receive PO " . $PONumber;
 		$COMMENT = '';
 		$TRANQTY = $item["ORDER_QTY"];
-		$TRANUNIT = "UNIT";
+		$TRANUNIT = $res["STKUM"];
 		$TRANFACTOR = "1";
-		$STKUNIT =  "UNIT";
+		$STKUNIT =  $res["STKUM"];
 		$STKFACTOR =  "1";
 		// GENERAL DISCOUNT
 		if ($DISCOUNT != 0)
@@ -1110,6 +1110,11 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$req->execute(
 			array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
 
+		$sql = "SELECT STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
 		$VENDID =  $theVENDID;
 		$VOUCHERNO = sprintf("VO%013d",$APNUM);
 		$VENDNAME = $theVENDNAME; 
@@ -1129,7 +1134,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$COST_CENTER =  "";
 		$FREIGHTSG =  0;
 		$INSURSG =   0;
-		$TRANUNIT =   "UNIT";
+		$TRANUNIT =   $res["STKUM"];
 		$TRANFACTOR =  "1";
 		$CURR_ID =   "USD";
 		$BASECURR_ID =  "USD";

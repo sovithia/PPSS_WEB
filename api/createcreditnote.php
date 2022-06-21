@@ -31,10 +31,14 @@ function createCreditNote($items,$author,$locid,$note){
     $req->execute(array());
 
 	$firstItem = $items[0];
-	$sql = "SELECT ICPRODUCT.VENDID,APVENDOR.VENDNAME,APVENDOR.VENDNAME1,APVENDOR.TAX FROM ICPRODUCT,APVENDOR WHERE  PRODUCTID = ?";
+	$sql = "SELECT ICPRODUCT.VENDID,APVENDOR.VENDNAME,APVENDOR.VENDNAME1,APVENDOR.TAX 
+			FROM ICPRODUCT,APVENDOR 
+			WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+			AND PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($firstItem["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+
 
 	if ($res != false && floatval($res["TAX"])  > 0.0)
 		$HAVEVAT = true;
@@ -46,23 +50,19 @@ function createCreditNote($items,$author,$locid,$note){
 	$currency_amount = 0;
 	$currency_vatamount = 0;
 	$currency_receiveamount = 0;
+	$currency_amountwithdiscount = 0;
 	$VAT_AMT = 0;
-	foreach($items as $item){
-		$sql = "SELECT CURRENCY_COST,TRANDISC,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));		
-		$oneitem = $req->fetch(PDO::FETCH_ASSOC);
-		if ($oneitem != false)
-			$amt = ($item["QUANTITY"] * $oneitem["CURRENCY_COST"]) * ( (100 - $oneitem["TRANDISC"]) / 100);
-		else
-			$amt = 0;
+	foreach($items as $item){				
+		$amt = ($item["QUANTITY"] * $item["COST"]) * ( (100 - $item["DISCOUNT"]) / 100);
+		
 
 		$purchase_amt += $amt;
 		$receive_amt +=  $amt; 
-		$currency_amount -= $amt;
-		if ($oneitem != false)
-			$currency_vatamount -= $oneitem["CURRENCY_COST"] * ((100 - $oneitem["VAT_PERCENT"])/100); 			
-		$currency_receiveamount -= $amt;		
+		$currency_amount += $amt;		
+		$currency_vatamount += (  $item["COST"] - ($item["COST"] * ($item["DISCOUNT"]/100)) ) *    ($item["VAT"]/100) * $item["QUANTITY"]; 			
+		$currency_receiveamount += $amt;		
+		//$currency_amountwithdiscount += ($item["COST"] * ((100 - $item["DISCOUNT"])/100)) * $item["QUANTITY"];
+		$currency_amountwithdiscount += ($item["QUANTITY"] * $item["COST"]) * ( (100 - $item["DISCOUNT"]) / 100);								    
 	}
 	
 
@@ -71,8 +71,8 @@ function createCreditNote($items,$author,$locid,$note){
 	$VENDNAME1 = $res["VENDNAME1"] ?? "";
 	$PODATE = $today;
 	$LOCID = $locid;
-	$PURCHASE_AMT = $purchase_amt;
-	$RECEIVE_AMT = $receive_amt;
+	$PURCHASE_AMT = round(($purchase_amt  + ($purchase_amt * ($res["TAX"]/100))) * -1,2);
+	$RECEIVE_AMT = round(($receive_amt + ($receive_amt * ($res["TAX"]/100))) * -1,2);
 	$TERMID = "";
 	$TERM_DAYS = 0;
 	$TERM_DISC = 0;
@@ -91,19 +91,21 @@ function createCreditNote($items,$author,$locid,$note){
 	$EST_ARRIVAL = $today;
 	$REQUIRE_DATE = $today;
 	$REQUESTBY	= "";
-	$VAT_AMT = $currency_vatamount;
+	$VAT_AMT = round($currency_vatamount,2);
 	$REFERENCE = $note;
 
 	$DISC_PERCENT = "0";
 
 	$FILEID = "";
 	$BASECURR_ID = "USD";
-	$CURRENCY_AMOUNT = $currency_amount;
-	$CURRENCY_VATAMOUNT = $currency_vatamount;
-	$CURRENCY_RECEIVEAMOUNT = $currency_receiveamount;
+	$CURRENCY_AMOUNT = round(($currency_amount + $currency_vatamount) * -1,2); 
+	$CURRENCY_VATAMOUNT =  round($currency_vatamount * -1,2); 
+	$CURRENCY_RECEIVEAMOUNT = round(($currency_receiveamount + $currency_vatamount) * -1,2);
 	$DISC_AMT_HEADER = 0;
 	$COST_ADD_HEADER = 0;
 	$COST_ADD_HEADER2 = 0;
+
+	$BUYER = "";
 
 	$sql = "INSERT INTO POHEADER (
 					PONUMBER,VENDID,VENDNAME,VENDNAME1,PODATE,
@@ -113,7 +115,8 @@ function createCreditNote($items,$author,$locid,$note){
 					CURR_RATE,CURRID,EST_ARRIVAL,REQUIRE_DATE,REQUESTBY,
 					VAT_AMT,REFERENCE,DISC_PERCENT,FILEID,BASECURR_ID,
 					CURRENCY_AMOUNT,CURRENCY_VATAMOUNT,CURRENCY_RECEIVEAMOUNT,DISC_AMT_HEADER,COST_ADD_HEADER,
-					COST_ADD_HEADER2) 
+					COST_ADD_HEADER2,BUYER
+					) 
 					VALUES (?,?,?,?,?,
 							?,?,?,?,?,
 							?,?,?,?,?,
@@ -121,7 +124,7 @@ function createCreditNote($items,$author,$locid,$note){
 							?,?,?,?,?,
 							?,?,?,?,?,
 							?,?,?,?,?,
-							?)";
+							?,?)";
 
     $req = $db->prepare($sql);
 	
@@ -132,39 +135,31 @@ function createCreditNote($items,$author,$locid,$note){
 					   $CURR_RATE,$CURRID,$EST_ARRIVAL,$REQUIRE_DATE,$REQUESTBY,
 					   $VAT_AMT,$REFERENCE,$DISC_PERCENT,$FILEID,$BASECURR_ID,
 					   $CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,$CURRENCY_RECEIVEAMOUNT,$DISC_AMT_HEADER, $COST_ADD_HEADER,
-					   $COST_ADD_HEADER2
+					   $COST_ADD_HEADER2,$BUYER
 				));	
 	
 	$linecount = 1;
 	foreach($items as $item){
 
-		$sql = "SELECT ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT ONHAND,PRODUCTNAME,PRODUCTNAME1,STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
-		$oneItem = $req->fetch(PDO::FETCH_ASSOC);
-
-		$sql = "SELECT TRANCOST,EXTCOST,TRANDISC,VAT_PERCENT,PRODUCTNAME,PRODUCTNAME1 
-				FROM PORECEIVEDETAIL 
-				WHERE PRODUCTID = ? 
-				ORDER BY DATEADD DESC";
-		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"])); 
-		$receiveDetail = $req->fetch(PDO::FETCH_ASSOC);
+		$oneItem = $req->fetch(PDO::FETCH_ASSOC);		
 
 		$PURCHASE_DATE = $today;
 		$PRODUCTID = $item["PRODUCTID"];
-		$PRODUCTNAME = $receiveDetail["PRODUCTNAME"] ?? "";
-		$PRODUCTNAME1 = $receiveDetail["PRODUCTNAME1"] ?? "";
+		$PRODUCTNAME = $oneItem["PRODUCTNAME"] ?? "";
+		$PRODUCTNAME1 = $oneItem["PRODUCTNAME1"] ?? "";
 		$ORDER_QTY = $item["QUANTITY"] * -1;//  ?
 		$RECEIVE_QTY = $item["QUANTITY"] * -1;  //  ?
-		$TRANUNIT = "UNIT";
+		$TRANUNIT = $oneItem["STKUM"];
 		$TRANFACTOR = 1;
 		$STKFACTOR = 1;
-		$STKUNIT = "UNIT";		
-		$TRANDISC = $receiveDetail["TRANDISC"] ?? "0";
+		$STKUNIT = $oneItem["STKUM"];		
+		$TRANDISC = $item["DISCOUNT"] ?? "0";
 
-		$TRANCOST = $receiveDetail["TRANCOST"] ?? "0"; 
-		$EXTCOST =  ($receiveDetail["TRANCOST"] ?? "0")* $item["QUANTITY"] * -1; 
+		$TRANCOST = $item["COST"];
+		$EXTCOST =  ((($item["COST"]* $item["QUANTITY"])  - (($item["COST"] * ($item["DISCOUNT"]/100)) * $item["QUANTITY"]) )) * -1; 
 		$CURRENTONHAND = $oneItem["ONHAND"] ?? "0";
 		$CURR_RATE = 1;
 		$CURRID = "USD";
@@ -173,27 +168,31 @@ function createCreditNote($items,$author,$locid,$note){
 		$COST_ADD = 0;
 		$TRANLINE = $linecount;
 		$VATABLE = "Y";
-		$VAT_PERCENT = $receiveDetail["VAT_PERCENT"] ?? "0";
+		$VAT_PERCENT = $item["VAT"];
 		$POSTATUS = "R";
 		$BASECURR_ID = "USD";
-		$CURRENCY_AMOUNT = ($receiveDetail["TRANCOST"] ?? "0") * $item["QUANTITY"] * -1; 
-		$CURRENCY_COST = $receiveDetail["TRANCOST"] ?? "0";
+		$CURRENCY_AMOUNT = $EXTCOST;
+		$CURRENCY_COST = $item["COST"] ?? "0";
 		$USERADD = $author;
 		$DATEADD = $today;
+		$COMMENT = "";
+		$FILEID = "";
+
+		
 		$sql = "INSERT INTO PODETAIL (PONUMBER,VENDID,VENDNAME,VENDNAME1,PURCHASE_DATE,
 						LOCID,PRODUCTID,PRODUCTNAME,PRODUCTNAME1,ORDER_QTY,						
 						RECEIVE_QTY,TRANUNIT,TRANFACTOR,STKFACTOR,STKUNIT,
 						TRANDISC,TRANCOST,EXTCOST,CURRENTONHAND,CURR_RATE,
 						CURRID,WEIGHT,OLDWEIGHT,COST_ADD,TRANLINE,						
 						VATABLE,VAT_PERCENT,POSTATUS,BASECURR_ID,CURRENCY_AMOUNT,
-						CURRENCY_COST,USERADD,DATEADD ) 
+						CURRENCY_COST,USERADD,DATEADD,COMMENT,FILEID) 
 						VALUES (?,?,?,?,?,
 								?,?,?,?,?,
 								?,?,?,?,?,
 								?,?,?,?,?,
 								?,?,?,?,?,
 								?,?,?,?,?,
-								?,?,?)";
+								?,?,?,?,?)";
 
 		$req = $db->prepare($sql);				
 		$params = array($PONUMBER,$VENDID,$VENDNAME,$VENDNAME1,$PURCHASE_DATE,
@@ -202,10 +201,9 @@ function createCreditNote($items,$author,$locid,$note){
 	   					$TRANDISC,$TRANCOST,$EXTCOST,$CURRENTONHAND,$CURR_RATE,
 	   					$CURRID,$WEIGHT,$OLDWEIGHT,$COST_ADD,$TRANLINE,
 	   					$VATABLE,$VAT_PERCENT,$POSTATUS,$BASECURR_ID,$CURRENCY_AMOUNT,
-	   					$CURRENCY_COST,$USERADD,$DATEADD);	
+	   					$CURRENCY_COST,$USERADD,$DATEADD,$COMMENT,$FILEID);	
 		
-		$req->execute($params);		
-		
+		$req->execute($params);			
 		$linecount++;		
 	}
 
@@ -214,21 +212,24 @@ function createCreditNote($items,$author,$locid,$note){
 	$req->execute(array($VENDID));
 	$vendordetails = $req->fetch(PDO::FETCH_ASSOC);
 
-	
 	$sql = "SELECT num1 FROM SYSDATA WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $APNUM = intval($res["num1"]);    
-	$theDOCNO = sprintf("VO%013d",$APNUM); 
+	$VOUCHERNO = sprintf("VO%013d",$APNUM); 
+
+	$sql = "UPDATE SYSDATA SET  num1=num1 + 1  WHERE sysid = 'AP'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
 
 
-	$DOCNUM =  $theDOCNO;
+	$DOCNUM =  $VOUCHERNO;
 	$FLOCID = $locid;
 	$REFERENCE = "Return PO " . $PONUMBER;
 	$TRANDATE = $today;
 	$TRANTYPE = "I";	 
-	$TOTAL_AMT = $CURRENCY_AMOUNT;
+	$TOTAL_AMT = $currency_amount * -1;
 	$PCNAME = "Application";
 	$CURRID = "USD";
 	$CURR_RATE = 1;	
@@ -248,7 +249,7 @@ function createCreditNote($items,$author,$locid,$note){
 	$TOTAL_MONEYREWARD = 0;
 	$ARACC = "";
 	$BASECURR_ID = "USD";
-	$CURRENCY_AMOUNT = $currency_amount;
+	$CURRENCY_AMOUNT = $currency_amount * -1;
 	$PURPOSE_ISSUE = "";
 	$JOB_ID = "";	
 	$USERADD = $author;
@@ -279,21 +280,15 @@ function createCreditNote($items,$author,$locid,$note){
 						$BASECURR_ID,$CURRENCY_AMOUNT,$PURPOSE_ISSUE,$JOB_ID,$USERADD,
 						$DATEADD));
 	
-	$linenum = 1;	
-	$_AMT_WITHOUTDISCOUNT = 0;
-	$_AMT_WITHDISCOUNT = 0;
-	$_AMT_VAT = 0;
+	$linenum = 1;		
+	
 	foreach($items as $item){
-		$sql = "SELECT CATEGORYID,CLASSID,ONHAND,PRODUCTNAME,PRODUCTNAME1,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT CATEGORYID,CLASSID,ONHAND,PRODUCTNAME,PRODUCTNAME1,PRICE,STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$oneItem = $req->fetch(PDO::FETCH_ASSOC);
 
-		$sql = "SELECT TRANDISC,TRANCOST,VAT_PERCENT,CURRENCY_COST FROM PORECEIVEDETAIL WHERE ICPRODUCT = ? ORDER BY TRANDATE DESC";
-		$req = $db->prepare($sql);
-		$receiveDetail = $req->fetch(PDO::FETCH_ASSOC);
-
-		$DOCNUM = $theDOCNO; 
+		$DOCNUM = $VOUCHERNO;
 		$PRODUCTID = $item["PRODUCTID"];
 		$LOCID = $locid;
 		$CATEGORYID = $oneItem["CATEGORYID"] ?? "";
@@ -309,25 +304,25 @@ function createCreditNote($items,$author,$locid,$note){
 		$REFERENCE = "Return PO " . $PONUMBER;
 		$COMMENT = "";
 		$TRANQTY = $item["QUANTITY"] * -1;
-		$TRANUNIT = "UNIT";
+		$TRANUNIT = $oneItem["STKUM"];
 		$TRANFACTOR = 1;
-		$STKUNIT = "UNIT";
+		$STKUNIT = $oneItem["STKUM"];
 		$STKFACTOR = 1;
-		$TRANDISC = $receiveDetail["TRANDISC"] ?? 0;
-		$TRANTAX =  $receiveDetail["VAT_PERCENT"] ?? 0;
-		$TRANCOST = $receiveDetail["TRANCOST"] ?? 0;
+		$TRANDISC = $item["DISCOUNT"] ?? 0;
+		$TRANTAX =  $item["VAT"] ?? 0;
+		$TRANCOST = $item["COST"] ?? 0;
 		$TRANPRICE = $oneItem["PRICE"] ?? 0;
 		$PRICE_ORI = $oneItem["PRICE"] ?? 0;
 		$EXTPRICE = ($oneItem["PRICE"] ?? 0) * $item["QUANTITY"] * -1;
 		$EXTCOST = $TRANCOST * $item["QUANTITY"] * -1;
 		$CURRENTONHAND = $oneItem["ONHAND"] ?? 0;
-		$CURRID = "CURRID";
+		$CURRID = "USD";
 		$CURR_RATE = 1;
 		$WEIGHT = 1;
 		$OLDWEIGHT = 0;
 		$APPLID = "PO";
-		$CURRENTCOST = $oneItem["TRANCOST"] ?? 0;
-		$LASTCOST = $oneItem["TRANCOST"] ?? 0;
+		$CURRENTCOST = $item["COST"] ?? 0;
+		$LASTCOST = $item["COST"] ?? 0;
 
 		$COST_ADD = 0;
 		$COST_RIEL = 0;
@@ -374,7 +369,7 @@ function createCreditNote($items,$author,$locid,$note){
 		$COST_METHOD = "AG";
 		$BASECURR_ID = "USD";		
 		$CURRENCY_AMOUNT = $TRANCOST * ((100 - $TRANDISC)/100) * $item["QUANTITY"] * -1; // ?
-		$CURRENCY_COST = $TRANCOST *  $item["QUANTITY"] * -1;
+		$CURRENCY_COST = $TRANCOST;
 		$CURRENCY_COST_ADD = 0;
 		$CURRENCY_EXTPRICE = 0;
 		$CURRENCY_PRICE = 0;
@@ -382,14 +377,9 @@ function createCreditNote($items,$author,$locid,$note){
 		$PURPOSE_ISSUE = "";
 		$JOB_ID = "";
 		$ROW_ID = 0;
-		$MAIN_PRODUCTID = $oneItem["PRODUCTID"] ?? "";
+		$MAIN_PRODUCTID = $item["PRODUCTID"];
 		$USERADD = $author;
-		$DATEADD = $today;
-	
-		$_AMT_VAT += ((100 - ($receiveDetail["VAT_PERCENT"] ?? 0) )/100) * ($receiveDetail["CURRENCY_COST"] ?? 0) * $item["QUANTITY"];
-		// Calculate amount
-		$_AMT_WITHOUTDISCOUNT += $CURRENCY_COST;
-		$_AMT_WITHDISCOUNT += $CURRENCY_AMOUNT;
+		$DATEADD = $today;		
 
 		$sql = "INSERT INTO ICTRANDETAIL (
 						DOCNUM,PRODUCTID,LOCID,CATEGORYID,CLASSID,
@@ -456,29 +446,10 @@ function createCreditNote($items,$author,$locid,$note){
 					);
 		$linenum++;
 
-		$TRANDATEGT = "";//?
-		$TRANDATELT = "";//?
-		$TRANTYPE = "";//?
-		$IS_PROCESS = "";//?
-
-		$sql = "UPDATE ICTRANDETAIL 
-		set TRANCOST = EXTCOST/TRANQTY,
-		TRANCOST_NEW = EXTCOST/TRANQTY,
-		TRANEXTCOST_NEW = EXTCOST,
-		CURRENCY_COST = EXTCOST/TRANQTY
-		WHERE TRANDATE>= ? 
-		AND TRANDATE <= ? 
-		AND PRODUCTID = ?  
-		AND (TRANTYPE = ? AND IS_PROCCESS = ?)";
-
-		$req = $db->prepare($sql);
-		$req->execute(array(
-			$TRANDATEGT,$TRANDATELT,$item["PRODUCTID"],$TRANTYPE,$IS_PROCESS
-		)); 
 	}
-		//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
-		//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
-		$theGLNO = date('y').date('m')."00000".$GLNUM;		
+	//****** IF VENDOR NOT VAT INSERT 2LINE (17000) AND (20000)***************************
+	//****** IF VENDOR HAS VAT INSERT 3 LINE (17000) AND (16100) AND (20000) ********
+		$theGLNO = date('y').date('m')."0000".$GLNUM;		
 				
 		$GLNO = $theGLNO;
 		$LINNO = "1";
@@ -487,10 +458,10 @@ function createCreditNote($items,$author,$locid,$note){
 		$GLYEAR = $todayYear;
 		$GLMONTH = $todayMonth;
 		$ACCNO = "17000";
-		$GLAMT = $_AMT_WITHDISCOUNT;
+		$GLAMT = $currency_amountwithdiscount * -1;
 		$DEBIT = 0;
-		$CREDIT = $_AMT_WITHDISCOUNT;
-		$DOCNO = $theDOCNO;
+		$CREDIT = $currency_amountwithdiscount * -1;
+		$DOCNO = $VOUCHERNO;
 		$USERADD = $author;
 		$DATEADD = $today;
 		$GLPOST = "N";
@@ -531,10 +502,10 @@ function createCreditNote($items,$author,$locid,$note){
 			$GLYEAR = $todayYear;
 			$GLMONTH = $todayMonth;
 			$ACCNO = "16100";
-			$GLAMT = $_AMT_VAT;
+			$GLAMT = $currency_vatamount;
 			$DEBIT = 0;
-			$CREDIT = $_AMT_VAT;
-			$DOCNO =  $theDOCNO;;
+			$CREDIT = $currency_vatamount;
+			$DOCNO =  $VOUCHERNO;
 			$USERADD = $author;
 			$DATEADD = $today;
 			$GLPOST = "N";
@@ -579,10 +550,10 @@ function createCreditNote($items,$author,$locid,$note){
 		$GLMONTH = $todayMonth;
 		$ACCNO = "20000";
 
-		$GLAMT = $_AMT_WITHDISCOUNT + $_AMT_VAT;
-		$DEBIT = $_AMT_WITHDISCOUNT + $_AMT_VAT;
+		$GLAMT = $currency_amountwithdiscount * -1;
+		$DEBIT = $currency_amountwithdiscount * -1;
 		$CREDIT = 0;
-		$DOCNO = $theDOCNO;
+		$DOCNO = $VOUCHERNO;
 		$USERADD = $author;
 		$DATEADD = $today;
 		$GLPOST = "N";
@@ -618,7 +589,7 @@ function createCreditNote($items,$author,$locid,$note){
 		
 
 
-
+	
 	foreach($items as $item)
 	{
 		
@@ -638,21 +609,19 @@ function createCreditNote($items,$author,$locid,$note){
 		AND PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["QUANTITY"],$item["QUANTITY"],$LASTUSE,$locid,$PRODUCTID));
-	}
-
-		
+	}	
 
 	/*
 	****** IF VENDOR NOT VAT INSERT 1 LINE (21400)**************************
 	****** IF VENDOR HAS VAT INSERT 2 LINE (21400) AND (16100)************
 	*/
 	//$VENDID;
-	$VOUCHERNO = $theDOCNO;
+	$VOUCHERNO = $VOUCHERNO;
 	$TRANDATE = $today;
 	$LINENUM = "1";
 	$ACCNO = "21400";
 
-	$AMOUNT = $_AMT_WITHDISCOUNT;
+	$AMOUNT = $currency_amountwithdiscount;
 	$PERIOD = $todayMonth;
 	$YEAR = $todayYear;
 	$BATCH = "";
@@ -665,7 +634,7 @@ function createCreditNote($items,$author,$locid,$note){
 	$BATCHDATE = $today;
 
 	$FILEID = "";	
-	$CURR_AMOUNT = $_AMT_WITHDISCOUNT; //??
+	$CURR_AMOUNT = $currency_amountwithdiscount; 
 	$CURR_RATE = 1;
 	$OPERATION_BASE = "";	
 	$BASECURR_ID = "";
@@ -697,12 +666,12 @@ function createCreditNote($items,$author,$locid,$note){
 	{
 		// IF VAT
 		//VENDID
-		$VOUCHERNO = $theDOCNO;
+		$VOUCHERNO = $VOUCHERNO;
 		$TRANDATE = $today;
 		$LINENUM = "2";
 		$ACCNO = "16100";
 
-		$AMOUNT = $_AMT_VAT * -1;
+		$AMOUNT = $currency_vatamount * -1;
 		$PERIOD = $todayMonth;
 		$YEAR = $todayYear;
 		$BATCH = "";
@@ -715,7 +684,7 @@ function createCreditNote($items,$author,$locid,$note){
 		$BATCHDATE = $today;
 
 		$FILEID = "";
-		$CURR_AMOUNT = $_AMT_VAT * -1;
+		$CURR_AMOUNT = $currency_vatamount * -1;
 		$CURR_RATE = 1;
 		$OPERATION_BASE = "";
 		$BASECURR_ID = "USD";
@@ -744,12 +713,12 @@ function createCreditNote($items,$author,$locid,$note){
 	}
 
 
-	$BALANCE = $_AMT_WITHDISCOUNT + $_AMT_VAT; // ??
+	$BALANCE = $currency_amountwithdiscount + $currency_vatamount; // ??
 	$sql = "UPDATE APVENDOR SET BALANCE = BALANCE - ? WHERE VENDID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($BALANCE,$VENDID));
 	
-	//PONUMBER
+	//PONUMBER;
 	//VENDID
 	$TOADDRESS1 = "";
 	$TOVENDID = "";
@@ -777,6 +746,154 @@ function createCreditNote($items,$author,$locid,$note){
 		$PONUMBER,$VENDID,$TOADDRESS1,$TOVENDID,$TOPHONE1,
 		$TOFAXNO,$TOCOUNTRY,$TOCITY,$ADDRESS1,$COUNTRY,
 		$PHONE1,$FAXNO,$CITY,$USERADD,$DATEADD));
+
+
+	//$VENDID;
+	//$VOUCHERNO;
+	$SUPPLIER_INVOICE = "";
+	$TRANDATE =     $today;
+	$DUEDATE =      $today;
+	//$VENDNAME; 
+	//$VENDNAME1;
+	$APSTATUS =      "";
+	$VAT_AMT =      $currency_vatamount * -1; 
+	//$VAT_PERCENT;
+	$INV_AMT =      round($currency_amountwithdiscount + $currency_vatamount, 2) * -1;
+	$PAID_AMT =      "0";
+	$BALANCE =      round($currency_amountwithdiscount + $currency_vatamount, 2) * -1;
+	$PCNAME =      "APPLICATION";
+	$CURR_RATE =    "1";   
+	$REMARK =      $note;
+	$TERMID =      '';
+	$TERM_DAYS =     0;
+	$TERM_DISC =     0;
+	$TERM_NET =      0;
+	$VOUCHER_DESC =    "Return PO";
+	$VOUCHER_DESC1 = '';
+	$REFERENCE =    $PONUMBER;
+	$VATNO =     '';
+	//$PONUMBER;
+	$APACCOUNT =     "20000";
+	$DISC_PERCENT =     "0"; 
+	$TAXACC_OUT =    "16100";
+	$FILEID =       '';
+	$EXPENSE_TYPE = '';
+	$DOCUMENTDATE = '';
+	$LOCID =       $locid;
+	$CURR_ID =      "USD";
+	$BASECURR_ID =   "USD";
+	$CURRENCY_AMOUNT =  $INV_AMT;
+	$CURRENCY_VATAMOUNT = round($currency_vatamount,2) * -1;
+	$CURRENCY_BALANCE =  $BALANCE;
+	$CURRENCY_PAIDAMT =   "0";
+	$DATEADD =   $today;
+	$USERADD = 	$author;
+
+	$sql  =	"INSERT INTO APHEADER (
+			VENDID,VOUCHERNO,SUPPLIER_INVOICE,TRANDATE,DUEDATE,
+			VENDNAME,VENDNAME1,APSTATUS,VAT_AMT,VAT_PERCENT,
+			INV_AMT, PAID_AMT,BALANCE,PCNAME,CURR_RATE,
+			REMARK,TERMID,TERM_DAYS,TERM_DISC,TERM_NET,				
+			VOUCHER_DESC,VOUCHER_DESC1,REFERENCE,VATNO,PONUMBER,
+			APACCOUNT, DISC_PERCENT,TAXACC_OUT,FILEID,EXPENSE_TYPE,
+			DOCUMENTDATE,LOCID,CURR_ID,BASECURR_ID,CURRENCY_AMOUNT,
+			CURRENCY_VATAMOUNT,CURRENCY_BALANCE,CURRENCY_PAIDAMT,DATEADD,USERADD) 
+			values (
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?,
+			?,?,?,?,?)";	
+	$req = $db->prepare($sql);
+	$req->execute(array(
+		$VENDID,$VOUCHERNO,$SUPPLIER_INVOICE,$TRANDATE,$DUEDATE,
+		$VENDNAME,$VENDNAME1,$APSTATUS,$VAT_AMT,$VAT_PERCENT,
+		$INV_AMT,$PAID_AMT,$BALANCE,$PCNAME,$CURR_RATE,
+		$REMARK,$TERMID,$TERM_DAYS,$TERM_DISC,$TERM_NET,
+		$VOUCHER_DESC,$VOUCHER_DESC1,$REFERENCE,$VATNO,$PONUMBER,
+		$APACCOUNT,$DISC_PERCENT,$TAXACC_OUT,$FILEID,$EXPENSE_TYPE,
+		$DOCUMENTDATE,$LOCID,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,
+		$CURRENCY_VATAMOUNT,$CURRENCY_BALANCE,$CURRENCY_PAIDAMT,$DATEADD,$USERADD
+	));
+		
+
+	$line = 1;
+	foreach($items as $item)
+	{
+		$sql = "SELECT PRODUCTNAME,PRODUCTNAME1,STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$itemDetail = $req->fetch(PDO::FETCH_ASSOC);
+
+		$sql = "SELECT TOP(1) TRANCOST,CURRENCY_COST,CURRENCY_AMOUNT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY FILEID DESC";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$receiveDetail = $req->fetch(PDO::FETCH_ASSOC);
+		//$VENDID;
+		//$VOUCHERNO;
+		//$VENDNAME;
+		//$VENDNAME1;
+		//$PONUMBER;
+
+		$TRANDATE =  $today;
+		$APSTATUS = "";
+		$TRANCOST =   $receiveDetail["TRANCOST"]; //  Last cost of Item
+		$PURCHASEDATE = $today;
+		$LINENUM =   $line;
+
+		$PRODUCTID =  $item["PRODUCTID"];
+		$PRODUCTNAME = $itemDetail["PRODUCTNAME"]; 
+		$PRODUCTNAME1 = $itemDetail["PRODUCTNAME1"]; 
+		$TRANQTY =   $item["QUANTITY"];
+		$DIMENSION =  0;
+		$FILEID =    "";  
+		$COST_CENTER =  "";
+		$FREIGHTSG =  0;
+		$INSURSG =   0;
+		$TRANUNIT =   $itemDetail["STKUM"];		
+
+		$TRANFACTOR =  "1";
+		$CURR_ID =   "USD";
+		$BASECURR_ID =  "USD";
+		$CURRENCY_AMOUNT = round($receiveDetail["CURRENCY_AMOUNT"], 2);
+		$CURRENCY_COST = $receiveDetail["CURRENCY_COST"];
+
+		$AMOUNT =  round($receiveDetail["CURRENCY_AMOUNT"], 2);
+		$CURR_RATE =  "1";
+		$DATEADD =   $today;
+		$USERADD =   $author;
+
+		$sql = "INSERT INTO APPO(		
+		VENDID,VOUCHERNO,VENDNAME,VENDNAME1,PONUMBER,
+		TRANDATE,APSTATUS,TRANCOST,PURCHASEDATE,LINENUM,
+		PRODUCTID,PRODUCTNAME,PRODUCTNAME1,TRANQTY,DIMENSION,
+		FILEID,COST_CENTER,FREIGHTSG,INSURSG,TRANUNIT,
+		TRANFACTOR,CURR_ID,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,
+		AMOUNT,CURR_RATE,DATEADD,USERADD) 
+		values (?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?,?,
+				?,?,?,?)";
+
+		
+		$req = $db->prepare($sql);
+		$req->execute(array(
+		$VENDID,$VOUCHERNO,$VENDNAME,$VENDNAME1,$PONUMBER,    
+		$TRANDATE,$APSTATUS,$TRANCOST,$PURCHASEDATE,$LINENUM,     
+		$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$TRANQTY,$DIMENSION, 
+		$FILEID,$COST_CENTER,$FREIGHTSG,$INSURSG,$TRANUNIT,    
+		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
+		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD
+		));		
+
+		$line++;		
+	}	
+
 	return $PONUMBER;
 }
 
