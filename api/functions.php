@@ -191,10 +191,17 @@ function pictureRecord($base64Str,$type,$id){
 
 		else if ($type == "EXTPAYMENTPAY")
 			$filename = "./img/externalpayment_signatures/PAY_".$id.".png";
+		
+			//VALIDATED,TOTRANSFER,TRANSFERED,CLEARED
+
 		else if ($type == "RRCRE")	
 			$filename = "./img/returnrecords_signatures/CRE_".$id.".png";
 		else if ($type == "RRVAL")	
 			$filename = "./img/returnrecords_signatures/VAL_".$id.".png";
+		else if ($type == "RRTTR")	
+			$filename = "./img/returnrecords_signatures/TTR_".$id.".png";			
+		else if ($type == "RRTRA")	
+			$filename = "./img/returnrecords_signatures/TRA_".$id.".png";
 		else if ($type == "RRCLR")	
 			$filename = "./img/returnrecords_signatures/CLR_".$id.".png";
 

@@ -1,20 +1,21 @@
 <?php
 function issueStocks($items,$author,$note,$locid)
 { 
-    
-    $dbBLUE = getDatabase("TRAINING");
-    
+        
+    $db = getDatabase("TRAINING");
     $author = blueUser($author);
-    $db = getDatabase();
+    
     $now = date("Y-m-d H:i:s");
     $nowdate = date("Y-m-d");
 
     $sql = "SELECT num2 FROM SYSDATA where sysid = 'IC'";
-	$req = $dbBLUE->prepare($sql);
+	$req = $db->prepare($sql);
 	$req->execute(array());	
 	$num2 = $req->fetch(PDO::FETCH_ASSOC)["num2"];
 	$newID = intval($num2);
 	$docnum = sprintf("IS%013d",$newID);
+
+    
 
     $totalamount = 0;
     foreach($items as $item){    
@@ -31,7 +32,7 @@ function issueStocks($items,$author,$note,$locid)
     $REFERENCE = $note;
     $TRANDATE = $now;
     $TRANTYPE = "I";
-    $TOTAL_AMT = $totalamount;
+    $TOTAL_AMT = $totalamount * -1;
     $PCNAME = "APPLICATION";
     $CURRID = "USD";
     $CURR_RATE = "1";
@@ -52,7 +53,7 @@ function issueStocks($items,$author,$note,$locid)
     $TOTAL_MONEYREWARD = 0;
     $ARACC = "";
     $BASECURR_ID = "USD";
-    $CURRENCY_AMOUNT = $totalamount; 
+    $CURRENCY_AMOUNT = $totalamount * -1; 
     $PURPOSE_ISSUE = "";
     $JOB_ID = "";
     $USERADD = $author;
@@ -115,7 +116,7 @@ function issueStocks($items,$author,$note,$locid)
         $PRODUCTNAME1 = $itemDetail["PRODUCTNAME1"];
         $REFERENCE = $note; 
         $COMMENT = ""; 
-        $TRANQTY = $item["QUANTITY"];
+        $TRANQTY = $item["QUANTITY"] * -1;
         $TRANUNIT = $itemDetail["STKUM"];
         $TRANFACTOR = 1;
         $STKUNIT = $itemDetail["STKUM"];;
@@ -126,13 +127,14 @@ function issueStocks($items,$author,$note,$locid)
         $TRANPRICE = $itemDetail["PRICE"];
         $PRICE_ORI = $itemDetail["PRICE"];
         
-        $EXTPRICE = $itemDetail["PRICE"] * $THEQUANTITY;
-        $EXTCOST = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
+        $EXTPRICE = ($itemDetail["PRICE"] * $THEQUANTITY) * -1;
+        $EXTCOST = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
         $CURRENTONHAND = $itemDetail["ONHAND"];    
         $CURRID = "USD";
         $CURR_RATE = 1;
         $CUSTID = "";
         $VENDID = "";    
+
         $WEIGHT = 1;
         $OLDWEIGHT = 1;
         $APPLID = "IC";
@@ -140,21 +142,21 @@ function issueStocks($items,$author,$note,$locid)
         $LASTCOST = $itemDetailLastReceive["TRANCOST"];
         $COST_ADD = 0;
         $COST_RIEL = 0;
-        $LINK_LINE = $line;
+        $LINK_LINE = $line - 1;
         $ICCLEARING_ACC = "77000";
         $INVENTORY_ACC = "17000";
-        $COSG_ACC = "Blank";
+        $COSG_ACC = "";
         $DIMENSION = 1;
         $FILEID = "";
         $IS_CHANGE_AVGCOST = "";
         $WASTE_QTY = 0;
         $PRODUCT_PRODUCTID = "";
         $IS_PROCCESS = "";
-        $EXPIRED_DATE = null;
-        $TRANQTY_NEW = $item["QUANTITY"];
+        $EXPIRED_DATE = date('Y-m-d', 0);
+        $TRANQTY_NEW = $item["QUANTITY"] * -1; 
         $TRANCOST_NEW = $itemDetailLastReceive["TRANCOST"];
-        $TRANEXTCOST_NEW = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
-        $LINE_DISCAMT = "";
+        $TRANEXTCOST_NEW = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1 ;
+        $LINE_DISCAMT = 0; // ??
         $COST_CENTER = "";
         $LINE_NOTE = "";
         $CASE_PRODUCTID = "";
@@ -170,10 +172,10 @@ function issueStocks($items,$author,$note,$locid)
         $LDC = 0;
         $FREIGHT_SG = 0;
         $INSUR_SG = 0;
-        $RECEIVENO = 0;
+        $RECEIVENO = '';
         $OTHER_PRICE = 0;
         $PO_COLID = 0;
-        $RETURN_DATE = null;
+        $RETURN_DATE = date('Y-m-d', 0);
         $BORROW_NUMBER = "";
         $CHANGE_REWARD = "";
         $MONEY_REWARD = 0;
@@ -183,10 +185,10 @@ function issueStocks($items,$author,$note,$locid)
         $REWARD_UNIT = "";
         $COST_METHOD = "AG";
         $BASECURR_ID = "USD";
-        $CURRENCY_AMOUNT = $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;
+        $CURRENCY_AMOUNT = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
         $CURRENCY_COST = $itemDetailLastReceive["TRANCOST"];
         $CURRENCY_COST_ADD = 0;
-        $CURRENCY_EXTPRICE = $itemDetail["PRICE"] * $THEQUANTITY;
+        $CURRENCY_EXTPRICE = ($itemDetail["PRICE"] * $THEQUANTITY) * -1;
         $CURRENCY_PRICE = $itemDetail["PRICE"];
         $FF_LF_INDEX = 0;
         $PURPOSE_ISSUE = "";
@@ -200,22 +202,23 @@ function issueStocks($items,$author,$note,$locid)
         $sql = "INSERT INTO ICTRANDETAIL (
                 DOCNUM,PRODUCTID,LOCID,CATEGORYID,CLASSID,
                 BATCHNO,SERIAL,TIERID,TRANDATE,TRANTYPE,
-                LINENUM,PRODUCTNAME,PRODUCTNAME1,REFERENCE,COMMENT,
+                LINENUM,PRODUCTNAME,PRODUCTNAME1,REFERENCE,COMMENT,                
                 TRANQTY,TRANUNIT,TRANFACTOR,STKUNIT,STKFACTOR,
                 TRANDISC,TRANTAX,TRANCOST,TRANPRICE,PRICE_ORI,
                 EXTPRICE,EXTCOST,CURRENTONHAND,CURRID,CURR_RATE,
                 CUSTID,VENDID,WEIGHT,OLDWEIGHT,APPLID,
                 CURRENTCOST,LASTCOST,COST_ADD,COST_RIEL,LINK_LINE,
-                ICCLEARING_ACC,INVENTORY_ACC,COSG_ACC,DIMENSION,FILEID
+                ICCLEARING_ACC,INVENTORY_ACC,COSG_ACC,DIMENSION,FILEID,
                 IS_CHANGE_AVGCOST,WASTE_QTY,PRODUCT_PRODUCTID,IS_PROCCESS,EXPIRED_DATE,
-                TRANQTY_NEW,TRANCOST_NEW,TRANEXTCOST_NEW,LINE_DISCAMT,COST_CENTER,
+                TRANQTY_NEW,TRANCOST_NEW,TRANEXTCOST_NEW,LINE_DISCAMT,COST_CENTER,                
                 LINE_NOTE,CASE_PRODUCTID,CASE_QTY,POSSTAT,DECL1,
                 FOB,FREIGHT,INSUR,DECL2,DUTY_VAT,
                 MCC_EXP,LDC,FREIGHT_SG,INSUR_SG,RECEIVENO,
                 OTHER_PRICE,PO_COLID,RETURN_DATE,BORROW_NUMBER,CHANGE_REWARD,
-                MONEY_REWARD,IS_MONEY_REWARD,PACK_RECEIVE,PACK_UNIT,REWARD_UNIT
-                COST_METHOD,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,CURRENCY_COST_ADD
-                CURRENCY_EXTPRICE,CURRENCY_PRICE,FF_LF_INDEX,PURPOSE_ISSUE,JOB_ID
+                MONEY_REWARD,IS_MONEY_REWARD,PACK_RECEIVE,PACK_UNIT,REWARD_UNIT,
+                COST_METHOD,BASECURR_ID,CURRENCY_AMOUNT,CURRENCY_COST,CURRENCY_COST_ADD,
+                CURRENCY_EXTPRICE,CURRENCY_PRICE,FF_LF_INDEX,PURPOSE_ISSUE,JOB_ID,
+
                 ROW_ID,MAIN_PRODUCTID,USERADD,DATEADD,USEREDIT,
                 DATEEDIT) 
                 VALUES (
@@ -240,6 +243,34 @@ function issueStocks($items,$author,$note,$locid)
                         ?,?,?,?,?,
                         ?
                 )";
+        $req = $db->prepare($sql);
+
+        $req->execute(array(
+            $DOCNUM,$PRODUCTID,$LOCID,$CATEGORYID,$CLASSID,
+            $BATCHNO,$SERIAL,$TIERID,$TRANDATE,$TRANTYPE,
+            $LINENUM,$PRODUCTNAME,$PRODUCTNAME1,$REFERENCE,$COMMENT,
+            $TRANQTY,$TRANUNIT,$TRANFACTOR,$STKUNIT,$STKFACTOR,
+            $TRANDISC,$TRANTAX,$TRANCOST,$TRANPRICE,$PRICE_ORI,
+            $EXTPRICE,$EXTCOST,$CURRENTONHAND,$CURRID,$CURR_RATE,
+            $CUSTID,$VENDID,$WEIGHT,$OLDWEIGHT,$APPLID,
+            $CURRENTCOST,$LASTCOST,$COST_ADD,$COST_RIEL,$LINK_LINE,
+            $ICCLEARING_ACC,$INVENTORY_ACC,$COSG_ACC,$DIMENSION,$FILEID,
+            $IS_CHANGE_AVGCOST,$WASTE_QTY,$PRODUCT_PRODUCTID,$IS_PROCCESS,$EXPIRED_DATE,
+            $TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,$LINE_DISCAMT,$COST_CENTER,
+            $LINE_NOTE,$CASE_PRODUCTID,$CASE_QTY,$POSSTAT,$DECL1,
+            $FOB,$FREIGHT,$INSUR,$DECL2,$DUTY_VAT,
+            $MCC_EXP,$LDC,$FREIGHT_SG,$INSUR_SG,$RECEIVENO,
+            $OTHER_PRICE,$PO_COLID,$RETURN_DATE,$BORROW_NUMBER,$CHANGE_REWARD,
+            $MONEY_REWARD,$IS_MONEY_REWARD,$PACK_RECEIVE,$PACK_UNIT,$REWARD_UNIT,
+            $COST_METHOD,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,$CURRENCY_COST_ADD,
+            $CURRENCY_EXTPRICE,$CURRENCY_PRICE,$FF_LF_INDEX,$PURPOSE_ISSUE,$JOB_ID,
+            $ROW_ID,$MAIN_PRODUCTID,$USERADD,$DATEADD,$USEREDIT,
+            $DATEEDIT
+
+        ));
+
+
+
        
         $sql = "UPDATE ICPRODUCT set ONHAND = ONHAND - ?,TOTALUSE = TOTALUSE + ? WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
@@ -272,8 +303,8 @@ function issueStocks($items,$author,$note,$locid)
     $GLYEAR = date("Y");
     $GLMONTH = date("m"); 
     $ACCNO = 77000;
-    $GLAMT = $totalamount;
-    $DEBIT = $totalamount;
+    $GLAMT = round($totalamount,2);
+    $DEBIT = round($totalamount,2);
     $CREDIT = 0;
     $DOCNO = $docnum;
     $USERADD = $author;
@@ -292,14 +323,12 @@ function issueStocks($items,$author,$note,$locid)
     $OTHER_PRICE = 0;
     $LINK_LINE = 0;
 
-
-
     $sql = "INSERT INTO GLTRAN (
     GLNO,LINNO,GLDESC,GLDATE,GLYEAR,
     GLMONTH,ACCNO,GLAMT,DEBIT,CREDIT,
     DOCNO,USERADD,DATEADD,GLPOST,GLTYPE,
     APPID,REMARKS,CUSTID,VENDID,FILEID,
-    COST_CENTER,IS_UPDATED,LOCAID,CLEAR_AMOUNT,OTHER_PRICE,
+    COST_CENTER,IS_UPDATED,LOCID,CLEAR_AMOUNT,OTHER_PRICE,
     LINK_LINE
     ) 
     VALUES (
@@ -309,7 +338,19 @@ function issueStocks($items,$author,$note,$locid)
     ?,?,?,?,?,
     ?,?,?,?,?,
     ?)";
-      
+    $req = $db->prepare($sql);
+    $req->execute(array(
+        $GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,
+        $GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,
+        $DOCNO,$USERADD,$DATEADD,$GLPOST,$GLTYPE,
+        $APPID,$REMARKS,$CUSTID,$VENDID,$FILEID,
+        $COST_CENTER,$IS_UPDATED,$LOCID,$CLEAR_AMOUNT,$OTHER_PRICE,
+        $LINK_LINE
+
+    ));
+
+
+
     $GLNO = $theGLNO;
     $LINNO = 2;
     $GLDESC = "Issue";
@@ -317,9 +358,9 @@ function issueStocks($items,$author,$note,$locid)
     $GLYEAR = date("Y");
     $GLMONTH = date("m");
     $ACCNO = "17000";
-    $GLAMT = $totalamount;
+    $GLAMT = round($totalamount,2);
     $DEBIT = 0;
-    $CREDIT = $totalamount;
+    $CREDIT = round($totalamount,2);
     $DOCNO = $docnum;
     $USERADD = $author;
     $DATEADD = $now;
@@ -346,9 +387,16 @@ function issueStocks($items,$author,$note,$locid)
         ?,?,?,?,?,
         ?,?,?,?,?,
         ?,?,?,?,?,
-        ?,?,?,?
+        ?,?,?,?)
     ";
-      
+     $req = $db->prepare($sql);
+     $req->execute(array(
+        $GLNO,$LINNO,$GLDESC,$GLDATE,$GLYEAR,
+        $GLMONTH,$ACCNO,$GLAMT,$DEBIT,$CREDIT,
+        $DOCNO,$USERADD,$DATEADD,$APPID,$REMARKS,
+        $CUSTID,$VENDID,$FILEID,$COST_CENTER,$IS_UPDATED,
+        $LOCID,$CLEAR_AMOUNT,$OTHER_PRICE,$LINK_LINE
+     ));
 
     $sql = "UPDATE SYSDATA SET NUM1=NUM1+1 WHERE ltrim(rtrim(SYSID))='AR'";
     $req = $db->prepare($sql);
@@ -358,6 +406,7 @@ function issueStocks($items,$author,$note,$locid)
     $sql = "UPDATE SYSDATA SET NUM2=NUM2+1 WHERE ltrim(rtrim(SYSID))='IC'";
     $req = $db->prepare($sql);
     $req->execute(array());
-    
+        
+    return $DOCNUM;
 } 
 ?>

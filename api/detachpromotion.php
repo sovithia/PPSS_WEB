@@ -11,7 +11,7 @@ function getDatabase($name = "MAIN")
 function detachPromotion()
 {
     $db = getDatabase();
-    $sql = "UPDATE ICLOCATION SET DISC_PERCENT = 0 
+    $sql = "UPDATE ICLOCATION SET DISC_PERCENT = 0,DATEEDIT = GETDATE() 
             WHERE LOCID = 'WH1'
             AND PRODUCTID IN (SELECT PRODUCTID FROM ICPRODUCT WHERE DISCABLE = 1)                        
            ";
