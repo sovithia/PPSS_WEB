@@ -891,6 +891,29 @@ $app->post('/itemdetails', function(Request $request,Response $response) {
 
 
 /************** COMMON ***************/
+function updateCost($barcode)
+{
+	$db=getDatabase();
+	$sql = "SELECT PPSS_NEW_COST,PPSS_NEW_COST_DATE FROM ICPRODUCT WHERE PRODUCTID = ? AND PPSS_NEW_COST_DATE < GETDATE() ";
+	$req = $db->prepare($sql);
+	$item = $req->fetch(PDO::FETCH_ASSOC);
+	if($item != false && $item["PPSS_NEW_COST"] != null && $item["PSS_NEW_COST_DATE"] != null){
+		$sql = "SELECT TOP(1) ID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($req != false){
+			$sql = "UPDATE PORECEIVEDETAIL SET TRANCOST = ? WHERE ID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($item["PPSS_NEW_COST"],$res["ID"]));
+
+			$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST = null, PPSS_NEW_COST_DATE = null WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($barcode));
+		}
+	}
+}
+
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
 	$conn=getDatabase();
 	$barcode = $request->getAttribute('barcode');	 
@@ -904,7 +927,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$check = "WH2";
 	}
 	
-	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,VENDID,
+	$sql="SELECT PRODUCTID,OTHERCODE,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,PPSS_IS_BLACKLIST,PPSS_NEW_COST,VENDID,PPSS_NEW_COST,PPSS_NEW_COST_DATE,ACTIVE,
 	(SELECT TOP(1) TRANCOST FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'COST',
 	isnull((SELECT TOP(1) TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),0) as 'DISCOUNT',
 	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
@@ -2160,7 +2183,6 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	$author = isset($json["author"]) ? blueUser($json["author"]) : "";
 	$now = date("Y-m-d H:i:s");
 
-
 	$comment = isset($json["comment"]) ? $json["comment"] : ""; 
 
 	if ($field == "PRODUCTNAME" || $field == "PRODUCTNAME1" || $field == "CATEGORYID" ||
@@ -2189,14 +2211,11 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$req = $db->prepare($sql);
 		$imagePath = "Y:\\".$barcode.".jpg";	
 		$req->execute(array($imagePath,$barcode));
-		   
 	}
 	else if ($field == "STOREBIN1"){ // MEDIUM
-		
 		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH1' ";
 		$req = $db->prepare($sql);
 		$result = $req->execute(array($value,$barcode) );	
-	
 	}
 	else if ($field == "STOREBIN2"){ // MEDIUM
 		$sql = "UPDATE ICLOCATION SET STORBIN = ? WHERE PRODUCTID = ? AND LOCID = 'WH2' ";
@@ -2210,6 +2229,16 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 	}
 	else if ($field == "PPSS_NEW_COST"){
 		$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST = ? WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$result = $req->execute(array($value,$barcode) );			
+		if (isset($json["extra"])){
+			$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST_DATE = ? WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$result = $req->execute(array($json["extra"],$barcode) );			
+		}
+	}
+	else if ($field == "ACTIVE"){
+		$sql = "UPDATE ICPRODUCT SET ACTIVE = ? WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$result = $req->execute(array($value,$barcode) );			
 	}
@@ -2941,15 +2970,25 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 
 			$resp["message"] = "Po created and received with number ".$ponumber;
 			
+			$invoiceCount = 0;
+			
+
 			$db->beginTransaction();
-			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'NOPO','YES')"; // LEAVE NBINVOICES TO ZERO
+			$sql = "INSERT INTO SUPPLY_RECORD (PONUMBER,PURCHASER_USER, VENDID,VENDNAME, PODATE , STATUS,TYPE, AUTOVALIDATED) VALUES (?,?,?,?,?,?,'NOPO','YES')"; 
 			$req = $db->prepare($sql);
 			$req->execute(array($ponumber, $author, $vendorid, $vendname, $now,$status));
 			$supplyrecordid = $db->lastInsertId();
 			$db->commit(); 
 
-			if (isset($json["INVOICEJSONDATA"]))
-				pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$supplyrecordid);
+			if (isset($json["INVOICEJSONDATA"])){
+				$invoiceCount = pictureRecord($json["INVOICEJSONDATA"],"INVOICES",$supplyrecordid);
+				$sql = "UPDATE SUPPLY_RECORD SET NBINVOICES = ? WHERE ID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($invoiceCount,$supplyrecordid));
+			}
+				
+
+			
 
 			if ($json["TYPE"] ==  "NOPOPOOL"){
 				$sql = "DELETE FROM SUPPLYRECORDNOPOPOOL WHERE USERID = ?";
@@ -11915,7 +11954,7 @@ $app->post('/pricechange',function ($request,Response $response){
 	$req = $dbBLUE->prepare($sql);
 	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$STORBIN = $res["STORBIN"];
+	$STORBIN = $res["STORBIN"] ?? "";
 	$STORBIN = explode('-',$STORBIN)[0];
 
 	$sql = "SELECT * FROM USER WHERE LOCATION LIKE ?"; 

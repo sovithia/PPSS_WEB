@@ -3,7 +3,7 @@
 
 // ITEMS : PRODUCTID,QUANTITY
 function createCreditNote($items,$author,$locid,$note){
-	$db = getDatabase("TRAINING");
+	$db = getDatabase();
 
 	$sql = "SELECT num2 FROM SYSDATA WHERE sysid = 'PO'";
     $req = $db->prepare($sql);

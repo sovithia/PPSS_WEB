@@ -2,7 +2,7 @@
 function issueStocks($items,$author,$note,$locid)
 { 
         
-    $db = getDatabase("TRAINING");
+    $db = getDatabase();
     $author = blueUser($author);
     
     $now = date("Y-m-d H:i:s");

@@ -113,6 +113,7 @@ function pictureRecord($base64Str,$type,$id){
 				$count++;
 			}			
 		}
+		return $count - 1;
 	}
 	else if ($type == "WASTEPOOLPROOFS")
 	{
