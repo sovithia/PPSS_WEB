@@ -896,27 +896,31 @@ function updateCost($barcode)
 	$db=getDatabase();
 	$sql = "SELECT PPSS_NEW_COST,PPSS_NEW_COST_DATE FROM ICPRODUCT WHERE PRODUCTID = ? AND PPSS_NEW_COST_DATE < GETDATE() ";
 	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
 	$item = $req->fetch(PDO::FETCH_ASSOC);
-	if($item != false && $item["PPSS_NEW_COST"] != null && $item["PSS_NEW_COST_DATE"] != null){
-		$sql = "SELECT TOP(1) ID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+
+	if($item != false && $item["PPSS_NEW_COST"] != null && $item["PPSS_NEW_COST_DATE"] != null){
+		
+		$sql = "SELECT TOP(1) PONUMBER,PRODUCTID FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 		$req = $db->prepare($sql);
-		$req->execute(array());
+		$req->execute(array($barcode));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($req != false){
-			$sql = "UPDATE PORECEIVEDETAIL SET TRANCOST = ? WHERE ID = ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($item["PPSS_NEW_COST"],$res["ID"]));
+			//$sql = "UPDATE PORECEIVEDETAIL SET TRANCOST = ? WHERE PONUMBER = ? AND PRODUCTID = ?";
+			//$req = $db->prepare($sql);
+			//$req->execute(array($item["PPSS_NEW_COST"],$res["PONUMBER"],$res["PRODUCTID"]));
 
-			$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST = null, PPSS_NEW_COST_DATE = null WHERE PRODUCTID = ?";
+			$sql = "UPDATE ICPRODUCT SET PPSS_NEW_COST = null, PPSS_NEW_COST_DATE = null,PPSS_NEW_COST_FINAL = ? WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($barcode));
+			$req->execute(array($item["PPSS_NEW_COST"],$barcode));
 		}
 	}
 }
 
 $app->get('/item/{barcode}',function(Request $request,Response $response) {    
-	$conn=getDatabase();
+	$conn=getDatabase();	
 	$barcode = $request->getAttribute('barcode');	 
+	updateCost($barcode);
 	$check = "NO";
 	if (substr($barcode,0,1) == 'X'){
 		$barcode = substr($barcode, 1);
@@ -3082,6 +3086,8 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$message = "";
 	foreach($items as $item)
 	{
+		updateCost($item["PRODUCTID"]);
+
 		if (!isset($item["TAX"]))
 			$item["TAX"] = 0;
 
@@ -3119,6 +3125,19 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 				$item["COST"] = $res["TRANCOST"];
 			else
 				$item["COST"] = "0";		
+		}
+
+		$sql = "SELECT PPSS_NEW_COST_FINAL FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false && $res["PPSS_NEW_COST_FINAL"] != null){
+			$item["COST"] = $res["PPSS_NEW_COST_FINAL"];
+			
+			if (isset($data["message"]))
+				$data["message"] .= "|".$item["PRODUCTID"]." NEW COST : ".$res["PPSS_NEW_COST_FINAL"];					
+			else
+				$data["message"] = $item["PRODUCTID"]."  NEW COST : ".$res["PPSS_NEW_COST_FINAL"];
 		}
 
 		if(!isset($item["VAT"]))
@@ -7991,7 +8010,8 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'STEP1' WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($id));
-
+		$in30days = strtotime('+30 days');
+		$in30days = date("Y-m-d",$in30days);
 		if ($item["LINKTYPE1"] == "SYSTEM")
 			attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$today,$in30days,$author);	
 	}else if ($status == "FINISHED"){
@@ -8275,7 +8295,7 @@ $app->post('/waste', function($request,Response $response) {
 		{			
 			$sql = "UPDATE WASTEITEM 
 						SET QUANTITY = ?,
-							WASTE_ID  = ?,  							  
+							WASTE_ID  = ? 							  
 						WHERE PRODUCTID = ? AND EXPIRATION = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($QUANTITY,$lastId,$PRODUCTID,$EXPIRATION));		
@@ -9293,7 +9313,26 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 });
 
 
+$app->put('/expire',function($request,Response $response) {
+	$dbBlue = getDatabase();
+	$json = json_decode($request->getBody(),true);
+	$PRODUCTID = $json["PRODUCTID"];
+	$EXPIRE = $json["EXPIRATION"];
 
+	$sql = "SELECT TOP(1)PONUMBER FROM PODETAIL WHERE PRODUCTID = ? ORDER BY FILEID DESC";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($PRODUCTID));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res != false){
+		$PONUMBER = $res["PONUMBER"];
+		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_EXPIRE = ? WHERE PONUMBER = ? AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($EXPIRE,$PONUMBER,$PRODUCTID));
+	}
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 
 $app->get('/depreciationsearch',function($request,Response $response) {
@@ -12294,6 +12333,96 @@ $app->get('/pushone/{userid}',function(Request $request,Response $response){
 	return $response;
 });
 
+$app->get('/promotion/{productid}', function(Request $request,Response $response){
+	$db = getDatabase();
+	$productid = $request->getAttribute('productid');
+	$data = array();
+
+	$sql="SELECT PRODUCTNAME,
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+	COST,PRICE
+	FROM dbo.ICPRODUCT  
+	WHERE BARCODE = ? OR OTHERCODE = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid,$productid));
+	$item = $req->fetch(PDO::FETCH_ASSOC);
+	if ($item != false){
+		$data["PRODUCTNAME"] = $item["PRODUCTNAME"];
+		$data["WH1"] = $item["WH1"];
+		$data["WH2"] = $item["WH2"];
+		$data["COST"] = $item["COST"];
+		$data["PRICE"] = $item["PRICE"];
+
+	}
+	$db = getDatabase();
+	$sql = "SELECT PROSTARTDATE,PROENDDATE,PROPRICE, FROM ICGROUPPRICE WHERE PRODUCTID = ? AND PROENDDATE > GETDATE() ";
+	$req = $db->prepare($sql);
+	$res = $req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	
+	if ($res != false)
+	{
+		$data["TYPE"] = "AMOUNT";
+		$data["START"] = $res["PROSTARTDATE"];
+		$data["END"] = $res["PROENDDATE"];
+		$data["VALUE"] = $item["PRICE"] - $res["PROPRICE"];
+	}
+	else{
+		$sql = "SELECT TOP(1)DISCOUNT_VALUE,DATEFROM,DATETO  FROM ICNEWPROMOTION WHERE DISCOUNT_TYPE = 'DISCOUNT(%)' AND PRODUCTID = ? AND DATETO > GETDATE() ORDER BY DATETO DESC";  
+		$req = $db->prepare($sql);		
+		$req->execute(array($productid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$data["TYPE"] = "PERCENT";
+			$data["START"] = $res["DATEFROM"];
+			$data["END"] = $res["DATETO"];
+			$data["VALUE"] = "DISCOUNT_VALUE";
+
+		}else{
+			$data["TYPE"] = "N/A";
+			$data["START"] = "N/A";
+			$data["END"] = "N/A";
+			$data["VALUE"] = "N/A";
+		}
+	}		
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->post('/promotion',function(Request $request,Response $response){
+	$db = getDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$productid = $json["PRODUCTID"];
+	$value = $json["VALUE"];
+	$start = 	$json["START"];
+	$end = 	$json["END"];
+	
+	$author = $json["AUTHOR"];
+	
+	if ($json["TYPE"] == "AMOUNT"){				
+		attachAmountPromotion($productid,$value,$start,$end,$author);
+	}else if ($json["TYPE"] == "PERCENT"){
+		attachPromotion($productid,$value,$start,$end,$author);
+	}	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->delete('/promotion/{productid}',function(Request $request,Response $response){
+	$db = getDatabase();
+	$id = $request->getAttribute('productid');
+
+	endPromotion($id);
+	$resp = array();
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 
 function calculateLastDay($year,$month)
 {	 
@@ -12339,7 +12468,7 @@ function calculateLastDay($year,$month)
 }
 
 // We always compare with previous month
-$app->get('/storeclerkkpi',function(Request $request,Response $response){
+$app->get('/grade',function(Request $request,Response $response){
 	
 	$db = getInternalDatabase();
 	$dbBLUE=getDatabase();	
@@ -12444,12 +12573,16 @@ $app->get('/storeclerkkpi',function(Request $request,Response $response){
 	}			
 	//- Number of itemCode Transfered
 	$data["LOCATIONS"] = $user["location"];
+	
 	$data["LASTMONTHSALE"] = $LASTMONTHSALE;
 	$data["CURRENTMONTHSALE"] = $CURRENTMONTHSALE;
+
 	$data["LASTMONTHPRICECHANGE"] = $LASTMONTHPRICECHANGE;
 	$data["CURRENTMONTHPRICECHANGE"] = $CURRENTMONTHPRICECHANGE;
+	
 	$data["LASTMONTHPROMOTION"] = $LASTMONTHPROMOTION;
 	$data["CURRENTMONTHPROMOTION"] = $CURRENTMONTHPROMOTION;
+	
 	$data["LASTMONTHTRANSFERS"] = $LASTMONTHTRANSFERS;
 	$data["CURRENTMONTHTRANSFERS"] = $CURRENTMONTHTRANSFERS;
 

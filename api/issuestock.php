@@ -143,7 +143,7 @@ function issueStocks($items,$author,$note,$locid)
         $COST_ADD = 0;
         $COST_RIEL = 0;
         $LINK_LINE = $line - 1;
-        $ICCLEARING_ACC = "77000";
+        $ICCLEARING_ACC = "87000";
         $INVENTORY_ACC = "17000";
         $COSG_ACC = "";
         $DIMENSION = 1;
@@ -302,7 +302,7 @@ function issueStocks($items,$author,$note,$locid)
     $GLDATE = $nowdate;
     $GLYEAR = date("Y");
     $GLMONTH = date("m"); 
-    $ACCNO = 77000;
+    $ACCNO = 87000;
     $GLAMT = round($totalamount,2);
     $DEBIT = round($totalamount,2);
     $CREDIT = 0;

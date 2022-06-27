@@ -1253,6 +1253,28 @@ function calculatePenalty($barcode, $expiration,$type = null){
 }
 
 // TODO
+function attachAmountPromotion($productid,$discount,$start,$end,$author){
+	$db=getDatabase();
+	$sql = "DELETE FROM ICGROUPPRICE WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+
+	$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$price = $res["PRICE"];
+	$newprice = $price - $discount;
+
+	$sql = "INSERT INTO ICGROUPPRICE (GROUPID,PRODUCTID,PROSTARTDATE,PROENDDATE,PROMOTIONTYPE,
+						PRODISCOUNT,PROPRICE,USERADD,DATEADD) 
+						values(?,?,?,?,?,
+							   ?,?,?,GETDATE())";
+	$req = $db->prepare($sql);
+	$req->execute(array("CASH",$productid,$start,$end,'PRICE',
+						$discount,$newprice,$author));	
+}
+
 function attachPromotion($productid,$percent,$start,$end,$author){
 
 	$PRODUCTNAME = "";
@@ -1293,11 +1315,12 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 
 function endPromotion($productid){
 	$db=getDatabase();
+	$sql = "DELETE FROM ICGROUPPRICE WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
 	$sql = "UPDATE ICNEWPROMOTION SET REMARKS = DATETO,DATETO = DATEFROM WHERE REMARKS = 'APPLICATION' AND PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($productid));
-
-
 }
 
 
