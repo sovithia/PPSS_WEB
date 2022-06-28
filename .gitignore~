@@ -9,6 +9,8 @@ api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
 api/img/requestaction/*
 api/img/depreciation_signatures/*
+api/img/waste_signatures/*
+api/img/returnrecords_signatures/*
 api/img/promo_proofs/*
 api/img/promo_signatures/*
 api/img/promopool_proofs/*

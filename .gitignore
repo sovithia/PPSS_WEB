@@ -1,10 +1,8 @@
+*.DS_Store
+*.DS_Store?
+tmp.jpg
 public/*
-.DS_Store
-intra/.DS_Store
-intra/images/.DS_Store
 intra/images/products/*
-api/.DS_Store
-api/img/.DS_Store
 api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
 api/img/requestaction/*
@@ -25,19 +23,10 @@ api/tmp.png
 intra/data.xlsx
 intra/.DS_Store
 intra/.DS_Store
-.DS_Store
-.DS_Store
 culture/Meeting_Culture.mov
 culture/Company_Culture_EN.pdf
 culture/Company_Culture _KH.pdf
 db/_SuperStore.sqlite
 WIS_SERVER/node_modules/*
-intra/css/.DS_Store
-intra/js/.DS_Store
-intra/css/.DS_Store
-intra/.DS_Store
-.DS_Store
-api/.DS_Store
-api/img/.DS_Store
-api/tmp.jpg
-api/tmp.jpg
+
+
