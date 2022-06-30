@@ -126,12 +126,14 @@ function getInternalDatabase($base = "MAIN")
                 $req = $db->prepare($sql);
                 $req->execute(array($lastID,$item["PRODUCTID"]));
                 $res = $req->fetch(PDO::FETCH_ASSOC);
-
+                
                 if ($res == false){
                     echo "inserting ".$item["PRODUCTID"]."\n";	        
                     $sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
                     $req = $db->prepare($sql);
                     $req->execute(array($item["PRODUCTID"],$item["WH2"],"AUTOMATIC",$lastID));
+                }else{
+                    echo $item["PRODUCTID"]." ALREADY IN LIST.\n";
                 }
                 
              }             

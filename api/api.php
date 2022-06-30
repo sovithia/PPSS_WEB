@@ -3111,7 +3111,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$decision = $stats["DECISION"] ?? "";
 		$specialqty = $item["SPECIALQTY"] ?? "";
 		$stats = orderStatistics($item["PRODUCTID"]);
-		if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && specialqty == "" || $specialqty == null) )
+		if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
 		{
 			$message .= "\n".$item["PRODUCTID"]." Not Added";
 			continue;
@@ -6834,30 +6834,30 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	$from = $date . ' 00:00:00.000';
 	$to = $date . ' 23:59:59.999';
 	$sql = "SELECT 
-	dbo.POSDETAIL.PRODUCTID
-	,dbo.POSDETAIL.PRODUCTNAME
-	,dbo.POSDETAIL.PRODUCTNAME1
-	,dbo.POSDETAIL.PRICE
-	,dbo.ICPRODUCT.COST
-	,dbo.POSDETAIL.CATEGORYID
-	,dbo.ICPRODUCT.COLOR	
-	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
-	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'
+	POSDETAIL.PRODUCTID
+	,POSDETAIL.PRODUCTNAME
+	,POSDETAIL.PRODUCTNAME1
+	,ICPRODUCT.PRICE
+	, isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 4))   FROM PORECEIVEDETAIL WHERE PRODUCTID = POSDETAIL.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'COST'
+	,POSDETAIL.CATEGORYID
+	,ICPRODUCT.COLOR	
+	,(SELECT LOCONHAND FROM ICLOCATION  WHERE LOCID = 'WH1' AND ICLOCATION.PRODUCTID = POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM ICLOCATION  WHERE LOCID = 'WH2' AND ICLOCATION.PRODUCTID = POSDETAIL.PRODUCTID) as  'WH2'
 	,VENDNAME
-	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
-	FROM dbo.POSDETAIL,dbo.ICPRODUCT,dbo.APVENDOR
-	WHERE dbo.POSDETAIL.PRODUCTID = dbo.ICPRODUCT.PRODUCTID
-	AND dbo.APVENDOR.VENDID = dbo.ICPRODUCT.VENDID
+	,SUM(POSDETAIL.QTY) AS 'COUNT'
+	FROM POSDETAIL,ICPRODUCT,APVENDOR
+	WHERE POSDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+	AND APVENDOR.VENDID = ICPRODUCT.VENDID
 	AND POSDATE >=  ?
 	AND POSDATE <= ?";
 	if($category != 'ALL')
 	{
-		$sql .= " AND dbo.POSDETAIL.CATEGORYID = ?";
+		$sql .= " AND POSDETAIL.CATEGORYID = ?";
 		$params = array($from,$to,$category);		
 	}else{		
 		$params = array($from,$to);
 	}	
-	$sql .=	" GROUP BY dbo.POSDETAIL.PRODUCTID,dbo.POSDETAIL.PRODUCTNAME,dbo.POSDETAIL.PRODUCTNAME1,dbo.POSDETAIL.PRICE,VENDNAME,TOTALSALE,TOTALRECEIVE,dbo.POSDETAIL.CATEGORYID,dbo.ICPRODUCT.COLOR,dbo.ICPRODUCT.COST
+	$sql .=	" GROUP BY POSDETAIL.PRODUCTID,POSDETAIL.PRODUCTNAME,POSDETAIL.PRODUCTNAME1,ICPRODUCT.PRICE,APVENDOR.VENDNAME,POSDETAIL.CATEGORYID,ICPRODUCT.COLOR,ICPRODUCT.LASTCOST
 			  ORDER BY COUNT DESC";
 
 	$req = $db->prepare($sql);
@@ -8358,6 +8358,15 @@ $app->put('/waste', function($request,Response $response) {
 		$docnum = issueStocks($items,$author,$notes,$locid);
 		$data["ISSUEID"] = $docnum;		
 
+		if (isset($json["ITEMS"])){
+			$items = $json["ITEMS"];
+			foreach($items as $item){
+				$sql = "UPDATE WASTEITEM SET QUANTITY = ? WHERE PRODUCTID = ? AND WASTE_ID = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$ID));
+			}
+		}
+
 	}		
 	$resp["data"] = $data;
 	$resp["result"] = "OK";
@@ -9026,7 +9035,7 @@ $app->put('/expire',function($request,Response $response) {
 	$PRODUCTID = $json["PRODUCTID"];
 	$EXPIRE = $json["EXPIRATION"];
 
-	$sql = "SELECT TOP(1)PONUMBER FROM PODETAIL WHERE PRODUCTID = ? ORDER BY FILEID DESC";
+	$sql = "SELECT TOP(1)PONUMBER FROM PODETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($PRODUCTID));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -11495,7 +11504,7 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	}
 
 
-	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED'";
+	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
