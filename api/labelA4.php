@@ -109,7 +109,7 @@ error_reporting(E_ALL);
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
     error_log("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);      
-    if (count($itemList) == 1)        
+    if ($itemList != null && count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
       renderTwoProduct($itemList[0],$itemList[1]); 

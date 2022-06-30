@@ -760,18 +760,14 @@ function externalAlertStats($barcode){
 		$data["QTYLASTRCV"] = round($data["QTYLASTRCV"],2);
 
     $indb = getInternalDatabase();
-	/*
-    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
-    WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
-    AND PRODUCTID = ? 
-    AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-                 DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-                 DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')";
+	
+    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM SELFPROMOTIONITEM
+    WHERE PRODUCTID =  ?";    
     $req = $indb->prepare($sql);
     $req->execute(array($barcode));
     $res = $req->fetch(PDO::FETCH_ASSOC);	
     $data["QTYPROMOTION"] = $res["QTY"] ?? 0;
-	*/
+
 	$data["QTYPROMOTION"] = 0;
 
     return $data;
@@ -849,27 +845,29 @@ function orderStatistics($barcode)
 	$ONHAND = $res["ONHAND"]; //**	
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
-	
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
+	/*
+	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM WASTE,WASTEITEM
+					WHERE WASTEITEM.WASTE_ID =  WASTE.ID
 					AND PRODUCTID = ? 
-					AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-					 			DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-					 			DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')
+					AND  (WASTE.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
+					 			WASTE.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
+					 			WASTE.TYPE = 'CLEARANCETOOMUCHPROMOTION')
 					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
 	$req = $inDB->prepare($sql);
 	$req->execute(array($barcode,$begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	*/
 	$PROMO = 0;
 	if ($res != false)	
 		$PROMO = $res["QTY"] ?? 0; //**					
 
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM 
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID 
+	$sql = "SELECT SUM(QUANTITY)as 'QTY' 
+					FROM WASTE,WASTEITEM 
+					WHERE WASTEITEM.WASTE_ID =  WASTE.ID 
 					AND PRODUCTID = ? 
-					AND  (DEPRECIATION.TYPE = 'DAMAGEWASTE' OR 
-					 			DEPRECIATION.TYPE = 'EXPIREWASTE')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+					AND  (WASTE.TYPE = 'DAMAGEWASTE' OR 
+					WASTE.TYPE = 'EXPIREWASTE')
+					AND WASTE.CREATED BETWEEN ? AND ?";
 	$req = $inDB->prepare($sql);
 	$req->execute(array($barcode,$begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -1058,7 +1056,7 @@ function orderStatistics($barcode)
 function wasteStatistics($barcode,$expiration)
 {
 	$indb = getDatabase();
-	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ? AND PERCENTPROMO1 IS NOT NULL";
+	$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ? AND PERCENTPROMO1 IS NOT NULL";
 
 	$req = $indb->prepare($sql);
 	$req->execute(array($barcode,$expiration)); 
@@ -1135,7 +1133,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 					{							
 							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 							{
-								$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+								$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
 								$req = $indb->prepare($sql);
 								$req->execute(array($barcode, $expiration)); 
 								$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -1592,9 +1590,32 @@ function getSaleByLocation($start,$end,$location)
 	return $items;
 }
 
-function getSaleByTeam($start,$end,$userid)
+function getSaleByTeam($start,$end,$team)
 {
 	$db=getDatabase();	
+
+	if ($team == "RAT"){
+		$allloc = "G01A|G01B|G02A|G02B|G03A|G03B";
+	}else if ($team == "OX"){
+		$allloc = "G04A|G04B|G05A|G05B|GMIL";
+	}else if ($team == "TIGER"){
+		$allloc = "G06A|G06B|G07A|G07B";
+	}
+	else if ($team == "HARE"){
+		$allloc = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|RHA";
+	}
+	else if ($team == "DRAGON"){
+		$allloc = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
+	}
+	else if ($team == "SNAKE"){
+		$allloc = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B";
+	}
+	else if ($team == "HORSE"){
+		$allloc = "NBAB|NCUP|GWIN";
+	}
+	else if ($team == "GOAT"){
+		$allloc = "GSOF|CHIL|FROZ";
+	}
 
 	$sql = "SELECT 
 	POSDETAIL.PRODUCTID
@@ -1606,23 +1627,23 @@ function getSaleByTeam($start,$end,$userid)
 	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 	FROM dbo.POSDETAIL WHERE 1=1 ";	
 	$params = array();
-	if ($userid != 0){
-		$indb = getInternalDatabase();
-		$sql2 = "SELECT location from USER WHERE ID = ?";
-		$req = $indb->prepare($sql2);
-		$req->execute(array($userid));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$allloc = $res["location"];
-		$locs = explode('|',$allloc);
-		$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
-		
-		foreach($locs as $loc){
-			$sql .= ' STORBIN LIKE ? OR';
-			array_push($params, '%'.$loc.'%' );
-		}
-		$sql = substr($sql,0,-2);
-		$sql .= "))";		
+	
+	$indb = getInternalDatabase();
+	$sql2 = "SELECT location from USER WHERE ID = ?";
+	$req = $indb->prepare($sql2);
+	$req->execute(array($userid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	//$allloc = $res["location"];
+	$locs = explode('|',$allloc);
+	$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
+	
+	foreach($locs as $loc){
+		$sql .= ' STORBIN LIKE ? OR';
+		array_push($params, '%'.$loc.'%' );
 	}
+	$sql = substr($sql,0,-2);
+	$sql .= "))";		
+	
 	$sql .= "
 	AND POSDATE BETWEEN ? AND ?
 	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID

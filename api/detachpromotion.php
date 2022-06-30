@@ -1,6 +1,6 @@
 <?php 
 
-function getDatabase($name = "MAIN")
+function getDatabase()
 { 	
 	$conn = null;   
     $conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');   

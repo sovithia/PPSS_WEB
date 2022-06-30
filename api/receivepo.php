@@ -456,6 +456,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$req = $db->prepare($sql);
 	$req->execute(array($PONumber));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($items as $item)
+		$item["TRANCOST"] = round($item["TRANCOST"],4);
 
 	$VENDID =  $theVENDID;
 	$RECEIVENO =  sprintf("RP%013d",$PONUM);  
@@ -1033,6 +1035,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$IS_CATON = 0;
 		$REQUIREDATE = "";
 		$CURRID_ADDCOST = "";
+		$item["TRANCOST"] = round($item["TRANCOST"],4);
 
 		$sql = "UPDATE PODETAIL 
 		 		set 
@@ -1091,11 +1094,11 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 			WHERE [PRODUCTID]= ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($ONHAND,$LASTCOST,$TOTALRECEIVE,$LASTRECEIVEDATE,$COST,$PRODUCTID));
-
-
-		$LASTCOST = $item["TRANCOST"];
+				
+		$LASTCOST = $item["TRANCOST"] ?? "0";		
 		$LASTRECEIVE = $today;
-		$TOTALRECEIVE = $item["ORDER_QTY"];
+		$TOTALRECEIVE = $item["ORDER_QTY"] ?? "0";
+		$TOTALRECEIVE = round($TOTALRECEIVE,4);
 		$USEREDIT = blueUser($author);
 		$DATEEDIT = $today;
 		$PRODUCTID = $item["PRODUCTID"];
@@ -1106,9 +1109,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 								  USEREDIT = ?, 
 								  DATEEDIT = ?
 								  WHERE PRODUCTID = ? AND VENDID =?";
-		$req = $db->prepare($sql);
-		$req->execute(
-			array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
+		$req = $db->prepare($sql);		
+		$req->execute(array($LASTCOST,$LASTRECEIVE,$TOTALRECEIVE,$USEREDIT,$DATEEDIT,$PRODUCTID,$VENDID));							   
 
 		$sql = "SELECT STKUM FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -1157,6 +1159,15 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		?,?,?,?,?,?,?,?,?)";
 
 		$req = $db->prepare($sql);
+		$params = array($VENDID,$VOUCHERNO,$VENDNAME,$VENDNAME1,$PONUMBER,    
+		$TRANDATE,$APSTATUS,$TRANCOST,$PURCHASEDATE,$LINENUM,     
+		$PRODUCTID,$PRODUCTNAME,$PRODUCTNAME1,$TRANQTY,$DIMENSION, 
+		$FILEID,$COST_CENTER,$FREIGHTSG,$INSURSG,$TRANUNIT,    
+		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
+		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD);
+		$exp = var_export($params,true);
+		error_log($exp);
+
 		$req->execute(array(
 		$VENDID,$VOUCHERNO,$VENDNAME,$VENDNAME1,$PONUMBER,    
 		$TRANDATE,$APSTATUS,$TRANCOST,$PURCHASEDATE,$LINENUM,     

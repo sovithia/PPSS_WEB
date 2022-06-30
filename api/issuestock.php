@@ -24,7 +24,7 @@ function issueStocks($items,$author,$note,$locid)
         $req->execute(array($item["PRODUCTID"]));
         $itemDetailLastReceive = $req->fetch(PDO::FETCH_ASSOC);
         $THEQUANTITY = $item["QUANTITY"];
-        $totalamount += $itemDetailLastReceive["TRANCOST"] * $THEQUANTITY;       
+        $totalamount += ($itemDetailLastReceive["TRANCOST"]??"0") * $THEQUANTITY;       
      }
     $DOCNUM = $docnum;
     $FLOCID = $locid;
@@ -303,8 +303,8 @@ function issueStocks($items,$author,$note,$locid)
     $GLYEAR = date("Y");
     $GLMONTH = date("m"); 
     $ACCNO = 87000;
-    $GLAMT = round($totalamount,2);
-    $DEBIT = round($totalamount,2);
+    $GLAMT = round($totalamount,4);
+    $DEBIT = round($totalamount,4);
     $CREDIT = 0;
     $DOCNO = $docnum;
     $USERADD = $author;
@@ -358,9 +358,9 @@ function issueStocks($items,$author,$note,$locid)
     $GLYEAR = date("Y");
     $GLMONTH = date("m");
     $ACCNO = "17000";
-    $GLAMT = round($totalamount,2);
+    $GLAMT = round($totalamount,4);
     $DEBIT = 0;
-    $CREDIT = round($totalamount,2);
+    $CREDIT = round($totalamount,4);
     $DOCNO = $docnum;
     $USERADD = $author;
     $DATEADD = $now;
