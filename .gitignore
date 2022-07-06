@@ -3,6 +3,8 @@
 tmp.jpg
 public/*
 intra/images/products/*
+api/img/externalpayment_proofs/*
+api/img/externalpayment_signatures/*
 api/img/supplyrecords_invoices/*
 api/img/supplyrecords_signatures/*
 api/img/requestaction/*

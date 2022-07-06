@@ -72,7 +72,7 @@ function GenerateGroupedPurchases()
 			if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
 				$TRANCOST = $res["TRANCOST"];
 			else{
-				if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
+				if ($res2["TRANCOST"]??"" != "0" || $res2["TRANCOST"]??"" != 0)
 					$TRANCOST = $res2["PPSS_NEW_COST"];
 				else 
 					$TRANCOST = $res["TRANCOST"];

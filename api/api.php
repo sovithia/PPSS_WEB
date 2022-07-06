@@ -3009,6 +3009,9 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			else
 				$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
 			
+			if ($json["PAYMENTTYPE"] == "ABA" || $json["PAYMENTTYPE"] == "ACLEDA")
+				sendPushToUser("Payment Waiting", $json["PAYMENTTYPE"] . " with amount ".$json["PAYMENTAMOUNT"]." waiting to be paid",66);
+			
 	} 
 	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
 	{
@@ -3111,11 +3114,11 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$decision = $stats["DECISION"] ?? "";
 		$specialqty = $item["SPECIALQTY"] ?? "";
 		$stats = orderStatistics($item["PRODUCTID"]);
-		if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
-		{
-			$message .= "\n".$item["PRODUCTID"]." Not Added";
-			continue;
-		}
+		//if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
+		//{
+		//	$message .= "\n".$item["PRODUCTID"]." Not Added:".$decision;
+		//	continue;
+		//}
 		$item["ALGOQTY"] = $stats["FINALQTY"] ?? "";
 
 		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
@@ -4568,10 +4571,24 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
+		
+		$newActions = array();
+		foreach($actions as $action){
+			$sql = "select count(*) as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($action["ID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res != false && $res["COUNT"] != 0 && $res["COUNT"] != "0"){
+				
+				$action["NBITEMS"] = $res["COUNT"];
+				array_push($newActions,$action);
+			}
 			
+		}
+
 		$resp = array();
 		$resp["result"] = "OK";
-		$resp["data"] = $actions;	
+		$resp["data"] = $newActions;	
 		$response = $response->withJson($resp);
 		return $response;		
 	}
@@ -4610,6 +4627,15 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$req->execute(array($type));
 		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
 		
+
+		foreach($actions as $action){
+			$sql = "select count(*) as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($action["ID"]));
+			$res = $req->fetch(PDO::FETCH_ASSOC);
+			$action["NBITEMS"] = $res["COUNT"];						
+		}
+
 
 		$resp = array();
 		$resp["result"] = "OK";
@@ -6800,23 +6826,27 @@ $app->get('/sale/{date}',function(Request $request,Response $response) {
 	//$date = $splitted[1] . "/" . $splitted[0] . "/" . $splitted[2];
 	$date = str_replace("-","/",$date);
 	
-	$sql = "SELECT (SUM(TOTAL_AMT) - SUM(COST * QTY)) AS PROFIT, SUM(TOTAL_AMT) AS SALE
+	$sql = "SELECT isnull((SUM(TOTAL_AMT) - SUM(COST * QTY)),0) AS PROFIT, isnull(SUM(TOTAL_AMT),0) AS SALE
 			FROM POSDETAIL 			
 			WHERE POSDATE >= '".$date." 00:00:00.000' 
 			AND POSDATE <= '".$date." 23:59:59.999'
 			AND CUSTID NOT IN (".clientToExclude().");
 			";	
+
 	$req = $conn->prepare($sql);
 	$req->execute(array());
 	$result = $req->fetch(PDO::FETCH_ASSOC);	
-	$left = explode('.',$result["PROFIT"])[0];
-	$right = explode('.',$result["PROFIT"])[1];
-	$result["PROFIT"] = $left.".".substr($right, 0,2);
+	if ($result != false){
+				
+		$result["PROFIT"] = round($result["PROFIT"],4); 
+		$result["SALE"] = round($result["SALE"],4); 
+	
+	}else{
+		$result["PROFIT"] = "0";
+		$result["SALE"] = "0";
 
-	$left = explode('.',$result["SALE"])[0];
-	$right = explode('.',$result["SALE"])[1];
-	$result["SALE"] = $left.".".substr($right, 0,2);
-
+	}
+	
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $result;
@@ -11593,8 +11623,26 @@ $app->get('/externalpayment/{status}', function ($request, Response $response) {
 			$count++;        	    
 		}
 		$payment["NBPROOFS"] = $nbproofs;	
+
+	
+		// COUNT INVOICES
+		$count = 1;
+		$nbinvoices = 0;
+		do
+		{       
+			if (file_exists("./img/supplyrecords_invoices/INV_".$payment["SUPPLY_RECORD_ID"]."_".$count.".png"))
+			$nbinvoices++;                
+			$count++;        
+			$go = file_exists("./img/supplyrecords_invoices/INV_".$payment["SUPPLY_RECORD_ID"]."_".$count.".png");
+		}while($go);		
+		$payment["NBINVOICES"] = $nbinvoices;
+
 		array_push($newpayments,$payment);	
 	}
+
+	
+
+
 	$resp = array();	
 	$resp["result"] = "OK";	
 	$resp["data"] = $newpayments;
