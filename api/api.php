@@ -4559,11 +4559,11 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		$response = $response->withJson($resp);
 		return $response;		
 	}
-	else if ($type == "GROUPEDRESTOCK")
+	else if ($type == "GROUPEDRESTOCK" || $type == "vGROUPEDRESTOCK")
 	{
-		GenerateGroupedRestocks();		
-		if (substr($type,0,1) == "v")	{
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+		GenerateGroupedRestocks();			
+		if ($type == "vGROUPEDRESTOCK")	{
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > date('now','-2 days') AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 		}				
 		else{
 			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
@@ -8886,8 +8886,13 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res != false){
-		$locations = $res["location"];
-		$locations = explode('|',$locations);
+		if ($res["location"] == "ALL"){
+			$locations = array();
+		}else{
+			$locations = $res["location"];		
+			$locations = explode('|',$locations);
+		}
+		
 	}
 	else
 		$locations = array();
@@ -8978,8 +8983,18 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	$req = $db->prepare($sql); 
 	$req->execute(array($userid));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$locations = $res["location"];
-	$locations = explode('|',$locations);
+
+	if ($res != false){
+		if ($res["location"] == "ALL"){
+			$locations = array();
+		}else{
+			$locations = $res["location"];		
+			$locations = explode('|',$locations);
+		}	
+	}
+	else
+		$locations = array();
+	
 
 
 	$data = array();
@@ -11478,7 +11493,7 @@ $app->get('/pricechange',function ($request,Response $response){
 		
 	}
 
-	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED'";
+	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -11512,11 +11527,15 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res != false){
-		$locations = $res["location"];
-		$locations = explode('|',$locations);
-	}else{
-		$locations = array();
+		if ($res["location"] == "ALL"){
+			$locations = array();
+		}else{
+			$locations = $res["location"];		
+			$locations = explode('|',$locations);
+		}
 	}
+	else
+		$locations = array();
 	
 	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'CREATED'";
 	$req = $db->prepare($sql);

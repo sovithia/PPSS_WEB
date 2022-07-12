@@ -99,7 +99,7 @@ function getInternalDatabase($base = "MAIN")
          $items = $req->fetchAll(PDO::FETCH_ASSOC);
          if (count($items) > 0){
 
-            $sql = "SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'AUTOMATICRESTOCKWH' AND ARG1 = ? AND REQUESTEE = null";
+            $sql = "SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'AUTOMATICRESTOCKWH' AND ARG1 = ? AND REQUESTEE IS NULL";
             $req = $db->prepare($sql);
             $req->execute(array($storebin));            
             $res = $req->fetch(PDO::FETCH_ASSOC);
