@@ -1597,12 +1597,12 @@ function getSaleByTeam($start,$end,$team)
 	if ($team == "RAT"){
 		$allloc = "G01A|G01B|G02A|G02B|G03A|G03B";
 	}else if ($team == "OX"){
-		$allloc = "G04A|G04B|G05A|G05B|GMIL";
+		$allloc = "G04A|G04B|G05A|G05B|GSOF";
 	}else if ($team == "TIGER"){
-		$allloc = "G06A|G06B|G07A|G07B";
+		$allloc = "G06A|G06B|G07A|G07B|GMIL";
 	}
 	else if ($team == "HARE"){
-		$allloc = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|RHA";
+		$allloc = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
 	}
 	else if ($team == "DRAGON"){
 		$allloc = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
@@ -1611,10 +1611,10 @@ function getSaleByTeam($start,$end,$team)
 		$allloc = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B";
 	}
 	else if ($team == "HORSE"){
-		$allloc = "NBAB|NCUP|GWIN";
+		$allloc = "NBAB|GWIN";
 	}
 	else if ($team == "GOAT"){
-		$allloc = "GSOF|CHIL|FROZ";
+		$allloc = "CHIL|FROZ";
 	}
 
 	$sql = "SELECT 
@@ -1627,13 +1627,7 @@ function getSaleByTeam($start,$end,$team)
 	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 	FROM dbo.POSDETAIL WHERE 1=1 ";	
 	$params = array();
-	
-	$indb = getInternalDatabase();
-	$sql2 = "SELECT location from USER WHERE ID = ?";
-	$req = $indb->prepare($sql2);
-	$req->execute(array($userid));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	//$allloc = $res["location"];
+		
 	$locs = explode('|',$allloc);
 	$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
 	

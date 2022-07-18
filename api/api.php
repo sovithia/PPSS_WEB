@@ -11935,36 +11935,38 @@ $app->get('/grade',function(Request $request,Response $response){
 	$year = $request->getParam('YEAR','');
 	$team = $request->getParam('TEAM','');
 
-	if ($month == "1")
-		$prevmonth = 12;		
+	if ($month == "1"){
+		$prevmonth = 12;
+		$year = intval($year) - 1;		
+	}		
 	else
-		$prevmonth = intval($month) -1;		
-	$prevyear = intval($year) - 1;
+		$prevmonth = sprintf("%02d",intval($month) -1);		
+	$month = sprintf("%02d",intval($month));		
 
-	$startLast = $prevyear."-".$prevmonth."-1". " 00:00:00.000";
-	$endLast = $prevyear."-".$prevmonth."-".calculateLastDay($prevyear,$prevmonth)." 23:59:59.999";
+	$startLast = $year."-".$prevmonth."-01". " 00:00:00.000";
+	$endLast = $year."-".$prevmonth."-".calculateLastDay($year,$prevmonth)." 23:59:59.999";
 
-	$startCurrent = $year."-".$month."-1"." 00:00:00.000";
+	$startCurrent = $year."-".$month."-01"." 00:00:00.000";
 	$endCurrent = $year."-".$month."-".calculateLastDay($year,$month)." 23:59:59.999";
 
 	$users = array();
 	if ($team != ''){
 		if ($team == "RAT")
-			array_push($users,"72","73");	
+			array_push($users,"201","202");	
 		else if ($team == "OX")
-			array_push($users,"62","69");	
+			array_push($users,"203","204");	
 		else if ($team == "TIGER")
-			array_push($users,"74","75");	
+			array_push($users,"205","206");	
 		else if ($team == "HARE")
-			array_push($users,"57","76");	
+			array_push($users,"207","208");	
 		else if ($team == "DRAGON")
-			array_push($users,"82","83");		
+			array_push($users,"209","210");		
 		else if ($team == "SNAKE")
-			array_push($users,"77","84");	
+			array_push($users,"211","212");	
 		else if ($team == "HORSE")
-			array_push($users,"79","80","70");	
+			array_push($users,"213","214");	
 		else if ($team == "GOAT")
-			array_push($users,"68","71");	
+			array_push($users,"215","216");	
 	}else{
 		array_push($users,$userid);
 	}
@@ -11977,24 +11979,24 @@ $app->get('/grade',function(Request $request,Response $response){
 	$LASTMONTHTRANSFERS = 0;
 	$CURRENTMONTHTRANSFERS = 0;	
 
-	foreach($users as $user)
+	foreach($users as $userid)
 	{
+		error_log("USERID:".$userid);
 		$sql = "SELECT * FROM USER WHERE ID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($user));
-		$user = $req->fetch(PDO::FETCH_ASSOC);
-				
+		$req->execute(array($userid));
+		$user = $req->fetch(PDO::FETCH_ASSOC);		
 		$locations = explode('|',$user["sololocation"]);
 	
 		foreach($locations as $location)
-		{		
+		{					
 			$sql = "SELECT SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
 			FROM dbo.POSDETAIL 
-			WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?)
-			AND POSDATE BETWEEN ? AND ?";		
+			WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?) 
+			AND POSDATE BETWEEN ? AND ?";
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array('%'.$location.'%',$startLast,$endLast));
-			$item = $req->fetch(PDO::FETCH_ASSOC);
+			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$LASTMONTHSALE += $res["COUNT"] ?? "0";
 	
 			$sql = "SELECT SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
@@ -12003,56 +12005,57 @@ $app->get('/grade',function(Request $request,Response $response){
 			AND POSDATE BETWEEN ? AND ?";		
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array('%'.$location.'%',$startCurrent,$endCurrent));
-			$item = $req->fetch(PDO::FETCH_ASSOC);
+			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$CURRENTMONTHSALE += $res["COUNT"] ?? "0";
-	
-			$sql = "SELECT COUNT(*) as 'COUNT' FROM PRICECHANGE WHERE REQUESTEE = ? AND CREATED > ? AND CREATED < ?";
+		}
+		$sql = "SELECT COUNT(*) as 'COUNT' FROM PRICECHANGE WHERE REQUESTEE = ? AND CREATED BETWEEN ? AND  ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($user["login"],$startLast,$endLast));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$LASTMONTHPRICECHANGE += $res["COUNT"] ?? "0";
+				
+		$sql = "SELECT COUNT(*) as 'COUNT' FROM PRICECHANGE WHERE REQUESTEE = ? AND CREATED BETWEEN ? AND ?";
+		//$sql = "SELECT COUNT(*) as 'COUNT' FROM PRICECHANGE WHERE REQUESTEE = ?";
+		$req = $db->prepare($sql);		
+		$req->execute(array($user["login"],$startCurrent,$endCurrent));
+		//$req->execute(array($user["login"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$CURRENTMONTHPRICECHANGE += $res["COUNT"] ?? "0";
+
+		$sql = "SELECT COUNT(*) as 'COUNT' FROM SELFPROMOTIONITEM WHERE CREATOR = ? AND CREATED > ? AND CREATED < ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($user["login"] ?? "",$startLast,$endLast));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$LASTMONTHPROMOTION += $res["COUNT"] ?? "0";
+
+		$sql = "SELECT COUNT(*) as 'COUNT' FROM SELFPROMOTIONITEM WHERE CREATOR = ? AND CREATED > ? AND CREATED < ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($user["login"] ?? "",$startCurrent,$endCurrent));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$CURRENTMONTHPROMOTION += $res["COUNT"] ?? "0";
+		
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND  REQUESTEE = ? AND REQUEST_UPDATED BETWEEN ? AND ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($user["login"],$startLast,$endLast));
+		$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($actions as $action){
+			$sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($user["login"],$startLast,$endLast));
+			$req->execute(array($action["ID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$LASTMONTHPRICECHANGE += $res["COUNT"] ?? "0";
-	
-			$sql = "SELECT COUNT(*) as 'COUNT' FROM PRICECHANGE WHERE REQUESTEE = ? AND CREATED > ? AND CREATED < ?";
+			$LASTMONTHTRANSFERS  += $res["COUNT"] ?? "0";
+		}
+
+		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND  REQUESTEE = ? AND REQUEST_UPDATED BETWEEN ? AND ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($user["login"],$startCurrent,$endCurrent));
+		$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($actions as $action){
+			$sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($user["login"],$startCurrent,$endCurrent));
+			$req->execute(array($action["ID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$CURRENTMONTHPRICECHANGE += $res["COUNT"] ?? "0";
-	
-			$sql = "SELECT COUNT(*) as 'COUNT' FROM SELFPROMOTIONITEM WHERE CREATOR = ? AND CREATED > ? AND CREATED < ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($user["login"] ?? "",$startLast,$endLast));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$LASTMONTHPROMOTION += $res["COUNT"] ?? "0";
-	
-			$sql = "SELECT COUNT(*) as 'COUNT' FROM SELFPROMOTIONITEM WHERE CREATOR = ? AND CREATED > ? AND CREATED < ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($user["login"] ?? "",$startCurrent,$endCurrent));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$CURRENTMONTHPROMOTION += $res["COUNT"] ?? "0";
-			
-			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND  REQUESTEE = ? AND REQUEST_UPDATED > ? AND REQUEST_UPDATED < ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($user["login"] ?? "",$startLast,$endLast));
-			$actions = $req->fetchAll(PDO::FETCH_ASSOC);
-			foreach($actions as $action){
-				$sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($action["ID"]));
-				$res = $req->fetch(PDO::FETCH_ASSOC);
-				$LASTMONTHTRANSFERS  += $res["COUNT"] ?? "0";
-			}
-	
-			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND  REQUESTEE = ? AND REQUEST_UPDATED > ? AND REQUEST_UPDATED < ?";
-			$req = $db->prepare($sql);
-			$req->execute(array($user["login"] ?? "",$startCurrent,$endCurrent));
-			$actions = $req->fetchAll(PDO::FETCH_ASSOC);
-			foreach($actions as $action){
-				$sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
-				$req = $db->prepare($sql);
-				$req->execute(array($action["ID"]));
-				$res = $req->fetch(PDO::FETCH_ASSOC);
-				$LASTMONTHTRANSFERS  += $res["COUNT"] ?? "0";
-			}
+			$LASTMONTHTRANSFERS  += $res["COUNT"] ?? "0";		
 		}	
 	}
 
