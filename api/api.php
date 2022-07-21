@@ -7599,10 +7599,7 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 				$count++;
 			}
 			$sql .= ")";			
-		}
-		error_log($sql);		
-		$exp = var_export($params,true);
-		error_log($exp);
+		}	
 		$req = $db->prepare($sql);
 		$req->execute($params);
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8393,7 +8390,7 @@ $app->put('/waste', function($request,Response $response) {
 			foreach($items as $item){
 				$sql = "UPDATE WASTEITEM SET QUANTITY = ? WHERE PRODUCTID = ? AND WASTE_ID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$ID));
+				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$id));
 			}
 		}
 
@@ -11980,8 +11977,7 @@ $app->get('/grade',function(Request $request,Response $response){
 	$CURRENTMONTHTRANSFERS = 0;	
 
 	foreach($users as $userid)
-	{
-		error_log("USERID:".$userid);
+	{	
 		$sql = "SELECT * FROM USER WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($userid));

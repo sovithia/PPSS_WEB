@@ -411,8 +411,7 @@ function loadPictureByPath($path,$base64 = false)
 	if (!file_exists($path)){		
 		$final = file_get_contents("img/mystery.png");
 	}
-	else {
-		error_log($path);
+	else {		
 		$final = file_get_contents($path);
 
 		file_put_contents("./tmp.jpg",$final);		
@@ -1516,8 +1515,7 @@ function sendPush($title,$body, $fcmtoken) {
 }
 
 function sendPushToUser($title,$body,$userid)
-{
-	error_log($userid);
+{	
 	$db = getInternalDatabase();
 	$sql = "SELECT fcmtoken from USER WHERE ID = ?";
 	$req = $db->prepare($sql);
