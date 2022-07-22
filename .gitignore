@@ -19,7 +19,7 @@ api/img/waste_signatures/*
 api/img/wastepool_proofs/*
 intra/data.xlsx
 intra/data.xlsx
-./api/tmp.jpg
+api/tmp.jpg
 intra/data.xlsx
 intra/.DS_Store
 culture/Meeting_Culture.mov
@@ -29,3 +29,5 @@ db/_SuperStore.sqlite
 WIS_SERVER/node_modules/*
 
 
+api/tmp.png
+api/tmp.jpg

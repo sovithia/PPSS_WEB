@@ -8729,6 +8729,106 @@ $app->post('/expirepromoted',function ($request,Response $response){
 
 });
 
+$app->get('/expirealert',function ($request,Response $response){
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	$location = $request->getParam('location','');
+	// RETURN,NORETURN,RETURNWH,NORETURNWH
+	$type = $request->getParam('type','');
+	$userid = $request->getParam('userid','');
+	
+	if ($userid != ''){
+		$sql = "SELECT location FROM USER WHERE ID = ?";
+		$req = $db->prepare($sql); 	
+		$req->execute(array($userid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			if ($res["location"] == "ALL"){
+				$locations = array();
+			}else{
+				$locations = $res["location"];		
+				$locations = explode('|',$locations);
+			}	
+		}
+	}	
+	else
+		$locations = array();
+
+	$data = array();
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$data["PROMOTED"] = $items;
+
+	$excludeIDs = "('XXX',";
+	foreach($items as $item){
+		$excludeIDs .= "'".$item["EXPIREDATE"].$item["PRODUCTID"]."',";
+	}
+	if ($excludeIDs != "(")
+		$excludeIDs = substr($excludeIDs,0,-1);
+	$excludeIDs .= ")";
+	
+	$params = array();
+	$sql = "SELECT ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_DELIVERED_EXPIRE,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SIZE IS NOT NULL 
+					AND SIZE <> ''
+					AND SUBSTRING(SIZE,1,1) = 'R'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND (
+						 (PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+						 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
+	if (count($locations) != 0){
+		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?";
+		$count = 0;
+		foreach($locations as $location){								
+			if ($count > 0){
+				$sql .= " OR STORBIN LIKE ?";
+			}
+			array_push($params,'%'.$location.'%');
+			$count++;
+		}
+		$sql .= ")";
+	}
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$filtered = array();						
+	foreach($allitems as $item){
+		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
+		$req = $db->prepare($sql);				
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if($res == false){
+			array_push($filtered,$item);
+		}
+		else{
+			if($item["PPSS_DELIVERED_EXPIRE"] > $res["EXPIREDATE"])
+			array_push($filtered,$item);
+		}
+	}
+	$data["ALERT"] = $filtered;
+
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 $app->delete('/expirepromoted/{id}', function ($request,Response $response){
 	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
