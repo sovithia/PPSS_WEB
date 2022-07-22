@@ -312,7 +312,7 @@ function issueStocks($items,$author,$note,$locid)
     $GLPOST = "N";
     $GLTYPE = "J";
     $APPID = "IC";
-    $REMARKS = "";
+    $REMARKS = $note;
     $CUSTID = null;
     $VENDID = null;
     $FILEID = "";
