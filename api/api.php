@@ -5347,10 +5347,7 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
-	$id = $request->getAttribute('id');	
-	//$sql = "SELECT PRODUCTID,REQUEST_QUANTITY,DISCOUNT,COST,REQUESTTYPE 
-	//		FROM ITEMREQUEST 
-	//		WHERE ITEMREQUESTACTION_ID = ?";
+	$id = $request->getAttribute('id');		
 	$sql = "SELECT *
 			FROM ITEMREQUEST 
 			WHERE ITEMREQUESTACTION_ID = ?";
@@ -5367,9 +5364,7 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		$type = $res["TYPE"];
 		$requester = $res["REQUESTER"];	
 	}
-	$tax = "";
-	$newData = array();
-	/*
+	$tax = "";		
 	$inStr = "(";
 	foreach($items as $item){
 		$inStr .= "'".$item["PRODUCTID"]."',";
@@ -5377,10 +5372,12 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$inStr = substr($inStr,0,-1);
 	$inStr .= ")";
 
-	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,
+	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,PRODUCTID,
 	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
-	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'				
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STORE_QTY',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WAREHOUSE_QTY',				
+	(SELECT STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN1',				
+	(SELECT STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN2'			
 	FROM dbo.ICPRODUCT,APVENDOR
 	WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
 	AND PRODUCTID in ".$inStr;
@@ -5389,11 +5386,11 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$req->execute(array());	
 	$itemsA = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	 $sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,PRODUCTID
-				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
+	 $sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,PRODUCTID,
+	 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID)*-1),0) as 'TOTALSALE',				
 				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'				
 				FROM PORECEIVEDETAIL WHERE PRODUCTID IN ".$inStr." ORDER BY COLID DESC";
-	error_log($sql);	
+	
 	$req = $dbBlue->prepare($sql);	
 	$req->execute(array());
 	$itemsB = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -5401,8 +5398,9 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	foreach($itemsB as $item){
 		$map[$item["PRODUCTID"]] = $item;
 	}
-
-	foreach($itemsA as $item){		
+	foreach($itemsA as $item){	
+			$item["TYPE"] = $type;			
+			$item["REQUESTER"] = $requester;	
 			$item["VAT"] = $map[$item["PRODUCTID"]]["VAT_PERCENT"] ?? "";
 			$item["DISCOUNT"] = $map[$item["PRODUCTID"]]["TRANDISC"] ?? "";
 			$item["COST"] = $map[$item["PRODUCTID"]]["TRANCOST"] ?? "";
@@ -5413,83 +5411,12 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 			$item["TOTALORDERTIME"] = $map[$item["PRODUCTID"]]["TOTALORDERTIME"] ?? "";
 			$item["TOTALRECEIVE"] = $map[$item["PRODUCTID"]]["TOTALRECEIVE"] ?? "";				
 	}
-	*/
-
-
-	
-	foreach($items as $item){
-		$itemID = $item["PRODUCTID"];
-
-		// TYPE
-		$item["TYPE"] = $type;
-		$item["REQUESTER"] = $requester;
-	
-		$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,
-				replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
-				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'				
-				FROM dbo.ICPRODUCT,APVENDOR
-				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
-				AND PRODUCTID = ?"; 
-		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));	
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false){
-			$item["STORE_QTY"] = $res["WH1"] ?? "";
-			$item["WAREHOUSE_QTY"] = $res["WH2"] ?? "";
-			$item["STOREBIN1"] = "";
-			$item["STOREBIN2"] = "";
-			$item["VENDNAME"] = $res["VENDNAME"];	
-			$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
-			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];	
-			if ($tax == "") // Do it once
-				$tax = $res["TAX"];
-		}			
-				
-		$sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,
-				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
-				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'				
-				FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
-		$req = $dbBlue->prepare($sql);
-		
-		$req->execute(array($itemID));
-		
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false){
-			$item["VAT"] = $res["VAT_PERCENT"] ?? "";
-			$item["DISCOUNT"] = $res["TRANDISC"] ?? "";
-			$item["COST"] = $res["TRANCOST"] ?? "";
-			$item["LASTRECEIVEDATE"] = $res["TRANDATE"] ?? "";
-			$item["LASTRECEIVEQUANTITY"] = $res["TRANQTY"] ?? "";
-			$item["TOTALSALE"] = $res["TOTALSALE"] ?? "";
-			$item["SALESINCELASTRCV"] = $res["SALESINCELASTRCV"] ?? "";	
-			$item["TOTALORDERTIME"] = $res["TOTALORDERTIME"] ?? "";
-			$item["TOTALRECEIVE"] = $res["TOTALRECEIVE"] ?? "";		
-			
-		}else{
-			$item["VAT"] = "0";
-			$item["DISCOUNT"] = "0";
-			$item["COST"] = "0";
-			$item["LASTRECEIVEDATE"] = "N/A";
-			$item["LASTRECEIVEQUANTITY"] = "N/A";
-			$item["TOTALSALE"] = "N/A";
-			$item["SALESINCELASTRCV"] = "N/A";
-			$item["TOTALORDERTIME"] = "N/A";
-			$item["TOTALRECEIVE"] = "N/A";
-		}		
-
-		array_push($newData,$item);
-	}	
-	
-
 	$resp = array();
 	$resp["result"] = "OK";
-	//$resp["data"]["items"] = $itemsA;
-	$resp["data"]["items"] = $newData;
+	$resp["data"]["items"] = $itemsA;	
 	$resp["data"]["tax"] = $tax;
 	$resp["data"]["permadiscount"] = "0";
 	$response = $response->withJson($resp);
-
 	return $response;
 });
 
