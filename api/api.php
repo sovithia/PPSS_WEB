@@ -4742,10 +4742,9 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			continue;
 		if ($item["REQUEST_QUANTITY"] == 0 && $suffix == "")
 			continue;
-		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,LOCATION,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?)";
+		$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],
-					(isset($item["LOCATION"]) ? $item["LOCATION"] : null),'MANUAL',$lastID));
+		$req->execute(array($item["PRODUCTID"],$item["REQUEST_QUANTITY"],'MANUAL',$lastID));
 
 		// IF PURCHASE CLONE TO ITEMREQUESTUNGROUPEDPURCHASEPOOL
 		if($json["TYPE"] == "PURCHASE") 
@@ -4874,35 +4873,6 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	return $response->withHeader('Access-Control-Allow-Origin', '*')
             ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-});
-
-$app->put('/itemrequest/{id}', function(Request $request,Response $response) {
-	$db = getInternalDatabase();
-	$json = json_decode($request->getBody(),true);
-	$id = $request->getAttribute('id');
-
-	$qty = $json["SPECIALQTY"];
-	$reason = $json["REASON"];
-	$author = $json["AUTHOR"];
-
-	if (isset($json["SPECIALQTY"]) && isset($json["REASON"]))
-	{
-		$sql = "SELECT * FROM ITEMREQUEST WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$res = $req->execute(array($id));
-
-
-		$oldqty = $res["REQUEST_QUANTITY"];
-		$qtychangehistory = $res["QTYCHANGEHISTORY"] . "|" . $oldqty ;
-		$qtychangereason = $res["QTYCHANGEREASON"] . "|" . $author . " " . $reason;
-
-		$sql = "UPDATE ITEMREQUEST SET REQUEST_QUANTITY = ?, QTYCHANGE_REASON = ?, QTYCHANGE_HISTORY = ? WHERE ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($qty,$qtychangehistory,$qtychangereason,$id));
-	}
-	$data["result"] = "OK";
-	$response = $response->withJson($data);
-	return $response;
 });
 
 function transferItems($items, $author,$type = "TRANSFER"){	
@@ -5378,7 +5348,12 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$dbBlue = getDatabase();
 	
 	$id = $request->getAttribute('id');	
-	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	//$sql = "SELECT PRODUCTID,REQUEST_QUANTITY,DISCOUNT,COST,REQUESTTYPE 
+	//		FROM ITEMREQUEST 
+	//		WHERE ITEMREQUESTACTION_ID = ?";
+	$sql = "SELECT *
+			FROM ITEMREQUEST 
+			WHERE ITEMREQUESTACTION_ID = ?";
 
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
@@ -5394,6 +5369,54 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	}
 	$tax = "";
 	$newData = array();
+	/*
+	$inStr = "(";
+	foreach($items as $item){
+		$inStr .= "'".$item["PRODUCTID"]."',";
+	}
+	$inStr = substr($inStr,0,-1);
+	$inStr .= ")";
+
+	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,
+	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'				
+	FROM dbo.ICPRODUCT,APVENDOR
+	WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+	AND PRODUCTID in ".$inStr;
+	
+	$req=$dbBlue->prepare($sql);
+	$req->execute(array());	
+	$itemsA = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	 $sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,PRODUCTID
+				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
+				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'				
+				FROM PORECEIVEDETAIL WHERE PRODUCTID IN ".$inStr." ORDER BY COLID DESC";
+	error_log($sql);	
+	$req = $dbBlue->prepare($sql);	
+	$req->execute(array());
+	$itemsB = $req->fetchAll(PDO::FETCH_ASSOC);
+	$map = array();
+	foreach($itemsB as $item){
+		$map[$item["PRODUCTID"]] = $item;
+	}
+
+	foreach($itemsA as $item){		
+			$item["VAT"] = $map[$item["PRODUCTID"]]["VAT_PERCENT"] ?? "";
+			$item["DISCOUNT"] = $map[$item["PRODUCTID"]]["TRANDISC"] ?? "";
+			$item["COST"] = $map[$item["PRODUCTID"]]["TRANCOST"] ?? "";
+			$item["LASTRECEIVEDATE"] = $map[$item["PRODUCTID"]]["TRANDATE"] ?? "";
+			$item["LASTRECEIVEQUANTITY"] = $map[$item["PRODUCTID"]]["TRANQTY"] ?? "";
+			$item["TOTALSALE"] = $map[$item["PRODUCTID"]]["TOTALSALE"] ?? "";
+			$item["SALESINCELASTRCV"] = $map[$item["PRODUCTID"]]["SALESINCELASTRCV"] ?? "";	
+			$item["TOTALORDERTIME"] = $map[$item["PRODUCTID"]]["TOTALORDERTIME"] ?? "";
+			$item["TOTALRECEIVE"] = $map[$item["PRODUCTID"]]["TOTALRECEIVE"] ?? "";				
+	}
+	*/
+
+
+	
 	foreach($items as $item){
 		$itemID = $item["PRODUCTID"];
 
@@ -5401,44 +5424,27 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		$item["TYPE"] = $type;
 		$item["REQUESTER"] = $requester;
 	
-		// WH Stock & Storebin
-		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";		
-		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));	
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false) 	{
-			$item["STORE_QTY"] = floatval($res["LOCONHAND"]);		
-			$item["STOREBIN1"] = $res["LOC"];	
-		}
-		// Store Stock		
-		$sql = "SELECT LOCONHAND,replace(replace(STORBIN,char(10),''),char(13),'') as 'LOC' FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ?";		
-		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));	
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false){
-			$item["WAREHOUSE_QTY"] = floatval($res["LOCONHAND"]);		
-			$item["STOREBIN2"] = $res["LOC"];	
-		}	
-		// VENDNAME
-		$sql = "SELECT PRODUCTNAME,replace(VENDNAME,char(39),'') as 'VENDNAME' ,PACKINGNOTE,TAX
+		$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,
+				replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
+				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'				
 				FROM dbo.ICPRODUCT,APVENDOR
 				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
-				AND PRODUCTID = ?";
-		
+				AND PRODUCTID = ?"; 
 		$req=$dbBlue->prepare($sql);
-		$req->execute(array($itemID));
-		$res = $req->fetch();
+		$req->execute(array($itemID));	
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res != false){
+			$item["STORE_QTY"] = $res["WH1"] ?? "";
+			$item["WAREHOUSE_QTY"] = $res["WH2"] ?? "";
+			$item["STOREBIN1"] = "";
+			$item["STOREBIN2"] = "";
 			$item["VENDNAME"] = $res["VENDNAME"];	
 			$item["PACKINGNOTE"] = $res["PACKINGNOTE"];	
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];	
 			if ($tax == "") // Do it once
 				$tax = $res["TAX"];
-		} else{
-			$item["VENDNAME"] = "";
-			$item["PACKINGNOTE"] = "";
-			$item["PRODUCTNAME"] = "";
-		}	
+		}			
 				
 		$sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,
 				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID) * -1),0) as 'TOTALSALE',
@@ -5474,8 +5480,11 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 
 		array_push($newData,$item);
 	}	
+	
+
 	$resp = array();
 	$resp["result"] = "OK";
+	//$resp["data"]["items"] = $itemsA;
 	$resp["data"]["items"] = $newData;
 	$resp["data"]["tax"] = $tax;
 	$resp["data"]["permadiscount"] = "0";
@@ -11481,10 +11490,15 @@ $app->get('/discountsumlist',function ($request,Response $response){
 
 $app->post('/blacklist',function ($request,Response $response){
 	$db = getDatabase();
+	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
 	$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = 'Y' WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+
+	$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
+    $req = $indb->prepare($sql);     
 	$req->execute(array($json["PRODUCTID"]));
 
 	$resp = array();

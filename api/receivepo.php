@@ -1165,8 +1165,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$FILEID,$COST_CENTER,$FREIGHTSG,$INSURSG,$TRANUNIT,    
 		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
 		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD);
-		$exp = var_export($params,true);
-		error_log($exp);
+		$exp = var_export($params,true);		
 
 		$req->execute(array(
 		$VENDID,$VOUCHERNO,$VENDNAME,$VENDNAME1,$PONUMBER,    
