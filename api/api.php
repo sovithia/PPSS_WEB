@@ -5351,10 +5351,15 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$sql = "SELECT *
 			FROM ITEMREQUEST 
 			WHERE ITEMREQUESTACTION_ID = ?";
-
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$mapA = array();
+	foreach($items as $item){
+		$mapA[$item["PRODUCTID"]] = $item;
+	}
+
 
 	$asql = "SELECT * FROM ITEMREQUESTACTION WHERE ID = ?";
 	$req = $db->prepare($asql);
@@ -5364,13 +5369,15 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		$type = $res["TYPE"];
 		$requester = $res["REQUESTER"];	
 	}
-	$tax = "";		
+		
 	$inStr = "(";
 	foreach($items as $item){
 		$inStr .= "'".$item["PRODUCTID"]."',";
 	}
 	$inStr = substr($inStr,0,-1);
 	$inStr .= ")";
+
+	
 
 	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,PRODUCTID,
 	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
@@ -5385,10 +5392,12 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$req=$dbBlue->prepare($sql);
 	$req->execute(array());	
 	$itemsA = $req->fetchAll(PDO::FETCH_ASSOC);
-
+	$tax = $itemsA[0]["TAX"] ?? "0";	
 	 $sql = "SELECT TOP(1) TRANDISC,TRANDATE,TRANQTY, VAT_PERCENT,TRANCOST,PRODUCTID,
 	 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID)*-1),0) as 'TOTALSALE',				
-				(SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID  AND POSTATUS = 'C') as 'TOTALRECEIVE'				
+				(SELECT SUM(TRANQTY) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID ) as 'TOTALRECEIVE',
+				ISNULL((SELECT COUNT(*) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID),0) as 'TOTALORDERTIME',	
+				(SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = dbo.PORECEIVEDETAIL.PRODUCTID AND POSDATE >= dbo.PORECEIVEDETAIL.TRANDATE AND POSDATE <=  GETDATE()) as 'SALESINCELASTRECEIVE'								
 				FROM PORECEIVEDETAIL WHERE PRODUCTID IN ".$inStr." ORDER BY COLID DESC";
 	
 	$req = $dbBlue->prepare($sql);	
@@ -5398,27 +5407,38 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	foreach($itemsB as $item){
 		$map[$item["PRODUCTID"]] = $item;
 	}
+	$newData = array();
 	foreach($itemsA as $item){	
 			$item["TYPE"] = $type;			
 			$item["REQUESTER"] = $requester;	
-			$item["VAT"] = $map[$item["PRODUCTID"]]["VAT_PERCENT"] ?? "";
+			$item["VAT"] = $map[$item["PRODUCTID"]]["VAT_PERCENT"] ?? "0";
 			$item["DISCOUNT"] = $map[$item["PRODUCTID"]]["TRANDISC"] ?? "";
-			$item["COST"] = $map[$item["PRODUCTID"]]["TRANCOST"] ?? "";
-			$item["LASTRECEIVEDATE"] = $map[$item["PRODUCTID"]]["TRANDATE"] ?? "";
-			$item["LASTRECEIVEQUANTITY"] = $map[$item["PRODUCTID"]]["TRANQTY"] ?? "";
-			$item["TOTALSALE"] = $map[$item["PRODUCTID"]]["TOTALSALE"] ?? "";
-			$item["SALESINCELASTRCV"] = $map[$item["PRODUCTID"]]["SALESINCELASTRCV"] ?? "";	
-			$item["TOTALORDERTIME"] = $map[$item["PRODUCTID"]]["TOTALORDERTIME"] ?? "";
-			$item["TOTALRECEIVE"] = $map[$item["PRODUCTID"]]["TOTALRECEIVE"] ?? "";				
+			$item["COST"] = $map[$item["PRODUCTID"]]["TRANCOST"] ?? "0";
+			$item["LASTRECEIVEDATE"] = $map[$item["PRODUCTID"]]["TRANDATE"] ?? "N/A";
+			$item["LASTRECEIVEQUANTITY"] = $map[$item["PRODUCTID"]]["TRANQTY"] ?? "0";
+			$item["TOTALSALE"] = $map[$item["PRODUCTID"]]["TOTALSALE"] ?? "0";
+			$item["SALESINCELASTRECEIVE"] = $map[$item["PRODUCTID"]]["SALESINCELASTRECEIVE"] ?? "0";	
+			$item["TOTALORDERTIME"] = $map[$item["PRODUCTID"]]["TOTALORDERTIME"] ?? "0";
+			$item["TOTALRECEIVE"] = $map[$item["PRODUCTID"]]["TOTALRECEIVE"] ?? "0";				
+
+			$item["REQUEST_QUANTITY"] = $mapA[$item["PRODUCTID"]]["REQUEST_QUANTITY"] ?? "";
+			if ($item["DISCOUNT"] == "")
+				$item["DISCOUNT"] = $mapA[$item["PRODUCTID"]]["DISCOUNT"] ?? "0";
+			if ($item["COST"] == "")
+			$item["COST"] = $mapA[$item["PRODUCTID"]]["COST"] ?? "0";
+			$item["REQUESTTYPE"] = $mapA[$item["PRODUCTID"]]["REQUESTTYPE"] ?? "";	
+
+			array_push($newData,$item);
 	}
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"]["items"] = $itemsA;	
+	$resp["data"]["items"] = $newData;
 	$resp["data"]["tax"] = $tax;
 	$resp["data"]["permadiscount"] = "0";
 	$response = $response->withJson($resp);
 	return $response;
 });
+
 
 $app->get('/itemrequestactionitems/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();

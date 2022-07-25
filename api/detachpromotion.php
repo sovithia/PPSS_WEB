@@ -16,8 +16,8 @@ function detachPromotion()
             AND PRODUCTID IN (SELECT PRODUCTID FROM ICPRODUCT WHERE DISCABLE = 1)                        
            ";
     $req = $db->prepare($sql);       
-    $req->execute(array());    
-    echo "Detaching promotion\n";
+    $req->execute(array());
+    echo date("Y-m-d") .": Detaching promotion\n";
 }
 detachPromotion();
 

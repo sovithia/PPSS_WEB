@@ -91,6 +91,11 @@ function GenerateDailyGroupedPurchases()
 			$req->execute(array($item["PRODUCTID"],$theID));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
+			if ($res == false)			
+				$new = true;
+			else
+				$new = false;
+
 			$sql = "SELECT TOP(1) TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
@@ -117,7 +122,7 @@ function GenerateDailyGroupedPurchases()
 			}
 				
 
-			if ($res != false){
+			if ($new == true){
 				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));

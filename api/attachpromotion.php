@@ -16,8 +16,8 @@ function attachPromotion()
             AND PRODUCTID IN (SELECT PRODUCTID FROM ICPRODUCT WHERE DISCABLE = 1)                        
            ";
     $req = $db->prepare($sql);       
-    $req->execute(array());  
-    echo "Attaching promotion\n";
+    $req->execute(array());
+    echo date("Y-m-d") .": Attaching promotion\n";
 }
 attachPromotion();
 ?>
