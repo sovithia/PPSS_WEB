@@ -3285,6 +3285,15 @@ $app->post('/linkproducttovendor',function(Request $request,Response $response) 
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$vendid = $res["VENDID"];
 
+	//Rare Condition 
+	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$res = $req->execute(array($json["PRODUCTID"]));			
+	if ($res["VENDID"] == "" || $res["VENDID"] == null){
+		$sql = "UPDATE ICPRODUCT SET VENDID = ? WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($vendid,$json["PRODUCTID"]));
+	}
 
 	$sql = "INSERT INTO ICVENDOR (PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD,USEREDIT,NOTES) VALUES (?,?,?,?,?,?,?)";
 	$req = $db->prepare($sql);
@@ -3306,6 +3315,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 	$req = $db->prepare($sql);
 	$req->execute(array($json["USERID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$author = $json["AUTHOR"] ?? "SOVI";
 
 	if (isset($json["EXPIRE"]))
 		$expire = $json["EXPIRE"];
@@ -3356,7 +3366,7 @@ $app->post('/supplyrecordnopopool', function(Request $request,Response $response
 							VALUES(?,?,?,?,?,?)";
 			$today = date("Y-m-d");
 			$req = $dbBlue->prepare($sql);
-			$req->execute(array($json["LOCID"],$json["PRODUCTID"],$today,$author,16100));
+			$req->execute(array($json["LOCID"],$json["PRODUCTID"],$res2["VENDID"],$today,$author,16100));
 		}
 
 		$sql = "SELECT PRODUCTID FROM SUPPLYRECORDNOPOPOOL WHERE PRODUCTID = ? AND USERID = ?";
@@ -5115,16 +5125,23 @@ $app->delete('/itemrequestactionitems',function(Request $request,Response $respo
 	$db = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 	$itemrequestactionid = $json["ITEMREQUESTACTION_ID"];
-	$productid = $json["PRODUCTID"];
-
-	$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($productid,$itemrequestactionid));
-
+	if (isset($json["PRODUCTID"])){
+		$productid = $json["PRODUCTID"];
+		$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($productid,$itemrequestactionid));
+	}
+	else if (isset($json["PRODUCTIDS"])){
+		$productids = $json["PRODUCTIDS"];
+		foreach($productids as $productid){
+			$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($productid,$itemrequestactionid));
+		}
+	}
 	$data["result"] = "OK";
 	$response = $response->withJson($data);
 	return $response;
-
 });
 
 $app->put('/itemrequestaction/{id}', function(Request $request,Response $response) {
@@ -11447,13 +11464,26 @@ $app->post('/blacklist',function ($request,Response $response){
 	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
 
-	$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = 'Y' WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
+	if (isset($json["PRODUCTID"])){
+		$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = 'Y' WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
+	
+		$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
+		$req = $indb->prepare($sql);     
+		$req->execute(array($json["PRODUCTID"]));
+	}else if (isset($json["PRODUCTIDS"])){
+		$productids = $json["PRODUCTIDS"];
+		foreach($productids as $productid){
+			$sql = "UPDATE ICPRODUCT SET PPSS_IS_BLACKLIST = 'Y' WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($productid));
+			$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
+			$req = $indb->prepare($sql);     
+			$req->execute(array($productid));
+		}
+	}
 
-	$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
-    $req = $indb->prepare($sql);     
-	$req->execute(array($json["PRODUCTID"]));
 
 	$resp = array();
 	$resp["result"] = "OK";	
@@ -11463,17 +11493,35 @@ $app->post('/blacklist',function ($request,Response $response){
 
 $app->post('/externallist',function ($request,Response $response){
 	$db = getDatabase();
+	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
+	
+	if (isset($json["PRODUCTID"])){
+		$sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"]));
 
-	$sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
+		$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
+		$req = $indb->prepare($sql);     
+		$req->execute(array($json["PRODUCTID"]));
+	}else if ($json["PRODUCTIDS"]){
+		$productids = $json["PRODUCTIDS"];
+		foreach($productids as $productid){
+			$sql = "UPDATE ICPRODUCT SET PPSS_HAVE_EXTERNAL = 'Y' WHERE PRODUCTID = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($productid));
 
+			$sql = "DELETE FROM ITEMREQUEST WHERE PRODUCTID = ?";
+			$req = $indb->prepare($sql);     
+			$req->execute(array($productid));
+		}
+	}
 	$resp = array();
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
 });
+
 
 
 // ChangePrice
@@ -12143,6 +12191,82 @@ $app->get('/grade',function(Request $request,Response $response){
 	$resp["data"] = $data;	
 	$response = $response->withJson($resp);
 	return $response;			
+});
+
+$app->get('/salespeed',function(Request $request,Response $response){
+	$db = getDatabase();
+	$indb = getInternalDatabase();
+
+	$team = $request->getParam('TEAM','');
+	$row = $request->getParam('ROW','');
+	
+	if ($team == "RAT"){
+		$locs = "G01A|G01B|G02A|G02B|G03A|G03B";
+	}else if ($team == "OX"){
+		$locs = "G04A|G04B|G05A|G05B|GSOF";
+	}else if ($team == "TIGER"){
+		$locs = "G06A|G06B|G07A|G07B|GMIL";
+	}
+	else if ($team == "HARE"){
+		$locs = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
+	}
+	else if ($team == "DRAGON"){
+		$locs = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
+	}
+	else if ($team == "SNAKE"){
+		$locs = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B";
+	}
+	else if ($team == "HORSE"){
+		$locs = "NBAB|GWIN";
+	}
+	else if ($team == "GOAT"){
+		$locs = "CHIL|FROZ";
+	}	
+	if ($team == ''){				
+			$locs = $row;
+	}
+	error_log($locs);
+	$params = array();
+	$locs = explode('|',$locs);
+	
+	$sql = "SELECT PRODUCTID FROM ICLOCATION WHERE ";
+	foreach($locs as $loc){
+		$sql .= ' STORBIN LIKE ? OR';
+		array_push($params, '%'.$loc.'%' );
+	}
+	$sql = substr($sql,0,-2);	
+	$req = $db->prepare($sql);				
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
+	$str = "(";
+	foreach($items as $item){
+		$str .= "'".$item["PRODUCTID"]."',";
+	}
+	$str = substr($str,0,-1);
+	$str .= ")";
+	$sql = "SELECT TOP(200) PRODUCTID,PRODUCTNAME,LASTSALEDATE,
+				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+				ISNULL((SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND POSDATE >= dbo.ICPRODUCT.LASTRECEIVEDATE AND POSDATE <=  GETDATE()),0) as 'SALESINCELASTRCV',
+				(SELECT TOP(1) TRANDATE FROM PORECEIVEDETAIL WHERE PORECEIVEDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID ORDER BY COLID DESC) as 'LASTRECEIVEDATE',
+				ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = ICPRODUCT.PRODUCTID)*-1),0) as 'TOTALSALE'
+				FROM ICPRODUCT 
+				WHERE ONHAND > 0
+				AND PRODUCTID IN ".$str."
+				ORDER BY SALESINCELASTRCV ASC";
+	error_log($sql);				
+	$req = $db->prepare($sql);	
+	$req->execute(array());
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["data"] = $data;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+
 });
 
 
