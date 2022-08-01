@@ -828,7 +828,7 @@ function orderStatistics($barcode)
 	else 
 		$QTYSALE = 0;
 
-	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
+	$RATIOSALE = ($QTYSALE * 100) / (($RCVQTY != 0) ? $RCVQTY : 1); // **
 
 
 	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";

@@ -1121,7 +1121,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	if ($item != false){
 		$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $conn->prepare($sql);
-		$req->execute(array($item["PRODUCTID"]));
+		$req->execute(array($barcode));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
 			$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);	
@@ -3223,19 +3223,25 @@ $app->get('/supplyrecordpool/{userid}', function(Request $request,Response $resp
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$newData = array();
+	$errormsg = null;
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTNAME,VENDNAME,PPSS_HAVE_EXTERNAL, PACKINGNOTE FROM ICPRODUCT,APVENDOR WHERE ICPRODUCT.VENDID = APVENDOR.VENDID AND ICPRODUCT.PRODUCTID =  ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
-		$item["VENDNAME"] = $res["VENDNAME"];
-		$item["PACKING"] = $res["PACKINGNOTE"];
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		$item["PPSS_HAVE_EXTERNAL"] = $res["PPSS_HAVE_EXTERNAL"];
-		array_push($newData,$item);	
-
+		if ($res != false){
+			$item["VENDNAME"] = $res["VENDNAME"] ?? "";
+			$item["PACKING"] = $res["PACKINGNOTE"] ?? "";
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"] ?? "" ;
+			$item["PPSS_HAVE_EXTERNAL"] = $res["PPSS_HAVE_EXTERNAL"] ?? "";
+			array_push($newData,$item);	
+		}else{
+			$errormsg .= " ".$item["PRODUCTID"]." does not exist ";
+		}	
 	}
+	if ($errormsg != null)
+		$data["message"] = $errormsg;	
 	$data["result"] = "OK";				
 	$data["data"] = $newData;
 	$response = $response->withJson($data);
@@ -3806,8 +3812,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 
 			if ($res == false ){
-				$sql = "SELECT LOCONHAND,STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' WHERE PRODUCTID = ?";
-				$req = $db->prepare($sql);
+				$sql = "SELECT LOCONHAND,STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+				$req = $dbBLUE->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));				
 				$res = $req->fetch(PDO::FETCH_ASSOC);
 				if ($res != false){
@@ -5387,12 +5393,17 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 		$requester = $res["REQUESTER"];	
 	}
 		
-	$inStr = "(";
-	foreach($items as $item){
-		$inStr .= "'".$item["PRODUCTID"]."',";
+	if (count($items) > 0){
+		$inStr = "(";
+		foreach($items as $item){
+			$inStr .= "'".$item["PRODUCTID"]."',";
+		}
+		$inStr = substr($inStr,0,-1);
+		$inStr .= ")";
+	}else{
+		$inStr = "()";
 	}
-	$inStr = substr($inStr,0,-1);
-	$inStr .= ")";
+	
 
 	
 
@@ -12167,7 +12178,7 @@ $app->get('/grade',function(Request $request,Response $response){
 			$req = $db->prepare($sql);
 			$req->execute(array($action["ID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$LASTMONTHTRANSFERS  += $res["COUNT"] ?? "0";		
+			$CURRENTMONTHTRANSFERS  += $res["COUNT"] ?? "0";		
 		}	
 	}
 
@@ -12224,8 +12235,7 @@ $app->get('/salespeed',function(Request $request,Response $response){
 	}	
 	if ($team == ''){				
 			$locs = $row;
-	}
-	error_log($locs);
+	}	
 	$params = array();
 	$locs = explode('|',$locs);
 	
@@ -12238,6 +12248,7 @@ $app->get('/salespeed',function(Request $request,Response $response){
 	$req = $db->prepare($sql);				
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
 
 
 	$str = "(";
@@ -12255,8 +12266,7 @@ $app->get('/salespeed',function(Request $request,Response $response){
 				FROM ICPRODUCT 
 				WHERE ONHAND > 0
 				AND PRODUCTID IN ".$str."
-				ORDER BY SALESINCELASTRCV ASC";
-	error_log($sql);				
+				ORDER BY SALESINCELASTRCV ASC";					
 	$req = $db->prepare($sql);	
 	$req->execute(array());
 	$data = $req->fetchAll(PDO::FETCH_ASSOC);
