@@ -56,19 +56,27 @@ function GenerateDailyGroupedPurchases()
 		}
 		else		
 			$theID = $res["ID"];	
-		
-		$sql = "SELECT ICPRODUCT.PRODUCTID 
-		FROM ICLOCATION,ICPRODUCT 
+		/*
+		$sql = "SELECT ICPRODUCT.PRODUCTID,ONHAND 
+		FROM ICLOCATION,ICPRODUCT
 		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
 		AND ACTIVE = 1		
 		AND ONHAND < ICLOCATION.ORDERPOINT 
-		AND ICLOCATION.LOCID = 'WH1'
+		AND ICLOCATION.LOCID = 'WH1' 
 		AND ICLOCATION.ORDERPOINT > 0					
 		AND PPSS_IS_BLACKLIST IS NULL		
 		AND PPSS_HAVE_EXTERNAL IS NULL
 		AND PPSS_IS_ORDERED IS NULL
 		AND ICPRODUCT.VENDID = ? 
-		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";		
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,ONHAND,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";		
+		*/
+		$sql = "SELECT ICPRODUCT.PRODUCTID,ONHAND,PRODUCTNAME 
+		FROM ICPRODUCT
+		WHERE ACTIVE = 1					
+		AND PPSS_IS_BLACKLIST IS NULL		
+		AND PPSS_HAVE_EXTERNAL IS NULL
+		AND PPSS_IS_ORDERED IS NULL
+		AND VENDID = ?";		
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($vendor["VENDID"]));
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -111,8 +119,10 @@ function GenerateDailyGroupedPurchases()
 				
 			
 			if ($new == true){
-				/*
 				$stats = orderStatistics($item["PRODUCTID"]);						
+				echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
+				/*
+				
 				$sql = "INSERT INTO ITEMREQUEST (
 				PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
 				LASTRECEIVEQUANTITY,MOMENTONHAND,TOTALWASTEQUANTITY,TOTALPROMOTIONQUANTITY,SALESINCELASTRECEIVE,
@@ -129,22 +139,27 @@ function GenerateDailyGroupedPurchases()
 				$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
 				$stats["FINALQTY"],$stats["DECISION"],'AUTOMATIC',$theID));
 				*/
+				/*
 				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));
 				echo "Inserting non-existent: ".$item["PRODUCTID"]."\n";
+				*/
 			}
 			else
 			{
+				echo "Existing item ".$item["PRODUCTID"]."\n";
+				/*
 				$sql = "UPDATE ITEMREQUEST SET REQUESTTYPE = 'BOTH'	WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$theID));
 				echo "Updating existent: ".$item["PRODUCTID"]."\n";
+				*/
 			}
 
-			$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));	
+			//$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+			//$req = $dbBlue->prepare($sql);
+			//$req->execute(array($item["PRODUCTID"]));	
 			//sleep(1);	
 		}
 		//break;		

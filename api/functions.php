@@ -773,12 +773,13 @@ function externalAlertStats($barcode){
 
 }
 
-function orderStatistics($barcode)
+
+function orderStatistics($barcode,$lightmode = false)
 {
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
-	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+	$sql = "SELECT TOP(1) RECEIVE_DATE, RECEIVE_QTY  FROM PODETAIL WHERE PRODUCTID = ? AND POSTATUS = 'C' ORDER BY DATEADD DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
@@ -798,7 +799,7 @@ function orderStatistics($barcode)
 	}
 	else
 	{
-		$sql = "SELECT ACTIVE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT ACTIVE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($barcode));  
 		$res2  = $req->fetch(PDO::FETCH_ASSOC);
@@ -809,11 +810,11 @@ function orderStatistics($barcode)
 			return $stats;
 		}
 		else{
-			$RCVDATE = $res["TRANDATE"];
-			$RCVQTY = $res["TRANQTY"]; //**		
+			$stats["ONHAND"] = $res2["ONHAND"];
+			$RCVDATE = $res["RECEIVE_DATE"];
+			$RCVQTY = $res["RECEIVE_QTY"]; //**		
 		}	
-	}
-	 
+	}	 
 	$begin = $RCVDATE;
 	$end = date('Y-m-d', time()). " 23:59:59.999";
 
@@ -828,10 +829,12 @@ function orderStatistics($barcode)
 	else 
 		$QTYSALE = 0;
 
-	$RATIOSALE = ($QTYSALE * 100) / (($RCVQTY != 0) ? $RCVQTY : 1); // **
+	$RATIOSALE = ($QTYSALE * 100) / ($RCVQTY != 0 ? $RCVQTY : 1); // **
 
 
-	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE,LASTSALEDATE,
+			isnull((SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = P.PRODUCTID AND LOCID = 'WH1'),0) as 'ORDERPOINT' 
+			FROM ICPRODUCT P WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -840,36 +843,30 @@ function orderStatistics($barcode)
 
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
-	
+	$stats["LASTSALEDAY"] = $res["LASTSALEDATE"];
+	$stats["ORDERPOINT"] = $res["ORDERPOINT"];
 	$ONHAND = $res["ONHAND"]; //**	
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
-	/*
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM WASTE,WASTEITEM
-					WHERE WASTEITEM.WASTE_ID =  WASTE.ID
-					AND PRODUCTID = ? 
-					AND  (WASTE.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-					 			WASTE.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-					 			WASTE.TYPE = 'CLEARANCETOOMUCHPROMOTION')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+	
+	$sql = "SELECT (SUM(QUANTITY1) + SUM(QUANTITY2) + SUM(QUANTITY3) + SUM(QUANTITY4))  as 'QTY' 
+					FROM SELFPROMOTIONITEM					
+					WHERE PRODUCTID = ?";
 	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
+	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	*/
+	
 	$PROMO = 0;
 	if ($res != false)	
 		$PROMO = $res["QTY"] ?? 0; //**					
 
 	$sql = "SELECT SUM(QUANTITY)as 'QTY' 
-					FROM WASTE,WASTEITEM 
-					WHERE WASTEITEM.WASTE_ID =  WASTE.ID 
-					AND PRODUCTID = ? 
-					AND  (WASTE.TYPE = 'DAMAGEWASTE' OR 
-					WASTE.TYPE = 'EXPIREWASTE')
-					AND WASTE.CREATED BETWEEN ? AND ?";
+					FROM WASTEITEM 
+					WHERE PRODUCTID = ?";
 	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
+	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+
 	$WASTE = 0;
 	if ($res != false)
 		$WASTE = $res["QTY"] ?? 0; //**
@@ -884,11 +881,12 @@ function orderStatistics($barcode)
 	$stats["PRODUCTNAME"] = $PRODUCTNAME;
 	$stats["PRODUCTID"] = $barcode;
 	$stats["SALESPEED"] = $SALESPEED . " days";
-	$stats["LASTSALEDAY"] = date('Y-m-d', strtotime($begin. ' + '.$SALESPEED.' days')); 
+	
 	$stats["PROMO"] = $PROMO;	
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
-	$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
+	if ($lightmode == false)
+		$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
 	$MARGIN = (int)$RCVQTY * 0.2;
 
 	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		
@@ -1048,7 +1046,27 @@ function orderStatistics($barcode)
 				$stats["DECISION"] = "TOOEARLY";					
 			}	
 		}
-	
+	if ($lightmode == false){
+		$sql = "SELECT 
+		ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = PR.PRODUCTID)*-1),0) as 'TOTALSALE',
+		ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = PR.PRODUCTID),0) as 'TOTALORDERTIME',
+		ISNULL((SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = PR.PRODUCTID),0) as 'TOTALRECEIVE',
+		(SELECT TOP(1) RECEIVE_QTY FROM PODETAIL WHERE PODETAIL.PRODUCTID = PR.PRODUCTID AND POSTATUS ='C' ORDER BY COLID DESC) as 'LASTRECEIVEQUANTITY',
+		(SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = PR.PRODUCTID AND POSDATE >= (SELECT TOP(1) RECEIVE_DATE FROM PODETAIL WHERE PODETAIL.PRODUCTID = PR.PRODUCTID AND POSTATUS = 'C' ORDER BY COLID DESC) AND POSDATE <=  GETDATE()) as 'SALESINCELASTRECEIVE'
+		FROM PODETAIL as PR
+		WHERE PRODUCTID = ?
+		AND POSTATUS = 'C'";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		$stats["TOTALSALE"] = $res["TOTALSALE"] ?? "";
+		$stats["TOTALORDERTIME"] = $res["TOTALORDERTIME"] ?? "";
+		$stats["TOTALRECEIVE"] = $res["TOTALRECEIVE"] ?? "" ;
+		$stats["SALESINCELASTRECEIVE"] = $res["SALESINCELASTRECEIVE"] ?? "";
+		$stats["LASTRECEIVEQUANTITY"] = $res["LASTRECEIVEQUANTITY"] ?? "";
+	}
+
 	return $stats;	
 }
 

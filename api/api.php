@@ -969,7 +969,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		if ($item1 != false){
 			$item["WH1"] = $item1["LOCONHAND"];
-			$item["STOREBIN1"] = $item1["STORBIN"];			
+			$item["STOREBIN1"] = $item1["STORBIN"] ?? "";			
 		}else{
 			$item["WH1"] = "";
 			$item["STOREBIN1"] = "";			
@@ -985,7 +985,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 
 		if ($item2 != false){
 			$item["WH2"] = $item2["LOCONHAND"];
-			$item["STOREBIN2"] = $item2["STORBIN"];	
+			$item["STOREBIN2"] = $item2["STORBIN"] ?? "";	
 		}else{
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
@@ -1208,6 +1208,23 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	{
 		if ($type == "ORDERSTATS"){					
 			$stats = orderStatistics($barcode);
+			
+			
+			
+			$item["TOTALRECEIVE"] = $stats["TOTALRECEIVE"] ?? "";
+			
+			$item["LASTRECEIVEQUANTITY"] = $stats["RCVQTY"] ?? "";
+			$item["ONHAND"] = $stats["ONHAND"] ?? "";
+			$item["LASTRCVDATE"] = $stats["LASTRCVDATE"] ?? "";
+			$item["TOTALORDERTIME"] = $stats["TOTALORDERTIME"] ?? "";
+			$item["WASTE"] = $stats["WASTE"] ?? "";
+			$item["PROMO"] = $stats["PROMO"] ?? "";
+
+			$item["LASTSALEDAY"] = $stats["LASTSALEDAY"] ?? "";
+
+			$item["TOTALSALE"] = $stats["TOTALSALE"] ?? "";
+			$item["SALESINCELASTRECEIVE"] = $stats["SALESINCELASTRECEIVE"] ?? "";
+			$item["SALESPEED"] = $stats["SALESPEED"] ?? "";		
 			$item["ORDERQTY"] = $stats["FINALQTY"] ?? "";		
 			$item["DECISION"] = $stats["DECISION"] ?? "";
 			if(isset($stats["RCVQTY"]))
@@ -2629,7 +2646,9 @@ function markAnomalies()
 {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS is null and PONUMBER is not null";
+	$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS is null 
+			and (status = 'RECEIVED' or status = 'RECEIVEDFRESH' or status = 'PAID')			
+			and PONUMBER is not null";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$records = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -3064,8 +3083,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	$dbBlue = getDatabase();
 	
 	$json = json_decode($request->getBody(),true);	
-	$userid = $json["USERID"];
-
+	$userid = $json["USERID"];	
 	if (!isset($json["ITEMS"])) // MANUAL
 	{
 		$item["PRODUCTID"] = $json["PRODUCTID"];
@@ -3086,10 +3104,10 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	}else{ // EXCEL
 		$items = json_decode($json["ITEMS"],true);	
 	}
-	
 	$message = "";
 	foreach($items as $item)
 	{
+		error_log($item["PRODUCTID"]);
 		updateCost($item["PRODUCTID"]);
 
 		if (!isset($item["TAX"]))
@@ -3113,7 +3131,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 
 		$decision = $stats["DECISION"] ?? "";
 		$specialqty = $item["SPECIALQTY"] ?? "";
-		$stats = orderStatistics($item["PRODUCTID"]);
+		
+		$stats = orderStatistics($item["PRODUCTID"],true);		
+		error_log("-");
 		//if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
 		//{
 		//	$message .= "\n".$item["PRODUCTID"]." Not Added:".$decision;
@@ -12057,18 +12077,19 @@ $app->get('/grade',function(Request $request,Response $response){
 	$userid = $request->getParam('USERID','');
 	$month = $request->getParam('MONTH','');
 	$year = $request->getParam('YEAR','');
+	$prevyear = $year;
 	$team = $request->getParam('TEAM','');
 
 	if ($month == "1"){
 		$prevmonth = 12;
-		$year = intval($year) - 1;		
+		$prevyear = intval($year) - 1;		
 	}		
 	else
 		$prevmonth = sprintf("%02d",intval($month) -1);		
 	$month = sprintf("%02d",intval($month));		
 
-	$startLast = $year."-".$prevmonth."-01". " 00:00:00.000";
-	$endLast = $year."-".$prevmonth."-".calculateLastDay($year,$prevmonth)." 23:59:59.999";
+	$startLast = $prevyear."-".$prevmonth."-01". " 00:00:00.000";
+	$endLast = $year."-".$prevmonth."-".calculateLastDay($prevyear,$prevmonth)." 23:59:59.999";
 
 	$startCurrent = $year."-".$month."-01"." 00:00:00.000";
 	$endCurrent = $year."-".$month."-".calculateLastDay($year,$month)." 23:59:59.999";
