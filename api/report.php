@@ -6,7 +6,6 @@ function itemsWithoutStockThatSellsTheMost(){
     // Top 200 Seller in current month
 }
 
-
 function calculateLastDay($year,$month)
 {	 
 	if ($year % 400 == 0)
@@ -50,7 +49,6 @@ function calculateLastDay($year,$month)
 
 }
 
-
 function loadStats($month,$year)
 {
     $db = getDatabase();
@@ -65,7 +63,6 @@ function loadStats($month,$year)
         $req = $indb->prepare($sql);
         $req->execute(array($month,$year,'N/A','N/A','N/A','N/A','N/A','N/A'));    
     }
-
 
     $prevyear = $year;
 	if ($month == "1"){
@@ -96,7 +93,6 @@ function loadStats($month,$year)
         $sql = "UPDATE REPORT set GENERALDATA = ? WHERE MONTH = ? AND YEAR = ?";
         $req = $indb->prepare($sql);
         $req->execute(array(json_encode($generalData),$month,$year));
-     
     }
     
 
@@ -393,23 +389,44 @@ function renderOne($data, $lastincome,$lastmargin,$currentincome,$currentmargin)
         $DIFFSALEINCOME = difference($last["SALEINCOME"],$current["SALEINCOME"]);
         $DIFFSALEMARGIN = difference($last["SALEMARGIN"],$current["SALEMARGIN"]);
 
-        $LASTPERCENTINCOME = round($last["SALEINCOME"] * 100 / $lastincome,2);
-        $LASTPERCENTMARGIN = round($last["SALEMARGIN"] * 100 / $lastmargin,2);
+        $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$last["TRANSFERNBITEMS"]);
+        $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$last["TRANSFERQUANTITY"]);        
+        $LASTPERCENTINCOME = round($last["SALEINCOME"] * 100 / ($lastincome != 0 ? $lastincome : 1),2);
+        $LASTPERCENTMARGIN = round($last["SALEMARGIN"] * 100 / ($lastmargin != 0 ? $lastmargin : 1) ,2);
         $CURRENTPERCENTINCOME = round($current["SALEINCOME"] * 100 / $currentincome,2);        
-        $CURRENTPERCENTMARGIN = round($current["SALEMARGIN"] * 100 / $currentmargin,2);
+        $CURRENTPERCENTMARGIN = round($current["SALEMARGIN"] * 100 / $currentmargin,2);        
         $DIFFPERCENTINCOME = difference($LASTPERCENTINCOME,$CURRENTPERCENTINCOME);
         $DIFFPERCENTMARGIN = difference($LASTPERCENTMARGIN,$CURRENTPERCENTMARGIN);
+
+        $formWASTELast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Waste items(LAST MONTH)'><input type='hidden' name='items' value='".json_encode($last["WASTEITEMS"])."'><input type='submit' value='Details'></form>"; 
+        $formWASTECurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='hidden' name='items' value='".json_encode($current["WASTEITEMS"])."'><input type='submit' value='Details'></form>"; 
+
+        $formTRANSFERLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Transfer items(LAST MONTH)'><input type='hidden' name='items' value='".json_encode($last["TRANSFERITEMS"])."'><input type='submit' value='Details'></form>"; 
+        $formTRANSFERCurrent =  "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='hidden' name='items' value='".json_encode($current["TRANSFERITEMS"])."'><input type='submit' value='Details'></form>"; 
+
+        $formSELFPROMOLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Selfpromotion items(LAST MONTH)'><input type='hidden' name='items' value='".json_encode($last["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'></form>"; 
+        $formSELFPROMOCurrent = "<form method='POST' action='itemdetails.php'><input type='hidden' name='display' value='Selfpromotion items(CURRENT MONTH)'><input type='hidden' name='items' value='".json_encode($current["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'></form>"; 
+
+        $formRETURNLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='display' value='Return items(CURRENT MONTH)'><input type='hidden' name='items' value='".json_encode($last["RETURNITEMS"])."'><input type='submit' value='Details'></form>"; 
+        $formRETURNCurrent = "<form method='POST' action='itemdetails.php'><input type='hidden' name='display' value='Return items(CURRENT MONTH)'><input type='hidden' name='items' value='".json_encode($current["RETURNITEMS"])."'><input type='submit' value='Details'></form>"; 
+        
 
         $display .=   
         "<table border='1'>
         <tr><td colspan=4><center><b>".$onedata["NAME"]."</b>:".$onedata["ITEMCOUNT"]." items</center></td></tr>
         <tr><td>STATS</td><td>LASTMONTH</td><td>CURRENTMONTH</td><td>EVOLUTION</td></tr> 
-        <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]."</td><td>".$current["WASTENBITEMS"]."</td><td>".$DIFFWASTENBITEMS."</td></tr>
+        <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]." ".$formWASTELast."</td><td>".$current["WASTENBITEMS"]." ".$formWASTECurrent."</td><td>".$DIFFWASTENBITEMS."</td></tr>
         <tr><td>WASTE QUANTITY</td><td>".$last["WASTEQUANTITY"]."</td><td>".$current["WASTEQUANTITY"]."</td><td>".$DIFFWASTEQUANTITY."</td></tr>
-        <tr><td>SELFPROMO NBITEMS</td><td>".$last["SELFPROMONBITEMS"]."</td><td>".$current["SELFPROMONBITEMS"]."</td><td>".$DIFFSELFPROMONITEMS."</td></tr>
+
+        <tr><td>TRANSFER NBITEMS</td><td>".$last["TRANSFERNBITEMS"]." ".$formTRANSFERLast."</td><td>".$current["TRANSFERNBITEMS"]." ".$formTRANSFERCurrent."</td><td>".$DIFFTRANSFERNBITEMS."</td></tr>
+        <tr><td>TRANSFER QUANTITY</td><td>".$last["TRANSFERQUANTITY"]."</td><td>".$current["TRANSFERQUANTITY"]."</td><td>".$DIFFTRANSFERQUANTITY."</td></tr>
+        
+        <tr><td>SELFPROMO NBITEMS</td><td>".$last["SELFPROMONBITEMS"]." ".$formSELFPROMOLast."</td><td>".$current["SELFPROMONBITEMS"]." ".$formSELFPROMOCurrent."</td><td>".$DIFFSELFPROMONITEMS."</td></tr>
         <tr><td>SELFPROMO QTY</td><td>".$last["SELFPROMOQUANTITY"]."</td><td>".$current["SELFPROMOQUANTITY"]."</td><td>".$DIFFSELFPROMOQUANTITY."</td></tr>
-        <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]."</td><td>".$current["RETURNNBITEMS"]."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
+        
+        <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]." ".$formRETURNLast."</td><td>".$current["RETURNNBITEMS"]." ".$formRETURNCurrent."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
         <tr><td>RETURN QTY</td><td>".$last["RETURNQUANTITY"]."</td><td>".$current["RETURNQUANTITY"]."</td><td>".$DIFFRETURNQUANTITY."</td></tr>
+
         <tr><td>SALE NBITEMS</td><td>".$last["SALENBITEMS"]."</td><td>".$current["SALENBITEMS"]."</td><td>".$DIFFSALENBITEMS."</td></tr>
         <tr><td>SALE QTY</td><td>".round($last["SALEQUANTITY"],2)."</td><td>".round($current["SALEQUANTITY"],2)."</td><td>".$DIFFSALEQUANTITY."</td></tr>
         <tr><td>RECEIVE NBITEMS</td><td>".$last["RECEIVENBITEMS"]."</td><td>".$current["RECEIVENBITEMS"]."</td><td>".$DIFFRECEIVENBITEMS."</td></tr>
@@ -435,10 +452,11 @@ function render($month,$year)
     $generalData = json_decode($data["GENERALDATA"],true);
     $last = $generalData["LAST"];
     $current = $generalData["CURRENT"];    
-
-    $DIFFWASTENBITEMS = difference($last["WASTENBITEMS"],$current["WASTENBITEMS"],true);
-    $DIFFWASTEQUANTITY = difference($last["WASTEQUANTITY"],$current["WASTEQUANTITY"],true);
-    $DIFFSELFPROMONITEMS = difference($last["SELFPROMONBITEMS"],$current["SELFPROMONBITEMS"]);
+    
+    $DIFFWASTENBITEMS = difference($last["WASTENBITEMS"],$current["WASTENBITEMS"],true);    
+    $DIFFWASTEQUANTITY = difference($last["WASTEQUANTITY"],$current["WASTEQUANTITY"],true);    
+    $DIFFSELFPROMONBITEMS = difference($last["SELFPROMONBITEMS"],$current["SELFPROMONBITEMS"]);
+    
     $DIFFSELFPROMOQUANTITY = difference($last["SELFPROMOQUANTITY"],$current["SELFPROMOQUANTITY"]);
     $DIFFRETURNNBITEMS = difference($last["RETURNNBITEMS"],$current["RETURNNBITEMS"],true);
     $DIFFRETURNQUANTITY = difference($last["RETURNQUANTITY"],$current["RETURNQUANTITY"],true);
@@ -450,26 +468,54 @@ function render($month,$year)
     $DIFFSALEMARGIN = difference($last["SALEMARGIN"],$current["SALEMARGIN"]);
     $DIFFTOTALCUSTOMER = difference($last["TOTALCUSTOMER"],$current["TOTALCUSTOMER"]);
     $DIFFAVERAGEBASKET = difference($last["AVERAGEBASKET"],$current["AVERAGEBASKET"]);
+    $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$last["TRANSFERNBITEMS"]);
+    $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$last["TRANSFERQUANTITY"]);
+    
+    $DIFFPROMOLOSSNBITEMS = difference($last["PROMOLOSSNBITEMS"],$last["PROMOLOSSNBITEMS"]);
+    $DIFFPROMOLOSSQUANTITY = difference($last["PROMOLOSSQUANTITY"],$last["PROMOLOSSQUANTITY"]);
 
+    $formWASTELast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["WASTEITEMS"])."'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+    $formWASTECurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["WASTEITEMS"])."'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+
+    $formTRANSFERLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["TRANSFERITEMS"])."'><input type='hidden' name='display' value='Transfer items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+    $formTRANSFERCurrent =  "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["TRANSFERITEMS"])."'><input type='hidden' name='display' value='Transfer items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+
+    $formSELFPROMOLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
+    $formSELFPROMOCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+
+    $formRETURNLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["RETURNITEMS"])."'><input type='hidden' name='display' value='Return items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
+    $formRETURNCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["RETURNITEMS"])."'><input type='hidden' name='display' value='Return items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+
+    $formPromoLossLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["PROMOLOSSITEMS"])."'><input type='hidden' name='display' value='PromoLoss items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
+    $formPromoLossCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["PROMOLOSSITEMS"])."'><input type='hidden' name='display' value='PromoLoss items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
+    
 
     $display .=
     "<table border='1'>
     <tr><td colspan=4><center><b>GENERAL</b></center></td></tr>
     <tr><td>STATS</td><td>LASTMONTH</td><td>CURRENTMONTH</td><td>EVOLUTION</td></tr> 
     <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]."</td><td>".$current["WASTENBITEMS"]."</td><td>".$DIFFWASTENBITEMS."</td></tr>
+    <tr><td>WASTE ITEMS</td><td>".$last["WASTENBITEMS"]." ".$formWASTELast."</td><td>".$current["WASTENBITEMS"]." ".$formWASTECurrent."</td><td>".$DIFFWASTENBITEMS."</td></tr>
     <tr><td>WASTE QUANTITY</td><td>".$last["WASTEQUANTITY"]."</td><td>".$current["WASTEQUANTITY"]."</td><td>".$DIFFWASTEQUANTITY."</td></tr>
-    <tr><td>SELFPROMO NBITEMS</td><td>".$last["SELFPROMONBITEMS"]."</td><td>".$current["SELFPROMONBITEMS"]."</td><td>".$DIFFSELFPROMONITEMS."</td></tr>
-    <tr><td>SELFPROMO QTY</td><td>".$last["SELFPROMOQUANTITY"]."</td><td>".$current["SELFPROMOQUANTITY"]."</td><td>".$DIFFSELFPROMOQUANTITY."</td></tr>
-    <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]."</td><td>".$current["RETURNNBITEMS"]."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
+    <tr><td>TRANSFER NBITEMS</td><td>".$last["TRANSFERNBITEMS"]." ".$formTRANSFERLast."</td><td>".$current["TRANSFERNBITEMS"]." ".$formTRANSFERCurrent."</td><td>".$DIFFTRANSFERNBITEMS."</td></tr>
+    <tr><td>TRANSFER QUANTITY</td><td>".$last["TRANSFERQUANTITY"]."</td><td>".$current["TRANSFERQUANTITY"]."</td><td>".$DIFFTRANSFERQUANTITY."</td></tr>        
+    <tr><td>SELFPROMO NBITEMS</td><td>".$last["SELFPROMONBITEMS"]." ".$formSELFPROMOLast."</td><td>".$current["SELFPROMONBITEMS"]." ".$formSELFPROMOCurrent."</td><td>".$DIFFSELFPROMONBITEMS."</td></tr>
+    <tr><td>SELFPROMO QTY</td><td>".$last["SELFPROMOQUANTITY"]."</td><td>".$current["SELFPROMOQUANTITY"]."</td><td>".$DIFFSELFPROMOQUANTITY."</td></tr>        
+    <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]." ".$formRETURNLast."</td><td>".$current["RETURNNBITEMS"]." ".$formRETURNCurrent."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
     <tr><td>RETURN QTY</td><td>".$last["RETURNQUANTITY"]."</td><td>".$current["RETURNQUANTITY"]."</td><td>".$DIFFRETURNQUANTITY."</td></tr>
     <tr><td>SALE NBITEMS</td><td>".$last["SALENBITEMS"]."</td><td>".$current["SALENBITEMS"]."</td><td>".$DIFFSALENBITEMS."</td></tr>
     <tr><td>SALE QTY</td><td>".round($last["SALEQUANTITY"],2)."</td><td>".round($current["SALEQUANTITY"],2)."</td><td>".$DIFFSALEQUANTITY."</td></tr>
     <tr><td>RECEIVE NBITEMS</td><td>".$last["RECEIVENBITEMS"]."</td><td>".$current["RECEIVENBITEMS"]."</td><td>".$DIFFRECEIVENBITEMS."</td></tr>
     <tr><td>RECEIVE QTY</td><td>".round($last["RECEIVEQUANTITY"],2)."</td><td>".round($current["RECEIVEQUANTITY"],2)."</td><td>".$DIFFRECEIVEQUANTITY."</td></tr>       
+    
+    <tr><td>PROMOLOSS NBITEMS</td><td>".round($last["PROMOLOSSNBITEMS"],2)." ".$formPromoLossLast."</td><td>".round($current["PROMOLOSSNBITEMS"],2)." ".$formPromoLossCurrent."</td><td>".$DIFFPROMOLOSSNBITEMS."</td></tr>       
+    <tr><td>PROMOLOSS QUANTITY</td><td>".round($last["PROMOLOSSQUANTITY"],2)."</td><td>".round($current["PROMOLOSSQUANTITY"],2)."</td><td>".$DIFFPROMOLOSSQUANTITY."</td></tr>       
+
     <tr><td>SALE INCOME</td><td>".round($last["SALEINCOME"],2)."</td><td>".round($current["SALEINCOME"],2)."</td><td>".$DIFFSALEINCOME."</td></tr>
     <tr><td>SALE MARGIN</td><td>".round($last["SALEMARGIN"],2)."</td><td>".round($current["SALEMARGIN"],2)."</td><td>".$DIFFSALEMARGIN."</td></tr>       
     <tr><td>TOTAL CUSTOMER</td><td>".$last["TOTALCUSTOMER"]."</td><td>".$current["TOTALCUSTOMER"]."</td><td>".$DIFFTOTALCUSTOMER."</td></tr>
     <tr><td>AVERAGE BASKET</td><td>".round($last["AVERAGEBASKET"],2)."</td><td>".round($current["AVERAGEBASKET"],2)."</td><td>".$DIFFAVERAGEBASKET."</td></tr>       
+        
     <table><br><hr>";
 
     $lastincome = round($last["SALEINCOME"],2);
@@ -496,14 +542,12 @@ function render($month,$year)
 
 }
 
-
 function getCategoriesStats($name, $begin,$end)
-{		    
+{		        
     $indb = getInternalDatabase();
     $db = getDatabase();
 	$data = array();
 	
-
     $cats = explode('~',$name);  
     $catstr = "(";
     foreach($cats as $cat){
@@ -523,9 +567,9 @@ function getCategoriesStats($name, $begin,$end)
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-
+    
     if (count($items) == 0){
-        $productids = "()";
+        $productids = "('00000000')";
     }else{
         $productids = "(";
         foreach($items as $item){
@@ -534,11 +578,59 @@ function getCategoriesStats($name, $begin,$end)
         $productids = substr($productids,0,-1);
         $productids .= ")";
     }
-    
-	$itemCount = count(explode(',',$productids));
+
+    $stats = getProductsStats($productids, $begin,$end);
+    return $stats;
+}
+
+function getProductsStats($productids, $begin,$end){
+    $str = $productids;
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+	$itemCount = count(explode(",",$productids)); 
+        
+    // Transfer Quantity 
+    $transferQuantity = 0;
+    $sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER'  AND REQUEST_UPDATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $actions = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($actions as $action){
+        $sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ? AND PRODUCTID in ".$productids;
+        $req = $indb->prepare($sql);
+        $req->execute(array($action["ID"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $transferQuantity  += $res["COUNT"] ?? "0";
+    }
+
+    // Transfer NBItems 
+    $transferNbitems = 0;
+    $sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUEST_UPDATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $actions = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($actions as $action){
+        $sql = "SELECT count(distinct(PRODUCTID))  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ? AND PRODUCTID in ".$productids;
+        $req = $indb->prepare($sql);
+        $req->execute(array($action["ID"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $transferNbitems  += $res["COUNT"] ?? "0";
+    }
+    // Transfer Items
+    $sql = "SELECT distinct(PRODUCTID),
+           (SELECT sum(REQUEST_QUANTITY) FROM ITEMREQUEST WHERE ITEMREQUEST.PRODUCTID = IR.PRODUCTID 
+                AND ITEMREQUEST.ITEMREQUESTACTION_ID = IR.ITEMREQUESTACTION_ID) as 'QUANTITY'                
+           FROM ITEMREQUESTACTION,ITEMREQUEST as IR
+           WHERE ITEMREQUESTACTION.ID = IR.ITEMREQUESTACTION_ID   
+           AND TYPE = 'TRANSFER'  
+           AND PRODUCTID in ".$productids." AND REQUEST_TIME BETWEEN ? AND ?";        
+    $req = $indb->prepare($sql);                           
+    $req->execute(array($begin,$end));
+    $transferItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Waste Nb Items
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -549,6 +641,16 @@ function getCategoriesStats($name, $begin,$end)
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $wasteQuantity = $res["CNT"];
+    // Waste Items
+    $sql = "SELECT distinct(PRODUCTID),
+            (SELECT sum(QUANTITY) FROM WASTEITEM WHERE WASTEITEM.PRODUCTID = WI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM WASTEITEM as WI
+            WHERE PRODUCTID in ".$productids." 
+            AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $wasteItems = $req->fetchAll(PDO::FETCH_ASSOC);
+                            
     // Self Promotion Nb Items
     $sql = "SELECT sum(QUANTITY1) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
@@ -556,50 +658,69 @@ function getCategoriesStats($name, $begin,$end)
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $selfpromoQuantity = $res["CNT"];
     // Self Promotion Quantity
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$selfpromoNbItems = $res["CNT"];
-     // Return Nb item
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$returnNbItems = $res["CNT"];
+    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $selfpromoNbItems = $res["CNT"];
+    // Self Promotion Items
+    $sql = "SELECT distinct(PRODUCTID),                
+            (select sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM SELFPROMOTIONITEM as 'SPI'
+            WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $selfpromotionItems = $req->fetchAll(PDO::FETCH_ASSOC);
+
+    // Return Nb item
+    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $returnNbItems = $res["CNT"];
     // Return quantity
     $sql = "SELECT sum(QUANTITY) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$returnQuantity = $res["CNT"];
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $returnQuantity = $res["CNT"];
+    // Return Items
+    $sql = "SELECT distinct(PRODUCTID),
+            (select sum(QUANTITY) FROM RETURNRECORDITEM WHERE RETURNRECORDITEM.PRODUCTID = RRI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM RETURNRECORDITEM as 'RRI'
+            WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $returnItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Sale Nb Items
     $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND  POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$saleNbItems = $res["CNT"];
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $saleNbItems = $res["CNT"];
     // Sale Quantity
     $sql = "SELECT sum(QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$saleQuantity = $res["CNT"];
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $saleQuantity = $res["CNT"];
+
 
     // Receive Nb Items
     $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$receiveNbItems = $res["CNT"];
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $receiveNbItems = $res["CNT"];
     // Receive Quantity
     $sql = "SELECT sum(RECEIVE_QTY) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$receiveQuantity = $res["CNT"];
-	
+    $req->execute(array($begin,$end));
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $receiveQuantity = $res["CNT"];
+
+    
     // Sale Income
     $sql = "SELECT sum(PRICE * QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
@@ -615,127 +736,73 @@ function getCategoriesStats($name, $begin,$end)
     $saleMargin = $res["CNT"];
 
     $data["ITEMCOUNT"] = $itemCount;
+    $data["TRANSFERQUANTITY"] =  $transferQuantity != "" ?  $transferQuantity : "0";
+    $data["TRANSFERNBITEMS"] = $transferNbitems != "" ? $transferNbitems : "0";
+    $data["TRANSFERITEMS"] = $transferItems; 
+    
     $data["WASTENBITEMS"] = $wasteNbItems != "" ? $wasteNbItems : "0" ;
     $data["WASTEQUANTITY"] = $wasteQuantity != "" ? $wasteQuantity : "0";
+    $data["WASTEITEMS"] = $wasteItems; 
+
     $data["SELFPROMONBITEMS"] = $selfpromoNbItems != "" ? $selfpromoNbItems : "0";
     $data["SELFPROMOQUANTITY"] = $selfpromoQuantity != "" ? $selfpromoQuantity : "0";
+    $data["SELFPROMOTIONITEMS"] = $selfpromotionItems; 
+
     $data["RETURNNBITEMS"] = $returnNbItems != "" ? $returnNbItems : "0";
     $data["RETURNQUANTITY"] = $returnQuantity != "" ? $returnQuantity : "0";    
-	$data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
-	$data["SALEQUANTITY"] = $saleQuantity != "" ? $saleQuantity : "0";
+    $data["RETURNITEMS"] =  $returnItems; 
+
+    $data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
+    $data["SALEQUANTITY"] = $saleQuantity != "" ? $saleQuantity : "0";
     $data["RECEIVENBITEMS"] = $receiveNbItems != "" ? $receiveNbItems : "0";
     $data["RECEIVEQUANTITY"] = $receiveQuantity != "" ? $receiveQuantity : "0";
     $data["SALEINCOME"] = $saleIncome != "" ? $saleIncome : "0";
     $data["SALEMARGIN"] = $saleMargin != "" ? $saleMargin : "0";
-	return $data;
-}
-
-function getProductsStats($productids, $begin,$end){
-    $str = $productids;
-    $db = getDatabase();
-    $indb = getInternalDatabase();
-
-	$itemCount = count(explode(",",$productids)); 
-    // Waste Nb Items
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";    
-    $req = $indb->prepare($sql);
-    $req->execute(array($begin,$end));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
-    $wasteNbItems = $res["CNT"];
-    // Waste Quantity
-    $sql = "SELECT sum(QUANTITY) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";
-    $req = $indb->prepare($sql);
-    $req->execute(array($begin,$end));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
-    $wasteQuantity = $res["CNT"];
-    // Self Promotion Nb Items
-    $sql = "SELECT sum(QUANTITY1) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";
-    $req = $indb->prepare($sql);
-    $req->execute(array($begin,$end));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
-    $selfpromoQuantity = $res["CNT"];
-    // Self Promotion Quantity
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$selfpromoNbItems = $res["CNT"];
-     // Return Nb item
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$returnNbItems = $res["CNT"];
-    // Return quantity
-    $sql = "SELECT sum(QUANTITY) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID in ".$str." AND CREATED BETWEEN ? AND ?";
-	$req = $indb->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$returnQuantity = $res["CNT"];
-
-    // Sale Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND  POSDATE BETWEEN  ? AND ?"; 
-    $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$saleNbItems = $res["CNT"];
-    // Sale Quantity
-    $sql = "SELECT sum(QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
-    $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$saleQuantity = $res["CNT"];
-
-    // Receive Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
-    $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$receiveNbItems = $res["CNT"];
-    // Receive Quantity
-    $sql = "SELECT sum(RECEIVE_QTY) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
-    $req = $db->prepare($sql);
-	$req->execute(array($begin,$end));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$receiveQuantity = $res["CNT"];
-
-     // Sale Income
-     $sql = "SELECT sum(PRICE * QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
-     $req = $db->prepare($sql);
-     $req->execute(array($begin,$end));
-     $res = $req->fetch(PDO::FETCH_ASSOC);
-     $saleIncome = $res["CNT"];
- 
-     // Sale Margin
-     $sql = "SELECT sum((PRICE - COST) * QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
-     $req = $db->prepare($sql);
-     $req->execute(array($begin,$end));
-     $res = $req->fetch(PDO::FETCH_ASSOC);
-     $saleMargin = $res["CNT"];
-
-
-	
-    $data["ITEMCOUNT"] = $itemCount;        
-    $data["WASTENBITEMS"] = $wasteNbItems != "" ? $wasteNbItems : "0" ;
-    $data["WASTEQUANTITY"] = $wasteQuantity != "" ? $wasteQuantity : "0";
-    $data["SELFPROMONBITEMS"] = $selfpromoNbItems != "" ? $selfpromoNbItems : "0";
-    $data["SELFPROMOQUANTITY"] = $selfpromoQuantity != "" ? $selfpromoQuantity : "0";
-    $data["RETURNNBITEMS"] = $returnNbItems != "" ? $returnNbItems : "0";
-    $data["RETURNQUANTITY"] = $returnQuantity != "" ? $returnQuantity : "0";    
-	$data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
-	$data["SALEQUANTITY"] = $saleQuantity != "" ? $saleQuantity : "0";
-    $data["RECEIVENBITEMS"] = $receiveNbItems != "" ? $receiveNbItems : "0";
-    $data["RECEIVEQUANTITY"] = $receiveQuantity != "" ? $receiveQuantity : "0";
-    $data["SALEINCOME"] = $saleIncome != "" ? $saleIncome : "0";
-    $data["SALEMARGIN"] = $saleMargin != "" ? $saleMargin : "0";
-
-	return $data;
+    
+    return $data;
 }
 
 function getGeneralStats($begin,$end){    
     $db = getDatabase();
     $indb = getInternalDatabase();
 
+    // Transfer Quantity 
+    $transferQuantity = 0;
+    $sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUEST_UPDATED BETWEEN ? AND ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($begin,$end));
+	$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($actions as $action){
+		$sql = "SELECT SUM(REQUEST_QUANTITY)  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+		$req = $indb->prepare($sql);
+		$req->execute(array($action["ID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$transferQuantity  += $res["COUNT"] ?? "0";
+	}
+
+    // Transfer NBItems 
+    $transferNbitems = 0;
+    $sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUEST_UPDATED BETWEEN ? AND ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($begin,$end));
+	$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($actions as $action){
+		$sql = "SELECT count(distinct(PRODUCTID))  as COUNT FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+		$req = $indb->prepare($sql);
+		$req->execute(array($action["ID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$transferNbitems  += $res["COUNT"] ?? "0";
+	}
+    $sql = "SELECT distinct(PRODUCTID),
+    (SELECT sum(REQUEST_QUANTITY) FROM ITEMREQUEST WHERE ITEMREQUEST.PRODUCTID = IR.PRODUCTID 
+         AND ITEMREQUEST.ITEMREQUESTACTION_ID = IR.ITEMREQUESTACTION_ID) as 'QUANTITY'                
+    FROM ITEMREQUESTACTION,ITEMREQUEST as IR
+    WHERE ITEMREQUESTACTION.ID = IR.ITEMREQUESTACTION_ID   
+    AND TYPE = 'TRANSFER'  
+    AND REQUEST_TIME BETWEEN ? AND ?";        
+    $req = $indb->prepare($sql);                           
+    $req->execute(array($begin,$end));
+    $transferItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Waste Nb Items
 	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE CREATED BETWEEN ? AND ?";    
@@ -749,6 +816,17 @@ function getGeneralStats($begin,$end){
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $wasteQuantity = $res["CNT"];
+
+    // Waste Items
+    $sql = "SELECT distinct(PRODUCTID),
+            (SELECT sum(QUANTITY) FROM WASTEITEM WHERE WASTEITEM.PRODUCTID = WI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM WASTEITEM as WI
+            WHERE PRODUCTID 
+            AND CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $wasteItems = $req->fetchAll(PDO::FETCH_ASSOC);
+
     // Self Promotion Nb Items
     $sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
@@ -761,6 +839,15 @@ function getGeneralStats($begin,$end){
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$selfpromoNbItems = $res["CNT"];
+    // Self Promotion items
+    $sql = "SELECT distinct(PRODUCTID),                
+            (select sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM SELFPROMOTIONITEM as 'SPI'
+            WHERE CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $selfpromotionItems = $req->fetchAll(PDO::FETCH_ASSOC);
+
      // Return Nb item
 	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM RETURNRECORDITEM WHERE  CREATED BETWEEN ? AND ?";
 	$req = $indb->prepare($sql);
@@ -773,6 +860,15 @@ function getGeneralStats($begin,$end){
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$returnQuantity = $res["CNT"];
+
+    $sql = "SELECT distinct(PRODUCTID),
+            (select sum(QUANTITY) FROM RETURNRECORDITEM WHERE RETURNRECORDITEM.PRODUCTID = RRI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            FROM RETURNRECORDITEM as 'RRI'
+            WHERE CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end,$begin,$end));
+    $returnItems = $req->fetchAll(PDO::FETCH_ASSOC);
+
 
     // Sale Nb Items
     $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE  POSDATE BETWEEN  ? AND ?"; 
@@ -827,7 +923,46 @@ function getGeneralStats($begin,$end){
 	 $res = $req->fetch(PDO::FETCH_ASSOC);
 	 $averageBasket = $res["BASKET"];
 
-      
+    // Loss Promo NBITEMS & Loss Promo QTY
+    $promoLossItems = array();
+    $promoLossNbItems = 0;
+    $promoLossQuantity = 0;
+
+    $sql = "SELECT DISTINCT(PRODUCTID),
+            (SELECT sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'QUANTITY',
+            (SELECT sum(PERCENTPROMO1 + PERCENTPROMO2 + PERCENTPROMO3 + PERCENTPROMO4) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'PERCENTPROMO'
+             FROM SELFPROMOTIONITEM as 'SPI'
+             WHERE CREATED BETWEEN ? AND ?";
+    $req = $indb->prepare($sql);
+    $req->execute(array($begin,$end));
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($items as $item){
+        $sql = "SELECT PRICE,isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 4)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST'
+                FROM ICPRODUCT 
+                WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($item["PRODUCTID"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+
+        $price = $res != false ? $res["PRICE"] : 0;
+        $promo = $item != false ? $item["PERCENTPROMO"] : 0;
+        $lastcost = $res != false ? $res["LASTCOST"] : 0;
+        $finalPrice = $price - ($price * ($promo / 100));
+        if ($finalPrice < $lastcost){
+            $promoLossNbItems++;
+            $promoLossQuantity += $item["QUANTITY"];
+            $data = array();
+            $data["PRODUCTID"] = $item["PRODUCTID"];
+            $data["QUANTITY"] = $item["QUANTITY"];
+            array_push($promoLossItems,$data);
+        }
+    }
+    // 
+    $data["PROMOLOSSQUANTITY"] = $promoLossQuantity;
+    $data["PROMOLOSSNBITEMS"] = $promoLossNbItems;
+    $data["PROMOLOSSITEMS"] = $promoLossItems;
+
+
     $data["WASTENBITEMS"] = $wasteNbItems != "" ? $wasteNbItems : "0" ;
     $data["WASTEQUANTITY"] = $wasteQuantity != "" ? $wasteQuantity : "0";
     $data["SELFPROMONBITEMS"] = $selfpromoNbItems != "" ? $selfpromoNbItems : "0";
@@ -843,6 +978,14 @@ function getGeneralStats($begin,$end){
     $data["SALEMARGIN"] = $saleMargin != "" ? $saleMargin : "0";
     $data["TOTALCUSTOMER"] = $totalCustomer != "" ? $totalCustomer : "0";
     $data["AVERAGEBASKET"] = $averageBasket != "" ? $averageBasket : "0";
+
+    $data["TRANSFERNBITEMS"] = $transferQuantity != "" ? $transferQuantity : "0";
+    $data["TRANSFERQUANTITY"] = $transferNbitems != "" ? $transferNbitems : "0";
+
+    $data["WASTEITEMS"] = $wasteItems;
+    $data["TRANSFERITEMS"] = $transferItems;
+    $data["SELFPROMOTIONITEMS"] = $selfpromotionItems;
+    $data["RETURNITEMS"] = $returnItems;
 
 	return $data;
 }
