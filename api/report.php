@@ -389,8 +389,8 @@ function renderOne($data, $lastincome,$lastmargin,$currentincome,$currentmargin)
         $DIFFSALEINCOME = difference($last["SALEINCOME"],$current["SALEINCOME"]);
         $DIFFSALEMARGIN = difference($last["SALEMARGIN"],$current["SALEMARGIN"]);
 
-        $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$current["TRANSFERNBITEMS"]);
-        $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$current["TRANSFERQUANTITY"]);        
+        $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$last["TRANSFERNBITEMS"]);
+        $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$last["TRANSFERQUANTITY"]);        
         $LASTPERCENTINCOME = round($last["SALEINCOME"] * 100 / ($lastincome != 0 ? $lastincome : 1),2);
         $LASTPERCENTMARGIN = round($last["SALEMARGIN"] * 100 / ($lastmargin != 0 ? $lastmargin : 1) ,2);
         $CURRENTPERCENTINCOME = round($current["SALEINCOME"] * 100 / $currentincome,2);        
@@ -448,21 +448,11 @@ function render($month,$year)
     $req->execute(array($month,$year));
     $data = $req->fetch(PDO::FETCH_ASSOC);
     
-
     $display = "<center><h3>GENERAL</h3>";
     $generalData = json_decode($data["GENERALDATA"],true);
     $last = $generalData["LAST"];
     $current = $generalData["CURRENT"];    
     
-    $expensescurrent = $data["EXPENSESCURRENT"];
-    $expenseslast = $data["EXPENSESLAST"];
-    
-    
-    $profitcurrent =  $current["SALEMARGIN"] - $data["EXPENSESCURRENT"];
-    $profitlast = $last["SALEMARGIN"] - $data["EXPENSESLAST"];
-    
-    
-
     $DIFFWASTENBITEMS = difference($last["WASTENBITEMS"],$current["WASTENBITEMS"],true);    
     $DIFFWASTEQUANTITY = difference($last["WASTEQUANTITY"],$current["WASTEQUANTITY"],true);    
     $DIFFSELFPROMONBITEMS = difference($last["SELFPROMONBITEMS"],$current["SELFPROMONBITEMS"]);
@@ -478,14 +468,11 @@ function render($month,$year)
     $DIFFSALEMARGIN = difference($last["SALEMARGIN"],$current["SALEMARGIN"]);
     $DIFFTOTALCUSTOMER = difference($last["TOTALCUSTOMER"],$current["TOTALCUSTOMER"]);
     $DIFFAVERAGEBASKET = difference($last["AVERAGEBASKET"],$current["AVERAGEBASKET"]);
-    $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$current["TRANSFERNBITEMS"]);
-    $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$current["TRANSFERQUANTITY"]);
+    $DIFFTRANSFERNBITEMS = difference($last["TRANSFERNBITEMS"],$last["TRANSFERNBITEMS"]);
+    $DIFFTRANSFERQUANTITY = difference($last["TRANSFERQUANTITY"],$last["TRANSFERQUANTITY"]);
     
-    $DIFFPROMOLOSSNBITEMS = difference($last["PROMOLOSSNBITEMS"],$current["PROMOLOSSNBITEMS"]);
-    $DIFFPROMOLOSSQUANTITY = difference($last["PROMOLOSSQUANTITY"],$current["PROMOLOSSQUANTITY"]);
-
-    $DIFFEXPENSES = difference($expenseslast,$expensescurrent,true);
-    $DIFFPROFIT = difference($profitlast,$profitcurrent);
+    $DIFFPROMOLOSSNBITEMS = difference($last["PROMOLOSSNBITEMS"],$last["PROMOLOSSNBITEMS"]);
+    $DIFFPROMOLOSSQUANTITY = difference($last["PROMOLOSSQUANTITY"],$last["PROMOLOSSQUANTITY"]);
 
     $formWASTELast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["WASTEITEMS"])."'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
     $formWASTECurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["WASTEITEMS"])."'><input type='hidden' name='display' value='Waste items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
@@ -493,15 +480,16 @@ function render($month,$year)
     $formTRANSFERLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["TRANSFERITEMS"])."'><input type='hidden' name='display' value='Transfer items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
     $formTRANSFERCurrent =  "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["TRANSFERITEMS"])."'><input type='hidden' name='display' value='Transfer items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
 
-    $formSELFPROMOLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(LAST MONTH)'></form>"; 
-    $formSELFPROMOCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(CURRENT MONTH)'></form>"; 
+    $formSELFPROMOLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
+    $formSELFPROMOCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["SELFPROMOTIONITEMS"])."'><input type='submit' value='Details'><input type='hidden' name='display' value='Selfpromo items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
 
     $formRETURNLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($last["RETURNITEMS"])."'><input type='hidden' name='display' value='Return items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
     $formRETURNCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["RETURNITEMS"])."'><input type='hidden' name='display' value='Return items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
 
     $formPromoLossLast = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["PROMOLOSSITEMS"])."'><input type='hidden' name='display' value='PromoLoss items(LAST MONTH)'><input type='submit' value='Details'></form>"; 
     $formPromoLossCurrent = "<form method='POST' action='itemdetails.php' target='_blank'><input type='hidden' name='items' value='".json_encode($current["PROMOLOSSITEMS"])."'><input type='hidden' name='display' value='PromoLoss items(CURRENT MONTH)'><input type='submit' value='Details'></form>"; 
-            
+    
+
     $display .=
     "<table border='1'>
     <tr><td colspan=4><center><b>GENERAL</b></center></td></tr>
@@ -525,15 +513,10 @@ function render($month,$year)
 
     <tr><td>SALE INCOME</td><td>".round($last["SALEINCOME"],2)."</td><td>".round($current["SALEINCOME"],2)."</td><td>".$DIFFSALEINCOME."</td></tr>
     <tr><td>SALE MARGIN</td><td>".round($last["SALEMARGIN"],2)."</td><td>".round($current["SALEMARGIN"],2)."</td><td>".$DIFFSALEMARGIN."</td></tr>       
-    
-     
-    <tr><td>EXPENSE</td><td>".$expenseslast."</td><td>".$expensescurrent."</td><td>".$DIFFEXPENSES."</td></tr>
-    <tr><td>PROFIT</td><td>".$profitlast."</td><td>".$profitcurrent."</td><td>".$DIFFPROFIT."</td></tr>
-
     <tr><td>TOTAL CUSTOMER</td><td>".$last["TOTALCUSTOMER"]."</td><td>".$current["TOTALCUSTOMER"]."</td><td>".$DIFFTOTALCUSTOMER."</td></tr>
     <tr><td>AVERAGE BASKET</td><td>".round($last["AVERAGEBASKET"],2)."</td><td>".round($current["AVERAGEBASKET"],2)."</td><td>".$DIFFAVERAGEBASKET."</td></tr>       
+        
     <table><br><hr>";
-    
 
     $lastincome = round($last["SALEINCOME"],2);
     $lastmargin = round($last["SALEMARGIN"],2);
