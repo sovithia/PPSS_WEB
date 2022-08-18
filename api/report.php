@@ -647,7 +647,7 @@ function getProductsStats($productids, $begin,$end){
     $transferItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Waste Nb Items
-    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $sql = "SELECT count(distinct(PRODUCTID)) as 'CNT' FROM WASTEITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -668,14 +668,14 @@ function getProductsStats($productids, $begin,$end){
     $req->execute(array($begin,$end,$begin,$end));
     $wasteItems = $req->fetchAll(PDO::FETCH_ASSOC);
                             
-    // Self Promotion Nb Items
+    // Self Promotion Quantity
     $sql = "SELECT sum(QUANTITY1) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $selfpromoQuantity = $res["CNT"];
-    // Self Promotion Quantity
-    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    // Self Promotion NbItem
+    $sql = "SELECT count(distinct(PRODUCTID)) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -711,7 +711,7 @@ function getProductsStats($productids, $begin,$end){
     $returnItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Sale Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND  POSDATE BETWEEN  ? AND ?"; 
+    $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND  POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -725,7 +725,7 @@ function getProductsStats($productids, $begin,$end){
 
 
     // Receive Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
+    $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM PODETAIL WHERE PRODUCTID in ".$str." AND POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -822,7 +822,7 @@ function getGeneralStats($begin,$end){
     $transferItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Waste Nb Items
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM WASTEITEM WHERE CREATED BETWEEN ? AND ?";    
+	$sql = "SELECT count(distinct(PRODUCTID)) as 'CNT' FROM WASTEITEM WHERE CREATED BETWEEN ? AND ?";    
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -845,7 +845,7 @@ function getGeneralStats($begin,$end){
     $wasteItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
     // Self Promotion Nb Items
-    $sql = "SELECT count(PRODUCTID) as 'CNT' FROM SELFPROMOTIONITEM WHERE CREATED BETWEEN ? AND ?";
+    $sql = "SELECT count(distinct(PRODUCTID)) as 'CNT' FROM SELFPROMOTIONITEM WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -866,7 +866,7 @@ function getGeneralStats($begin,$end){
     $selfpromotionItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
      // Return Nb item
-	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM RETURNRECORDITEM WHERE  CREATED BETWEEN ? AND ?";
+	$sql = "SELECT count(distinct(PRODUCTID)) as 'CNT' FROM RETURNRECORDITEM WHERE  CREATED BETWEEN ? AND ?";
 	$req = $indb->prepare($sql);
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -888,7 +888,7 @@ function getGeneralStats($begin,$end){
 
 
     // Sale Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM dbo.POSDETAIL WHERE  POSDATE BETWEEN  ? AND ?"; 
+    $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM dbo.POSDETAIL WHERE  POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -901,7 +901,7 @@ function getGeneralStats($begin,$end){
 	$saleQuantity = $res["CNT"];
 
     // Receive Nb Items
-    $sql = "SELECT count(PRODUCTID) AS 'CNT' FROM PODETAIL WHERE  POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
+    $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM PODETAIL WHERE  POSTATUS = 'C' AND RECEIVE_DATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
