@@ -1,5 +1,12 @@
+<html>
+<head>    
+</head>
+<body>
+
+
 <?php 
 require_once("RestEngine.php");
+
 if (isset($_POST["items"]))
 {
     $items = json_decode($_POST["items"],true);
@@ -17,12 +24,13 @@ if (isset($_POST["items"]))
     $itemswithDetail = $itemswithDetail["data"];
     //var_dump($itemswithDetail);
     //exit;
+    
 
     echo "<center><h3>".$text."</h3>";
     echo "<table border='1'><tr><th>PICTURE</th><th>PRODUCTID</th><th>NAMEEN</th><th>NAMEKH</th><th>LASTCOST</th><th>PRICE</th><th>WH1</th><th>WH2</th><th>QUANTITY</th></tr>";
     foreach($itemswithDetail as $item){
         echo "<tr>
-                <td><img src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                <td><img class='lozad'  data-src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
                 <td><center>".$item["PRODUCTID"]."</center></td>
                 <td><center>".$item["PRODUCTNAME"]."</center></td>
                 <td><center>".$item["PRODUCTNAME1"]."</center></td>
@@ -37,5 +45,25 @@ if (isset($_POST["items"]))
     }
     echo "</table><center>";
     
+    
 }
 ?>
+<!-- IntersectionObserver polyfill -->
+<script src="https://raw.githubusercontent.com/w3c/IntersectionObserver/master/polyfill/intersection-observer.js"></script>
+
+<!-- Lozad.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/lozad"></script>
+<script>
+
+lozad('.lozad', {
+    load: function(el) {
+        el.src = el.dataset.src;
+        el.onload = function() {
+            el.classList.add('fade')
+        }
+    }
+}).observe()
+</script>
+
+</body>
+</html>

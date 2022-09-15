@@ -18,7 +18,7 @@ function getDatabase()
 function getInternalDatabase()
 {
 	try{				
-        $db = new PDO('sqlite:'.dirname(__FILE__).'/.foodpanda.sqlite');
+        $db = new PDO('sqlite:'.dirname(__FILE__).'/foodpanda.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -28,7 +28,41 @@ function getInternalDatabase()
 	return $db;
 }
 
-function Go()
+
+
+
+function foodpandaUpdate($sku,$active)
+{
+	$curl = curl_init();
+
+	$data["sku"] = $sku;
+	$data["active"] = $active;
+
+	curl_setopt_array($curl, array(
+	CURLOPT_URL => 'https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/vfbb/product',
+	CURLOPT_RETURNTRANSFER => true,
+	CURLOPT_ENCODING => '',
+	CURLOPT_MAXREDIRS => 10,
+	CURLOPT_TIMEOUT => 0,
+	CURLOPT_FOLLOWLOCATION => true,
+	CURLOPT_SSL_VERIFYPEER => false,
+	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+	CURLOPT_CUSTOMREQUEST => 'PUT',
+	CURLOPT_POSTFIELDS => json_encode($data),
+  	CURLOPT_HTTPHEADER => array(
+    'Authorization: Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjRjZjg1YTdjLTI1OTEtNDE0Yi1hY2Q3LWQ0Mjg3ZWUxYWMzZiIsIlRva2VuIjoiTktGREI3eExnWlFwZVJRUSIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=',
+    'Content-Type: application/json'
+  	),
+	));
+	$response = curl_exec($curl);
+	curl_close($curl);
+	if ($active == true)
+		echo "Active ".$response."\n";
+	else
+		echo "Inactive ".$response."\n";
+}
+
+function go()
 {
     $blueDB = getDatabase();
 	$db = getInternalDatabase();
@@ -50,41 +84,42 @@ function Go()
         if ($res == false)
             continue;
 
-        if ($onHand <= $res["THRESHOLD"])
-            $data["active"] = false;
+		if ($itemdetail["ONHAND"] <= $item["THRESHOLD"] ?? 0)
+			foodpandaUpdate($item["SKU"],false);            
 		else 
-            $data["true"] = false;
-        $headers = ["Authorization"] = "Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjRjZjg1YTdjLTI1OTEtNDE0Yi1hY2Q3LWQ0Mjg3ZWUxYWMzZiIsIlRva2VuIjoiTktGREI3eExnWlFwZVJRUSIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=";        
-		$result = RestEngine::PUT("https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/vfbb/product",$data,$headers);			
+			foodpandaUpdate($item["SKU"],true);		
 	}
 	$sql = "DELETE FROM RS_MENU_QUEUE";
 	$req = $blueDB->prepare($sql);
 	$req->execute(array());
 }
 
+
 function initialize()
 {
     $db = getInternalDatabase();
+	$blueDB = getDatabase();
     $sql = "SELECT * FROM ITEM";
     $req = $db->prepare($sql);
+	$req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-
+	
     foreach($items as $item){
-
-        $sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
-        $req = $db->prepare($sql);
-        $req->prepare($sql);
-        $itemdetail = $req->fetch(PDO::FETCH_ASSOC);
-
-        if ($itemdetail["ONHAND"] <= $item["THRESHOLD"])
-            $data["active"] = false;
+		echo "Item : ".$item["BARCODE"]." ";
+        $sql = "SELECT * FROM ICPRODUCT WHERE BARCODE = ?";
+        $req = $blueDB->prepare($sql);
+        $req->execute(array($item["BARCODE"]));
+        $itemdetail = $req->fetch(PDO::FETCH_ASSOC);				
+        if ($itemdetail["ONHAND"] <= $item["THRESHOLD"] ?? 0)
+			foodpandaUpdate($item["SKU"],false);            
 		else 
-            $data["true"] = false;
-        $headers = ["Authorization"] = "Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjRjZjg1YTdjLTI1OTEtNDE0Yi1hY2Q3LWQ0Mjg3ZWUxYWMzZiIsIlRva2VuIjoiTktGREI3eExnWlFwZVJRUSIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=";        
-		$result = RestEngine::PUT("https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/vfbb/product",$data,$headers);			
+			foodpandaUpdate($item["SKU"],true);            		
     }
 }
 
-Go();
+
+//Go();
+//initialize();
+
+
 ?>

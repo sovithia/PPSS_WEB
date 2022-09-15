@@ -7533,6 +7533,37 @@ $app->get('/depleteditems', function($request,Response $response) {
 	return $response;
 });
 
+$app->get('/depleteditemsbyvendor/{vendorid}', function($request,Response $response) {
+	$vendorid = $request->getAttribute('vendorid');
+
+	$db=getDatabase();	
+	$sql = "SELECT ICPRODUCT.PRODUCTID,PRICE,
+		replace(replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"',''),char(39),'') as 'PRODUCTNAME', 
+		ICLOCATION.ORDERPOINT,
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH1',
+		(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as  'WH2',
+		(SELECT replace(replace(VENDNAME,char(39),''),char(34),'') as 'VENDNAME' FROM APVENDOR WHERE VENDID = dbo.ICPRODUCT.VENDID ) as 'VENDNAME'
+		FROM ICLOCATION,ICPRODUCT 
+		WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ACTIVE = 1
+		AND LOCID = 'WH1'
+		AND ONHAND < ICLOCATION.ORDERPOINT 
+		AND ICLOCATION.ORDERPOINT > 0					
+		AND PPSS_IS_BLACKLIST IS NULL
+		AND ICPRODUCT.VENDID = ?
+		GROUP BY ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,PRODUCTNAME,ICLOCATION.ORDERPOINT,ORDERQTY,PRICE";
+	$req = $db->prepare($sql);
+	$req->execute(array($vendorid));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $items;
+	$response = $response->withJson($resp);
+
+	return $response;
+});
+
 $app->get('/penalty',function($request,Response $response) {
 	$barcode  = $request->getParam('barcode','');
 	$expiration = $request->getParam('expiration','');
@@ -8793,7 +8824,7 @@ $app->get('/expirealert',function ($request,Response $response){
 					AND SIZE IS NOT NULL 
 					AND SIZE <> ''
 					AND SUBSTRING(SIZE,1,1) = 'R'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 10)
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
 					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'

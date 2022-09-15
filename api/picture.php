@@ -20,19 +20,27 @@ switch(mime_content_type($path)) {
   return $img;
 }
 
-function loadPicture($barcode,$scale = 150,$base64 = false)
+function loadPicture($barcode,$scale = 150)
 {
 	if (!file_exists("/Volumes/Image/".$barcode.".jpg"))
 	{
 		$path = "img/mystery.png";		
 		$final = file_get_contents($path);
+		return $final;
 	}
 	else 
 	{
+
+
+
+		$tmpHandle = tmpfile();
+		$metaDatas = stream_get_meta_data($tmpHandle);
+		$path = $metaDatas['uri'];
+		fwrite($tmpHandle, file_get_contents("/Volumes/Image/".$barcode.".jpg"));
+		//fclose($tmpHandle);
 		
-		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
-		file_put_contents("./tmp.jpg",$final);		
-		$data = getImage("./tmp.jpg");
+
+		$data = getImage($path);
 		if ($data != false){
 			$data = imagescale($data,$scale);
 			ob_start();
@@ -45,12 +53,9 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 			$final = file_get_contents($path);
 		}
 		
-		
+		return $final;		
 	}
-		
-	if ($base64 == true)
-		return base64_encode($final);
-	return $final;		
+
 }
 
 $barcode = $_GET["barcode"];
@@ -63,10 +68,9 @@ $data = loadPicture($barcode,$scale);
 file_put_contents($name,$data);
 
 $fp = fopen($name, 'rb');
-// send the right headers
 header("Content-Type: image/png");
 header("Content-Length: " . filesize($name));
-// dump the picture and stop the script
 fpassthru($fp);
+
 exit;
 ?>
