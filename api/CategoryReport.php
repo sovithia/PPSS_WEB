@@ -21,7 +21,50 @@ require_once("functions.php");
 //NON-FOOD
 //DRY GROCERY 
 //FRESH
-function getSectionStats($name, $type)
+
+function getCategoryStats($name)
+{
+	$db = getDatabase();	
+	$data = array();
+	$itemCount = 0;
+	$itemCountActive = 0;
+	$itemCountWithStock = 0;
+	$itemCountWithoutStock = 0;
+	$totalStock = 0;
+
+	$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($name));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$itemCount += $res["COUNT"];
+
+	$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND > 0";
+	$req = $db->prepare($sql);
+	$req->execute(array($name));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$itemCountWithStock += $res["COUNT"];
+
+	$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND <= 0";
+	$req = $db->prepare($sql);
+	$req->execute(array($name));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$itemCountWithoutStock += $res["COUNT"];
+
+	$sql = "SELECT sum(ONHAND) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND > 0";
+	$req = $db->prepare($sql);
+	$req->execute(array($name));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$totalStock += $res["COUNT"];
+
+	$data["ITEMCOUNT"] = $itemCount;
+	$data["ITEMCOUNTWITHSTOCK"] = $itemCountWithStock;
+	$data["ITEMCOUNTWITHOUTSTOCK"] = $itemCountWithoutStock;
+	$data["TOTALSTOCK"] = $totalStock;
+	return $data;
+}
+
+
+function getStats($name, $type)
 {
 	$db = getDatabase();	
 	$sql = "SELECT CATEGORYID FROM ICCATEGORY WHERE ".$type." = ?";
@@ -31,6 +74,7 @@ function getSectionStats($name, $type)
 	$data = array();
 	$itemCount = 0;
 	$itemCountActive = 0;
+	$itemCountWithStock = 0;
 	$itemCountWithoutStock = 0;
 	$totalStock = 0;
 
@@ -38,22 +82,26 @@ function getSectionStats($name, $type)
 	foreach($categories as $category){
 		$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ?";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($category));
+		$req->execute(array($category["CATEGORYID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$itemCount += $res["COUNT"];
 
 		$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND > 0";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($category));
+		$req->execute(array($category["CATEGORYID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$itemCountWithStock += $res["COUNT"];
 
-		$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND < 0";
+		$sql = "SELECT count(PRODUCTID) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND <= 0";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($category));
+		$req->execute(array($category["CATEGORYID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$itemCountWithoutStock += $res["COUNT"];
 
 		$sql = "SELECT sum(ONHAND) as 'COUNT' FROM ICPRODUCT WHERE CATEGORYID = ? AND ONHAND > 0";
 		$req = $db->prepare($sql);
-		$res = $req->execute(array($category));
+		$req->execute(array($category["CATEGORYID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$totalStock += $res["COUNT"];
 
 	}
@@ -61,12 +109,15 @@ function getSectionStats($name, $type)
 	$data["ITEMCOUNTWITHSTOCK"] = $itemCountWithStock;
 	$data["ITEMCOUNTWITHOUTSTOCK"] = $itemCountWithoutStock;
 	$data["TOTALSTOCK"] = $totalStock;
+	return $data;
 
 }
 
+
+
 function renderOne($data)
 {
-	return "<table>
+	return "<table border='1'>
 				<tr><td>ITEM COUNT</td><td>".$data['ITEMCOUNT']."</td></tr>
 				<tr><td>ITEM WITH STOCK</td><td>".$data['ITEMCOUNTWITHSTOCK']."</td></tr>
 				<tr><td>ITEM WITHOUT STOCK</td><td>".$data['ITEMCOUNTWITHOUTSTOCK']."</td></tr>
@@ -80,37 +131,36 @@ function renderAll()
 
 	$sql = "SELECT DISTINCT(SECTION) FROM ICCATEGORY WHERE SECTION IS NOT NULL";
 	$req = $db->prepare($sql);
-	$sections = $req->fetchAll(PDO::FETCH_ASSOC);
-	var_dump($sections);
-	exit;
+	$req->execute(array());
+	$sections = $req->fetchAll(PDO::FETCH_ASSOC);		
 	$render = "<table>";	
 	foreach($sections as $section){
 		$render .= "<tr>";
 		$render .= "<td>";
-		$render .= "<u>".$section."</u><br>";
-		$render .= renderOne(getSectionStats($section,"SECTION"));
+		$render .= "<u>".$section["SECTION"]."</u><br>";
+		$render .= renderOne(getStats($section["SECTION"],"SECTION"));
 		$render .= "</td>";
 
 		$render .= "<td>";
 		$sql = "SELECT DISTINCT(DEPARTMENT) FROM ICCATEGORY WHERE SECTION = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($section));
+		$req->execute(array($section["SECTION"]));
 		$departments = $req->fetchAll(PDO::FETCH_ASSOC);
 
 		foreach($departments as $department){
-			$render .= "<u>$department</u><br>";
-			$render .= renderOne(getSectionStats($department,"DEPARTMENT"));			
+			$render .= "<u>".$department["DEPARTMENT"]."</u><br>";
+			$render .= renderOne(getStats($department["DEPARTMENT"],"DEPARTMENT"));			
 			$render .= "<br>&nbsp;&nbsp;&nbsp;&nbsp;";						
 
-			$sql = "SELECT CATEGORYID FROM ICATEGORY WHERE DEPARTMENT = ?";
+			$sql = "SELECT CATEGORYID FROM ICCATEGORY WHERE DEPARTMENT = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array($department));
+			$req->execute(array($department["DEPARTMENT"]));
 			$categories = $req->fetchAll(PDO::FETCH_ASSOC);
 			foreach($categories as $category){
-				$render .= "<u>$department</u><br>";
-				$render .= renderOne(getSectionStats($category,"CATEGORYID"));			
-				$render .= "<br>";						
-			}
+				$render .= "<u>".$category["CATEGORYID"]."</u><br>";
+				$render .= renderOne(getCategoryStats($category["CATEGORYID"]));			
+				$render .= "<br>";					
+			}			
 		}		
 		$render .= "</td>";
 		$render .= "</tr>";
