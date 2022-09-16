@@ -378,10 +378,15 @@ function renderOne($data, $lastincome,$lastmargin,$currentincome,$currentmargin)
 
         $DIFFWASTENBITEMS = difference($last["WASTENBITEMS"],$current["WASTENBITEMS"],true);
         $DIFFWASTEQUANTITY = difference($last["WASTEQUANTITY"],$current["WASTEQUANTITY"],true);
+        $DIFFWASTEAMOUNT = difference($last["WASTEAMOUNT"],$current["WASTEAMOUNT"],true);    
+
         $DIFFSELFPROMONITEMS = difference($last["SELFPROMONBITEMS"],$current["SELFPROMONBITEMS"]);
         $DIFFSELFPROMOQUANTITY = difference($last["SELFPROMOQUANTITY"],$current["SELFPROMOQUANTITY"]);
+
         $DIFFRETURNNBITEMS = difference($last["RETURNNBITEMS"],$current["RETURNNBITEMS"],true);
         $DIFFRETURNQUANTITY = difference($last["RETURNQUANTITY"],$current["RETURNQUANTITY"],true);
+        $DIFFRETURNAMOUNT = difference($last["RETURNAMOUNT"],$current["RETURNAMOUNT"],true);
+
         $DIFFSALENBITEMS = difference($last["SALENBITEMS"],$current["SALENBITEMS"]);
         $DIFFSALEQUANTITY = difference($last["SALEQUANTITY"],$current["SALEQUANTITY"]);
         $DIFFRECEIVENBITEMS = difference($last["RECEIVENBITEMS"],$current["RECEIVENBITEMS"]);
@@ -416,6 +421,7 @@ function renderOne($data, $lastincome,$lastmargin,$currentincome,$currentmargin)
         <tr><td colspan=4><center><b>".$onedata["NAME"]."</b>:".$onedata["ITEMCOUNT"]." items</center></td></tr>
         <tr><td>STATS</td><td>LASTMONTH</td><td>CURRENTMONTH</td><td>EVOLUTION</td></tr> 
         <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]." ".$formWASTELast."</td><td>".$current["WASTENBITEMS"]." ".$formWASTECurrent."</td><td>".$DIFFWASTENBITEMS."</td></tr>
+        <tr><td>WASTE AMOUNT</td><td>".$last["WASTEAMOUNT"]."</td><td>".$current["WASTEAMOUNT"]."</td><td>".$DIFFWASTEAMOUNT."</td></tr>
         <tr><td>WASTE QUANTITY</td><td>".$last["WASTEQUANTITY"]."</td><td>".$current["WASTEQUANTITY"]."</td><td>".$DIFFWASTEQUANTITY."</td></tr>
 
         <tr><td>TRANSFER NBITEMS</td><td>".$last["TRANSFERNBITEMS"]." ".$formTRANSFERLast."</td><td>".$current["TRANSFERNBITEMS"]." ".$formTRANSFERCurrent."</td><td>".$DIFFTRANSFERNBITEMS."</td></tr>
@@ -425,6 +431,7 @@ function renderOne($data, $lastincome,$lastmargin,$currentincome,$currentmargin)
         <tr><td>SELFPROMO QTY</td><td>".$last["SELFPROMOQUANTITY"]."</td><td>".$current["SELFPROMOQUANTITY"]."</td><td>".$DIFFSELFPROMOQUANTITY."</td></tr>
         
         <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]." ".$formRETURNLast."</td><td>".$current["RETURNNBITEMS"]." ".$formRETURNCurrent."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
+        <tr><td>RETURN AMOUNT</td><td>".$last["RETURNAMOUNT"]."</td><td>".$current["RETURNAMOUNT"]."</td><td>".$DIFFRETURNAMOUNT."</td></tr>
         <tr><td>RETURN QTY</td><td>".$last["RETURNQUANTITY"]."</td><td>".$current["RETURNQUANTITY"]."</td><td>".$DIFFRETURNQUANTITY."</td></tr>
 
         <tr><td>SALE NBITEMS</td><td>".$last["SALENBITEMS"]."</td><td>".$current["SALENBITEMS"]."</td><td>".$DIFFSALENBITEMS."</td></tr>
@@ -465,11 +472,14 @@ function render($month,$year)
 
     $DIFFWASTENBITEMS = difference($last["WASTENBITEMS"],$current["WASTENBITEMS"],true);    
     $DIFFWASTEQUANTITY = difference($last["WASTEQUANTITY"],$current["WASTEQUANTITY"],true);    
+    $DIFFWASTEAMOUNT = difference($last["WASTEAMOUNT"],$current["WASTEAMOUNT"],true);    
     $DIFFSELFPROMONBITEMS = difference($last["SELFPROMONBITEMS"],$current["SELFPROMONBITEMS"]);
     
     $DIFFSELFPROMOQUANTITY = difference($last["SELFPROMOQUANTITY"],$current["SELFPROMOQUANTITY"]);
     $DIFFRETURNNBITEMS = difference($last["RETURNNBITEMS"],$current["RETURNNBITEMS"],true);
+    $DIFFRETURNAMOUNT = difference($last["RETURNAMOUNT"],$current["RETURNAMOUNT"],true);
     $DIFFRETURNQUANTITY = difference($last["RETURNQUANTITY"],$current["RETURNQUANTITY"],true);
+
     $DIFFSALENBITEMS = difference($last["SALENBITEMS"],$current["SALENBITEMS"]);
     $DIFFSALEQUANTITY = difference($last["SALEQUANTITY"],$current["SALEQUANTITY"]);
     $DIFFRECEIVENBITEMS = difference($last["RECEIVENBITEMS"],$current["RECEIVENBITEMS"]);
@@ -506,15 +516,17 @@ function render($month,$year)
     "<table border='1'>
     <tr><td colspan=4><center><b>GENERAL</b></center></td></tr>
     <tr><td>STATS</td><td>LASTMONTH</td><td>CURRENTMONTH</td><td>EVOLUTION</td></tr> 
-    <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]."</td><td>".$current["WASTENBITEMS"]."</td><td>".$DIFFWASTENBITEMS."</td></tr>
-    <tr><td>WASTE ITEMS</td><td>".$last["WASTENBITEMS"]." ".$formWASTELast."</td><td>".$current["WASTENBITEMS"]." ".$formWASTECurrent."</td><td>".$DIFFWASTENBITEMS."</td></tr>
+    
+    <tr><td>WASTE NBITEMS</td><td>".$last["WASTENBITEMS"]." ".$formWASTELast."</td><td>".$current["WASTENBITEMS"]." ".$formWASTECurrent."</td><td>".$DIFFWASTENBITEMS."</td></tr>
+    <tr><td>WASTE AMOUNT</td><td>".$last["WASTEAMOUNT"]."</td><td>".$current["WASTEAMOUNT"]."</td><td>".$DIFFWASTEAMOUNT."</td></tr>
     <tr><td>WASTE QUANTITY</td><td>".$last["WASTEQUANTITY"]."</td><td>".$current["WASTEQUANTITY"]."</td><td>".$DIFFWASTEQUANTITY."</td></tr>
     <tr><td>TRANSFER NBITEMS</td><td>".$last["TRANSFERNBITEMS"]." ".$formTRANSFERLast."</td><td>".$current["TRANSFERNBITEMS"]." ".$formTRANSFERCurrent."</td><td>".$DIFFTRANSFERNBITEMS."</td></tr>
     <tr><td>TRANSFER QUANTITY</td><td>".$last["TRANSFERQUANTITY"]."</td><td>".$current["TRANSFERQUANTITY"]."</td><td>".$DIFFTRANSFERQUANTITY."</td></tr>        
     <tr><td>SELFPROMO NBITEMS</td><td>".$last["SELFPROMONBITEMS"]." ".$formSELFPROMOLast."</td><td>".$current["SELFPROMONBITEMS"]." ".$formSELFPROMOCurrent."</td><td>".$DIFFSELFPROMONBITEMS."</td></tr>
     <tr><td>SELFPROMO QTY</td><td>".$last["SELFPROMOQUANTITY"]."</td><td>".$current["SELFPROMOQUANTITY"]."</td><td>".$DIFFSELFPROMOQUANTITY."</td></tr>        
     <tr><td>RETURN NBITEMS</td><td>".$last["RETURNNBITEMS"]." ".$formRETURNLast."</td><td>".$current["RETURNNBITEMS"]." ".$formRETURNCurrent."</td><td>".$DIFFRETURNNBITEMS."</td></tr>
-    <tr><td>RETURN QTY</td><td>".$last["RETURNQUANTITY"]."</td><td>".$current["RETURNQUANTITY"]."</td><td>".$DIFFRETURNQUANTITY."</td></tr>
+    <tr><td>RETURN AMOUNT</td><td>".$last["RETURNAMOUNT"]."</td><td>".$current["RETURNAMOUNT"]."</td><td>".$DIFFRETURNAMOUNT."</td></tr>
+    <tr><td>RETURN QUANTITY</td><td>".$last["RETURNQUANTITY"]."</td><td>".$current["RETURNQUANTITY"]."</td><td>".$DIFFRETURNQUANTITY."</td></tr>
     <tr><td>SALE NBITEMS</td><td>".$last["SALENBITEMS"]."</td><td>".$current["SALENBITEMS"]."</td><td>".$DIFFSALENBITEMS."</td></tr>
     <tr><td>SALE QTY</td><td>".round($last["SALEQUANTITY"],2)."</td><td>".round($current["SALEQUANTITY"],2)."</td><td>".$DIFFSALEQUANTITY."</td></tr>
     <tr><td>RECEIVE NBITEMS</td><td>".$last["RECEIVENBITEMS"]."</td><td>".$current["RECEIVENBITEMS"]."</td><td>".$DIFFRECEIVENBITEMS."</td></tr>
@@ -604,7 +616,6 @@ function getProductsStats($productids, $begin,$end){
     $str = $productids;
     $db = getDatabase();
     $indb = getInternalDatabase();
-
 	$itemCount = count(explode(",",$productids)); 
         
     // Transfer Quantity 
@@ -658,6 +669,26 @@ function getProductsStats($productids, $begin,$end){
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $wasteQuantity = $res["CNT"];
+
+    // Waste Amount
+    $wasteAmount = 0;
+    $extracted = substr($productids,1,-1);
+    $allproductid = explode($extracted,',');
+    foreach($splitted as $productid){
+        $sql = "SELECT sum(QUANTITY) as 'CNT' FROM WASTEITEM WHERE PRODUCTID = ? AND CREATED BETWEEN ? AND ?";
+        $req = $indb->prepare($sql);
+        $req->execute(array($productid,$begin,$end));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $theQuantity = $res["CNT"];
+
+        $sql = "SELECT LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array(array($productid)));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $thePrice = $res["LASTCOST"];
+        $wasteAmount += $theQuantity * $thePrice;
+    }
+
     // Waste Items
     $sql = "SELECT distinct(PRODUCTID),
             (SELECT sum(QUANTITY) FROM WASTEITEM WHERE WASTEITEM.PRODUCTID = WI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
@@ -681,7 +712,7 @@ function getProductsStats($productids, $begin,$end){
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $selfpromoNbItems = $res["CNT"];
     // Self Promotion Items
-    $sql = "SELECT distinct(PRODUCTID),                
+    $sql = "SELECT distinct(PRODUCTID),PERCENTPROMO1,                
             (select sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
             FROM SELFPROMOTIONITEM as 'SPI'
             WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
@@ -710,6 +741,25 @@ function getProductsStats($productids, $begin,$end){
     $req->execute(array($begin,$end,$begin,$end));
     $returnItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
+    // Return Amount
+    $returnAmount = 0;
+    $extracted = substr($productids,1,-1);
+    $allproductid = explode($extracted,',');
+    foreach($splitted as $productid){
+        $sql = "SELECT sum(QUANTITY) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID = ? AND CREATED BETWEEN ? AND ?";        
+        $req = $indb->prepare($sql);
+        $req->execute(array($productid,$begin,$end));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $theQuantity = $res["CNT"];
+
+        $sql = "SELECT LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array(array($productid)));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $thePrice = $res["LASTCOST"];
+        $returnAmount += $theQuantity * $thePrice;
+    }
+
     // Sale Nb Items
     $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND  POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
@@ -736,8 +786,6 @@ function getProductsStats($productids, $begin,$end){
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $receiveQuantity = $res["CNT"];
-
-    
     // Sale Income
     $sql = "SELECT sum(PRICE * QTY) AS 'CNT' FROM dbo.POSDETAIL WHERE PRODUCTID in ".$str." AND POSDATE BETWEEN  ? AND ?"; 
     $req = $db->prepare($sql);
@@ -759,6 +807,7 @@ function getProductsStats($productids, $begin,$end){
     
     $data["WASTENBITEMS"] = $wasteNbItems != "" ? $wasteNbItems : "0" ;
     $data["WASTEQUANTITY"] = $wasteQuantity != "" ? $wasteQuantity : "0";
+    $data["WASTEAMOUNT"] = $wasteAmount != "" ? $wasteAmount : "0";
     $data["WASTEITEMS"] = $wasteItems; 
 
     $data["SELFPROMONBITEMS"] = $selfpromoNbItems != "" ? $selfpromoNbItems : "0";
@@ -767,6 +816,7 @@ function getProductsStats($productids, $begin,$end){
 
     $data["RETURNNBITEMS"] = $returnNbItems != "" ? $returnNbItems : "0";
     $data["RETURNQUANTITY"] = $returnQuantity != "" ? $returnQuantity : "0";    
+    $data["RETURNAMOUNT"] =  $returnAmount != "" ? $returnAmount : "0"; 
     $data["RETURNITEMS"] =  $returnItems; 
 
     $data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
@@ -834,6 +884,26 @@ function getGeneralStats($begin,$end){
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $wasteQuantity = $res["CNT"];
 
+      // Waste Amount
+      $wasteAmount = 0;
+      $extracted = substr($productids,1,-1);
+      $allproductid = explode($extracted,',');
+      foreach($splitted as $productid){
+          $sql = "SELECT sum(QUANTITY) as 'CNT' FROM WASTEITEM WHERE PRODUCTID = ? AND CREATED BETWEEN ? AND ?";
+          $req = $indb->prepare($sql);
+          $req->execute(array($productid,$begin,$end));
+          $res = $req->fetch(PDO::FETCH_ASSOC);
+          $theQuantity = $res["CNT"];
+  
+          $sql = "SELECT LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
+          $req = $db->prepare($sql);
+          $req->execute(array(array($productid)));
+          $res = $req->fetch(PDO::FETCH_ASSOC);
+          $thePrice = $res["LASTCOST"];
+          $wasteAmount += $theQuantity * $thePrice;
+      }
+
+      
     // Waste Items
     $sql = "SELECT distinct(PRODUCTID),
             (SELECT sum(QUANTITY) FROM WASTEITEM WHERE WASTEITEM.PRODUCTID = WI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
@@ -886,6 +956,24 @@ function getGeneralStats($begin,$end){
     $req->execute(array($begin,$end,$begin,$end));
     $returnItems = $req->fetchAll(PDO::FETCH_ASSOC);
 
+     // Return Amount
+     $returnAmount = 0;
+     $extracted = substr($productids,1,-1);
+     $allproductid = explode($extracted,',');
+     foreach($splitted as $productid){
+         $sql = "SELECT sum(QUANTITY) as 'CNT' FROM RETURNRECORDITEM WHERE PRODUCTID = ? AND CREATED BETWEEN ? AND ?";        
+         $req = $indb->prepare($sql);
+         $req->execute(array($productid,$begin,$end));
+         $res = $req->fetch(PDO::FETCH_ASSOC);
+         $theQuantity = $res["CNT"];
+ 
+         $sql = "SELECT LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
+         $req = $db->prepare($sql);
+         $req->execute(array(array($productid)));
+         $res = $req->fetch(PDO::FETCH_ASSOC);
+         $thePrice = $res["LASTCOST"];
+         $returnAmount += $theQuantity * $thePrice;
+     }
 
     // Sale Nb Items
     $sql = "SELECT count(distinct(PRODUCTID)) AS 'CNT' FROM dbo.POSDETAIL WHERE  POSDATE BETWEEN  ? AND ?"; 
@@ -979,14 +1067,20 @@ function getGeneralStats($begin,$end){
     $data["PROMOLOSSNBITEMS"] = $promoLossNbItems;
     $data["PROMOLOSSITEMS"] = $promoLossItems;
 
-
     $data["WASTENBITEMS"] = $wasteNbItems != "" ? $wasteNbItems : "0" ;
     $data["WASTEQUANTITY"] = $wasteQuantity != "" ? $wasteQuantity : "0";
+    $data["WASTEAMOUNT"] = $wasteAmount != "" ? $wasteAmount : "0";
+    $data["WASTEITEMS"] = $wasteItems;
+
     $data["SELFPROMONBITEMS"] = $selfpromoNbItems != "" ? $selfpromoNbItems : "0";
     $data["SELFPROMOQUANTITY"] = $selfpromoQuantity != "" ? $selfpromoQuantity : "0";
+
     $data["RETURNNBITEMS"] = $returnNbItems != "" ? $returnNbItems : "0";
-    $data["RETURNQUANTITY"] = $returnQuantity != "" ? $returnQuantity : "0";    
-	$data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
+    $data["RETURNQUANTITY"] = $returnQuantity != "" ? $returnQuantity : "0"; 
+    $data["RETURNAMOUNT"] = $returnAmount != "" ? $returnAmount : "0";
+    $data["RETURNITEMS"] = $returnItems;   
+	
+    $data["SALENBITEMS"] = $saleNbItems != "" ? $saleNbItems : "0";
 	$data["SALEQUANTITY"] = $saleQuantity != "" ? $saleQuantity : "0";
     $data["RECEIVENBITEMS"] = $receiveNbItems != "" ? $receiveNbItems : "0";
     $data["RECEIVEQUANTITY"] = $receiveQuantity != "" ? $receiveQuantity : "0";
@@ -999,14 +1093,13 @@ function getGeneralStats($begin,$end){
     $data["TRANSFERNBITEMS"] = $transferQuantity != "" ? $transferQuantity : "0";
     $data["TRANSFERQUANTITY"] = $transferNbitems != "" ? $transferNbitems : "0";
 
-    $data["WASTEITEMS"] = $wasteItems;
     $data["TRANSFERITEMS"] = $transferItems;
     $data["SELFPROMOTIONITEMS"] = $selfpromotionItems;
-    $data["RETURNITEMS"] = $returnItems;
+    
 
 	return $data;
 }
 
-//loadStats("07","2022");
-echo render("07","2022");
+loadStats("08","2022");
+//echo render("08","2022");
 ?>
