@@ -351,7 +351,7 @@ function updatePO($ponumber,$items,$notes = "")
 		//echo "PONUMBER:".$ponumber."|DEL_QTY:".$item["PPSS_DELIVERED_QUANTITY"]."|DEL_PRICE:".$item["PPSS_DELIVERED_PRICE"].
 		//						   "|DEL_DISC:".$item["PPSS_DELIVERED_DISCOUNT"]."|DEL_VAT:".$item["PPSS_DELIVERED_VAT"];	
 		
-									
+		//echo $item["PRODUCTID"].":".$item["PPSS_DELIVERED_EXPIRE"]."\n";							
 	}
 	$sql = "UPDATE PODETAIL SET 
 	RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,

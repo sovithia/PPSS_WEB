@@ -10,6 +10,8 @@ require_once("RestEngine.php");
 if (isset($_POST["items"]))
 {
     $items = json_decode($_POST["items"],true);
+    //var_dump(count($items));
+    //exit;
     $text = $_POST["display"];
 
     $productids = array();
@@ -21,6 +23,9 @@ if (isset($_POST["items"]))
         $quantities[$item["PRODUCTID"]] = $item["QUANTITY"];
         if (isset($item["PERCENTPROMO1"]))
             $promotions[$item["PRODUCTID"]] = $item["PERCENTPROMO1"];
+        else 
+            $promotions[$item["PRODUCTID"]] = "N/A";
+
     }
     $data["barcodes"] = $productids;
 	$itemswithDetail = RestEngine::POST("http://phnompenhsuperstore.com/api/api.php/itemget",$data);
@@ -41,7 +46,7 @@ if (isset($_POST["items"]))
                 <td><center>".$item["WH1"]."</center></td>
                 <td><center>".$item["WH2"]."</center></td>                
                 <td><center>".$quantities[$item["PRODUCTID"]]."</center></td>                                
-                <td><center>".$promotions[$item["PRODUCTID"]]."</center></td>                
+                <td><center>".$promotions[$item["PRODUCTID"]] ?? ""."</center></td>                
             <tr>";
     }
     echo "</table><center>";

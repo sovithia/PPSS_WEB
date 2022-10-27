@@ -39,7 +39,7 @@ function foodpandaUpdate($sku,$active)
 	$data["active"] = $active;
 
 	curl_setopt_array($curl, array(
-	CURLOPT_URL => 'https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/vfbb/product',
+	CURLOPT_URL => 'https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/eyn4/product',
 	CURLOPT_RETURNTRANSFER => true,
 	CURLOPT_ENCODING => '',
 	CURLOPT_MAXREDIRS => 10,
@@ -50,20 +50,17 @@ function foodpandaUpdate($sku,$active)
 	CURLOPT_CUSTOMREQUEST => 'PUT',
 	CURLOPT_POSTFIELDS => json_encode($data),
   	CURLOPT_HTTPHEADER => array(
-    'Authorization: Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjRjZjg1YTdjLTI1OTEtNDE0Yi1hY2Q3LWQ0Mjg3ZWUxYWMzZiIsIlRva2VuIjoiTktGREI3eExnWlFwZVJRUSIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=',
+    'Authorization: Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjVjNjkxODM5LTA2N2QtNDMzYi1iOTY4LTk4N2U4NDlhMDA2MiIsIlRva2VuIjoiNnlLWTl0Tk5xOWZteTVrcyIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=',
     'Content-Type: application/json'
   	),
 	));
 	$response = curl_exec($curl);
-	curl_close($curl);
-	if ($active == true)
-		echo "Active ".$response."\n";
-	else
-		echo "Inactive ".$response."\n";
+	curl_close($curl);	
 }
 
 function go()
 {
+	echo "Refreshing...\n";
     $blueDB = getDatabase();
 	$db = getInternalDatabase();
 
@@ -83,6 +80,11 @@ function go()
 		$res = $req->fetch(PDO::FETCH_ASSOC);
         if ($res == false)
             continue;
+
+		$sql = "SELECT * FROM ICPRODUCT WHERE BARCODE = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($item["BARCODE"]));
+		$itemdetail = $req->fetch(PDO::FETCH_ASSOC);					
 
 		if ($itemdetail["ONHAND"] <= $item["THRESHOLD"] ?? 0)
 			foodpandaUpdate($item["SKU"],false);            
@@ -105,21 +107,26 @@ function initialize()
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
     foreach($items as $item){
-		echo "Item : ".$item["BARCODE"]." ";
-        $sql = "SELECT * FROM ICPRODUCT WHERE BARCODE = ?";
+		
+        $sql = "SELECT ONHAND FROM ICPRODUCT WHERE BARCODE = ?";
         $req = $blueDB->prepare($sql);
         $req->execute(array($item["BARCODE"]));
         $itemdetail = $req->fetch(PDO::FETCH_ASSOC);				
-        if ($itemdetail["ONHAND"] <= $item["THRESHOLD"] ?? 0)
+        if ($itemdetail != false && $itemdetail["ONHAND"] <= $item["THRESHOLD"] ?? 0){
+			echo "Item : ".$item["BARCODE"]." INACTIVE\n";
 			foodpandaUpdate($item["SKU"],false);            
-		else 
+		}			
+		else {
+			echo "Item : ".$item["BARCODE"]." ACTIVE\n";
 			foodpandaUpdate($item["SKU"],true);            		
+		}
+			
     }
 }
 
 
-//Go();
-//initialize();
+//go();
+initialize();
 
 
 ?>

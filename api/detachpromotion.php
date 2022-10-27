@@ -20,5 +20,5 @@ function detachPromotion()
     echo date("Y-m-d") .": Detaching promotion\n";
 }
 detachPromotion();
-
+//echo "coucou";
 ?>
