@@ -523,6 +523,22 @@ function GenerateToday()
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data["UNSOLD30_ITEMS"] = $items;
 
+	/***********************/
+	/**** UNSOLD 30 CNT ****/
+	/***********************/
+	echo "UNSOLD 30\n";
+	$sql = "SELECT PODETAIL.PRODUCTID,DATEDIFF(day,RECEIVE_DATE,GETDATE()) as 'LASTRECEIVENBDAYS',ONHAND
+			FROM ICPRODUCT,PODETAIL
+			WHERE POSTATUS = 'C' 
+			AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+			AND ONHAND > 0
+			AND DATEDIFF(day,RECEIVE_DATE,GETDATE()) BETWEEN 30 AND 720
+			AND (SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = PODETAIL.PRODUCTID) = 0";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$data["UNSOLD30_ITEMS_CNT"] = $items;
+
 	/*****************************/
     // TOTAL PO RECEIVED TODAY //
     /*****************************/
@@ -633,17 +649,16 @@ function GenerateToday()
 	$params = array(
 		$data["TRAFFIC_TOD"], $data["AVGBASKET_TOD"], $data["WASTE_SUM_TOD"], json_encode($data["WASTE_ITEMS_TOD"],true) , $data["RETURN_NBITEM_TOD"], 
 		$data["RETURN_SUMITEM_TOD"], $data["RETURN_AMOUNT_TOD"], json_encode($data["TRF_ALL_TOD"],true), json_encode($data["TRF_RAT_TOD"],true), json_encode($data["TRF_OX_TOD"],true), 
-		$data["TRF_TIGER_TOD"], $data["TRF_HARE_TOD"], $data["TRF_DRAGON_TOD"], $data["TRF_SNAKE_TOD"], $data["TRF_HORSE_TOD"], 
-		$data["TRF_GOAT_TOD"], $data["OCC_ALL_TOD"], $data["OCC_RAT_TOD"], $data["OCC_OX_TOD"], $data["OCC_TIGER_TOD"], 
-		$data["OCC_HARE_TOD"], $data["OCC_DRAGON_TOD"], $data["OCC_SNAKE_TOD"], $data["OCC_HORSE_TOD"], $data["OCC_GOAT_TOD"], 
-		$data["SALE_RAT_TOD"], $data["SALE_OX_TOD"], $data["SALE_TIGER_TOD"], $data["SALE_HARE_TOD"], $data["SALE_DRAGON_TOD"], 
-		$data["SALE_SNAKE_TOD"], $data["SALE_HORSE_TOD"], $data["SALE_GOAT_TOD"], $data["EXPIRE_RET_ITEMS"], $data["EXPIRE_RET_CNT"], 
-		$data["EXPIRE_NR_ITEMS"], $data["EXPIRE_NR_CNT"], $data["NEEDMOVE_ITEMS"], $data["NEEDMOVE_CNT"], $data["NOLOC_ITEMS"], 
-		$data["NOLOC_ITEMS_CNT"], $data["NEGATIVEITEM_WH1_ITEMS"], $data["NEGATIVEITEM_WH1_CNT"], $data["NEGATIVEITEM_WH2_ITEMS"], $data["NEGATIVEITEM_WH2_CNT"], 
-		$data["UNSOLD30_ITEMS"], $data["PORECEIVED_TOD"], $data["NBITEMRECEIVED_TOD"], $data["ITEMQTYRECEIVED_TOD"], $data["POCREATED_TOD"], 
-		$data["NBITEMORDERED_TOD"], $data["QTYITEMORDERED_TOD"], $data["ANOMALIES_CNT_NOW"], $data["ANOMALIES_ITEMS_NOW"], $data["PRICEDIFFERENCES_ITEMS_TOD"], 
-		$today
-	);
+		json_encode($data["TRF_TIGER_TOD"],true), json_encode($data["TRF_HARE_TOD"],true), json_encode($data["TRF_DRAGON_TOD"],true), json_encode($data["TRF_SNAKE_TOD"],true), json_encode($data["TRF_HORSE_TOD"],true), 
+		json_encode($data["TRF_GOAT_TOD"],true), json_encode($data["OCC_ALL_TOD"],true), json_encode($data["OCC_RAT_TOD"],true), json_encode($data["OCC_OX_TOD"],true), json_encode($data["OCC_TIGER_TOD"],true), 
+		json_encode($data["OCC_HARE_TOD"],true), json_encode($data["OCC_DRAGON_TOD"],true), json_encode($data["OCC_SNAKE_TOD"],true), json_encode($data["OCC_HORSE_TOD"],true), json_encode($data["OCC_GOAT_TOD"],true), 
+		json_encode($data["SALE_RAT_TOD"],true), json_encode($data["SALE_OX_TOD"],true), json_encode($data["SALE_TIGER_TOD"],true), json_encode($data["SALE_HARE_TOD"],true), json_encode($data["SALE_DRAGON_TOD"],true), 
+		json_encode($data["SALE_SNAKE_TOD"],true, json_encode($data["SALE_HORSE_TOD"],true), json_encode($data["SALE_GOAT_TOD"],true), json_encode($data["EXPIRE_RET_ITEMS"],true), $data["EXPIRE_RET_CNT"], 
+		json_encode($data["EXPIRE_NR_ITEMS"],true), $data["EXPIRE_NR_CNT"], json_encode($data["NEEDMOVE_ITEMS"],true), $data["NEEDMOVE_CNT"], json_encode($data["NOLOC_ITEMS"],true), 
+		$data["NOLOC_ITEMS_CNT"], json_encode($data["NEGATIVEITEM_WH1_ITEMS"],true), $data["NEGATIVEITEM_WH1_CNT"], json_encode($data["NEGATIVEITEM_WH2_ITEMS"],true), $data["NEGATIVEITEM_WH2_CNT"], 
+		json_encode($data["UNSOLD30_ITEMS"],true), $data["PORECEIVED_TOD"], $data["NBITEMRECEIVED_TOD"], $data["ITEMQTYRECEIVED_TOD"], $data["POCREATED_TOD"], 
+		$data["NBITEMORDERED_TOD"], $data["QTYITEMORDERED_TOD"], $data["ANOMALIES_CNT_NOW"], json_encode($data["ANOMALIES_ITEMS_NOW"],true), json_encode($data["PRICEDIFFERENCES_ITEMS_TOD"],true), 
+		$today);
 	$req = $db->prepare($sql);
     $req->execute($params);
 
