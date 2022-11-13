@@ -3,11 +3,13 @@
 require_once("functions.php");
 
 function OccupancyByTeamYesterday($team){
+	$db=getInternalDatabase();	
 	$today = date('m.d.Y');
 	$yesterday = date('d.m.Y',strtotime("-1 days"));
-	$sql = "SELECT * FROM STATSRECORD WHERE DAY = ?";
+	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $db->prepare($sql);
-	$data = $req->execute(array());
+	$req->execute(array());
+	$data = $req->fetch(PDO::FETCH_ASSOC);
 	if ($data == false)
 		return null;
 	else{
@@ -135,11 +137,11 @@ function Generate()
 	$sql = "SELECT COUNT(*) as 'CNT' FROM GENERATEDSTATS";
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$count = $req->fetchAll(PDO::FETCH_ASSOC);
+	$count = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($today));
 	$data = $req->fetch(PDO::FETCH_ASSOC);
 	if ($data == false){
 		$sql = "INSERT INTO GENERATEDSTATS (DAY) VALUES (?)";
@@ -151,7 +153,8 @@ function Generate()
 		GenerateYesterday();
 		GenerateToday();
 	}else{	
-		GenerateYesterdayFromCache();
+		GenerateYesterday();
+		//GenerateYesterdayFromCache();
 		GenerateToday();
 	}
 }
@@ -471,18 +474,17 @@ function GenerateToday()
     AND LOCID = 'WH1' AND LOCONHAND < 0"; 
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$count = $req->fetch(PDO::FETCH_ASSOC);
-	$data["NEGATIVEITEM_WH1_ITEMS"] = $count;
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$data["NEGATIVEITEM_WH1_ITEMS"] = $items;
 
 	/*********************************/
 	/**** NEGATIVE ITEM WH1 COUNT ****/
 	/*********************************/
 	echo "NEGATIVE ITEM WH1 COUNT.\n";
-	$sql = "SELECT count(*) as CNT FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND < 0"; 
+	$sql = "SELECT count(*) as 'CNT' FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND < 0"; 
 	$req = $db->prepare($sql);
-	$req->execute(array());
-	$count = $req->fetch(PDO::FETCH_ASSOC);
-	$data["NEGATIVEITEM_WH1_CNT"] = $count;
+	$req->execute(array());	
+	$data["NEGATIVEITEM_WH1_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 
     /***************************/
 	/**** NEGATIVE ITEM WH2 ****/
@@ -494,18 +496,18 @@ function GenerateToday()
     AND LOCID = 'WH2' AND LOCONHAND < 0"; 
     $req = $db->prepare($sql);
     $req->execute(array());
-    $count = $req->fetch(PDO::FETCH_ASSOC);
-    $data["NEGATIVEITEM_WH2_ITEMS"] = $count;
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+    $data["NEGATIVEITEM_WH2_ITEMS"] = $items;
 
     /*********************************/
     /**** NEGATIVE ITEM WH2 COUNT ****/
     /*********************************/
 	echo "NEGATIVE ITEM WH2\n";
-    $sql = "SELECT count(*) as CNT FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND < 0"; 
+    $sql = "SELECT count(*) as 'CNT' FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND < 0"; 
     $req = $db->prepare($sql);
     $req->execute(array());
     $count = $req->fetch(PDO::FETCH_ASSOC);
-    $data["NEGATIVEITEM_WH2_CNT"] = $count;
+    $data["NEGATIVEITEM_WH2_CNT"] = $count['CNT'];
 
 	/***********************/
 	/**** UNSOLD 30 ****/
@@ -573,7 +575,7 @@ function GenerateToday()
     $sql = "SELECT COUNT(PONUMBER) as 'CNT' FROM POHEADER WHERE POSTATUS = '' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["POCREATED_TOD"] = $req->fetch(PDO::FETCH_ASSOC);
+    $data["POCREATED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 
     //***********************************//
     //****   TOTAL ITEMS IN PO TODAY ****//
@@ -624,13 +626,42 @@ function GenerateToday()
 	$data["ANOMALIES_ITEMS_NOW"] = $anomalyData;
 
 	//*******************************************//
+    //********	ANOMALIES ITEMS COUNT ***********//
+    //*******************************************//
+	echo "ANOMALIES ITEMS CNT\n";
+	$sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = 'ANOMALYUNSOLVED'";
+	$req = $indb->prepare($sql);
+	$req->execute(array());
+	$anomalies = $req->fetchAll(PDO::FETCH_ASSOC);
+	$anomalyData = array();
+	$sumQty = 0;
+	foreach($anomalies as $anomaly){
+
+		$sql = "SELECT count(PRODUCTID) as 'CNT' 
+				FROM PODETAIL 
+				WHERE PONUMBER = ? 
+				AND PPSS_WAITING_CALCULATED <> PPSS_WAITING_QUANTITY";
+		$req = $db->prepare($sql);
+		$req->execute(array($anomaly["PONUMBER"]));		
+		$sumQty += $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	}
+	$data["ANOMALIES_ITEMS_NOW_CNT"] = $sumQty;
+
+
+
+	//*******************************************//
     //**** PRICE DIFFERENCES TODAY 		*********//
     //*******************************************//
 	echo "PRICE DIFFERENCES TODAY\n";
-    $sql = "SELECT PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+    $sql = "SELECT TOP(5) PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
     $data["PRICEDIFFERENCES_ITEMS_TOD"] = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT COUNT(PRODUCTID) as 'CNT'  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+    $req = $db->prepare($sql);
+    $req->execute(array($startToday,$endToday));
+    $data["PRICEDIFFERENCES_ITEMS_TOD_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 
 	$sql = "UPDATE GENERATEDSTATS SET 
 	TRAFFIC_TOD = ?,AVGBASKET_TOD = ?,WASTE_SUM_TOD = ?,WASTE_ITEMS_TOD = ?,RETURN_NBITEM_TOD = ?,
@@ -643,30 +674,39 @@ function GenerateToday()
 	EXPIRE_NR_ITEMS = ?,EXPIRE_NR_CNT = ?,NEEDMOVE_ITEMS = ?,NEEDMOVE_CNT = ?,NOLOC_ITEMS = ?,
 	NOLOC_ITEMS_CNT = ?,NEGATIVEITEM_WH1_ITEMS = ?,NEGATIVEITEM_WH1_CNT = ?,NEGATIVEITEM_WH2_ITEMS = ?,NEGATIVEITEM_WH2_CNT = ?,
 	UNSOLD30_ITEMS = ?,PORECEIVED_TOD = ?,NBITEMRECEIVED_TOD = ?,ITEMQTYRECEIVED_TOD = ?,POCREATED_TOD = ?,
-	NBITEMORDERED_TOD = ?,QTYITEMORDERED_TOD = ?,ANOMALIES_CNT_NOW = ?,ANOMALIES_ITEMS_NOW = ?,PRICEDIFFERENCES_ITEMS_TOD = ?
+	NBITEMORDERED_TOD = ?,QTYITEMORDERED_TOD = ?,ANOMALIES_CNT_NOW = ?,ANOMALIES_ITEMS_NOW = ?,PRICEDIFFERENCES_ITEMS_TOD = ?,
+	PRICEDIFFERENCES_ITEMS_TOD_CNT = ?
 	WHERE DAY = ?";
 
-	$params = array(
+$params = array(
 		$data["TRAFFIC_TOD"], $data["AVGBASKET_TOD"], $data["WASTE_SUM_TOD"], json_encode($data["WASTE_ITEMS_TOD"],true) , $data["RETURN_NBITEM_TOD"], 
 		$data["RETURN_SUMITEM_TOD"], $data["RETURN_AMOUNT_TOD"], json_encode($data["TRF_ALL_TOD"],true), json_encode($data["TRF_RAT_TOD"],true), json_encode($data["TRF_OX_TOD"],true), 
 		json_encode($data["TRF_TIGER_TOD"],true), json_encode($data["TRF_HARE_TOD"],true), json_encode($data["TRF_DRAGON_TOD"],true), json_encode($data["TRF_SNAKE_TOD"],true), json_encode($data["TRF_HORSE_TOD"],true), 
 		json_encode($data["TRF_GOAT_TOD"],true), json_encode($data["OCC_ALL_TOD"],true), json_encode($data["OCC_RAT_TOD"],true), json_encode($data["OCC_OX_TOD"],true), json_encode($data["OCC_TIGER_TOD"],true), 
 		json_encode($data["OCC_HARE_TOD"],true), json_encode($data["OCC_DRAGON_TOD"],true), json_encode($data["OCC_SNAKE_TOD"],true), json_encode($data["OCC_HORSE_TOD"],true), json_encode($data["OCC_GOAT_TOD"],true), 
 		json_encode($data["SALE_RAT_TOD"],true), json_encode($data["SALE_OX_TOD"],true), json_encode($data["SALE_TIGER_TOD"],true), json_encode($data["SALE_HARE_TOD"],true), json_encode($data["SALE_DRAGON_TOD"],true), 
-		json_encode($data["SALE_SNAKE_TOD"],true, json_encode($data["SALE_HORSE_TOD"],true), json_encode($data["SALE_GOAT_TOD"],true), json_encode($data["EXPIRE_RET_ITEMS"],true), $data["EXPIRE_RET_CNT"], 
-		json_encode($data["EXPIRE_NR_ITEMS"],true), $data["EXPIRE_NR_CNT"], json_encode($data["NEEDMOVE_ITEMS"],true), $data["NEEDMOVE_CNT"], json_encode($data["NOLOC_ITEMS"],true), 
+		json_encode($data["SALE_SNAKE_TOD"],true), json_encode($data["SALE_HORSE_TOD"],true), json_encode($data["SALE_GOAT_TOD"],true), json_encode($data["EXPIRE_RET_ITEMS"],true), json_encode($data["EXPIRE_RET_CNT"],true), 
+		json_encode($data["EXPIRE_NR_ITEMS"],true), json_encode($data["EXPIRE_NR_CNT"],true), json_encode($data["NEEDMOVE_ITEMS"],true), $data["NEEDMOVE_CNT"], json_encode($data["NOLOC_ITEMS"],true), 
 		$data["NOLOC_ITEMS_CNT"], json_encode($data["NEGATIVEITEM_WH1_ITEMS"],true), $data["NEGATIVEITEM_WH1_CNT"], json_encode($data["NEGATIVEITEM_WH2_ITEMS"],true), $data["NEGATIVEITEM_WH2_CNT"], 
 		json_encode($data["UNSOLD30_ITEMS"],true), $data["PORECEIVED_TOD"], $data["NBITEMRECEIVED_TOD"], $data["ITEMQTYRECEIVED_TOD"], $data["POCREATED_TOD"], 
 		$data["NBITEMORDERED_TOD"], $data["QTYITEMORDERED_TOD"], $data["ANOMALIES_CNT_NOW"], json_encode($data["ANOMALIES_ITEMS_NOW"],true), json_encode($data["PRICEDIFFERENCES_ITEMS_TOD"],true), 
-		$today);
-	$req = $db->prepare($sql);
-    $req->execute($params);
+		$data["PRICEDIFFERENCES_ITEMS_TOD_CNT"],
+		$today
+	);	
+	$req = $indb->prepare($sql);
+	try{
+		$req->execute($params);
+	}catch(Exception $ex){
+		error_log($ex);
+	}
+    
 
 }
 
 
 function GenerateYesterdayFromCache()
 {
+	echo "YESTERDAY FROM CACHE\n";
 	$indb = getInternalDatabase();
 	$today = date('m/d/Y');
 	$yesterday = date('d.m.Y',strtotime("-1 days"));
@@ -674,11 +714,12 @@ function GenerateYesterdayFromCache()
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $indb->prepare($sql);
 	$req->execute(array($yesterday));
-	$res = $req->fetchAll(PDO::FETCH_ASSOC);
+	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res != false){
 		$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 		$req = $indb->prepare($sql);
-		$res = $req->execute(array($yesterday));
+		$req->execute(array($yesterday));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
 		if ($res == false){
 			$sql = "INSERT INTO GENERATEDSTATS (DAY) VALUES (?)";
 			$req = $indb->prepare($sql);
@@ -694,7 +735,7 @@ function GenerateYesterdayFromCache()
 				OCC_GOAT_YES = ?,SALE_RAT_YES = ?,SALE_OX_YES = ?,SALE_TIGER_YES = ?,SALE_HARE_YES = ?,
 				SALE_DRAGON_YES = ?,SALE_SNAKE_YES = ?,SALE_HORSE_YES = ?,SALE_GOAT_YES = ?,PORECEIVED_YES = ?,
 				NBITEMRECEIVED_YES = ?,ITEMQTYRECEIVED_YES = ?,POCREATED_YES = ?,NBITEMORDERED_YES = ?,QTYITEMORDERED_YES = ?,
-				PRICEDIFFERENCES_ITEMS_YES = ? WHERE DAY = ?
+				PRICEDIFFERENCES_ITEMS_YES = ?,PRICEDIFFERENCES_ITEMS_YES_CNT WHERE DAY = ?
 				";
 		
 		$params = array(
@@ -706,7 +747,7 @@ function GenerateYesterdayFromCache()
 			$res["OCC_GOAT_TOD"],$res["SALE_RAT_TOD"],$res["SALE_OX_TOD"],$res["SALE_TIGER_TOD"],$res["SALE_HARE_TOD"],
 			$res["SALE_DRAGON_TOD"],$res["SALE_SNAKE_TOD"],$res["SALE_HORSE_TOD"],$res["SALE_GOAT_TOD"],$res["PORECEIVED_TOD"],
 			$res["NBITEMRECEIVED_TOD"],$res["ITEMQTYRECEIVED_TOD"],$res["POCREATED_TOD"],$res["NBITEMORDERED_TOD"],$res["QTYITEMORDERED_TOD"],
-			$res["PRICEDIFFERENCES_ITEMS_TOD"],$today
+			$res["PRICEDIFFERENCES_ITEMS_TOD"],$res["PRICEDIFFERENCES_ITEMS_TOD_CNT"],$today
 		);
 		$req = $indb->prepare($sql);
 		$req->execute($params);
@@ -745,9 +786,9 @@ function GenerateYesterday()
 	//*******   ITEM WASTED YESTERDAY	********/
 	/*******************************************/
 	echo "ITEM WASTED YESTERDAY";
-	$sql = "SELECT PRODUCTID,QUANTITY FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?  IS NOT NULL ";
-	$req = $db->prepare($sql);
-	$req->execute($startYesterday,$endYesterday);
+	$sql = "SELECT PRODUCTID,QUANTITY FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($startYesterday,$endYesterday));
 	$wasteditems = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$allwasteitems = array();
@@ -777,7 +818,7 @@ function GenerateYesterday()
 	/*******************************************/
 	echo "RETURNED YESTERDAY\n";
 	$sql = "SELECT * FROM RETURNRECORD WHERE  CREATED BETWEEN ? AND ? AND STATUS = 'CLEARED'";
-	$req = $db->prepare($sql);
+	$req = $indb->prepare($sql);
 	$req->execute(array($startYesterday,$endYesterday));
 	$returnData = $req->fetchAll(PDO::FETCH_ASSOC);
 	$nbitemReturned = 0;
@@ -805,15 +846,15 @@ function GenerateYesterday()
 	/****			TRANSFER YESTERDAY		****/
 	/*******************************************/
 	echo "TRANSFER YESTERDAY\n";
-	$data["TRF_ALL_YES"] = TransferByTeam("ALL",$startYesterday,startYesterday);
-	$data["TRF_RAT_YES"] = TransferByTeam("RAT",$startYesterday,startYesterday);
-	$data["TRF_OX_YES"] = TransferByTeam("OX",$startYesterday,startYesterday);
-	$data["TRF_TIGER_YES"] = TransferByTeam("TIGER",$startYesterday,startYesterday);
-	$data["TRF_HARE_YES"] = TransferByTeam("HARE",$startYesterday,startYesterday);
-	$data["TRF_DRAGON_YES"] = TransferByTeam("DRAGON",$startYesterday,startYesterday);
-	$data["TRF_SNAKE_YES"] = TransferByTeam("SNAKE",$startYesterday,startYesterday);
-	$data["TRF_HORSE_YES"] = TransferByTeam("HORSE",$startYesterday,startYesterday);
-	$data["TRF_GOAT_YES"] = TransferByTeam("GOAT",$startYesterday,startYesterday);
+	$data["TRF_ALL_YES"] = TransferByTeam("ALL",$startYesterday,$startYesterday);
+	$data["TRF_RAT_YES"] = TransferByTeam("RAT",$startYesterday,$startYesterday);
+	$data["TRF_OX_YES"] = TransferByTeam("OX",$startYesterday,$startYesterday);
+	$data["TRF_TIGER_YES"] = TransferByTeam("TIGER",$startYesterday,$startYesterday);
+	$data["TRF_HARE_YES"] = TransferByTeam("HARE",$startYesterday,$startYesterday);
+	$data["TRF_DRAGON_YES"] = TransferByTeam("DRAGON",$startYesterday,$startYesterday);
+	$data["TRF_SNAKE_YES"] = TransferByTeam("SNAKE",$startYesterday,$startYesterday);
+	$data["TRF_HORSE_YES"] = TransferByTeam("HORSE",$startYesterday,$startYesterday);
+	$data["TRF_GOAT_YES"] = TransferByTeam("GOAT",$startYesterday,$startYesterday);
 
 	/*************************************************/
 	/**** TOTAL OCCUPANCY ITEMS YESTERDAY ******/
@@ -905,10 +946,16 @@ function GenerateYesterday()
     //**** PRICE DIFFERENCES YESTERDAY 	     ****//
     //*******************************************//
 	echo "PRICE DIFFERENCES YESTERDAY\n";
-    $sql = "SELECT PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+    $sql = "SELECT TOP(5) PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
     $req = $db->prepare($sql);
     $req->execute(array($startYesterday,$endYesterday));
-    $data["PRICEDIFFERENCES_ITEMS_YES"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+    $data["PRICEDIFFERENCES_ITEMS_YES"] = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT count(PRODUCTID) as 'CNT' FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+    $req = $db->prepare($sql);
+    $req->execute(array($startYesterday,$endYesterday));
+    $data["PRICEDIFFERENCES_ITEMS_YES_CNT"] = $req->fetchAll(PDO::FETCH_ASSOC);
+
 
 	$sql = "UPDATE GENERATEDSTATS SET 
 	TRAFFIC_YES = ?,AVGBASKET_YES = ?, WASTE_NBITEMS_YES = ?, WASTE_SUM_YES = ?,WASTE_ITEMS_YES = ?,
@@ -919,20 +966,19 @@ function GenerateYesterday()
 	OCC_GOAT_YES = ?,SALE_RAT_YES = ?,SALE_OX_YES = ?,SALE_TIGER_YES = ?,SALE_HARE_YES = ?,
 	SALE_DRAGON_YES = ?,SALE_SNAKE_YES = ?,SALE_HORSE_YES = ?,SALE_GOAT_YES = ?,PORECEIVED_YES = ?,
 	NBITEMRECEIVED_YES = ?,ITEMQTYRECEIVED_YES = ?,POCREATED_YES = ?,NBITEMORDERED_YES = ?,QTYITEMORDERED_YES = ?,
-	PRICEDIFFERENCES_ITEMS_YES = ? WHERE DAY = ?
+	PRICEDIFFERENCES_ITEMS_YES = ?,PRICEDIFFERENCES_ITEMS_YES_CNT = ? WHERE DAY = ?
 	";
 
 	$params = array(
-	$res["TRAFFIC_TOD"],$res["AVGBASKET_TOD"],$res["WASTE_NBITEMS_TOD"],$res["WASTE_SUM_TOD"],json_encode($res["WASTE_ITEMS_TOD"],true),
-	$res["RETURN_NBITEM_TOD"],$res["RETURN_SUMITEM_TOD"],$res["RETURN_AMOUNT_TOD"],json_encode($res["TRF_ALL_TOD"],true),json_encode($res["TRF_RAT_TOD"],true),
-	json_encode($res["TRF_OX_TOD"],true),json_encode($res["TRF_TIGER_TOD"],true),json_encode($res["TRF_HARE_TOD"],true),json_encode($res["TRF_DRAGON_TOD"],true),json_encode($res["TRF_SNAKE_TOD"],true),
-	json_encode($res["TRF_HORSE_TOD"],true),json_encode($res["TRF_GOAT_TOD"],true),json_encode($res["OCC_ALL_TOD"],true),json_encode($res["OCC_RAT_TOD"],true),json_encode($res["OCC_OX_TOD"],true),
-	json_encode($res["OCC_TIGER_TOD"],true),json_encode($res["OCC_HARE_TOD"],true),json_encode($res["OCC_DRAGON_TOD"],true),json_encode($res["OCC_SNAKE_TOD"],true),json_encode($res["OCC_HORSE_TOD"],true),
-	json_encode($res["OCC_GOAT_TOD"],true),json_encode($res["SALE_RAT_TOD"],true),json_encode($res["SALE_OX_TOD"],true),json_encode($res["SALE_TIGER_TOD"],true),json_encode($res["SALE_HARE_TOD"],true),
-	json_encode($res["SALE_DRAGON_TOD"],true),json_encode($res["SALE_SNAKE_TOD"],true),json_encode($res["SALE_HORSE_TOD"],true),json_encode($res["SALE_GOAT_TOD"],true),$res["PORECEIVED_TOD"],
-	$res["NBITEMRECEIVED_TOD"],$res["ITEMQTYRECEIVED_TOD"],$res["POCREATED_TOD"],$res["NBITEMORDERED_TOD"],$res["QTYITEMORDERED_TOD"],
-	$json_encode($res["PRICEDIFFERENCES_ITEMS_TOD"],true),$today
-	);
+	$data["TRAFFIC_TOD"],$data["AVGBASKET_TOD"],$data["WASTE_NBITEMS_TOD"],$data["WASTE_SUM_TOD"],json_encode($data["WASTE_ITEMS_TOD"],true),
+	$data["RETURN_NBITEM_TOD"],$data["RETURN_SUMITEM_TOD"],$data["RETURN_AMOUNT_TOD"],json_encode($data["TRF_ALL_TOD"],true),json_encode($data["TRF_RAT_TOD"],true),
+	json_encode($data["TRF_OX_TOD"],true),json_encode($data["TRF_TIGER_TOD"],true),json_encode($data["TRF_HARE_TOD"],true),json_encode($data["TRF_DRAGON_TOD"],true),json_encode($data["TRF_SNAKE_TOD"],true),
+	json_encode($data["TRF_HORSE_TOD"],true),json_encode($data["TRF_GOAT_TOD"],true),json_encode($data["OCC_ALL_TOD"],true),json_encode($data["OCC_RAT_TOD"],true),json_encode($data["OCC_OX_TOD"],true),
+	json_encode($data["OCC_TIGER_TOD"],true),json_encode($data["OCC_HARE_TOD"],true),json_encode($data["OCC_DRAGON_TOD"],true),json_encode($data["OCC_SNAKE_TOD"],true),json_encode($data["OCC_HORSE_TOD"],true),
+	json_encode($data["OCC_GOAT_TOD"],true),json_encode($data["SALE_RAT_TOD"],true),json_encode($data["SALE_OX_TOD"],true),json_encode($data["SALE_TIGER_TOD"],true),json_encode($data["SALE_HARE_TOD"],true),
+	json_encode($data["SALE_DRAGON_TOD"],true),json_encode($data["SALE_SNAKE_TOD"],true),json_encode($data["SALE_HORSE_TOD"],true),json_encode($data["SALE_GOAT_TOD"],true),$data["PORECEIVED_TOD"],
+	$data["NBITEMRECEIVED_TOD"],$data["ITEMQTYRECEIVED_TOD"],$data["POCREATED_TOD"],$data["NBITEMORDERED_TOD"],$data["QTYITEMORDERED_TOD"],
+	json_encode($data["PRICEDIFFERENCES_ITEMS_TOD"],true),"PRICEDIFFERENCES_ITEMS_YES_CNT",$today);
 	$req = $indb->prepare($sql);
 	$req->execute($params);
 }
