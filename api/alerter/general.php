@@ -128,6 +128,7 @@ function renderStats()
 	$db = getDatabase();
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req->prepare($sql);
+    $req->execute(array());
 	$d = $req->fetch(PDO::FETCH_ASSOC);
 
 	$display = "
@@ -287,14 +288,6 @@ function renderStats()
             </td>
         </tr>                
     </table>
-
-
-
 </center>
 </html>";
-
-
-
-
-
-	 
+}	 
