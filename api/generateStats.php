@@ -146,23 +146,25 @@ function Generate()
 		$sql = "INSERT INTO GENERATEDSTATS (DAY) VALUES (?)";
 		$req = $indb->prepare($sql);
 		$req->execute(array($today));
+		if ($count == 0){		
+			GenerateToday($db,$indb,false);
+		}else{			
+			GenerateYesterdayFromCache();
+			GenerateToday($db,$indb);
+		}
+	}
+	else{
+		GenerateToday($db,$indb,true);
 	}
 	
-	if ($count == 0){
-		//GenerateYesterday();
-		GenerateToday($db,$indb);
-	}else{			
-		//GenerateYesterdayFromCache();
-		GenerateToday($db,$indb);
-	}
 }
 
-function updateStats($db,$day,$key,$value){
+function updateStats($db,$day,$key,$value,$forceRefresh = false){
 	$sql = "SELECT ".$key." FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($day));
 	$res = $req->fetch(PDO::FETCH_ASSOC);	
-	if($res[$key] == null){
+	if($res[$key] == null || $forceRefresh == true){
 		echo "UPDATE ".$key."\n";
 		$sql = "UPDATE GENERATEDSTATS SET ".$key." = ?";
 		$req = $db->prepare($sql);		
@@ -176,7 +178,7 @@ function updateStats($db,$day,$key,$value){
 	}
 }
 
-function GenerateToday($db,$indb)
+function GenerateToday($db,$indb,$forceRefresh)
 {
 
 	$today = date('m/d/Y');	
@@ -198,8 +200,8 @@ function GenerateToday($db,$indb)
 	//$data["TRAFFIC_TOD"] = $res["NB"];	
 	//$data["AVGBASKET_TOD"] = $res["SUM"] / $divider;
 	$divider = intval($res["NB"]) != 0 ? $res["NB"] : 1;
-	updateStats($indb,$today,"TRAFFIC_TOD",$res["NB"]);
-	updateStats($indb,$today,"AVGBASKET_TOD",$res["SUM"] / $divider);
+	updateStats($indb,$today,"TRAFFIC_TOD",$res["NB"],$forceRefresh);
+	updateStats($indb,$today,"AVGBASKET_TOD",$res["SUM"] / $divider,$forceRefresh);
 
 	/*******************************************/
 	//*******   ITEM WASTED  TODAY		********/
@@ -231,8 +233,8 @@ function GenerateToday($db,$indb)
 	}
 	//$data["WASTE_SUM_TOD"] = $totalQty;
 	//$data["WASTE_ITEMS_TOD"] = $allwasteitems;	
-	updateStats($indb,$today,"WASTE_SUM_TOD",$totalQty);
-	updateStats($indb,$today,"WASTE_ITEMS_TOD",$allwasteitems);
+	updateStats($indb,$today,"WASTE_SUM_TOD",$totalQty,$forceRefresh);
+	updateStats($indb,$today,"WASTE_ITEMS_TOD",$allwasteitems,$forceRefresh);
 	
 	/*******************************************/
 	//*******   RETURNED TODAY			********/
@@ -261,23 +263,23 @@ function GenerateToday($db,$indb)
 	//$data["RETURN_NBITEM_TOD"] = $nbitemReturned;
 	//$data["RETURN_SUMITEM_TOD"] = $sumitemReturned;
 	//$data["RETURN_AMOUNT_TOD"] = $amountItemReturned;
-	updateStats($indb,$today,"RETURN_NBITEM_TOD",$nbitemReturned);
-	updateStats($indb,$today,"RETURN_SUMITEM_TOD",$sumitemReturned);
-	updateStats($indb,$today,"RETURN_AMOUNT_TOD",$amountItemReturned);
+	updateStats($indb,$today,"RETURN_NBITEM_TOD",$nbitemReturned,$forceRefresh);
+	updateStats($indb,$today,"RETURN_SUMITEM_TOD",$sumitemReturned,$forceRefresh);
+	updateStats($indb,$today,"RETURN_AMOUNT_TOD",$amountItemReturned,$forceRefresh);
 
 
 	/*******************************************/
 	/****			TRANSFER TODAY			****/
 	/*******************************************/
 	echo "TRANSFER TODAY.\n";
-	updateStats($indb,$today,"TRF_ALL_TOD",TransferByTeam($indb,"ALL",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_OX_TOD",TransferByTeam($indb,"OX",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_TIGER_TOD",TransferByTeam($indb,"TIGER",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_HARE_TOD",TransferByTeam($indb,"HARE",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_DRAGON_TOD",TransferByTeam($indb,"DRAGON",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_SNAKE_TOD",TransferByTeam($indb,"SNAKE",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_HORSE_TOD",TransferByTeam($indb,"HORSE",$startToday,$endToday));
-	updateStats($indb,$today,"TRF_GOAT_TOD",TransferByTeam($indb,"GOAT",$startToday,$endToday));
+	updateStats($indb,$today,"TRF_ALL_TOD",TransferByTeam($indb,"ALL",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_OX_TOD",TransferByTeam($indb,"OX",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_TIGER_TOD",TransferByTeam($indb,"TIGER",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_HARE_TOD",TransferByTeam($indb,"HARE",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_DRAGON_TOD",TransferByTeam($indb,"DRAGON",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_SNAKE_TOD",TransferByTeam($indb,"SNAKE",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_HORSE_TOD",TransferByTeam($indb,"HORSE",$startToday,$endToday),$forceRefresh);
+	updateStats($indb,$today,"TRF_GOAT_TOD",TransferByTeam($indb,"GOAT",$startToday,$endToday),$forceRefresh);
 	/*
 	$data["TRF_ALL_TOD"] = TransferByTeam($indb,"ALL",$startToday,$endToday);
 	$data["TRF_RAT_TOD"] = TransferByTeam($indb,"RAT",$startToday,$endToday);
@@ -294,15 +296,15 @@ function GenerateToday($db,$indb)
 	/**** TOTAL OCCUPANCY ITEMS NOW ******/
 	/*******************************************/
 	echo "OCCUPANCY TODAY.\n";
-	updateStats($indb,$today,"OCC_ALL_TOD",OccupancyByTeam($db,"ALL"));
-	updateStats($indb,$today,"OCC_RAT_TOD",OccupancyByTeam($db,"RAT"));
-	updateStats($indb,$today,"OCC_OX_TOD",OccupancyByTeam($db,"OX"));
-	updateStats($indb,$today,"OCC_TIGER_TOD",OccupancyByTeam($db,"TIGER"));
-	updateStats($indb,$today,"OCC_HARE_TOD",OccupancyByTeam($db,"HARE"));
-	updateStats($indb,$today,"OCC_DRAGON_TOD",OccupancyByTeam($db,"DRAGON"));
-	updateStats($indb,$today,"OCC_SNAKE_TOD",OccupancyByTeam($db,"SNAKE"));
-	updateStats($indb,$today,"OCC_HORSE_TOD",OccupancyByTeam($db,"HORSE"));
-	updateStats($indb,$today,"OCC_HARE_TOD",OccupancyByTeam($db,"GOAT"));
+	updateStats($indb,$today,"OCC_ALL_TOD",OccupancyByTeam($db,"ALL"),$forceRefresh);
+	updateStats($indb,$today,"OCC_RAT_TOD",OccupancyByTeam($db,"RAT"),$forceRefresh);
+	updateStats($indb,$today,"OCC_OX_TOD",OccupancyByTeam($db,"OX"),$forceRefresh);
+	updateStats($indb,$today,"OCC_TIGER_TOD",OccupancyByTeam($db,"TIGER"),$forceRefresh);
+	updateStats($indb,$today,"OCC_HARE_TOD",OccupancyByTeam($db,"HARE"),$forceRefresh);
+	updateStats($indb,$today,"OCC_DRAGON_TOD",OccupancyByTeam($db,"DRAGON"),$forceRefresh);
+	updateStats($indb,$today,"OCC_SNAKE_TOD",OccupancyByTeam($db,"SNAKE"),$forceRefresh);
+	updateStats($indb,$today,"OCC_HORSE_TOD",OccupancyByTeam($db,"HORSE"),$forceRefresh);
+	updateStats($indb,$today,"OCC_HARE_TOD",OccupancyByTeam($db,"GOAT"),$forceRefresh);
 
 	/*
 	$data["OCC_ALL_TOD"] = OccupancyByTeam($db,"ALL");
@@ -320,14 +322,14 @@ function GenerateToday($db,$indb)
 	/**** SALE TODAY    ****/
 	/***********************/
 	echo "SALE TODAY.\n";
-	updateStats($indb,$today,"SALE_RAT_TOD",getSaleByTeam($startToday,$endToday,"RAT"));
-	updateStats($indb,$today,"SALE_OX_TOD",getSaleByTeam($startToday,$endToday,"OX"));
-	updateStats($indb,$today,"SALE_TIGER_TOD",getSaleByTeam($startToday,$endToday,"TIGER"));
-	updateStats($indb,$today,"SALE_HARE_TOD",getSaleByTeam($startToday,$endToday,"HARE"));
-	updateStats($indb,$today,"SALE_DRAGON_TOD",getSaleByTeam($startToday,$endToday,"DRAGON"));
-	updateStats($indb,$today,"SALE_SNAKE_TOD",getSaleByTeam($startToday,$endToday,"SNAKE"));
-	updateStats($indb,$today,"SALE_HORSE_TOD",getSaleByTeam($startToday,$endToday,"HORSE"));
-	updateStats($indb,$today,"SALE_GOAT_TOD",getSaleByTeam($startToday,$endToday,"GOAT"));
+	updateStats($indb,$today,"SALE_RAT_TOD",getSaleByTeam($startToday,$endToday,"RAT"),$forceRefresh);
+	updateStats($indb,$today,"SALE_OX_TOD",getSaleByTeam($startToday,$endToday,"OX"),$forceRefresh);
+	updateStats($indb,$today,"SALE_TIGER_TOD",getSaleByTeam($startToday,$endToday,"TIGER"),$forceRefresh);
+	updateStats($indb,$today,"SALE_HARE_TOD",getSaleByTeam($startToday,$endToday,"HARE"),$forceRefresh);
+	updateStats($indb,$today,"SALE_DRAGON_TOD",getSaleByTeam($startToday,$endToday,"DRAGON"),$forceRefresh);
+	updateStats($indb,$today,"SALE_SNAKE_TOD",getSaleByTeam($startToday,$endToday,"SNAKE"),$forceRefresh);
+	updateStats($indb,$today,"SALE_HORSE_TOD",getSaleByTeam($startToday,$endToday,"HORSE"),$forceRefresh);
+	updateStats($indb,$today,"SALE_GOAT_TOD",getSaleByTeam($startToday,$endToday,"GOAT"),$forceRefresh);
 
 	/*
 	$data["SALE_RAT_TOD"] = getSaleByTeam($startToday,$endToday,"RAT");
@@ -402,7 +404,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);
 	$req->execute($params);	
 	//$data["EXPIRE_RET_CNT"] = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-	updateStats($indb,$today,"EXPIRE_RET_CNT",$req->fetch(PDO::FETCH_ASSOC)["CNT"]);
+	updateStats($indb,$today,"EXPIRE_RET_CNT",$req->fetch(PDO::FETCH_ASSOC)["CNT"],$forceRefresh);
 
 	/****************************/
 	/** EXPIRE RETURN ITEMS *****/
@@ -444,7 +446,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	//$data["EXPIRE_NR_ITEMS"] = $req->fetchAll(PDO::FETCH_ASSOC);
-	updateStats($indb,$today,"EXPIRE_NR_ITEMS",$req->fetchAll(PDO::FETCH_ASSOC));
+	updateStats($indb,$today,"EXPIRE_NR_ITEMS",$req->fetchAll(PDO::FETCH_ASSOC),$forceRefresh);
 	/**********************************/
 	/** EXPIRE RETURN  COUNT 	  *****/
 	/**********************************/
@@ -465,7 +467,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);	
 	$req->execute($params);	
 	//$data["EXPIRE_NR_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-	updateStats($indb,$today,"EXPIRE_NR_CNT",$req->fetch(PDO::FETCH_ASSOC));	
+	updateStats($indb,$today,"EXPIRE_NR_CNT",$req->fetch(PDO::FETCH_ASSOC),$forceRefresh);	
 	/*********************/
 	/**** NEEDMOVE  ******/ 
 	/*********************/
@@ -492,7 +494,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);
 	$req->execute(array());	
 	//$data["NEEDMOVE_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-	updateStats($indb,$today,"NEEDMOVE_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT']);	
+	updateStats($indb,$today,"NEEDMOVE_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	/*********************/
 	/**** NO LOCATION ****/ 
 	/*********************/
@@ -506,7 +508,7 @@ function GenerateToday($db,$indb)
 	$req->execute(array());
 	$noclocitems = $req->fetchAll(PDO::FETCH_ASSOC);
 	//$data["NOLOC_ITEMS"] = $noclocitems;
-	updateStats($indb,$today,"NOLOC_ITEMS",$noclocitems);	
+	updateStats($indb,$today,"NOLOC_ITEMS",$noclocitems,$forceRefresh);	
 	/*************************/
 	/**** NO LOCATION COUNT **/ 
 	/*************************/
@@ -518,7 +520,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);
 	$req->execute(array());	
 	//$data["NOLOC_ITEMS_CNT"] = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
-	updateStats($indb,$today,"NOLOC_ITEMS_CNT",$req->fetch(PDO::FETCH_ASSOC)["CNT"]);	
+	updateStats($indb,$today,"NOLOC_ITEMS_CNT",$req->fetch(PDO::FETCH_ASSOC)["CNT"],$forceRefresh);	
 	 /***************************/
 	/**** NEGATIVE ITEM WH1 ****/
 	/***************************/
@@ -531,7 +533,7 @@ function GenerateToday($db,$indb)
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	//$data["NEGATIVEITEM_WH1_ITEMS"] = $items;
-	updateStats($indb,$today,"NEGATIVEITEM_WH1_ITEMS",$items);	
+	updateStats($indb,$today,"NEGATIVEITEM_WH1_ITEMS",$items,$forceRefresh);	
 	/*********************************/
 	/**** NEGATIVE ITEM WH1 COUNT ****/
 	/*********************************/
@@ -540,7 +542,7 @@ function GenerateToday($db,$indb)
 	$req = $db->prepare($sql);
 	$req->execute(array());	
 	//$data["NEGATIVEITEM_WH1_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-	updateStats($indb,$today,"NEGATIVEITEM_WH1_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT']);	
+	updateStats($indb,$today,"NEGATIVEITEM_WH1_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
     /***************************/
 	/**** NEGATIVE ITEM WH2 ****/
 	/***************************/
@@ -553,7 +555,7 @@ function GenerateToday($db,$indb)
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
     //$data["NEGATIVEITEM_WH2_ITEMS"] = $items;
-	updateStats($indb,$today,"NEGATIVEITEM_WH2_ITEMS",$items);	
+	updateStats($indb,$today,"NEGATIVEITEM_WH2_ITEMS",$items,$forceRefresh);	
     /*********************************/
     /**** NEGATIVE ITEM WH2 COUNT ****/
     /*********************************/
@@ -563,7 +565,7 @@ function GenerateToday($db,$indb)
     $req->execute(array());
     $count = $req->fetch(PDO::FETCH_ASSOC);
     //$data["NEGATIVEITEM_WH2_CNT"] = $count['CNT'];
-	updateStats($indb,$today,"NEGATIVEITEM_WH2_CNT",$count['CNT']);	
+	updateStats($indb,$today,"NEGATIVEITEM_WH2_CNT",$count['CNT'],$forceRefresh);	
 	/***********************/
 	/**** UNSOLD 30 ****/
 	/***********************/
@@ -579,7 +581,7 @@ function GenerateToday($db,$indb)
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	//$data["UNSOLD30_ITEMS"] = $items;
-	updateStats($indb,$today,"UNSOLD30_ITEMS",$items);	
+	updateStats($indb,$today,"UNSOLD30_ITEMS",$items,$forceRefresh);	
 	/***********************/
 	/**** UNSOLD 30 CNT ****/
 	/***********************/
@@ -595,7 +597,7 @@ function GenerateToday($db,$indb)
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	//$data["UNSOLD30_ITEMS_CNT"] = $items;
-	updateStats($indb,$today,"UNSOLD30_ITEMS_CNT",$items);	
+	updateStats($indb,$today,"UNSOLD30_ITEMS_CNT",$items,$forceRefresh);	
 	/*****************************/
     // TOTAL PO RECEIVED TODAY //
     /*****************************/
@@ -603,8 +605,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT COUNT(PONUMBER) as 'CNT' FROM POHEADER WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["PORECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+    //$data["PORECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"PORECEIVED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
     /*****************************/
     // TOTAL ITEM RECEIVED TODAY //
     /*****************************/
@@ -612,8 +614,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT COUNT(ORDER_QTY) as 'CNT' FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["NBITEMRECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+    //$data["NBITEMRECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"NBITEMRECEIVED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
     //********************************//
     // TOTAL ITEM QTY RECEIVED TODAY  //
     //********************************//
@@ -621,8 +623,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT SUM(ORDER_QTY) as 'CNT' FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["ITEMQTYRECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+    //$data["ITEMQTYRECEIVED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"ITEMQTYRECEIVED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
     //*****************************//
     //****   PO CREATED TODAY  ****//
     //*****************************//
@@ -630,8 +632,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT COUNT(PONUMBER) as 'CNT' FROM POHEADER WHERE POSTATUS = '' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["POCREATED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+    //$data["POCREATED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"POCREATED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
     //***********************************//
     //****   TOTAL ITEMS IN PO TODAY ****//
     //***********************************//
@@ -639,8 +641,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT COUNT(ORDER_QTY) as 'CNT' FROM PODETAIL WHERE POSTATUS = '' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["NBITEMORDERED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+    //$data["NBITEMORDERED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"NBITEMORDERED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	//***********************************************//
     //****   TOTAL ITEMS ORDERED QTY IN PO TODAY ****//
     //**********************************************//
@@ -648,8 +650,8 @@ function GenerateToday($db,$indb)
     $sql = "SELECT SUM(ORDER_QTY) as 'CNT' FROM PODETAIL WHERE POSTATUS = '' AND  DATEADD BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["QTYITEMORDERED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-    
+    //$data["QTYITEMORDERED_TOD"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+    updateStats($indb,$today,"QTYITEMORDERED_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	//*******************************************//
     //**********    ANOMALIES COUNT    **********//
     //*******************************************//
@@ -657,8 +659,8 @@ function GenerateToday($db,$indb)
 	$sql = "SELECT count(*) as 'CNT' FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = 'ANOMALYUNSOLVED'";
 	$req = $indb->prepare($sql);
 	$req->execute(array());
-	$data["ANOMALIES_CNT_NOW"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-
+	//$data["ANOMALIES_CNT_NOW"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"ANOMALIES_CNT_NOW",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	//*******************************************//
     //********	ANOMALIES ITEMS   ***************//
     //*******************************************//
@@ -678,8 +680,8 @@ function GenerateToday($db,$indb)
 		$req->execute(array($anomaly["PONUMBER"]));		
 		$anomalyData[$anomaly["PONUMBER"]] = $req->fetch(PDO::FETCH_ASSOC);
 	}
-	$data["ANOMALIES_ITEMS_NOW"] = $anomalyData;
-
+	//$data["ANOMALIES_ITEMS_NOW"] = $anomalyData;
+	updateStats($indb,$today,"ANOMALIES_ITEMS_NOW",$anomalyData,$forceRefresh);	
 	//*******************************************//
     //********	ANOMALIES ITEMS COUNT ***********//
     //*******************************************//
@@ -700,9 +702,8 @@ function GenerateToday($db,$indb)
 		$req->execute(array($anomaly["PONUMBER"]));		
 		$sumQty += $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 	}
-	$data["ANOMALIES_ITEMS_NOW_CNT"] = $sumQty;
-
-
+	//$data["ANOMALIES_ITEMS_NOW_CNT"] = $sumQty;
+	updateStats($indb,$today,"ANOMALIES_ITEMS_NOW_CNT",$sumQty,$forceRefresh);	
 
 	//*******************************************//
     //**** PRICE DIFFERENCES TODAY 		*********//
@@ -711,13 +712,16 @@ function GenerateToday($db,$indb)
     $sql = "SELECT TOP(5) PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["PRICEDIFFERENCES_ITEMS_TOD"] = $req->fetchAll(PDO::FETCH_ASSOC);
+    //$data["PRICEDIFFERENCES_ITEMS_TOD"] = $req->fetchAll(PDO::FETCH_ASSOC);
+	updateStats($indb,$today,"PRICEDIFFERENCES_ITEMS_TOD",$req->fetchAll(PDO::FETCH_ASSOC),$forceRefresh);	
 
 	$sql = "SELECT COUNT(PRODUCTID) as 'CNT'  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
-    $data["PRICEDIFFERENCES_ITEMS_TOD_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+    //$data["PRICEDIFFERENCES_ITEMS_TOD_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
+	updateStats($indb,$today,"PRICEDIFFERENCES_ITEMS_TOD_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 
+	/*	
 	$sql = "UPDATE GENERATEDSTATS SET 
 	TRAFFIC_TOD = ?,AVGBASKET_TOD = ?,WASTE_SUM_TOD = ?,WASTE_ITEMS_TOD = ?,RETURN_NBITEM_TOD = ?,
 	RETURN_SUMITEM_TOD = ?,RETURN_AMOUNT_TOD = ?,TRF_ALL_TOD = ?,TRF_RAT_TOD = ?,TRF_OX_TOD = ?,
@@ -754,7 +758,7 @@ function GenerateToday($db,$indb)
 	}catch(Exception $ex){
 		error_log($ex);
 	}
-    
+    */
 
 }
 
@@ -811,27 +815,12 @@ function GenerateYesterdayFromCache()
 }
 
 
-function getInternalDatabase2($base = "MAIN")
-{
-	try{
-		if ($base == "MAIN")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');		
-		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-	}
-	catch(Exception $ex)
-	{
-		die("Cannot open database".$ex->getMessage());
-	}
-	return $db;
-}
-
 
 function GenerateYesterday()
 {
 	echo "YESTERDAY\n";
     $db = getDatabase();
-	$indb = getInternalDatabase2();
+	$indb = getInternalDatabase();
     $data = array();
 
     $today = date('m/d/Y');
