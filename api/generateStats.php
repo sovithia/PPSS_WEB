@@ -870,6 +870,10 @@ function GenerateYesterdayFromCache()
 			$req->execute(array());
 		}
 
+		if (fieldIsNull($indb,"ITEMQTYRECEIVED_TOD",$today) || $forceRefresh == true){
+			updateStats($indb,$today,"TRAFFIC_YES",$res["TRAFFIC_TOD"],false);	
+			
+		/*
 		$sql = "UPDATE GENERATEDSTATS SET 
 				TRAFFIC_YES = ?,AVGBASKET_YES = ?, WASTE_NBITEMS_YES = ?, WASTE_SUM_YES = ?,WASTE_ITEMS_YES = ?,
 				RETURN_NBITEM_YES = ?,RETURN_SUMITEM_YES = ?,RETURN_AMOUNT_YES = ?,TRF_ALL_YES = ?,TRF_RAT_YES = ?,
@@ -895,6 +899,7 @@ function GenerateYesterdayFromCache()
 		);
 		$req = $indb->prepare($sql);
 		$req->execute($params);
+		*/
 	}
 
 }
