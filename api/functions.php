@@ -1664,8 +1664,6 @@ function getSaleByTeam($start,$end,$team)
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-
 	return $items;
 }
 

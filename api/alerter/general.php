@@ -3,27 +3,28 @@ header("refresh: 30;");
 ?>
 <?php
 
+
+function getInternalDatabase($base = "MAIN")
+{
+	try{		
+		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');		
+		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	}
+	catch(Exception $ex)
+	{
+		die("Cannot open database".$ex->getMessage());
+	}
+	return $db;
+}
+
+
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
 	try  
 	{  		
-		if ($name == "MAIN")
-		{
-			if (isLocal()){				
-				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-			}
-			else 
-				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TRAINING")
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TMP" )
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,55008;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
-		}  		
+        $conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');		
 		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
 	}  
 	catch(Exception $e)  
@@ -44,45 +45,44 @@ function A($array,$key){
 }
 
 
-
-function renderFiveItems($key,$countLbl,$haveQty = true)
+function renderFiveItems($data,$countLbl,$haveQty = true)
 {
-	$i1 = isset($d[$key][0]) ?? null;
-	$i2 = isset($d[$key][1]) ?? null;
-	$i3 = isset($d[$key][2]) ?? null;
-	$i4 = isset($d[$key][3]) ?? null;
-	$i5 = isset($d[$key][4]) ?? null;
-
+	$i1 = $data[0] ?? null;
+	$i2 = $data[1] ?? null;
+	$i3 = $data[2] ?? null;
+	$i4 = $data[3] ?? null;
+	$i5 = $data[4] ?? null;
+    
 	if ($haveQty == true){
 		return "        
         <table border='1'>
-            <tr><td colspan=3'>".$countLbl."</td></tr>
+            <tr><td colspan=4'>".$countLbl."</td></tr>
             <tr>
-                <td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i1,'PRODUCTID')."'></td>
+                <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i1,'PRODUCTID')."'></td>
                 <td>".A($i1,'PRODUCTNAME')."</td>
                 <td>".A($i1,'PRODUCTID')."</td>     
 				<td>".A($i1,'LOCONHAND')."</td>       
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i2,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i2,'PRODUCTID')."'></td>
 				<td>".A($i2,'PRODUCTNAME')."</td>
 				<td>".A($i2,'PRODUCTID')."</td>       
 				<td>".A($i2,'LOCONHAND')."</td>            
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i3,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i3,'PRODUCTID')."'></td>
 				<td>".A($i3,'PRODUCTNAME')."</td>
 				<td>".A($i3,'PRODUCTID')."</td>
 				<td>".A($i3,'LOCONHAND')."</td>            
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i4,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i4,'PRODUCTID')."'></td>
 				<td>".A($i4,'PRODUCTNAME')."</td>
 				<td>".A($i4,'PRODUCTID')."</td>
 				<td>".A($i4,'LOCONHAND')."</td>            
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i5,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i5,'PRODUCTID')."'></td>
 				<td>".A($i5,'PRODUCTNAME')."</td>
 				<td>".A($i5,'PRODUCTID')."</td>
 				<td>".A($i5,'LOCONHAND')."</td>            
@@ -93,27 +93,27 @@ function renderFiveItems($key,$countLbl,$haveQty = true)
 		<table border='1'>
             <tr><td colspan=3'>".$countLbl."</td></tr>
             <tr>
-                <td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i1,'PRODUCTID')."'></td>
+                <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i1,'PRODUCTID')."'></td>
                 <td>".A($i1,'PRODUCTNAME')."</td>
                 <td>".A($i1,'PRODUCTID')."</td>     				  
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i2,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i2,'PRODUCTID')."'></td>
 				<td>".A($i2,'PRODUCTNAME')."</td>
 				<td>".A($i2,'PRODUCTID')."</td>       				       
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i3,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i3,'PRODUCTID')."'></td>
 				<td>".A($i3,'PRODUCTNAME')."</td>
 				<td>".A($i3,'PRODUCTID')."</td>				     
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i4,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i4,'PRODUCTID')."'></td>
 				<td>".A($i4,'PRODUCTNAME')."</td>
 				<td>".A($i4,'PRODUCTID')."</td>				            
             </tr>
             <tr>
-				<td><img style='height:50px' src='https://phnompenhsuperstore.com/api/picture.php?barcode=".A($i5,'PRODUCTID')."'></td>
+				<td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".A($i5,'PRODUCTID')."'></td>
 				<td>".A($i5,'PRODUCTNAME')."</td>
 				<td>".A($i5,'PRODUCTID')."</td>				            
             </tr>
@@ -125,11 +125,33 @@ function renderFiveItems($key,$countLbl,$haveQty = true)
 
 function renderStats()
 {
-	$db = getDatabase();
+    $today = date('m/d/Y');	
+	$db = getInternalDatabase();
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
-	$req->prepare($sql);
-    $req->execute(array());
+	$req = $db->prepare($sql);
+    $req->execute(array($today));
 	$d = $req->fetch(PDO::FETCH_ASSOC);
+
+    $d["TRF_ALL_YES"] = json_decode($d["TRF_ALL_YES"] ,true);
+    $d["TRF_RAT_YES"] = json_decode($d["TRF_RAT_YES"] ,true);
+    $d["TRF_OX_YES"] = json_decode($d["TRF_OX_YES"] ,true);
+    $d["TRF_TIGER_YES"] = json_decode($d["TRF_TIGER_YES"] ,true);
+    $d["TRF_HARE_YES"] = json_decode($d["TRF_HARE_YES"] ,true);
+    $d["TRF_SNAKE_YES"] = json_decode($d["TRF_SNAKE_YES"] ,true);
+    $d["TRF_DRAGON_YES"] = json_decode($d["TRF_DRAGON_YES"] ,true);
+    $d["TRF_GOAT_YES"] = json_decode($d["TRF_GOAT_YES"] ,true);
+    $d["TRF_HORSE_YES"] = json_decode($d["TRF_HORSE_YES"] ,true);
+
+    $d["TRF_ALL_TOD"] = json_decode($d["TRF_ALL_TOD"] ,true);
+    $d["TRF_RAT_TOD"] = json_decode($d["TRF_RAT_TOD"] ,true);
+    $d["TRF_OX_TOD"] = json_decode($d["TRF_OX_TOD"] ,true);
+    $d["TRF_TIGER_TOD"] = json_decode($d["TRF_TIGER_TOD"] ,true);
+    $d["TRF_HARE_TOD"] = json_decode($d["TRF_HARE_TOD"] ,true);
+    $d["TRF_SNAKE_TOD"] = json_decode($d["TRF_SNAKE_TOD"] ,true);
+    $d["TRF_DRAGON_TOD"] = json_decode($d["TRF_DRAGON_TOD"] ,true);
+    $d["TRF_GOAT_TOD"] = json_decode($d["TRF_GOAT_TOD"] ,true);
+    $d["TRF_HORSE_TOD"] = json_decode($d["TRF_HORSE_TOD"] ,true);
+
 
 	$display = "
 		<html style='background-color:#009183;color:white'>    
@@ -154,27 +176,26 @@ function renderStats()
         </tr>
         <tr>
             <td>Transfer</td>
-            <td>".$d["TRF_ALL_YES"]." > ".$d["TRF_ALL_TOD"]."</td>
-            <td>".$d["TRF_RAT_YES"]." > ".$d["TRF_RAT_TOD"]."</td>
-            <td>".$d["TRF_OX_YES"]." > ".$d["TRF_OX_TOD"]."</td>
-            <td>".$d["TRF_TIGER_YES"]." > ".$d["TRF_TIGER_TOD"]."</td>
-            <td>".$d["TRF_HARE_YES"]." > ".$d["TRF_HARE_TOD"]."</td>
-            <td>".$d["TRF_SNAKE_YES"]." > ".$d["TRF_SNAKE_TOD"]."</td>
-            <td>".$d["TRF_DRAGON_YES"]." > ".$d["TRF_DRAGON_TOD"]."</td>
-            <td>".$d["TRF_GOAT_YES"]." > ".$d["TRF_GOAT_TOD"]."</td>
-            <td>".$d["TRF_HORSE_YES"]." > ".$d["TRF_HORSE_TOD"]."</td>
+            <td>".$d["TRF_ALL_YES"]." > NB[".$d["TRF_ALL_TOD"]["NBITEM"]."] QTY[".$d["TRF_ALL_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_RAT_YES"]." > NB[".$d["TRF_RAT_TOD"]["NBITEM"]."] QTY[".$d["TRF_RAT_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_OX_YES"]." > NB[".$d["TRF_OX_TOD"]["NBITEM"]."] QTY[".$d["TRF_OX_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_TIGER_YES"]." > NB[".$d["TRF_TIGER_TOD"]["NBITEM"]."] QTY[".$d["TRF_TIGER_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_HARE_YES"]." > NB[".$d["TRF_HARE_TOD"]["NBITEM"]."] QTY[".$d["TRF_HARE_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_SNAKE_YES"]." > NB[".$d["TRF_SNAKE_TOD"]["NBITEM"]."] QTY[".$d["TRF_SNAKE_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_DRAGON_YES"]." > NB[".$d["TRF_DRAGON_TOD"]["NBITEM"]."] QTY[".$d["TRF_DRAGON_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_GOAT_YES"]." > NB[".$d["TRF_GOAT_TOD"]["NBITEM"]."] QTY[".$d["TRF_GOAT_TOD"]["QUANTITY"]."]</td>
+            <td>".$d["TRF_HORSE_YES"]." > NB[".$d["TRF_HORSE_TOD"]["NBITEM"]."] QTY[".$d["TRF_HORSE_TOD"]["QUANTITY"]."]</td>
         </tr>
         <tr>
-            <td>Sale</td>
-            <td>".$d["SAL_ALL_YES"]." > ".$d["SAL_ALL_TOD"]."</td>
-            <td>".$d["SAL_RAT_YES"]." > ".$d["SAL_RAT_TOD"]."</td>
-            <td>".$d["SAL_OX_YES"]." > ".$d["SAL_OX_TOD"]."</td>
-            <td>".$d["SAL_TIGER_YES"]." > ".$d["SAL_TIGER_TOD"]."</td>
-            <td>".$d["SAL_HARE_YES"]." > ".$d["SAL_HARE_TOD"]."</td>
-            <td>".$d["SAL_SNAKE_YES"]." > ".$d["SAL_SNAKE_TOD"]."</td>
-            <td>".$d["SAL_DRAGON_YES"]." > ".$d["SAL_DRAGON_TOD"]."</td>
-            <td>".$d["SAL_GOAT_YES"]." > ".$d["SAL_GOAT_TOD"]."</td>
-            <td>".$d["SAL_HORSE_YES"]." > ".$d["SAL_HORSE_TOD"]."</td>
+            <td>Sale</td>            
+            <td>".$d["SALE_RAT_YES"]." > ".$d["SALE_RAT_TOD"]."</td>
+            <td>".$d["SALE_OX_YES"]." > ".$d["SALE_OX_TOD"]."</td>
+            <td>".$d["SALE_TIGER_YES"]." > ".$d["SALE_TIGER_TOD"]."</td>
+            <td>".$d["SALE_HARE_YES"]." > ".$d["SALE_HARE_TOD"]."</td>
+            <td>".$d["SALE_SNAKE_YES"]." > ".$d["SALE_SNAKE_TOD"]."</td>
+            <td>".$d["SALE_DRAGON_YES"]." > ".$d["SALE_DRAGON_TOD"]."</td>
+            <td>".$d["SALE_GOAT_YES"]." > ".$d["SALE_GOAT_TOD"]."</td>
+            <td>".$d["SALE_HORSE_YES"]." > ".$d["SALE_HORSE_TOD"]."</td>
         </tr>
         <tr>
             <td>Occupancy</td>
@@ -194,13 +215,13 @@ function renderStats()
 	$display .= "
     <table>
     <tr>
-        <td>".renderFiveItems("NOLOC_ITEMS","No Loc items:".$d["NOLOC_ITEMS_CNT"],false)."</td>               	
-		<td>".renderFiveItems("NEGATIVEITEM_WH1_ITEMS","Negative items WH1: ".$d["NEGATIVEITEM_WH1_CNT"])."</td>
-		<td>".renderFiveItems("NEGATIVEITEM_WH2_ITEMS","Negative items WH2: ".$d["NEGATIVEITEM_WH2_CNT"])."</td>
-		<td>".renderFiveItems("UNSOLD30_ITEMS","Unsold items 30: ".$d["UNSOLD30_ITEMS_CNT"])."</td>
-		<td>".renderFiveItems("EXPIRE_RET_ITEMS","Expire Returns items : ".$d["EXPIRE_RET_CNT"])."</td>
-		<td>".renderFiveItems("EXPIRE_NR_ITEMS","Expire Returns items : ".$d["EXPIRE_NR_CNT"])."</td>
-		<td>".renderFiveItems("NEEDMOVE_ITEMS","Need move items : ".$d["NEEDMOVE_CNT"])."</td>	
+        <td>".renderFiveItems(json_decode($d["NOLOC_ITEMS"],true) ,"No Loc items:".$d["NOLOC_ITEMS_CNT"],false)."</td>               	
+		<td>".renderFiveItems(json_decode($d["NEGATIVEITEM_WH1_ITEMS"],true),"Negative items WH1: ".$d["NEGATIVEITEM_WH1_CNT"])."</td>
+		<td>".renderFiveItems(json_decode($d["NEGATIVEITEM_WH2_ITEMS"],true),"Negative items WH2: ".$d["NEGATIVEITEM_WH2_CNT"])."</td>
+		<td>".renderFiveItems(json_decode($d["UNSOLD30_ITEMS"],true),"Unsold items 30: ".$d["UNSOLD30_ITEMS_CNT"])."</td>
+		<td>".renderFiveItems(json_decode($d["EXPIRE_RET_ITEMS"],true),"Expire Returns items : ".$d["EXPIRE_RET_CNT"])."</td>
+		<td>".renderFiveItems(json_decode($d["EXPIRE_NR_ITEMS"],true),"Expire Returns items : ".$d["EXPIRE_NR_CNT"])."</td>
+		<td>".renderFiveItems(json_decode($d["NEEDMOVE_ITEMS"],true),"Need move items : ".$d["NEEDMOVE_CNT"])."</td>	
      </tr>
     </table>    
 
@@ -265,9 +286,9 @@ function renderStats()
                         
                     </tr>	
                     <tr>
-                        <td colspan='2'>".renderFiveItems("PRICEDIFFERENCES_ITEMS_TOD","Price difference today: ".$d["PRICEDIFFERENCES_ITEMS_TOD_CNT"])."</td>	
-						<td colspan='2'>".renderFiveItems("PRICEDIFFERENCES_ITEMS_YES","Price difference yesterday: ".$d["PRICEDIFFERENCES_ITEMS_YES_CNT"])."</td>
-						<td colspan='2'>".renderFiveItems("ANOMALIES_ITEMS_NOW","Anomaly count: ".$d["ANOMALIES_ITEMS_NOW_CNT"])."</td>			
+                        <td colspan='2'>".renderFiveItems(json_decode("PRICEDIFFERENCES_ITEMS_TOD",true),"Price difference today: ".$d["PRICEDIFFERENCES_ITEMS_TOD_CNT"])."</td>	
+						<td colspan='2'>".renderFiveItems(json_decode("PRICEDIFFERENCES_ITEMS_YES",true),"Price difference yesterday: ".$d["PRICEDIFFERENCES_ITEMS_YES_CNT"])."</td>
+						<td colspan='2'>".renderFiveItems(json_decode("ANOMALIES_ITEMS_NOW",true),"Anomaly count: ".$d["ANOMALIES_ITEMS_NOW_CNT"])."</td>			
                     </tr>
                 </table>
             </td>
@@ -278,8 +299,8 @@ function renderStats()
                         <td colspan='4'>
                             <table>            
                                 <tr>
-									<td>".renderFiveItems("WASTE_ITEMS_TOD","Waste items yesterday:".$d["WASTE_NBITEMS_YES"]."|Sum:".$d["WASTE_SUM_YES"] )."</td>
-                                    <td>".renderFiveItems("WASTE_ITEMS_TOD","Waste items today:" .$d["WASTE_NBITEMS_TOD"]."|Sum:".$d["WASTE_SUM_TOD"] )."</td>		
+									<td>".renderFiveItems(json_decode("WASTE_ITEMS_TOD",true),"Waste items yesterday:".$d["WASTE_NBITEMS_YES"]."|Sum:".$d["WASTE_SUM_YES"] )."</td>
+                                    <td>".renderFiveItems(json_decode("WASTE_ITEMS_TOD",true),"Waste items today:" .$d["WASTE_NBITEMS_TOD"]."|Sum:".$d["WASTE_SUM_TOD"] )."</td>		
                                 </tr>                
                             </table>
                         </td>
@@ -290,4 +311,11 @@ function renderStats()
     </table>
 </center>
 </html>";
+    return $display;
 }	 
+
+
+echo renderStats();
+
+
+?>

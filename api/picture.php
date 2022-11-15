@@ -30,16 +30,11 @@ function loadPicture($barcode,$scale = 150)
 	}
 	else 
 	{
-
-
-
 		$tmpHandle = tmpfile();
 		$metaDatas = stream_get_meta_data($tmpHandle);
 		$path = $metaDatas['uri'];
 		fwrite($tmpHandle, file_get_contents("/Volumes/Image/".$barcode.".jpg"));
 		//fclose($tmpHandle);
-		
-
 		$data = getImage($path);
 		if ($data != false){
 			$data = imagescale($data,$scale);
@@ -52,7 +47,6 @@ function loadPicture($barcode,$scale = 150)
 			$path = "img/mystery.png";		
 			$final = file_get_contents($path);
 		}
-		
 		return $final;		
 	}
 
@@ -64,6 +58,9 @@ if (!isset($_GET["scale"]))
 else 
 	$scale = $_GET["scale"];
 $name = './tmp.png';
+
+//var_dump($barcode);
+
 $data = loadPicture($barcode,$scale);
 file_put_contents($name,$data);
 
@@ -73,4 +70,5 @@ header("Content-Length: " . filesize($name));
 fpassthru($fp);
 
 exit;
+
 ?>
