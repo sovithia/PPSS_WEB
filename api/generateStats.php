@@ -213,12 +213,12 @@ function Generate()
 		if ($count == 0){				
 			GenerateToday($db,$indb,false);
 		}else{			
-			GenerateYesterdayFromCache();
-			//GenerateToday($db,$indb,true);
+			GenerateYesterdayFromCache($indb);
+			GenerateToday($db,$indb,true);
 		}
 	}
 	else{		
-		GenerateYesterdayFromCache();
+		GenerateYesterdayFromCache($indb);
 		GenerateToday($db,$indb,false);
 		//GenerateToday($db,$indb,true);
 	}
@@ -390,8 +390,8 @@ function GenerateToday($db,$indb,$forceRefresh)
 		updateStats($indb,$today,"OCC_SNAKE_TOD",OccupancyByTeamCount($db,"SNAKE"));
 	if (fieldIsNull($indb,"OCC_HORSE_TOD",$today) || $forceRefresh == true)
 		updateStats($indb,$today,"OCC_HORSE_TOD",OccupancyByTeamCount($db,"HORSE"));
-	if (fieldIsNull($indb,"OCC_HARE_TOD",$today) || $forceRefresh == true)
-		updateStats($indb,$today,"OCC_HARE_TOD",OccupancyByTeamCount($db,"GOAT"));
+	if (fieldIsNull($indb,"OCC_GOAT_TOD",$today) || $forceRefresh == true)
+		updateStats($indb,$today,"OCC_GOAT_TOD",OccupancyByTeamCount($db,"GOAT"));
 
 	/***********************/
 	/**** SALE TODAY    ****/
@@ -546,7 +546,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 		$req = $db->prepare($sql);	
 		$req->execute($params);	
 		//$data["EXPIRE_NR_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-		updateStats($indb,$today,"EXPIRE_NR_CNT",$req->fetch(PDO::FETCH_ASSOC));	
+		updateStats($indb,$today,"EXPIRE_NR_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT']);	
 	}
 	/*********************/
 	/**** NEEDMOVE  ******/ 
@@ -787,13 +787,15 @@ function GenerateToday($db,$indb,$forceRefresh)
 		$anomalyData = array();
 		foreach($anomalies as $anomaly){
 
-			$sql = "SELECT TOP(1) PRODUCTID,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY 
-					FROM PODETAIL 
+			$sql = "SELECT TOP(1) PODETAIL.PRODUCTID,CURRENTONHAND,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,ONHAND
+					FROM PODETAIL, ICPRODUCT
 					WHERE PONUMBER = ? 
+					AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
 					AND PPSS_WAITING_CALCULATED <> PPSS_WAITING_QUANTITY";
 			$req = $db->prepare($sql);
 			$req->execute(array($anomaly["PONUMBER"]));		
-			$anomalyData[$anomaly["PONUMBER"]] = $req->fetch(PDO::FETCH_ASSOC);
+			array_push($anomalyData,$req->fetch(PDO::FETCH_ASSOC));
+			//$anomalyData[$anomaly["PONUMBER"]] = $req->fetch(PDO::FETCH_ASSOC);
 		}
 		//$data["ANOMALIES_ITEMS_NOW"] = $anomalyData;
 		updateStats($indb,$today,"ANOMALIES_ITEMS_NOW",$anomalyData,$forceRefresh);	
@@ -826,11 +828,18 @@ function GenerateToday($db,$indb,$forceRefresh)
 	//*******************************************//
     //**** PRICE DIFFERENCES TODAY 		*********//
     //*******************************************//
-	echo "PRICE DIFFERENCES TODAY\n";
+	$todayMinusSeven = date('m/d/Y', strtotime('-7 days'))." 00:00:00.000";
+	echo "PRICE DIFFERENCES 7Days Back\n";
 	if (fieldIsNull($indb,"PRICEDIFFERENCES_ITEMS_TOD",$today) || $forceRefresh == true) {
-		$sql = "SELECT TOP(5) PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+		$sql = "SELECT TOP(5) PODETAIL.PRODUCTID,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  
+		FROM PODETAIL,ICPRODUCT
+		WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+		AND ICPRODUCT.PPSS_IS_FRESH <> 'Y'		
+		AND POSTATUS = 'C' 
+		AND  PODETAIL.DATEADD BETWEEN ? AND ? 
+		AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
 		$req = $db->prepare($sql);
-		$req->execute(array($startToday,$endToday));
+		$req->execute(array($todayMinusSeven,$endToday));
 		//$data["PRICEDIFFERENCES_ITEMS_TOD"] = $req->fetchAll(PDO::FETCH_ASSOC);
 		updateStats($indb,$today,"PRICEDIFFERENCES_ITEMS_TOD",$req->fetchAll(PDO::FETCH_ASSOC),$forceRefresh);	
 	}
@@ -838,23 +847,27 @@ function GenerateToday($db,$indb,$forceRefresh)
 	//*******************************************//
     //**** PRICE DIFFERENCES TODAY COUNT  *******//
     //*******************************************//
-	echo "PRICE DIFFERENCES TODAY COUNT\n";
+	echo "PRICE DIFFERENCES 7Days Back COUNT\n";
 	if (fieldIsNull($indb,"PRICEDIFFERENCES_ITEMS_TOD_CNT",$today) || $forceRefresh == true) {
-		$sql = "SELECT COUNT(PRODUCTID) as 'CNT'  FROM PODETAIL WHERE POSTATUS = 'C' AND  DATEADD BETWEEN ? AND ? AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
+		$sql = "SELECT COUNT(PODETAIL.PRODUCTID) as 'CNT'  
+		FROM PODETAIL,ICPRODUCT	
+		WHERE POSTATUS = 'C' 
+		AND ICPRODUCT.PPSS_IS_FRESH <> 'Y'
+		AND  PODETAIL.DATEADD BETWEEN ? AND ? 
+		AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
 		$req = $db->prepare($sql);
-		$req->execute(array($startToday,$endToday));
+		$req->execute(array($todayMinusSeven,$endToday));
 		//$data["PRICEDIFFERENCES_ITEMS_TOD_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 		updateStats($indb,$today,"PRICEDIFFERENCES_ITEMS_TOD_CNT",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	}
 }
 
-function GenerateYesterdayFromCache()
+function GenerateYesterdayFromCache($indb)
 {
-	echo "YESTERDAY FROM CACHE\n";
-	$indb = getInternalDatabase();
+	echo "YESTERDAY FROM CACHE\n";	
 	$today = date('m/d/Y');
 	$yesterday = date('m/d/Y',strtotime("-1 days"));
-	
+		
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $indb->prepare($sql);
 	$req->execute(array($yesterday));
@@ -870,10 +883,10 @@ function GenerateYesterdayFromCache()
 			$req->execute(array());
 		}
 
-		if (fieldIsNull($indb,"ITEMQTYRECEIVED_TOD",$today) || $forceRefresh == true){
-			updateStats($indb,$today,"TRAFFIC_YES",$res["TRAFFIC_TOD"],false);	
+		//if (fieldIsNull($indb,"TRAFFIC_YES",$today))
+		//	updateStats($indb,$today,"TRAFFIC_YES",$res["TRAFFIC_TOD"],false);	
 			
-		/*
+		
 		$sql = "UPDATE GENERATEDSTATS SET 
 				TRAFFIC_YES = ?,AVGBASKET_YES = ?, WASTE_NBITEMS_YES = ?, WASTE_SUM_YES = ?,WASTE_ITEMS_YES = ?,
 				RETURN_NBITEM_YES = ?,RETURN_SUMITEM_YES = ?,RETURN_AMOUNT_YES = ?,TRF_ALL_YES = ?,TRF_RAT_YES = ?,
@@ -899,19 +912,9 @@ function GenerateYesterdayFromCache()
 		);
 		$req = $indb->prepare($sql);
 		$req->execute($params);
-		*/
+		
 	}
 
 }
-
-
-
-
-
 Generate();
-
-
-
-
-
 ?>
