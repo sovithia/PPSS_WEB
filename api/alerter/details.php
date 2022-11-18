@@ -579,7 +579,7 @@ function renderExpireReturn()
     if ($excludeIDs != "(")
         $excludeIDs = substr($excludeIDs,0,-1);
     $excludeIDs .= ")";
-    $sql = "SELECT distinct TOP 5 PPSS_DELIVERED_EXPIRE,
+    $sql = "SELECT distinct PPSS_DELIVERED_EXPIRE,
                     ICPRODUCT.PRODUCTID,
                     ICPRODUCT.PRODUCTNAME,
                     PODETAIL.VENDNAME,

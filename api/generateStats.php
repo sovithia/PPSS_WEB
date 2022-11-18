@@ -205,7 +205,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 	//*******   ITEM WASTED  TODAY		********/
 	/*******************************************/	
 	echo "ITEM WASTED TODAY.\n";
-	if ( (fieldIsNull($indb,"WASTE_SUM_TOD",$today) && fieldIsNull($indb,"WASTE_ITEMS_TOD",$today)) && fieldIsNull($indb,"WASTE_NBITEMS_TOD",$today) || $forceRefresh == true){
+	if ( (fieldIsNull($indb,"WASTE_QTY_TOD",$today) && fieldIsNull($indb,"WASTE_NBITEMS_TOD",$today)) && fieldIsNull($indb,"WASTE_SUM_TOD",$today) || $forceRefresh == true){
 		$sql = "SELECT PRODUCTID,QUANTITY FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";
 		$req = $indb->prepare($sql);
 		$req->execute(array($startToday,$endToday));
@@ -347,7 +347,20 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/** EXPIRE NORETURN COUNT ***/
 	/****************************/
 	echo "EXPIRE NORETURNS COUNT.\n";
-	if (fieldIsNull($indb,"EXPIRE_RET_CNT_TOD",$today) || $forceRefresh == true) {		
+	if (fieldIsNull($indb,"EXPIRE_RET_CNT_TOD",$today) || $forceRefresh == true) {	
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month')";
+		$req = $indb->prepare($sql);
+		$req->execute(array());
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$data["PROMOTED"] = $items;
+		$excludeIDs = "('XXX',";
+		foreach($items as $item){
+			$excludeIDs .= "'".$item["EXPIREDATE"].$item["PRODUCTID"]."',";
+		}
+		if ($excludeIDs != "(")
+			$excludeIDs = substr($excludeIDs,0,-1);
+		$excludeIDs .= ")";
+
 		$sql = "SELECT count(distinct PPSS_DELIVERED_EXPIRE) as CNT	
 		FROM PODETAIL,ICPRODUCT
 		WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
@@ -362,7 +375,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 		AND ONHAND > 0			
 		AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 		$req = $db->prepare($sql);
-		$req->execute($params);	
+		$req->execute(array());	
 		//$data["EXPIRE_RET_CNT"] = $req->fetch(PDO::FETCH_ASSOC)["CNT"];
 		updateStats($indb,$today,"EXPIRE_RET_CNT_TOD",$req->fetch(PDO::FETCH_ASSOC)["CNT"],$forceRefresh);
 	}	
@@ -371,7 +384,19 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/** EXPIRE RETURN  COUNT *****/
 	/*****************************/
 	echo "EXPIRE RETURNS COUNT.\n";
-	if (fieldIsNull($indb,"EXPIRE_NR_CNT_TOD",$today) || $forceRefresh == true) { 		
+	if (fieldIsNull($indb,"EXPIRE_NR_CNT_TOD",$today) || $forceRefresh == true) { 	
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month')";
+		$req = $indb->prepare($sql);
+		$req->execute(array());
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$data["PROMOTED"] = $items;
+		$excludeIDs = "('XXX',";
+		foreach($items as $item){
+			$excludeIDs .= "'".$item["EXPIREDATE"].$item["PRODUCTID"]."',";
+		}
+		if ($excludeIDs != "(")
+			$excludeIDs = substr($excludeIDs,0,-1);
+		$excludeIDs .= ")";	
 		$sql = "SELECT 	count(distinct PPSS_DELIVERED_EXPIRE) as 'CNT'
 						FROM PODETAIL,ICPRODUCT
 						WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
@@ -386,7 +411,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 						AND ONHAND > 0		
 						AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 		$req = $db->prepare($sql);	
-		$req->execute($params);	
+		$req->execute(array());	
 		//$data["EXPIRE_NR_CNT"] = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
 		updateStats($indb,$today,"EXPIRE_NR_CNT_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT']);	
 	}
@@ -395,7 +420,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/**** NEEDMOVE CNT ***/ 
 	/*********************/
 	echo "NEED MOVE COUNT.\n";
-	if (fieldIsNull($indb,"NEEDMOVE_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb,"NEEDMOVE_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT COUNT(PRODUCTID) as 'CNT'
 		FROM ICPRODUCT 
 		WHERE PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE LOCID = 'WH1' AND LOCONHAND <= 0)
@@ -410,7 +435,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/**** NO LOCATION COUNT **/ 
 	/*************************/
 	echo "NO LOCATION COUNT.\n";
-	if (fieldIsNull($indb,"NOLOC_ITEMS_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb,"NOLOC_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT COUNT(PRODUCTID) as 'CNT'
 				FROM ICLOCATION			
 				WHERE STORBIN IS NULL 
@@ -424,7 +449,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/**** NEGATIVE ITEM WH1 COUNT ****/
 	/*********************************/
 	echo "NEGATIVE ITEM WH1 COUNT.\n";
-	if (fieldIsNull($indb,"NEGATIVEITEM_WH1_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb,"NEGATIVEITEM_WH1_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT count(*) as 'CNT' 
 				FROM ICLOCATION,ICPRODUCT 
 				WHERE LOCID = 'WH1'
@@ -441,7 +466,7 @@ function GenerateToday($db,$indb,$forceRefresh)
     /**** NEGATIVE ITEM FRESH COUNT ****/
     /*********************************/
 	echo "NEGATIVE ITEM FRESH\n";
-	if (fieldIsNull($indb,"NEGATIVEITEM_FRESH_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb,"NEGATIVEITEM_FRESH_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT count(*) as 'CNT' 
 				FROM ICLOCATION,ICPRODUCT 
 				WHERE LOCID = 'WH2'
@@ -459,7 +484,7 @@ function GenerateToday($db,$indb,$forceRefresh)
     /**** NEGATIVE ITEM WH2 COUNT ****/
     /*********************************/
 	echo "NEGATIVE ITEM WH2\n";
-	if (fieldIsNull($indb,"NEGATIVEITEM_WH2_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb,"NEGATIVEITEM_WH2_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT count(*) as 'CNT' FROM ICLOCATION WHERE LOCID = 'WH2' AND LOCONHAND < 0"; 
 		$req = $db->prepare($sql);
 		$req->execute(array());
@@ -519,7 +544,7 @@ function GenerateToday($db,$indb,$forceRefresh)
 	/**** UNSOLD 30 CNT ****/
 	/***********************/
 	echo "UNSOLD 30\n";
-	if (fieldIsNull($indb, "UNSOLD30_ITEMS_CNT",$today) || $forceRefresh == true) {
+	if (fieldIsNull($indb, "UNSOLD30_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {
 		$sql = "SELECT count(PODETAIL.PRODUCTID) as 'CNT'				
 				FROM ICPRODUCT,PODETAIL
 				WHERE POSTATUS = 'C' 
@@ -626,9 +651,10 @@ function GenerateToday($db,$indb,$forceRefresh)
 	}	
 	//*******************************************//
     //**** PRICE DIFFERENCES TODAY COUNT  *******//
-    //*******************************************//
+    //*******************************************//	
 	echo "PRICE DIFFERENCES 7Days Back COUNT\n";
 	if (fieldIsNull($indb,"PRICEDIFFERENCES_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {
+		$todayMinusSeven = date('m/d/Y', strtotime('-7 days'))." 00:00:00.000";
 		$sql = "SELECT COUNT(PODETAIL.PRODUCTID) as 'CNT'  
 		FROM PODETAIL,ICPRODUCT	
 		WHERE POSTATUS = 'C' 		
