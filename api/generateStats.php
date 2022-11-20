@@ -777,7 +777,7 @@ function GenerateYesterdayFromCache($indb)
 }
 
 
-//Generate();
-$indb = getInternalDatabase();
-GenerateBlankYesterday($indb);
+Generate();
+//$indb = getInternalDatabase();
+//GenerateBlankYesterday($indb);
 ?>
