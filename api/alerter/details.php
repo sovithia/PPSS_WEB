@@ -53,72 +53,6 @@ function getInternalDatabase($base = "MAIN")
 $db = getDatabase();
 $indb = getInternalDatabase();
 
-// NEGATIVE WH1
-// NEGATIVE WH2
-// NEGATIVE FRESH
-
-// EXPIRE R
-// EXPIRE NR
-// UNSOLD 30
-// NEED MOVE
-// NO LOC 
-// COST ZERO
-// ZERO SALE
-// LOW PROFIT
-
-// TRF_RAT_TOD
-// TRF_RAT_YES
-// TRF_OX_TOD
-// TRF_OX_YES
-// TRF_TIGER_TOD
-// TRF_TIGER_YES
-// TRF_HARE_TOD
-// TRF_HARE_YES
-// TRF_SNAKE_TOD
-// TRF_SNAKE_YES
-// TRF_DRAGON_TOD
-// TRF_GOAT_YES
-// TRF_HORSE_TOD
-// TRF_HORSE_YES
-
-// SALE_RAT_TOD
-// SALE_RAT_YES
-// SALE_OX_TOD
-// SALE_OX_YES
-// SALE_TIGER_TOD
-// SALE_TIGER_YES
-// SALE_HARE_TOD
-// SALE_HARE_YES
-// SALE_SNAKE_TOD
-// SALE_SNAKE_YES
-// SALE_DRAGON_TOD
-// SALE_GOAT_YES
-// SALE_HORSE_TOD
-// SALE_HORSE_YES
-
-// OCC_RAT_TOD
-// OCC_RAT_YES
-// OCC_OX_TOD
-// OCC_OX_YES
-// OCC_TIGER_TOD
-// OCC_TIGER_YES
-// OCC_HARE_TOD
-// OCC_HARE_YES
-// OCC_SNAKE_TOD
-// OCC_SNAKE_YES
-// OCC_DRAGON_TOD
-// OCC_GOAT_YES
-// OCC_HORSE_TOD
-// OCC_HORSE_YES
-
-// PRICEDIFFERENCE 
-// ANOMALY
-
-// RETURN_YES
-// RETURN_TOD
-
-// WASTE_YES
-// WASTE_TOD
 
 function renderItems($items){
     echo "Nb Items: ".count($items)."<br>";
@@ -719,6 +653,168 @@ function renderAnomaly()
     }
     renderItems($anomalyData,"7");		        	    
 }
+
+function render($action){
+    if ($action == "NOLOC_ITEMS_TOD"){
+        renderNoLocation();
+    }
+    if ($action == "COSTZERO_ITEMS_TOD"){
+        renderCostZero();
+    }
+    if ($action == "ZEROSALE_ITEMS_TOD"){
+        renderZeroSale();
+    }
+    if ($action == "LOWPROFIT_ITEMS_TOD"){
+        renderLowProfit();
+    }
+    if ($action == "NEGATIVEITEM_WH1_ITEMS_TOD"){
+        renderNegativeWH1();
+    }
+    if ($action == "NEGATIVEITEM_WH2_ITEMS_TOD"){
+        renderNegativeWH2();
+    }
+    if ($action == "NEGATIVEITEM_FRESH_ITEMS_TOD"){
+        renderNegativeFresh();
+    }
+    if ($action == "EXPIRE_RET_ITEMS_TOD"){
+        renderExpireReturn(); 
+    }
+    if ($action == "EXPIRE_NR_ITEMS_TOD"){
+        renderExpireNoReturn();
+    }
+    if ($action == "NEEDMOVE_ITEMS_TOD"){
+        renderNeedMove();
+    }
+    if ($action == "TRF_RAT_ITEMS_YES"){    
+        renderTransfer("RAT",$yesterday);
+    }
+    if ($action == "TRF_OX_ITEMS_YES"){
+        renderTransfer("OX",$yesterday);
+    }
+    if ($action == "TRF_TIGER_ITEMS_YES"){
+        renderTransfer("TIGER",$yesterday);
+    }
+    if ($action == "TRF_HARE_ITEMS_YES"){
+        renderTransfer("HARE",$yesterday);
+    }
+    if ($action == "TRF_SNAKE_ITEMS_YES"){
+        renderTransfer("SNAKE",$yesterday);
+    }
+    if ($action == "TRF_DRAGON_ITEMS_YES"){
+        renderTransfer("DRAGON",$yesterday);
+    }
+    if ($action == "TRF_GOAT_ITEMS_YES"){
+        renderTransfer("GOAT",$yesterday);
+    }
+    if ($action == "TRF_HORSE_ITEMS_YES"){
+        renderTransfer("HORSE",$yesterday);
+    }
+    if ($action == "TRF_RAT_ITEMS_TOD"){
+        renderTransfer("RAT",$today);
+    }
+    if ($action == "TRF_OX_ITEMS_TOD"){
+        renderTransfer("OX",$today);
+    }
+    if ($action == "TRF_TIGER_ITEMS_TOD"){
+        renderTransfer("TIGER",$today);
+    }
+    if ($action == "TRF_HARE_ITEMS_TOD"){
+        renderTransfer("HARE",$today);
+    }
+    if ($action == "TRF_SNAKE_ITEMS_TOD"){
+        renderTransfer("SNAKE",$today);
+    }
+    if ($action == "TRF_DRAGON_ITEMS_TOD"){
+        renderTransfer("DRAGON",$today);
+    }
+    if ($action == "TRF_GOAT_ITEMS_TOD"){
+        renderTransfer("GOAT",$today);
+    }
+    if ($action == "TRF_HORSE_ITEMS_TOD"){
+        renderTransfer("HORSE",$today);
+    }    
+    if ($action == "SALE_RAT_ITEMS_YES"){
+        renderSale("RAT",$yesterday);
+    }
+    if ($action == "SALE_OX_ITEMS_YES"){
+        renderSale("OX",$yesterday);
+    }
+    if ($action == "SALE_TIGER_ITEMS_YES"){
+        renderSale("TIGER",$yesterday);
+    }
+    if ($action == "SALE_HARE_ITEMS_YES"){
+        renderSale("HARE",$yesterday);
+    }
+    if ($action == "SALE_SNAKE_ITEMS_YES"){
+        renderSale("SNAKE",$yesterday);
+    }
+    if ($action == "SALE_DRAGON_ITEMS_YES"){
+        renderSale("DRAGON",$yesterday);
+    }
+    if ($action == "SALE_GOAT_ITEMS_YES"){
+        renderSale("GOAT",$yesterday);
+    }
+    if ($action == "SALE_HORSE_ITEMS_YES"){
+        renderSale("HORSE",$yesterday);
+    }
+    if ($action == "SALE_RAT_ITEMS_TOD"){
+        renderSale("RAT",$today);
+    }
+    if ($action == "SALE_OX_ITEMS_TOD"){
+        renderSale("OX",$today);
+    }
+    if ($action == "SALE_TIGER_ITEMS_TOD"){
+        renderSale("TIGER",$today);
+    }
+    if ($action == "SALE_HARE_ITEMS_TOD"){
+        renderSale("HARE",$today);
+    }
+    if ($action == "SALE_SNAKE_ITEMS_TOD"){
+        renderSale("SNAKE",$today);
+    }
+    if ($action == "SALE_DRAGON_ITEMS_TOD"){
+        renderSale("DRAGON",$today);
+    }
+    if ($action == "SALE_GOAT_ITEMS_TOD"){
+        renderSale("GOAT",$today);
+    }
+    if ($action == "SALE_HORSE_ITEMS_TOD"){
+        renderSale("HORSE",$today);
+    }    
+    if ($action == "OCC_RAT_ITEMS_TOD"){
+        renderOccupancy("RAT");
+    }
+    if ($action == "OCC_OX_ITEMS_TOD"){
+        renderOccupancy("OX");
+    }
+    if ($action == "OCC_TIGER_ITEMS_TOD"){
+        renderOccupancy("TIGER");
+    }
+    if ($action == "OCC_HARE_ITEMS_TOD"){
+        renderOccupancy("HARE");
+    }
+    if ($action == "OCC_SNAKE_ITEMS_TOD"){
+        renderOccupancy("SNAKE");
+    }
+    if ($action == "OCC_DRAGON_ITEMS_TOD"){
+        renderOccupancy("DRAGON");
+    }
+    if ($action == "OCC_GOAT_ITEMS_TOD"){
+        renderOccupancy("GOAT");
+    }
+    if ($action == "OCC_HORSE_ITEMS_TOD"){
+        renderOccupancy("HORSE");
+    }
+    if ($action == "ANOMALIES_ITEMS_TOD"){   
+        renderAnomaly();
+    }
+    if ($action == "PRICEDIFFERENCES_ITEMS_TOD"){
+        renderPriceDifference();
+    }
+}
+
+
+render($_GET["ACTION"]);
 
 
 
