@@ -153,6 +153,7 @@ function Generate()
 		$req = $indb->prepare($sql);
 		$req->execute(array($today));
 		if ($count == 0){				
+			GenerateBlankYesterday($indb);
 			GenerateToday($db,$indb,false);
 		}else{			
 			GenerateYesterdayFromCache($indb);
@@ -725,6 +726,7 @@ function GenerateBlankYesterday($indb)
 		);
 		$req = $indb->prepare($sql);
 		$req->execute($params);
+	}
 }
 
 function GenerateYesterdayFromCache($indb)
@@ -783,7 +785,6 @@ function GenerateYesterdayFromCache($indb)
 	}
 
 }
-
 
 
 Generate();
