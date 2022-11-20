@@ -675,6 +675,7 @@ function GenerateBlankYesterday($indb)
 {
 	echo "YESTERDAY BLANK\n";	
 	$today = date('m/d/Y');
+	echo $today."\n";
 	$yesterday = date('m/d/Y',strtotime("-1 days"));
 		
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
@@ -682,51 +683,40 @@ function GenerateBlankYesterday($indb)
 	$req->execute(array($yesterday));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
-	if ($res != false){
-		$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
-		$req = $indb->prepare($sql);
-		$req->execute(array($yesterday));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res == false){
-			$sql = "INSERT INTO GENERATEDSTATS (DAY) VALUES (?)";
-			$req = $indb->prepare($sql);
-			$req->execute(array());
-		}
-					
-		$blankTransfer = '{"NBITEM":0,"QUANTITY":0}';		
-		$blankCount = "0";
-		$sql = "UPDATE GENERATEDSTATS SET 
-				TRAFFIC_YES = ?,AVGBASKET_YES = ?, WASTE_NBITEMS_YES = ?, WASTE_SUM_YES = ?,WASTE_QTY_YES = ?,
-				RETURN_NBITEM_YES = ?,RETURN_SUMITEM_YES = ?,RETURN_AMOUNT_YES = ?,TRF_ALL_YES = ?,TRF_RAT_YES = ?,
-				TRF_OX_YES = ?,TRF_TIGER_YES = ?,TRF_HARE_YES = ?,TRF_DRAGON_YES = ?,TRF_SNAKE_YES = ?,
-				TRF_HORSE_YES = ?,TRF_GOAT_YES = ?,OCC_ALL_YES = ?,OCC_RAT_YES = ?,OCC_OX_YES = ?,
-				OCC_TIGER_YES = ?,OCC_HARE_YES = ?,OCC_DRAGON_YES = ?,OCC_SNAKE_YES = ?,OCC_HORSE_YES = ?,
-				OCC_GOAT_YES = ?,SALE_RAT_YES = ?,SALE_OX_YES = ?,SALE_TIGER_YES = ?,SALE_HARE_YES = ?,
-				SALE_DRAGON_YES = ?,SALE_SNAKE_YES = ?,SALE_HORSE_YES = ?,SALE_GOAT_YES = ?,PORECEIVED_YES = ?,
-				NBITEMRECEIVED_YES = ?,ITEMQTYRECEIVED_YES = ?,POCREATED_YES = ?,NBITEMORDERED_YES = ?,QTYITEMORDERED_YES = ?,
-				PRICEDIFFERENCES_ITEMS_CNT_YES = ?, COSTZERO_YES = ?, ZEROSALE_YES = ?, LOWPROFIT_YES = ?,EXPIRE_RET_CNT_YES = ?, 
-				EXPIRE_NR_CNT_YES = ?, NEEDMOVE_CNT_YES = ?, NOLOC_ITEMS_CNT_YES = ?, NEGATIVEITEM_WH1_CNT_YES = ?,NEGATIVEITEM_FRESH_CNT_YES = ?,
-				NEGATIVEITEM_WH2_CNT_YES = ?,UNSOLD30_ITEMS_CNT_YES = ?,ANOMALIES_ITEMS_CNT_YES = ? 
-				WHERE DAY = ?
-				";
+			
+	$blankTransfer = '{"NBITEM":0,"QUANTITY":0}';		
+	$blankCount = "0";
+	$sql = "UPDATE GENERATEDSTATS SET 
+			TRAFFIC_YES = ?,AVGBASKET_YES = ?, WASTE_NBITEMS_YES = ?, WASTE_SUM_YES = ?,WASTE_QTY_YES = ?,
+			RETURN_NBITEM_YES = ?,RETURN_SUMITEM_YES = ?,RETURN_AMOUNT_YES = ?,TRF_ALL_YES = ?,TRF_RAT_YES = ?,
+			TRF_OX_YES = ?,TRF_TIGER_YES = ?,TRF_HARE_YES = ?,TRF_DRAGON_YES = ?,TRF_SNAKE_YES = ?,
+			TRF_HORSE_YES = ?,TRF_GOAT_YES = ?,OCC_ALL_YES = ?,OCC_RAT_YES = ?,OCC_OX_YES = ?,
+			OCC_TIGER_YES = ?,OCC_HARE_YES = ?,OCC_DRAGON_YES = ?,OCC_SNAKE_YES = ?,OCC_HORSE_YES = ?,
+			OCC_GOAT_YES = ?,SALE_RAT_YES = ?,SALE_OX_YES = ?,SALE_TIGER_YES = ?,SALE_HARE_YES = ?,
+			SALE_DRAGON_YES = ?,SALE_SNAKE_YES = ?,SALE_HORSE_YES = ?,SALE_GOAT_YES = ?,PORECEIVED_YES = ?,
+			NBITEMRECEIVED_YES = ?,ITEMQTYRECEIVED_YES = ?,POCREATED_YES = ?,NBITEMORDERED_YES = ?,QTYITEMORDERED_YES = ?,
+			PRICEDIFFERENCES_ITEMS_CNT_YES = ?, COSTZERO_YES = ?, ZEROSALE_YES = ?, LOWPROFIT_YES = ?,EXPIRE_RET_CNT_YES = ?, 
+			EXPIRE_NR_CNT_YES = ?, NEEDMOVE_CNT_YES = ?, NOLOC_ITEMS_CNT_YES = ?, NEGATIVEITEM_WH1_CNT_YES = ?,NEGATIVEITEM_FRESH_CNT_YES = ?,
+			NEGATIVEITEM_WH2_CNT_YES = ?,UNSOLD30_ITEMS_CNT_YES = ?,ANOMALIES_ITEMS_CNT_YES = ? 
+			WHERE DAY = ?
+			";
 		
-		$params = array(
-			$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankCount,$blankCount,$blankCount,blankTransfer,blankTransfer,
-			$blankTransfer,$blankTransfer,$blankTransfer,$blankTransfer,$blankTransfer,
-			$blankTransfer,$blankTransfer,$blankCount,$blankCount,$blankCount,
-			$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankOccupancy,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankCount, $blankCount, $blankCount, $blankCount, $blankCount,
-			$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
-			$blankCount,$blankCount,$blankCount, 
-			$today
+	$params = array(
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount,$blankTransfer,$blankTransfer,
+		$blankTransfer,$blankTransfer,$blankTransfer,$blankTransfer,$blankTransfer,
+		$blankTransfer,$blankTransfer,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount, $blankCount, $blankCount, $blankCount, $blankCount,
+		$blankCount,$blankCount,$blankCount,$blankCount,$blankCount,
+		$blankCount,$blankCount,$blankCount, 
+		$today
 		);
 		$req = $indb->prepare($sql);
-		$req->execute($params);
-	}
+		$req->execute($params);	
 }
 
 function GenerateYesterdayFromCache($indb)
@@ -787,5 +777,7 @@ function GenerateYesterdayFromCache($indb)
 }
 
 
-Generate();
+//Generate();
+$indb = getInternalDatabase();
+GenerateBlankYesterday($indb);
 ?>
