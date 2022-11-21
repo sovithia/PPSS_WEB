@@ -103,14 +103,36 @@ function renderTransfer($yesterday,$today)
     </table>";
 }
 
-function EV($yesterdayNum,$todayNum)
+function EV($yesterdayNum,$todayNum,$invert = false)
 {
-    return "XX";
+    if ($yesterdayNum != "0" && $yesterdayNum != 0)
+        $percent = (($yesterdayNum - $todayNum) / $yesterdayNum) * 100;
+    else {
+        $percent = $todayNum;
+    }        
+
+    if ($percent == 0)
+    return "<p style='color:yellow'>SAME</p>";
+
+    if ($invert == true){
+        if ($percent > 0)    
+            return "<p style='color:red'>+".$percent."%</p>";
+        else if ($percent < 0)    
+            return "<p style='color:lightgreen'>-".$percent."%</p>";
+    }else{
+        if ($percent > 0)    
+            return "<p style='color:lightgreen'>+".$percent."%</p>";
+        else if ($percent < 0)    
+            return "<p style='color:red'>-".$percent."%</p>";
+    }
+    
+    
+
 }
 
-function DLX()
+function DLX($action)
 {
-    return "<a href='details.php'><img src='img/eye.png'></a>";
+    return "<a target='_blank' href='details.php?ACTION=".$action."'><img src='img/eye.png'></a>";
 }
 
 function renderStats()
@@ -173,17 +195,16 @@ function renderStats()
                     <tr>
                         <td width='25%'>Unsold items 30</td>
                         <td width='10%'>".$d["UNSOLD30_ITEMS_CNT_YES"]."</td>
-                        <td width='10%'>".DLX()."</td>
+                        <td width='10%'></td>
                         <td width='10%'>".$d["UNSOLD30_ITEMS_CNT_TOD"]."</td>
-                        <td width='10%'>".DLX()."</td>
+                        <td width='10%'>".DLX("UNSOLD30_ITEMS_TOD")."</td>
                         <td width='10%'>".EV($d["UNSOLD30_ITEMS_CNT_YES"],$d["UNSOLD30_ITEMS_CNT_TOD"])."</td>
                     </tr>
                     
                                 
                     <tr>
                         <td>No Loc items</td>
-                        <td>".$d["NOLOC_ITEMS_CNT_YES"]."</td>
-                        <td>N/A</td>
+                        <td colspan='2'>".$d["NOLOC_ITEMS_CNT_YES"]."</td>                        
                         <td>".$d["NOLOC_ITEMS_CNT_TOD"]."</td>
                         <td>".DLX("NOLOC_ITEMS_TOD")."</td>
                         <td>".EV($d["NOLOC_ITEMS_CNT_YES"],$d["NOLOC_ITEMS_CNT_TOD"])."</td>
@@ -191,8 +212,7 @@ function renderStats()
                         
                     <tr>
                         <td>Cost Zero items</td>
-                        <td>".$d["COSTZERO_YES"]."</td>
-                        <td>N/A</td>
+                        <td colspan='2'>".$d["COSTZERO_YES"]."</td>                        
                         <td>".$d["COSTZERO_TOD"]."</td>
                         <td>".DLX("COSTZERO_ITEMS_TOD")."</td>
                         <td>".EV($d["COSTZERO_YES"],$d["COSTZERO_TOD"])."</td>
@@ -200,8 +220,7 @@ function renderStats()
                     
                     <tr>
                         <td>Cost Zero sale</td>
-                        <td>".$d["ZEROSALE_YES"]."</td>
-                        <td>N/A</td>
+                        <td colspan='2'>".$d["ZEROSALE_YES"]."</td>                        
                         <td>".$d["ZEROSALE_TOD"]."</td>
                         <td>".DLX("ZEROSALE_ITEMS_TOD")."</td>
                         <td>".EV($d["ZEROSALE_YES"],$d["ZEROSALE_TOD"])."</td>
@@ -209,8 +228,7 @@ function renderStats()
                     
                     <tr>
                         <td>Low Profit</td>
-                        <td>".$d["LOWPROFIT_YES"]."</td>
-                        <td>".DLX()."</td>
+                        <td colspan='2'>".$d["LOWPROFIT_YES"]."</td>                        
                         <td>".$d["LOWPROFIT_TOD"]."</td>
                         <td>".DLX("LOWPROFIT_ITEMS_TOD")."</td>
                         <td>".EV($d["LOWPROFIT_YES"],$d["ZEROSALE_TOD"])."</td>

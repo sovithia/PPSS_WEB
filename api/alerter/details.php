@@ -1,5 +1,12 @@
 <?php
 
+function isLocal()
+{
+	$mac = shell_exec("dig +short myip.opendns.com @resolver1.opendns.com");    
+	return ($mac != "119.82.252.226");
+}
+
+
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
@@ -655,6 +662,9 @@ function renderAnomaly()
 }
 
 function render($action){
+    $today = date('m/d/Y');	
+    $yesterday = date('m/d/Y',strtotime("-1 days"));
+
     if ($action == "NOLOC_ITEMS_TOD"){
         renderNoLocation();
     }
