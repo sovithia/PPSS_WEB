@@ -338,7 +338,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 }
 
 function updatePO($ponumber,$items,$notes = "")
-{
+{	
 	$db = getDatabase();
 	//$sql = "SELECT * FROM PODETAIL "
 	foreach($items as $item){
@@ -352,7 +352,7 @@ function updatePO($ponumber,$items,$notes = "")
 		//						   "|DEL_DISC:".$item["PPSS_DELIVERED_DISCOUNT"]."|DEL_VAT:".$item["PPSS_DELIVERED_VAT"];	
 		
 		//echo $item["PRODUCTID"].":".$item["PPSS_DELIVERED_EXPIRE"]."\n";							
-	}
+	}	
 	$sql = "UPDATE PODETAIL SET 
 	RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
 	ORDER_QTY = PPSS_DELIVERED_QUANTITY,
@@ -365,30 +365,27 @@ function updatePO($ponumber,$items,$notes = "")
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 
-
 	$sql = "SELECT sum(EXTCOST) as SUM FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-
-
+	
 	$sql = "SELECT sum(EXTCOST * (VAT_PERCENT/100)) as SUMVAT FROM PODETAIL WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
-
-
+	
 	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];
 	$AMT_WITH_VAT = round($AMT_WITH_VAT,2);
 
 	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?,REFERENCE = ?,NOTES = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,round($res2["SUMVAT"],2),$AMT_WITH_VAT ,$AMT_WITH_VAT,$notes,$notes,$ponumber));
-
+	$req->execute(array($AMT_WITH_VAT,$AMT_WITH_VAT,round($res2["SUMVAT"],2),$AMT_WITH_VAT ,$AMT_WITH_VAT,$notes,$notes,$ponumber));	
 }
 
 function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 {		
+	error_log("RECEIVE START");
     $db = getDatabase();
     $today = date("Y-m-d H:i:s");
 
@@ -407,7 +404,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
     $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
     $req->execute(array());
-
+	
     $sql = "SELECT num1 FROM SYSDATA WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
 	$req->execute(array());
@@ -436,6 +433,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$HAVEVAT = true;
 	else
 		$HAVEVAT = false;
+
 
 	$theVENDID = $PORef["VENDID"];
 	$theVENDNAME = $PORef["VENDNAME"];
@@ -518,7 +516,8 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 					 		  ?,?,?,?,?,?,?,?,?,?,
 							  ?,?,?,?,?,?,?,?,?,?,
 					 		  ?,?)";
-	
+		
+
 	$req = $db->prepare($sql);
 	$req->execute(array(
 	$VENDID,$RECEIVENO,$VOUCHERNO,$TRANDATE,$DUEDATE,
@@ -646,6 +645,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$req->execute(array($PRODUCTID));
 	}
 	
+	
 	$BUYER = "";
 	$TERMID = "";
 	$TERM_DAYS = 0;
@@ -719,8 +719,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$req = $db->prepare($sql);
 	$req->execute(array($GRANDTOTAL ,$GRANDTOTAL ,$today,
 						$GRANDTOTAL,$PONumber,$theVENDID));
-
-
+	
 
 	$DOCNUM =   sprintf("RP%013d",$PONUM);  
 	$FLOCID =    $THELOCATION;
@@ -956,7 +955,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$MAIN_PRODUCTID,$USERADD,$DATEADD));
 
 		$line++;
-	}
+	}	
 
 	//$sql = "UPDATE SYSSETUPCURRENCY  set HAS_TRANSACTION = ? WHERE CURR_ID = ?"; NO NEED ?
 
@@ -1028,6 +1027,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$LOCID,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,
 	$CURRENCY_BALANCE,$CURRENCY_PAIDAMT,$DATEADD,$USERADD,$SUPPLIER_INVOICE
 	));
+	
 
 	$line = 1;
 	foreach($items as $item)
@@ -1174,8 +1174,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$FILEID,$COST_CENTER,$FREIGHTSG,$INSURSG,$TRANUNIT,    
 		$TRANFACTOR,$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_COST,   
 		$AMOUNT,$CURR_RATE,$DATEADD,$USERADD
-		));
-
+		));		
 		$line++;
 	}
 
