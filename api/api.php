@@ -3950,7 +3950,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->execute();								
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);		
-
+		error_log("RECEIVE PO DONE");
 		if (isset($json["TAX"]))
 			$TAX = $json["TAX"];
 		else 
@@ -3961,7 +3961,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		else 
 			$DISCOUNT = 0;
 		updatePO($ponumber,$json["ITEMS"],$json["NOTES"]);
+		error_log("UPDATE PO DONE\n");
 		receivePO($ponumber,$json["AUTHOR"],$json["NOTES"],$TAX,$DISCOUNT);
+		error_log("RECEIVE PO DONE\n");
 		$data["result"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "RCVF"){
@@ -7854,6 +7856,18 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 	return $response;
 });
 
+$app->delete('/selfpromotion/{id}', function($request,Response $response) {
+	$db = getInternalDatabase();	
+	$id = $request->getAttribute('id');
+	$sql = "DELETE FROM SELFPROMOTIONITEM WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$resp = array();
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
 $app->get('/selfpromotion', function($request,Response $response) {
 	$status =  $request->getParam('status','');
 	$type =  $request->getParam('type','');
@@ -7989,6 +8003,8 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
+
+
 
 $app->post('/selfpromotionitems', function($request,Response $response) {
 
@@ -8437,7 +8453,7 @@ $app->put('/waste', function($request,Response $response) {
 		if (isset($json["ITEMS"])){
 			$items = $json["ITEMS"];
 			foreach($items as $item){
-				$sql = "UPDATE WASTEITEM SET QUANTITY = ? WHERE PRODUCTID = ? AND WASTE_ID = ?";
+				$sql = "UPDATE WASTEITEM SET STATUS = 'CLEARED', QUANTITY = ? WHERE PRODUCTID = ? AND WASTE_ID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$id));
 			}
@@ -9270,7 +9286,7 @@ $app->put('/expire',function($request,Response $response) {
 	return $response;
 });
 
-$app->get('/expirereturnalertwh/ALL',function ($request,Response $response){
+$app->get('/expirereturnalertwh',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
@@ -9301,15 +9317,14 @@ $app->get('/expirereturnalertwh/ALL',function ($request,Response $response){
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$data["ALERT"] = $allitems;
+	
 	$resp["result"] = "OK";
-	$resp["data"] = $data;
+	$resp["data"] = $allitems;
 	$response = $response->withJson($resp);
 	return $response;
 });
 
-$app->get('/expirenoreturnalertwh/ALL',function ($request,Response $response){
+$app->get('/expirenoreturnalertwh',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
@@ -9340,10 +9355,9 @@ $app->get('/expirenoreturnalertwh/ALL',function ($request,Response $response){
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$data["ALERT"] = $allitems;
+	
 	$resp["result"] = "OK";
-	$resp["data"] = $data;
+	$resp["data"] = $allitems;
 	$response = $response->withJson($resp);
 	return $response;
 });
@@ -9523,7 +9537,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 		pictureRecord($json["SIGNATURE"],"RRCLR",$id);
 
 		foreach($items as $item){
-			$sql = "UPDATE RETURNRECORDITEM SET QUANTITY = ?,COST = ?,VAT = ?,DISCOUNT = ? WHERE PRODUCTID = ? AND RETURNRECORD_ID = ?";
+			$sql = "UPDATE RETURNRECORDITEM SET STATUS = 'CLEARED', QUANTITY = ?,COST = ?,VAT = ?,DISCOUNT = ? WHERE PRODUCTID = ? AND RETURNRECORD_ID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["QUANTITY"],$item["COST"],$item["VAT"],$item["DISCOUNT"],$item["PRODUCTID"],$id));
 		}

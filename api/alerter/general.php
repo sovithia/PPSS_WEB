@@ -105,25 +105,25 @@ function renderTransfer($yesterday,$today)
 
 function EV($yesterdayNum,$todayNum,$invert = false)
 {
-    if ($yesterdayNum != "0" && $yesterdayNum != 0)
-        $percent = (($yesterdayNum - $todayNum) / $yesterdayNum) * 100;
-    else {
-        $percent = $todayNum;
-    }        
+    if ($yesterdayNum == $todayNum)
+        return "<p style='color:yellow'>SAME</p>";
 
-    if ($percent == 0)
-    return "<p style='color:yellow'>SAME</p>";
+    if ($yesterdayNum == "0" || $yesterdayNum == 0)
+        $percent = (($todayNum - $yesterdayNum) / 1);            
+    else
+        $percent = (($todayNum - $yesterdayNum) / $yesterdayNum) * 100;    
+    $percent = round($percent,2);
 
     if ($invert == true){
         if ($percent > 0)    
-            return "<p style='color:red'>+".$percent."%</p>";
+            return "<p style='color:#8b0000'>+".$percent."%</p>";
         else if ($percent < 0)    
-            return "<p style='color:lightgreen'>-".$percent."%</p>";
+            return "<p style='color:lightgreen'>".$percent."%</p>";
     }else{
         if ($percent > 0)    
             return "<p style='color:lightgreen'>+".$percent."%</p>";
         else if ($percent < 0)    
-            return "<p style='color:red'>-".$percent."%</p>";
+            return "<p style='color:#8b0000'>".$percent."%</p>";
     }
     
     
@@ -132,12 +132,12 @@ function EV($yesterdayNum,$todayNum,$invert = false)
 
 function DLX($action)
 {
-    return "<a target='_blank' href='details.php?ACTION=".$action."'><img src='img/eye.png'></a>";
+    return "<a target='_blank' href='details.php?ACTION=".$action."'><img height='25px' src='img/eye.png'></a>";
 }
 
 function renderStats()
 {
-    $today = date('m/d/Y');	
+    $today = date('Y-m-d');	
 	$db = getInternalDatabase();
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $db->prepare($sql);
@@ -169,311 +169,326 @@ function renderStats()
 	$display = "
 <html style='background-color:#009183;color:white'>    
 	<center>
+
+    <h1>".date("d/m/Y")."</h1><br>
+    Last updated : (".$d["UPDATED"].")
     	
-    <table border='1' width='99%'> 
-        <tr>
-            <td align='center' width='40%'>
-                <table border='1' >           
+    <table  width='98%' > 
+        <tr valign='top'>
+            <td align='center' width='25%'>
+                <table border='1' height='100%'>           
                     <tr align='center'>
-                        <td colspan='6' style='font-size:20pt'>ALERT</td>                        
+                        <td colspan='6' style='font-size:20pt'>GENERAL</td>                        
                     </tr>    
                     <tr>
-                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td>EVOL</td>
+                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td><center>EV</center></td>
                     </tr>    
                     <tr>
                         <td>Traffic</td>
-                        <td colspan='2'>".$d["TRAFFIC_YES"]."</td>
-                        <td colspan='2'>".$d["TRAFFIC_TOD"]."</td>
-                        <td> XXX </td>
+                        <td colspan='2' align='center'>".$d["TRAFFIC_YES"]."</td>
+                        <td colspan='2' align='center'>".$d["TRAFFIC_TOD"]."</td>
+                        <td align='center'> ".EV($d["TRAFFIC_YES"],$d["TRAFFIC_TOD"])." </td>
                     </tr>        
                     <tr>
                         <td>Average Sale Basket</td>
-                        <td colspan='2'>".$d["AVGBASKET_YES"]."</td>
-                        <td colspan='2'>".$d["AVGBASKET_TOD"]."</td>
-                        <td> XXX </td>
+                        <td colspan='2' align='center'>".$d["AVGBASKET_YES"]."</td>
+                        <td colspan='2' align='center'>".$d["AVGBASKET_TOD"]."</td>
+                        <td align='center'> ".EV($d["AVGBASKET_YES"],$d["AVGBASKET_TOD"])."</td>
                     </tr>    
                     <tr>
                         <td width='25%'>Unsold items 30</td>
-                        <td width='10%'>".$d["UNSOLD30_ITEMS_CNT_YES"]."</td>
-                        <td width='10%'></td>
-                        <td width='10%'>".$d["UNSOLD30_ITEMS_CNT_TOD"]."</td>
-                        <td width='10%'>".DLX("UNSOLD30_ITEMS_TOD")."</td>
-                        <td width='10%'>".EV($d["UNSOLD30_ITEMS_CNT_YES"],$d["UNSOLD30_ITEMS_CNT_TOD"])."</td>
+                        <td width='10%' colspan='2' align='center'>".$d["UNSOLD30_ITEMS_CNT_YES"]."</td>                        
+                        <td width='10%' align='center'>".$d["UNSOLD30_ITEMS_CNT_TOD"]."</td>
+                        <td width='10%' align='center'>".DLX("UNSOLD30_ITEMS_TOD")."</td>
+                        <td width='10%' align='center'>".EV($d["UNSOLD30_ITEMS_CNT_YES"],$d["UNSOLD30_ITEMS_CNT_TOD"],true)."</td>
                     </tr>
                     
                                 
                     <tr>
                         <td>No Loc items</td>
-                        <td colspan='2'>".$d["NOLOC_ITEMS_CNT_YES"]."</td>                        
-                        <td>".$d["NOLOC_ITEMS_CNT_TOD"]."</td>
-                        <td>".DLX("NOLOC_ITEMS_TOD")."</td>
-                        <td>".EV($d["NOLOC_ITEMS_CNT_YES"],$d["NOLOC_ITEMS_CNT_TOD"])."</td>
+                        <td colspan='2' align='center'>".$d["NOLOC_ITEMS_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["NOLOC_ITEMS_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("NOLOC_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["NOLOC_ITEMS_CNT_YES"],$d["NOLOC_ITEMS_CNT_TOD"],true)."</td>
                     </tr>
                         
                     <tr>
                         <td>Cost Zero items</td>
-                        <td colspan='2'>".$d["COSTZERO_YES"]."</td>                        
-                        <td>".$d["COSTZERO_TOD"]."</td>
-                        <td>".DLX("COSTZERO_ITEMS_TOD")."</td>
-                        <td>".EV($d["COSTZERO_YES"],$d["COSTZERO_TOD"])."</td>
+                        <td colspan='2' align='center'>".$d["COSTZERO_YES"]."</td>                        
+                        <td align='center'>".$d["COSTZERO_TOD"]."</td>
+                        <td align='center'>".DLX("COSTZERO_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["COSTZERO_YES"],$d["COSTZERO_TOD"],true)."</td>
                     </tr>
                     
                     <tr>
-                        <td>Cost Zero sale</td>
-                        <td colspan='2'>".$d["ZEROSALE_YES"]."</td>                        
-                        <td>".$d["ZEROSALE_TOD"]."</td>
-                        <td>".DLX("ZEROSALE_ITEMS_TOD")."</td>
-                        <td>".EV($d["ZEROSALE_YES"],$d["ZEROSALE_TOD"])."</td>
+                        <td>Zero sale items</td>
+                        <td colspan='2' align='center'>".$d["ZEROSALE_YES"]."</td>                        
+                        <td align='center'>".$d["ZEROSALE_TOD"]."</td>
+                        <td align='center'>".DLX("ZEROSALE_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["ZEROSALE_YES"],$d["ZEROSALE_TOD"],true)."</td>
                     </tr>
                     
                     <tr>
                         <td>Low Profit</td>
-                        <td colspan='2'>".$d["LOWPROFIT_YES"]."</td>                        
-                        <td>".$d["LOWPROFIT_TOD"]."</td>
-                        <td>".DLX("LOWPROFIT_ITEMS_TOD")."</td>
-                        <td>".EV($d["LOWPROFIT_YES"],$d["ZEROSALE_TOD"])."</td>
+                        <td colspan='2' align='center'>".$d["LOWPROFIT_YES"]."</td>                        
+                        <td align='center'>".$d["LOWPROFIT_TOD"]."</td>
+                        <td align='center'>".DLX("LOWPROFIT_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["LOWPROFIT_YES"],$d["LOWPROFIT_TOD"],true)."</td>
                     </tr>                                
                 </table>
             </td>
 
-            <td align='center' width='40%'>
-                <table border='1'>        
-                    <tr align='center'>
+            <td align='center' width='25%'>
+                <table border='1' height='100%'>        
+                    <tr align='center' >
                         <td colspan='6' style='font-size:20pt'>ALERT</td>                        
                     </tr>
                     
                     <tr>
-                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td>EVOL</td>
+                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td><center>EV</center></td>
                     </tr>            
                     
                     <tr>
                         <td width='25%'> Negative items WH1</td>
-                        <td width='10%'>".$d["NEGATIVEITEM_WH1_CNT_YES"]."</td>
-                        <td width='10%'>N/A</td>
-                        <td width='10%'>".$d["NEGATIVEITEM_WH1_CNT_TOD"]."</td>
-                        <td width='10%'>".DLX("NEGATIVEITEM_WH1_ITEMS_TOD")."</td>            
-                        <td width='10%'>".EV($d["NEGATIVEITEM_WH1_CNT_YES"],$d["NEGATIVEITEM_WH1_CNT_TOD"])."</td>            
+                        <td align='center' width='10%' colspan='2'>".$d["NEGATIVEITEM_WH1_CNT_YES"]."</td>                        
+                        <td align='center' width='10%'>".$d["NEGATIVEITEM_WH1_CNT_TOD"]."</td>
+                        <td align='center' width='10%'>".DLX("NEGATIVEITEM_WH1_ITEMS_TOD")."</td>            
+                        <td align='center' width='10%'>".EV($d["NEGATIVEITEM_WH1_CNT_YES"],$d["NEGATIVEITEM_WH1_CNT_TOD"],true)."</td>            
                     </tr>        
                     
                     <tr>
                         <td> Negative items WH2 </td>
-                        <td>".$d["NEGATIVEITEM_WH2_CNT_YES"]."</td>
-                        <td>N/A</td>
-                        <td>".$d["NEGATIVEITEM_WH2_CNT_TOD"]."</td>
-                        <td>".DLX("NEGATIVEITEM_WH2_ITEMS_TOD")."</td>
-                        <td>".EV($d["NEGATIVEITEM_WH2_CNT_YES"],$d["NEGATIVEITEM_WH2_CNT_TOD"])."</td>            
+                        <td align='center' colspan='2'>".$d["NEGATIVEITEM_WH2_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["NEGATIVEITEM_WH2_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("NEGATIVEITEM_WH2_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["NEGATIVEITEM_WH2_CNT_YES"],$d["NEGATIVEITEM_WH2_CNT_TOD"],true)."</td>            
                     </tr>
                     
                     <tr>
                         <td>Negative items FRESH</td>
-                        <td>".$d["NEGATIVEITEM_FRESH_CNT_YES"]."</td>
-                        <td>N/A</td>
-                        <td>".$d["NEGATIVEITEM_FRESH_CNT_TOD"]."</td>
-                        <td>".DLX("NEGATIVEITEM_FRESH_ITEMS_TOD")."</td>
-                        <td>".EV($d["NEGATIVEITEM_FRESH_CNT_YES"],$d["NEGATIVEITEM_FRESH_CNT_TOD"])."</td>            
+                        <td colspan='2' align='center'>".$d["NEGATIVEITEM_FRESH_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["NEGATIVEITEM_FRESH_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("NEGATIVEITEM_FRESH_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["NEGATIVEITEM_FRESH_CNT_YES"],$d["NEGATIVEITEM_FRESH_CNT_TOD"],true)."</td>            
                     </tr>        
                     
                     <tr>
                         <td>Expire Returns items</td>
-                        <td>".$d["EXPIRE_RET_CNT_YES"]."</td>
-                        <td>N/A</td>
-                        <td>".$d["EXPIRE_RET_CNT_TOD"]."</td>
-                        <td>".DLX("EXPIRE_RET_ITEMS_TOD")."</td>
-                        <td>".EV($d["EXPIRE_RET_CNT_YES"],$d["EXPIRE_RET_CNT_TOD"])."</td>            
+                        <td align='center' colspan='2'>".$d["EXPIRE_RET_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["EXPIRE_RET_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("EXPIRE_RET_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["EXPIRE_RET_CNT_YES"],$d["EXPIRE_RET_CNT_TOD"])."</td>            
                     </tr>        
                     
                     <tr>
                         <td>Expire NoReturns items</td>
-                        <td>".$d["EXPIRE_NR_CNT_YES"]."</td>
-                        <td>N/A</td>
-                        <td>".$d["EXPIRE_NR_CNT_TOD"]."</td>
-                        <td>".DLX("EXPIRE_NR_ITEMS_TOD")."</td>
-                        <td>".EV($d["EXPIRE_NR_CNT_YES"],$d["EXPIRE_NR_CNT_TOD"])."</td>
+                        <td align='center' colspan='2'>".$d["EXPIRE_NR_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["EXPIRE_NR_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("EXPIRE_NR_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["EXPIRE_NR_CNT_YES"],$d["EXPIRE_NR_CNT_TOD"])."</td>
                     </tr>        
                     
                     <tr>
                         <td>Need move items</td>
-                        <td>".$d["NEEDMOVE_CNT_YES"]."</td>
-                        <td>N/A</td>
-                        <td>".$d["NEEDMOVE_CNT_TOD"]."</td>
-                        <td>".DLX("NEEDMOVE_ITEMS_TOD")."</td>
-                        <td>".EV($d["NEEDMOVE_CNT_YES"],$d["NEEDMOVE_CNT_TOD"])."</td>
+                        <td align='center' colspan='2'>".$d["NEEDMOVE_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["NEEDMOVE_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("NEEDMOVE_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["NEEDMOVE_CNT_YES"],$d["NEEDMOVE_CNT_TOD"])."</td>
                     </tr>
-                    
-                    
-                    
+                                                    
                 </table>
             </td>
-        </tr>        
-    </table>
 
-
-    <br><br>
-
-    <table border='1' width='99%'>
-        <tr align='center'>
-                <td></td>        
-                <td colspan='5'><img height='50' src='img/signRat.png'></td>                
-                <td colspan='5'><img height='50' src='img/signOx.png'></td>                
-                <td colspan='5'><img height='50' src='img/signTiger.png'></td>
-                <td colspan='5'><img height='50' src='img/signHare.png'></td>
-                <td colspan='5'><img height='50' src='img/signSnake.png'></td>            
-                <td colspan='5'><img height='50' src='img/signDragon.png'></td>                
-                <td colspan='5'><img height='50' src='img/signGoat.png'></td>                
-                <td colspan='5'><img height='50' src='img/signHorse.png'></td>                
-        </tr>
-        <tr>
-                <td width='4%'></td>  
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%'  colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-        <tr>
-        <tr align='center'>
-            <td>Transfer NB items</td>            
-            <td width='4%'>".$d["TRF_RAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_RAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_RAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["NBITEM"],$d["TRF_RAT_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_OX_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_OX_ITEMS_YES")."</td><td width='4%'>".$d["TRF_OX_TOD"]["NBITEM"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["NBITEM"],$d["TRF_OX_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_TIGER_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_TIGER_ITEMS_YES")."</td><td width='4%'>".$d["TRF_TIGER_TOD"]["NBITEM"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["NBITEM"],$d["TRF_TIGER_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_HARE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HARE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HARE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["NBITEM"],$d["TRF_HARE_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_SNAKE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_SNAKE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["NBITEM"],$d["TRF_SNAKE_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_DRAGON_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".$d["TRF_DRAGON_TOD"]["NBITEM"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"],$d["TRF_DRAGON_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_GOAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_GOAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_GOAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["NBITEM"],$d["TRF_GOAT_TOD"]["NBITEM"])."</td>
-            <td width='4%'>".$d["TRF_HORSE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HORSE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HORSE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["NBITEM"],$d["TRF_HORSE_TOD"]["NBITEM"])."</td>            
-        </tr>
-
-        <tr align='center'>
-            <td>Transfer Qty items</td>            
-            <td>".$d["TRF_RAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_YES")."</td><td>".$d["TRF_RAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["QUANTITY"],$d["TRF_RAT_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_OX_YES"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_YES")."</td><td>".$d["TRF_OX_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["QUANTITY"],$d["TRF_OX_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_TIGER_YES"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_YES")."</td><td>".$d["TRF_TIGER_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["QUANTITY"],$d["TRF_TIGER_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_HARE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_YES")."</td><td>".$d["TRF_HARE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["QUANTITY"],$d["TRF_HARE_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_SNAKE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td>".$d["TRF_SNAKE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["QUANTITY"],$d["TRF_SNAKE_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_DRAGON_YES"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".$d["TRF_DRAGON_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"],$d["TRF_DRAGON_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_GOAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_YES")."</td><td>".$d["TRF_GOAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["QUANTITY"],$d["TRF_GOAT_TOD"]["QUANTITY"])."</td>
-            <td>".$d["TRF_HORSE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_YES")."</td><td>".$d["TRF_HORSE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["QUANTITY"],$d["TRF_HORSE_TOD"]["QUANTITY"])."</td>
-        </tr>
-        
-
-        
-        <tr align='center'>
-            <td>Sale Nb Items</td>            
-            <td>".$d["SALE_RAT_YES"]."</td><td>".DLX("SALE_RAT_ITEMS_YES")."</td><td>".$d["SALE_RAT_TOD"]."</td><td>".DLX("SALE_RAT_ITEMS_TOD")."</td></a></td><td>".EV($d["SALE_RAT_YES"],$d["SALE_RAT_TOD"])."</td>
-            <td>".$d["SALE_OX_YES"]."</td><td>".DLX("SALE_OX_ITEMS_YES")."</td></td><td>".$d["SALE_OX_TOD"]."</td><td>".DLX("SALE_OX_ITEMS_TOD")."</td><td>".EV($d["SALE_OX_YES"],$d["SALE_OX_TOD"])."</td>
-            <td>".$d["SALE_TIGER_YES"]."</td><td>".DLX("SALE_TIGER_ITEMS_YES")."</td></td><td>".$d["SALE_TIGER_TOD"]."</td><td>".DLX("SALE_TIGER_ITEMS_TOD")."</a></td><td>".EV($d["SALE_OX_YES"],$d["SALE_OX_TOD"])."</td>
-            <td>".$d["SALE_HARE_YES"]."</td><td>".DLX("SALE_HARE_ITEMS_YES")."</td></td><td>".$d["SALE_HARE_TOD"]."</td><td>".DLX("SALE_HARE_ITEMS_TOD")."</td><td>".EV($d["SALE_HARE_YES"],$d["SALE_HARE_TOD"])."</td>
-            <td>".$d["SALE_SNAKE_YES"]."</td><td>".DLX("SALE_SNAKE_ITEMS_YES")."</td></td><td>".$d["SALE_SNAKE_TOD"]."</td><td>".DLX("SALE_SNAKE_ITEMS_TOD")."</td><td>".EV($d["SALE_SNAKE_YES"],$d["SALE_SNAKE_TOD"])."</td>
-            <td>".$d["SALE_DRAGON_YES"]."</td><td>".DLX("SALE_DRAGON_ITEMS_YES")."</td></td><td>".$d["SALE_DRAGON_TOD"]."</td><td>".DLX("SALE_DRAGON_ITEMS_TOD")."</td><td>".EV($d["SALE_DRAGON_YES"],$d["SALE_DRAGON_TOD"])."</td>
-            <td>".$d["SALE_GOAT_YES"]."</td><td>".DLX("SALE_GOAT_ITEMS_YES")."</td></td><td>".$d["SALE_GOAT_TOD"]."</td><td>".DLX("SALE_GOAT_ITEMS_TOD")."</td><td>".EV($d["SALE_GOAT_YES"],$d["SALE_GOAT_TOD"])."</td>
-            <td>".$d["SALE_HORSE_YES"]."</td><td>".DLX("SALE_HORSE_ITEMS_YES")."</td></td><td>".$d["SALE_HORSE_TOD"]."</td><td>".DLX("SALE_HORSE_ITEMS_TOD")."</td><td>".EV($d["SALE_HORSE_YES"],$d["SALE_HORSE_TOD"])."</td>
-        </tr>
-
-        
-        <tr align='center'>
-            <td>Occupancy</td>            
-            <td>".$d["OCC_RAT_YES"]."</td><td>N/A</td><td>".$d["OCC_RAT_TOD"]."</td><td>".DLX("OCC_RAT_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_OX_YES"]."</td><td>N/A</td><td>".$d["OCC_OX_TOD"]."</td><td>".DLX("OCC_OX_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_TIGER_YES"]."</td><td>N/A</td><td>".$d["OCC_TIGER_TOD"]."</td><td>".DLX("OCC_TIGER_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_HARE_YES"]."</td><td>N/A</td><td>".$d["OCC_HARE_TOD"]."</td><td>".DLX("OCC_HARE_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_SNAKE_YES"]."</td><td>N/A</td><td>".$d["OCC_SNAKE_TOD"]."</td><td>".DLX("OCC_SNAKE_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_DRAGON_YES"]."</td><td>N/A</td><td>".$d["OCC_DRAGON_TOD"]."</td><td>".DLX("OCC_DRAGON_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_GOAT_YES"]."</td><td>N/A</td><td>".$d["OCC_GOAT_TOD"]."</td><td>".DLX("OCC_GOAT_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-            <td>".$d["OCC_HORSE_YES"]."</td><td>N/A</td><td>".$d["OCC_HORSE_TOD"]."</td><td>".DLX("OCC_HORSE_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"])."</td>
-        </tr>   
-        
-
-    </table>
-    <br><br>
-        
-
-    <table width='99%' >
-        <tr valign='top' >
-            <td width='25%'>
+            <td align='center' width='25%'>
                 <table border='1' width='100%'>
-                <tr>
-                    <td colspan='4' style='font-size:30pt' align='center'>Purchasing</td>
-                </tr>
-                <tr>
-                    <td></td><td colspan='2'><center>←</center></td><td colspan='2'><center>↓</center></td><td>EVOL</td>
-                </tr>
+                        <tr>
+                            <td colspan='6' style='font-size:20pt' align='center'>PURCHASING</td>
+                        </tr>
+                        <tr>
+                            <td></td><td colspan='2'><center>←</center></td><td colspan='2'><center>↓</center></td><td>EVOL</td>
+                        </tr>
 
-                <tr>
-                    <td width='25%'>NB PO Created</td>
-                    <td width='25%' colspan='2'>".$d["POCREATED_YES"]."</td>
-                    <td width='25%' colspan='2'>".$d["POCREATED_TOD"]."</td>
-                    <td width='25%'>".EV($d["POCREATED_YES"],$d["POCREATED_TOD"])."</td>
-                </tr>
+                        <tr>
+                            <td width='25%'>NB PO Created</td>
+                            <td width='25%' align='center' colspan='2'>".$d["POCREATED_YES"]."</td>
+                            <td width='25%' align='center' colspan='2'>".$d["POCREATED_TOD"]."</td>
+                            <td width='25%' align='center'>".EV($d["POCREATED_YES"],$d["POCREATED_TOD"])."</td>
+                        </tr>
 
-                <tr>
-                    <td>NB Item Ordered</td>        
-                    <td colspan='2'>".$d["NBITEMORDERED_YES"]."</td>
-                    <td colspan='2'>".$d["NBITEMORDERED_TOD"]."</td>
-                    <td width='25%'>".EV($d["NBITEMORDERED_YES"],$d["NBITEMORDERED_TOD"])."</td>
-                </tr>
+                        <tr>
+                            <td>NB Item Ordered</td>        
+                            <td colspan='2' align='center'>".$d["NBITEMORDERED_YES"]."</td>
+                            <td colspan='2' align='center'>".$d["NBITEMORDERED_TOD"]."</td>
+                            <td width='25%' align='center'>".EV($d["NBITEMORDERED_YES"],$d["NBITEMORDERED_TOD"])."</td>
+                        </tr>
 
-                <tr>
-                    <td>Qty Item ordered</td>        
-                    <td colspan='2'>".$d["QTYITEMORDERED_YES"]."</td>
-                    <td colspan='2'>".$d["QTYITEMORDERED_TOD"]."</td>   
-                    <td width='25%'>".EV($d["QTYITEMORDERED_YES"],$d["QTYITEMORDERED_TOD"])."</td>                 
-                </tr>	
-                                
-                <tr>        
-                    <td>PriceDifferences -7days</td>
-                    <td colspan='2'>".$d["PRICEDIFFERENCES_ITEMS_CNT_YES"]."</td>
-                    <td>".$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"]."</td><td>".DLX("ANOMALIES_ITEMS_TOD")."</td>
-                    <td width='25%'>".EV($d["PRICEDIFFERENCES_ITEMS_CNT_YES"],$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"])."</td>
-                </tr>
-                <tr>
-                    <td>Anomalies</td>
-                    <td colspan='2'>".$d["ANOMALIES_ITEMS_CNT_YES"]."</td>
-                    <td>".$d["ANOMALIES_ITEMS_CNT_TOD"]."</td><td>".DLX("PRICEDIFFERENCES_ITEMS_TOD")."</td>                    
-                    <td width='25%'>".EV($d["PRICEDIFFERENCES_ITEMS_CNT_YES"],$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"])."</td>
-                </tr>
-                </tr>
-                </table>   
-            </td>    
-            <td width='25%'>                                            
+                        <tr>
+                            <td>Qty Item ordered</td>        
+                            <td colspan='2' align='center'>".$d["QTYITEMORDERED_YES"]."</td>
+                            <td colspan='2' align='center'>".$d["QTYITEMORDERED_TOD"]."</td>   
+                            <td width='25%' align='center'>".EV($d["QTYITEMORDERED_YES"],$d["QTYITEMORDERED_TOD"])."</td>                 
+                        </tr>	
+                                        
+                        <tr>        
+                            <td>PriceDifferences -7days</td>
+                            <td colspan='2' align='center'>".$d["PRICEDIFFERENCES_ITEMS_CNT_YES"]."</td>
+                            <td align='center'>".$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"]."</td><td>".DLX("ANOMALIES_ITEMS_TOD")."</td>
+                            <td width='25%' align='center'>".EV($d["PRICEDIFFERENCES_ITEMS_CNT_YES"],$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"],true)."</td>
+                        </tr>
+                        <tr>
+                            <td>Anomalies</td>
+                            <td colspan='2' align='center'>".$d["ANOMALIES_ITEMS_CNT_YES"]."</td>
+                            <td align='center'>".$d["ANOMALIES_ITEMS_CNT_TOD"]."</td><td>".DLX("PRICEDIFFERENCES_ITEMS_TOD")."</td>                    
+                            <td width='25%' align='center'>".EV($d["ANOMALIES_ITEMS_CNT_YES"],$d["ANOMALIES_ITEMS_CNT_TOD"],true)."</td>
+                        </tr>
+                        </tr>
+                </table><br>
+                             
+            </td>
+
+            <td align='center' width='25%'>
                 <table border='1'>
                     <tr>
-                        <td colspan='4' style='font-size:30pt' align='center'>Receive</td>
+                        <td colspan='4' style='font-size:20pt' align='center'>RECEIVE</td>
                     </tr>
                     <tr>
                         <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
                     </tr>
 
-                    <tr >
-                        <td width='25%'>NB PO Received</td>
-                        <td width='25%'>".$d["PORECEIVED_YES"]."</td>
-                        <td width='25%'>".$d["PORECEIVED_TOD"]."</td>
-                        <td width='25%'>".EV($d["PORECEIVED_YES"],$d["PORECEIVED_TOD"])."</td>
-                        
+                    <tr>
+                        <td '>NB PO Received</td>
+                        <td >".$d["PORECEIVED_YES"]."</td>
+                        <td >".$d["PORECEIVED_TOD"]."</td>
+                        <td >".EV($d["PORECEIVED_YES"],$d["PORECEIVED_TOD"])."</td>                        
                     </tr>
 
                     <tr >
                         <td>Nb ItemReceived</td>    
                         <td>".$d["NBITEMRECEIVED_YES"]."</td>
                         <td>".$d["NBITEMRECEIVED_TOD"]."</td>
-                        <td width='25%'>".EV($d["PORECEIVED_YES"],$d["PORECEIVED_TOD"])."</td>                          
+                        <td width='25%'>".EV($d["NBITEMRECEIVED_YES"],$d["NBITEMRECEIVED_TOD"])."</td>                          
                     </tr>
 
                     <tr >         
                         <td>Item Quantity Received</td>      
                         <td>".$d["ITEMQTYRECEIVED_YES"]."</td>                                
                         <td>".$d["ITEMQTYRECEIVED_TOD"]."</td>
-                        <td width='25%'>".EV($d["PORECEIVED_YES"],$d["PORECEIVED_TOD"])."</td>                        
+                        <td width='25%'>".EV($d["ITEMQTYRECEIVED_YES"],$d["ITEMQTYRECEIVED_TOD"])."</td>                        
                     </tr> 
-                                        
-                </table>
                     
-            </td>        
+                                        
+                </table>   
+            </td>
+        
+        </tr>        
+    </table><br>
+
+    <table>
+        <tr>
+            <td width='75%'>
+                <table border='1' >
+                    <tr align='center'>
+                            <td></td>        
+                            <td colspan='5'><img height='50' src='img/signRat.png'></td>                
+                            <td colspan='5'><img height='50' src='img/signOx.png'></td>                
+                            <td colspan='5'><img height='50' src='img/signTiger.png'></td>
+                            <td colspan='5'><img height='50' src='img/signHare.png'></td>            
+                    </tr>
+                    <tr>
+                            <td width='4%'></td>  
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%'  colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>                
+                    <tr>
+                    <tr align='center'>
+                        <td>Transfer NB items</td>            
+                        <td width='4%'>".$d["TRF_RAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_RAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_RAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["NBITEM"],$d["TRF_RAT_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_OX_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_OX_ITEMS_YES")."</td><td width='4%'>".$d["TRF_OX_TOD"]["NBITEM"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["NBITEM"],$d["TRF_OX_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_TIGER_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_TIGER_ITEMS_YES")."</td><td width='4%'>".$d["TRF_TIGER_TOD"]["NBITEM"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["NBITEM"],$d["TRF_TIGER_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_HARE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HARE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HARE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["NBITEM"],$d["TRF_HARE_TOD"]["NBITEM"])."</td>            
+                    </tr>
+            
+                    <tr align='center'>
+                        <td>Transfer Qty items</td>            
+                        <td>".$d["TRF_RAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_YES")."</td><td>".$d["TRF_RAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["QUANTITY"],$d["TRF_RAT_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_OX_YES"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_YES")."</td><td>".$d["TRF_OX_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["QUANTITY"],$d["TRF_OX_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_TIGER_YES"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_YES")."</td><td>".$d["TRF_TIGER_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["QUANTITY"],$d["TRF_TIGER_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_HARE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_YES")."</td><td>".$d["TRF_HARE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["QUANTITY"],$d["TRF_HARE_TOD"]["QUANTITY"])."</td>            
+                    </tr>
+                    
+                    <tr align='center'>
+                        <td>Sale Nb Items</td>            
+                        <td>".$d["SALE_RAT_YES"]."</td><td>".DLX("SALE_RAT_ITEMS_YES")."</td><td>".$d["SALE_RAT_TOD"]."</td><td>".DLX("SALE_RAT_ITEMS_TOD")."</td></a></td><td>".EV($d["SALE_RAT_YES"],$d["SALE_RAT_TOD"])."</td>
+                        <td>".$d["SALE_OX_YES"]."</td><td>".DLX("SALE_OX_ITEMS_YES")."</td></td><td>".$d["SALE_OX_TOD"]."</td><td>".DLX("SALE_OX_ITEMS_TOD")."</td><td>".EV($d["SALE_OX_YES"],$d["SALE_OX_TOD"])."</td>
+                        <td>".$d["SALE_TIGER_YES"]."</td><td>".DLX("SALE_TIGER_ITEMS_YES")."</td></td><td>".$d["SALE_TIGER_TOD"]."</td><td>".DLX("SALE_TIGER_ITEMS_TOD")."</a></td><td>".EV($d["SALE_OX_YES"],$d["SALE_OX_TOD"])."</td>
+                        <td>".$d["SALE_HARE_YES"]."</td><td>".DLX("SALE_HARE_ITEMS_YES")."</td></td><td>".$d["SALE_HARE_TOD"]."</td><td>".DLX("SALE_HARE_ITEMS_TOD")."</td><td>".EV($d["SALE_HARE_YES"],$d["SALE_HARE_TOD"])."</td>            
+                    </tr>
+            
+                    
+                    <tr align='center'>
+                        <td>Occupancy</td>            
+                        <td>".$d["OCC_RAT_YES"]."</td><td>N/A</td><td>".$d["OCC_RAT_TOD"]."</td><td>".DLX("OCC_RAT_ITEMS_TOD")."</td><td>".EV($d["OCC_RAT_YES"],$d["OCC_RAT_TOD"],true)."</td>
+                        <td>".$d["OCC_OX_YES"]."</td><td>N/A</td><td>".$d["OCC_OX_TOD"]."</td><td>".DLX("OCC_OX_ITEMS_TOD")."</td><td>".EV($d["OCC_OX_YES"],$d["OCC_OX_TOD"],true)."</td>
+                        <td>".$d["OCC_TIGER_YES"]."</td><td>N/A</td><td>".$d["OCC_TIGER_TOD"]."</td><td>".DLX("OCC_TIGER_ITEMS_TOD")."</td><td>".EV($d["OCC_TIGER_YES"],$d["OCC_TIGER_TOD"],true)."</td>
+                        <td>".$d["OCC_HARE_YES"]."</td><td>N/A</td><td>".$d["OCC_HARE_TOD"]."</td><td>".DLX("OCC_HARE_ITEMS_TOD")."</td><td>".EV($d["OCC_HARE_YES"],$d["OCC_HARE_TOD"],true)."</td>            
+                    </tr>       
+                </table><br>
+                <table border='1' >
+                    <tr align='center'>
+                            <td></td>                            
+                            <td colspan='5'><img height='50' src='img/signSnake.png'></td>            
+                            <td colspan='5'><img height='50' src='img/signDragon.png'></td>                
+                            <td colspan='5'><img height='50' src='img/signGoat.png'></td>                
+                            <td colspan='5'><img height='50' src='img/signHorse.png'></td>                
+                    </tr>
+                    <tr>
+                            <td width='4%'></td>                      
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                    <tr>
+                    <tr align='center'>
+                        <td>Transfer NB items</td>                            
+                        <td width='4%'>".$d["TRF_SNAKE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_SNAKE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["NBITEM"],$d["TRF_SNAKE_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_DRAGON_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".$d["TRF_DRAGON_TOD"]["NBITEM"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"],$d["TRF_DRAGON_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_GOAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_GOAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_GOAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["NBITEM"],$d["TRF_GOAT_TOD"]["NBITEM"])."</td>
+                        <td width='4%'>".$d["TRF_HORSE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HORSE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HORSE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["NBITEM"],$d["TRF_HORSE_TOD"]["NBITEM"])."</td>            
+                    </tr>
+                
+                    <tr align='center'>
+                        <td>Transfer Qty items</td>                            
+                        <td>".$d["TRF_SNAKE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td>".$d["TRF_SNAKE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["QUANTITY"],$d["TRF_SNAKE_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_DRAGON_YES"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".$d["TRF_DRAGON_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"],$d["TRF_DRAGON_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_GOAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_YES")."</td><td>".$d["TRF_GOAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["QUANTITY"],$d["TRF_GOAT_TOD"]["QUANTITY"])."</td>
+                        <td>".$d["TRF_HORSE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_YES")."</td><td>".$d["TRF_HORSE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["QUANTITY"],$d["TRF_HORSE_TOD"]["QUANTITY"])."</td>
+                    </tr>
+                    
+                
+                    
+                    <tr align='center'>
+                        <td>Sale Nb Items</td>                            
+                        <td>".$d["SALE_SNAKE_YES"]."</td><td>".DLX("SALE_SNAKE_ITEMS_YES")."</td></td><td>".$d["SALE_SNAKE_TOD"]."</td><td>".DLX("SALE_SNAKE_ITEMS_TOD")."</td><td>".EV($d["SALE_SNAKE_YES"],$d["SALE_SNAKE_TOD"])."</td>
+                        <td>".$d["SALE_DRAGON_YES"]."</td><td>".DLX("SALE_DRAGON_ITEMS_YES")."</td></td><td>".$d["SALE_DRAGON_TOD"]."</td><td>".DLX("SALE_DRAGON_ITEMS_TOD")."</td><td>".EV($d["SALE_DRAGON_YES"],$d["SALE_DRAGON_TOD"])."</td>
+                        <td>".$d["SALE_GOAT_YES"]."</td><td>".DLX("SALE_GOAT_ITEMS_YES")."</td></td><td>".$d["SALE_GOAT_TOD"]."</td><td>".DLX("SALE_GOAT_ITEMS_TOD")."</td><td>".EV($d["SALE_GOAT_YES"],$d["SALE_GOAT_TOD"])."</td>
+                        <td>".$d["SALE_HORSE_YES"]."</td><td>".DLX("SALE_HORSE_ITEMS_YES")."</td></td><td>".$d["SALE_HORSE_TOD"]."</td><td>".DLX("SALE_HORSE_ITEMS_TOD")."</td><td>".EV($d["SALE_HORSE_YES"],$d["SALE_HORSE_TOD"])."</td>
+                    </tr>
+                
+                    
+                    <tr align='center'>
+                        <td>Occupancy</td>                            
+                        <td>".$d["OCC_SNAKE_YES"]."</td><td>N/A</td><td>".$d["OCC_SNAKE_TOD"]."</td><td>".DLX("OCC_SNAKE_ITEMS_TOD")."</td><td>".EV($d["OCC_SNAKE_YES"],$d["OCC_SNAKE_TOD"],true)."</td>
+                        <td>".$d["OCC_DRAGON_YES"]."</td><td>N/A</td><td>".$d["OCC_DRAGON_TOD"]."</td><td>".DLX("OCC_DRAGON_ITEMS_TOD")."</td><td>".EV($d["OCC_DRAGON_YES"],$d["OCC_DRAGON_TOD"],true)."</td>
+                        <td>".$d["OCC_GOAT_YES"]."</td><td>N/A</td><td>".$d["OCC_GOAT_TOD"]."</td><td>".DLX("OCC_GOAT_ITEMS_TOD")."</td><td>".EV($d["OCC_GOAT_YES"],$d["OCC_GOAT_TOD"],true)."</td>
+                        <td>".$d["OCC_HORSE_YES"]."</td><td>N/A</td><td>".$d["OCC_HORSE_TOD"]."</td><td>".DLX("OCC_HORSE_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"],true)."</td>
+                    </tr>       
+                </table>
+            </td>                        
             <td width='25%'>
                 <table border='1' width='100%'>
                     <tr>
-                        <td colspan='4' style='font-size:30pt' align='center'>Return</td>
+                        <td colspan='4' style='font-size:20pt' align='center'>RETURN</td>
                     </tr>
                     <tr>
                         <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
@@ -493,7 +508,6 @@ function renderStats()
                     </tr>
 
                     <tr>
-                    
                         <td>Amount</td>					
                         <td>".$d["RETURN_AMOUNT_YES"]."</td>                          
                         <td>".$d["RETURN_AMOUNT_TOD"]."</td>  
@@ -506,37 +520,34 @@ function renderStats()
                         <td>".DLX("RETURN_ITEMS_TOD")."</td>
                         <td></td>
                     </tr>
-                </table>
-            </td>
-
-            <td width='25%' align='center'>
+                </table><br>
                 <table border='1' width='100%'>      
                     <tr>
-                        <td width='100%' colspan='4' style='font-size:30pt' align='center'>Waste</td>
+                        <td width='100%' colspan='4' style='font-size:20pt' align='center'>WASTE</td>
                     </tr>              
                     <tr>
                         <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
                     </tr>
                     <tr>		
                         <tr>
-                            <td width='25%'>NB items</td>
-                            <td width='25%'>".$d["WASTE_NBITEMS_YES"]."</td>
-                            <td width='25%'>".$d["WASTE_NBITEMS_TOD"]."</td>
-                            <td width='25%'>".EV($d["WASTE_NBITEMS_YES"],$d["WASTE_NBITEMS_TOD"])."</td>                            
+                            <td >NB items</td>
+                            <td >".$d["WASTE_NBITEMS_YES"]."</td>
+                            <td >".$d["WASTE_NBITEMS_TOD"]."</td>
+                            <td >".EV($d["WASTE_NBITEMS_YES"],$d["WASTE_NBITEMS_TOD"],true)."</td>                            
                         </tr>
 
                         <tr>
                             <td>Quantity items</td>
                             <td>".$d["WASTE_QTY_YES"]."</td>
                             <td>".$d["WASTE_QTY_TOD"]."</td>
-                            <td>".EV($d["WASTE_NBITEMS_YES"],$d["WASTE_QTY_TOD"])."</td>
+                            <td>".EV($d["WASTE_QTY_YES"],$d["WASTE_QTY_TOD"],true)."</td>
                         </tr>
 
                         <tr>
                             <td>Sum</td>
                             <td>".$d["WASTE_SUM_YES"]."</td>
                             <td>".$d["WASTE_SUM_TOD"]."</td>
-                            <td>".EV($d["WASTE_NBITEMS_YES"],$d["WASTE_NBITEMS_TOD"])."</td>
+                            <td>".EV($d["WASTE_SUM_YES"],$d["WASTE_SUM_TOD"],true)."</td>
                         </tr> 
                         <tr>
                             <td>SEE</td>
@@ -544,23 +555,16 @@ function renderStats()
                             <td>".DLX("WASTE_ITEMS_TOD")."</td>
                             <td></td>
                         </tr>
-                                                       
+                                                    
                     </tr>
                 </table>
             </td>
         </tr>
-    </table>
 
-    <td><center>
-                
-            </center>
-            </td>
-
-        </tr>
-		
     </table>
-</center>
-</html>";
+        
+		    
+</center></html>";
     return $display;
 }	 
 

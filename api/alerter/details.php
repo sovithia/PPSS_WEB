@@ -38,15 +38,11 @@ function getDatabase($name = "MAIN")
 }
 
 
-function getInternalDatabase($base = "MAIN")
+function getInternalDatabase()
 {
+    
 	try{
-		if ($base == "MAIN")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
-		else if ($base == "TEST")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreTEST.sqlite');
-		else if ($base == "ECOMMERCE")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
+        $db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -57,217 +53,248 @@ function getInternalDatabase($base = "MAIN")
 	return $db;
 }
 
-$db = getDatabase();
-$indb = getInternalDatabase();
+function renderItems($items,$type,$message = ""){
 
-
-function renderItems($items){
-    echo "Nb Items: ".count($items)."<br>";
-    if ($type == "0")
-    {
-        echo "<table>
+    echo "
+    <html style='background-color:#009183;color:white'>
+    <center>
+    <img height='100px' src='http://phnompenhsuperstore.com/assets/images/logo.png'><br><br>
+    ".$message."<br>
+    Nb Items: ".count($items)."<br>";
+    if ($type == "0"){
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td></tr>";
-        foreach($fullitems as $item){
+        foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>                    
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>                    
                 </tr>";
         }
         echo "</table>";
-    }
-    else if ($type == "1")
-    {
-        echo "<table>
+    }else if ($type == "1"){
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>QUANTITY</td></tr>";
-        foreach($fullitems as $item){
+        foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["QUANTITY"]."</td>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["QUANTITY"]."</td>
                 </tr>";
         }
         echo "</table>";
     }else if ($type == "2"){
-        echo "<table>
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>QUANTITY</td><td>LASTRECEIVE</td><td>DIFF</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["QUANTITY"]."</td>
-                    <td>".$items["LASTRECEIVE"]."</td>
-                    <td>".$items["DIFF"]."</td>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["QUANTITY"]."</td>
+                    <td>".$item["LASTRECEIVE"]."</td>
+                    <td>".$item["DIFF"]."</td>
                 </tr>";
         }
         echo "</table>";
 
-    }else if (type == "3"){
-        echo "<table>
+    }else if ($type == "3"){
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td>
                 <td>VENDNAME</td><td>WH1</td><td>WH2</td>
                 <td>STORBIN1</td><td>STORBIN2</td>
+                <td>EXPIRE</td><td>DIFF</td>
             </tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["VENDNAME"]."</td>
-                    <td>".$items["WH1"]."</td>
-                    <td>".$items["WH2"]."</td>                    
-                    <td>".$items["STORBIN1"]."</td>
-                    <td>".$items["STORBIN2"]."</td>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["VENDNAME"]."</td>
+                    <td>".$item["WH1"]."</td>
+                    <td>".$item["WH2"]."</td>                    
+                    <td>".$item["STOREBIN1"]."</td>
+                    <td>".$item["STOREBIN2"]."</td>
+                    <td>".$item["PPSS_DELIVERED_EXPIRE"]."</td>
+                    <td>".$item["DIFF"]."</td>
                 </tr>";
         }
         echo "</table>";
-    }else if (type == "4"){
-        echo "<table>
+    }else if ($type == "4"){
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>WH1</td><td>WH2</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>                    
-                    <td>".$items["WH1"]."</td>
-                    <td>".$items["WH2"]."</td>                                        
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>                    
+                    <td>".$item["WH1"]."</td>
+                    <td>".$item["WH2"]."</td>                                        
                 </tr>";
         }
         echo "</table>"; 
-    }else if (type == "5"){
-        echo "<table>        
-            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>LASTRECEIVENBDAYS</td><td>WH1</td><td>WH2</td></tr>";
+    }else if ($type == "5"){        
+        echo "<table border='1'>        
+                <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>LASTRECEIVENBDAYS</td><td>WH1</td><td>WH2</td></tr>";
         foreach($items as $item){
-            echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["LASTRECEIVENBDAYS"]."</td>                    
-                    <td>".$items["WH1"]."</td>
-                    <td>".$items["WH2"]."</td>                                        
+
+            echo "<tr>                    
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["LASTRECEIVENBDAYS"]."</td>                    
+                    <td>".$item["WH1"]."</td>
+                    <td>".$item["WH2"]."</td>                                        
                 </tr>";
         }
         echo "</table>";
-    }else if (type == "6"){
-        echo "<table>
-            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>LASTRECEIVENBDAYS</td><td>WH1</td><td>WH2</td></tr>";
+    }else if ($type == "6"){
+        echo "<table border='1'>
+            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE EXPECTED</td><td>REAL PRICE</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["PPSS_WAITING_PRICE"]."</td>                    
-                    <td>".$items["PPSS_DELIVERED_PRICE"]."</td>                                                          
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".round($item["PPSS_WAITING_PRICE"],4)."</td>                    
+                    <td>".round($item["PPSS_DELIVERED_PRICE"],4)."</td>                                                          
                 </tr>";
         }
         echo "</table>";
-    }else if (type == "7"){
-        echo "<table>
+    }else if ($type == "7"){        
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PPSS_WAITING_CALCULATED</td><td>PPSS_WAITING_QUANTITY</td><td>CURRENTONHAND</td><td>ONHAND</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["PPSS_WAITING_CALCULATED"]."</td>                    
-                    <td>".$items["PPSS_WAITING_QUANTITY"]."</td> 
-                    <td>".$items["CURRENTONHAND"]."</td>
-                    <td>".$items["ONHAND"]."</td>                                          
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["PPSS_WAITING_CALCULATED"]."</td>                    
+                    <td>".$item["PPSS_WAITING_QUANTITY"]."</td> 
+                    <td>".$item["CURRENTONHAND"]."</td>
+                    <td>".$item["ONHAND"]."</td>                                          
                 </tr>";
         }
         echo "</table>";        
     }else if ($type == "8"){
-        echo "<table>
-            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>QUANTITY</td><td>COST</td><td>AMOUNT</td></tr>";
+        echo "<table border='1'>
+            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>TYPE</td><td>EXPIRE</td><td>QUANTITY</td><td>COST</td><td>AMOUNT</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["QUANTITY"]."</td>                    
-                    <td>".$items["COST"]."</td> 
-                    <td>".($items["QUANTITY"] * $items["COST"])."</td>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["TYPE"]."</td>
+                    <td>".$item["EXPIRATION"]."</td>
+                    <td>".$item["QUANTITY"]."</td>                    
+                    <td>".$item["COST"]."</td> 
+                    <td>".($item["QUANTITY"] * $item["COST"])."</td>
                     
                 </tr>";
         }
         echo "</table>";        
     }else if ($type == "9"){
-        echo "<table>
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE</td><td>VENDNAME</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["PRICE"]."</td>                    
-                    <td>".$items["VENDNAME"]."</td>                                 
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["PRICE"]."</td>                    
+                    <td>".$item["VENDNAME"]."</td>                                 
                 </tr>";
         }
         echo "</table>";            
     }else if ($type == "10"){
-        echo "<table>
+        echo "<table border='1'>
             <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE</td><td>LASTCOST</td><td>MARGIN</td></tr>";
         foreach($items as $item){
             echo "<tr>
-                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                    <td>".$items["PRODUCTID"]."</td>
-                    <td>".$items["PRODUCTNAME"]."</td>
-                    <td>".$items["PRICE"]."</td>                    
-                    <td>".$items["LASTCOST"]."</td>                                 
-                    <td>".$items["MARGIN"]."</td>                                 
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".round($item["PRICE"],4)."</td>                    
+                    <td>".round($item["LASTCOST"],4)."</td>                                 
+                    <td>".round($item["MARGIN"],2)."%</td>                                 
                 </tr>";
         }
         echo "</table>";            
     }else if ($type == "11"){
-    echo "<table>
+        echo "<table border='1'>
+        <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE</td><td>LASTCOST</td><td>WH1</td><td>WH2</td></tr>";
+        foreach($items as $item){
+            echo "<tr>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["PRICE"]."</td>                    
+                    <td>".$item["LASTCOST"]."</td>                    
+                    <td>".$item["WH1"]."</td>                                 
+                    <td>".$item["WH2"]."</td>                                 
+                </tr>";
+        }
+        echo "</table>";            
+    }else if ($type == "12"){
+        echo "<table border='1'>
         <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE</td><td>LASTCOST</td><td>MARGIN</td></tr>";
-    foreach($items as $item){
-        echo "<tr>
-                <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."></td>
-                <td>".$items["PRODUCTID"]."</td>
-                <td>".$items["PRODUCTNAME"]."</td>
-                <td>".$items["PRICE"]."</td>                    
-                <td>".$items["LASTCOST"]."</td>                    
-                <td>".$items["WH1"]."</td>                                 
-                <td>".$items["WH2"]."</td>                                 
-            </tr>";
+        foreach($items as $item){
+            echo "<tr>
+                    <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["ONHAND"]."</td>                    
+                    <td>".$item["EXPIRATION"]."</td>                    
+                    <td>".$item["QUANTITY"]."</td>                                 
+                    
+                </tr>";
+        }
+        echo "</table>";    
     }
-    echo "</table>";            
-}
-
+    
+    echo "</center>
+    </html>";            
 }
 
 
 function renderNegativeWH1()
 { 
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME,LOCONHAND as 'QUANTITY'
     FROM ICLOCATION,ICPRODUCT 
     WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
     AND LOCID = 'WH1'
-    AND PPSS_IS_FRESH <> 'Y'
+    AND PPSS_IS_FRESH IS NULL
     AND LOCONHAND < 0"; 
     $req = $db->prepare($sql);
     $req->execute(array());
-    $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"1");   
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);		    
+    renderItems($items,"1","Negative Items WH1");   
 }
 
 function renderNegativeWH2()
-{    
-    $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME, LOCHAND as 'QUANTITY'
+{
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+    
+    $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME, LOCONHAND as 'QUANTITY'
     FROM ICLOCATION,ICPRODUCT 
     WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
     AND LOCID = 'WH2' AND LOCONHAND < 0"; 
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-    renderItems($items,"1");
+    renderItems($items,"1","Negative Items WH2");
 }
 
 function renderNegativeFresh()
 {
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME,LOCONHAND as 'QUANTITY'
     FROM ICLOCATION,ICPRODUCT 
     WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
@@ -277,26 +304,32 @@ function renderNegativeFresh()
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"1");   
+    renderItems($items,"1","Negative items Fresh");   
 }
-
 
 function renderCostZero()
 {
-    $sql = "SELECT PRODUCTID,PRODUCTNAME,PRICE,VENDNAME,						
-    FROM dbo.ICPRODUCT  		
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+    $sql = "SELECT PRODUCTID,PRODUCTNAME,PRICE,VENDNAME						
+    FROM dbo.ICPRODUCT,APVENDOR     		
     WHERE (LASTCOST = 0 OR LASTCOST IS NULL)
+    AND ICPRODUCT.VENDID = APVENDOR.VENDID
     AND dbo.ICPRODUCT.ACTIVE = 1";
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"9");   
+    renderItems($items,"9","Cost Zero items<br>");   
 
 }
 
 function renderLowProfit()
 {
-    $sql = "SELECT PRODUCTID,PRODUCTNAME,PRICE
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+    $sql = "SELECT PRODUCTID,PRODUCTNAME,PRICE,
             (select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANTYPE = 'R' ORDER BY ICTRANDETAIL.COLID DESC) as 'LASTCOST',
             (((PRICE - LASTCOST) / LASTCOST) * 100) as 'MARGIN'
             FROM ICPRODUCT
@@ -307,12 +340,14 @@ function renderLowProfit()
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"10");   
-                   
+    renderItems($items,"10","Low Profit");                   
 }
 
 function renderZeroSale()
 {
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT PRODUCTID, PRODUCTNAME,PRICE,
                 (select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANTYPE = 'R' ORDER BY ICTRANDETAIL.COLID DESC) as 'LASTCOST',
                 (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
@@ -324,12 +359,41 @@ function renderZeroSale()
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"11");   
+    renderItems($items,"11","Zero sales<br>");   
 
+}
+
+function renderReturn($day)
+{
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+    $sql = "SELECT PRODUCTID,QUANTITY,EXPIRATION FROM RETURNRECORDITEM WHERE STATUS = 'CLEARED' AND UPDATED BETWEEN ? AND ?";
+    $start = $day." 00:00:00.000";
+	$end = $day." 23:59:59.999";	
+
+	$req = $indb->prepare($sql);
+	$req->execute(array($start,$end));
+	$returnrecorditems = $req->fetchAll(PDO::FETCH_ASSOC);
+
+    $itemsData = array();
+    foreach($returnrecorditems as $item){
+
+        $sql = "SELECT PRODUCTNAME, ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";        
+        $req = $db->prepare($sql);
+        $req->execute(array($item["PRODUCTID"]));		
+        $data = $req->fetch(PDO::FETCH_ASSOC);
+        $item["PRODUCTNAME"] = $data["PRODUCTNAME"];
+        $item["ONHAND"] = $data["ONHAND"];
+        array_push($itemsData,$item);		
+    }    
+    renderItems($itemsData,"12","Return for : ".$day."<br>");		        	        
 }
 
 function renderOccupancy($team) // TOP 100
 {    
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
 	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
 	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
 	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
@@ -350,7 +414,7 @@ function renderOccupancy($team) // TOP 100
 	$params = array();
 	if ($team != "ALL"){
 		$locs = explode('|',$allloc);		
-		$sqlItems .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
+		$sqlItems .= "AND ICLOCATION.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
 		foreach($locs as $loc){		
 			$sqlItems .= ' STORBIN LIKE ? OR';
 			array_push($params, '%'.$loc.'%' );
@@ -370,7 +434,10 @@ function renderOccupancy($team) // TOP 100
 }
 
 function renderTransfer($team,$day)
-{
+{    
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
 	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
 	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
@@ -399,27 +466,33 @@ function renderTransfer($team,$day)
 	$end = $day." 23:59:59.999";	
 
 	$sqlToday = $sql. " AND REQUEST_UPDATED BETWEEN ? AND ?";	
-	$req1 = $indb->prepare($sqlToday);
-	$req1->execute(array($start,$end));	
+
+    $req1 = $indb->prepare($sqlToday);
+    array_push($params,$start,$end);    
+	$req1->execute($params);	
 	$items = $req1->fetchAll(PDO::FETCH_ASSOC);
+    
     $fullitems = array();
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTID,REQUEST_QUANTITY as 'QUANTITY' FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 		$req = $indb->prepare($sql);
+        $req->execute(array($item["ID"]));
 		$data = $req->fetch(PDO::FETCH_ASSOC);
-
+        
         $sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
+        $req->execute(array($data["PRODUCTID"]));
         $oneData = $req->fetch(PDO::FETCH_ASSOC);
         $data["PRODUCTNAME"] = $oneData["PRODUCTNAME"];
-		array_push($fullitems,$oneData);
+		array_push($fullitems,$data);
 	}		
-    renderItems($items,"1");    
+    renderItems($fullitems,"1","Transfer<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $teams[$team]."<br>");    
 }
 
 function renderSale($team,$day)
 {  
-	$db=getDatabase();	
+    $db = getDatabase();
+    $indb = getInternalDatabase();
 
 	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
 	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
@@ -462,39 +535,46 @@ function renderSale($team,$day)
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
-    renderItems($items,"1");
+    renderItems($items,"1","SALE<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $teams[$team]."<br>");
 }
 	
 function renderWaste($day)
 {
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $start = $day." 00:00:00.000";
 	$end = $day." 23:59:59.999";	
 
-    $sql = "SELECT PRODUCTID,QUANTITY FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";
+    $sql = "SELECT PRODUCTID,QUANTITY,EXPIRATION,TYPE FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";
 		$req = $indb->prepare($sql);
-		$req->execute(array($start,$start));
+		$req->execute(array($start,$end));
 		$wasteditems = $req->fetchAll(PDO::FETCH_ASSOC);
-		$items = array();
-		
+		$items = array();		    
 		$totalQty = 0;
 		$totalSum = 0;
 		foreach($wasteditems as $wasteditem){
 			$sql = "SELECT PRODUCTNAME,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
-			$req->execute(array(wasteditem["PRODUCTID"]));
-			$oneitemData = $req->fetch(PDO:FETCH);
-			
-			$oneWasteData["PRODUCTID"] = wasteditem["PRODUCTID"];
+			$req->execute(array($wasteditem["PRODUCTID"]));
+			$oneitemData = $req->fetch(PDO::FETCH_ASSOC);
+            $oneWasteData["TYPE"] = $wasteditem["TYPE"];
+			$oneWasteData["EXPIRATION"] = $wasteditem["EXPIRATION"];
+			$oneWasteData["PRODUCTID"] = $wasteditem["PRODUCTID"];
 			$oneWasteData["PRODUCTNAME"] = $oneitemData["PRODUCTNAME"];		
-			$oneWasteData["QUANTITY"] = $wasteitem["QUANTITY"];
+			$oneWasteData["QUANTITY"] = $wasteditem["QUANTITY"];
 			$oneWasteData["COST"] = $oneitemData["COST"];
 			array_push($items, $oneWasteData);
 		}
-    renderItems($items,"8");					
+    
+    renderItems($items,"8","Waste: ".$day."<br>");					
 }
 
 function renderNoLocation()
 {    
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT ICLOCATION.PRODUCTID,PRODUCTNAME
         FROM ICLOCATION,ICPRODUCT 
         WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
@@ -502,12 +582,15 @@ function renderNoLocation()
         AND LOCID = 'WH1'";
     $req = $db->prepare($sql);
     $req->execute(array());
-    $noclocitems = $req->fetchAll(PDO::FETCH_ASSOC);		
-	renderItems($items,"0");
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);		
+	renderItems($items,"0","No loc items<br>");
 }
 
 function renderExpireReturn()
 {	
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month')";
     $req = $indb->prepare($sql);
     $req->execute(array());
@@ -542,13 +625,18 @@ function renderExpireReturn()
                     AND ONHAND > 0		
                     AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
     $req = $db->prepare($sql);
-    $req->execute($params);
+    $req->execute();
     $items = $req->fetchAll(PDO::FETCH_ASSOC);				
-    renderItems($items,"3");
+    var_dump($items);
+    exit;
+    renderItems($items,"3","Expire returns");
 }
 
 function renderExpireNoReturn()
 {
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month')";
     $req = $indb->prepare($sql);
     $req->execute(array());
@@ -585,11 +673,14 @@ function renderExpireNoReturn()
     $req = $db->prepare($sql);
     $req->execute($params);
     $items = $req->fetchAll(PDO::FETCH_ASSOC);	
-    renderItems($items,"3");
+    renderItems($items,"3","Expire no returns");
 } 
 
 function renderNeedMove()
-{    	
+{    
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
     $sql = "SELECT PRODUCTNAME,PRODUCTID,
     (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
     (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'
@@ -599,15 +690,18 @@ function renderNeedMove()
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-    renderItems($items,"4");	
+    renderItems($items,"4","Need move items<br>");	
 } 
 
 function renderUnsold30()
-{    	
-    $sql = "SELECT PODETAIL.PRODUCTID,PRODUCTNAME,DATEDIFF(day,RECEIVE_DATE,GETDATE()) as 'LASTRECEIVENBDAYS',ONHAND
-        FROM ICPRODUCT,PODETAIL,
+{   
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+    $sql = "SELECT PODETAIL.PRODUCTID,PODETAIL.PRODUCTNAME,DATEDIFF(day,RECEIVE_DATE,GETDATE()) as 'LASTRECEIVENBDAYS',ONHAND,
         (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-        (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+        (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'
+        FROM ICPRODUCT,PODETAIL        
         WHERE POSTATUS = 'C' 
         AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
         AND ONHAND > 0
@@ -616,210 +710,231 @@ function renderUnsold30()
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-    renderItems($items,"5");
+    renderItems($items,"5","Unsold items 30<br>");
 }
-
-
 
 function renderPriceDifference()
 {  
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
 	$todayMinusSeven = date('m/d/Y', strtotime('-7 days'))." 00:00:00.000";
+    $endToday = date('m/d/Y')." 23:59:59.000";
 	echo "PRICE DIFFERENCES 7Days Back\n";
 	
-		$sql = "SELECT TOP(5) PODETAIL.PRODUCTID,PRODUCTNAME,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  
+		$sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  
 		FROM PODETAIL,ICPRODUCT
 		WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-		AND ICPRODUCT.PPSS_IS_FRESH <> 'Y'		
+		AND ICPRODUCT.PPSS_IS_FRESH IS NULL
 		AND POSTATUS = 'C' 
 		AND  PODETAIL.DATEADD BETWEEN ? AND ? 
 		AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
 		$req = $db->prepare($sql);
 		$req->execute(array($todayMinusSeven,$endToday));
         $items = $req->fetchAll(PDO::FETCH_ASSOC);		
-        renderItems($items,"6");        		    
+        renderItems($items,"6","Price Differences 7 Days back");        		    
 }
 
 function renderAnomaly()
 {    
-	
-    $sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = 'ANOMALYUNSOLVED' limit 5";
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+    $sql = "SELECT PONUMBER FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = 'ANOMALYUNSOLVED'";
     $req = $indb->prepare($sql);
     $req->execute(array());
     $anomalies = $req->fetchAll(PDO::FETCH_ASSOC);
     $anomalyData = array();
     foreach($anomalies as $anomaly){
 
-        $sql = "SELECT PODETAIL.PRODUCTID,PRODUCTNAME,CURRENTONHAND,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,ONHAND
+        $sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,CURRENTONHAND,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,ONHAND
                 FROM PODETAIL, ICPRODUCT
                 WHERE PONUMBER = ? 
                 AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
                 AND PPSS_WAITING_CALCULATED <> PPSS_WAITING_QUANTITY";
         $req = $db->prepare($sql);
         $req->execute(array($anomaly["PONUMBER"]));		
-        array_push($anomalyData,$req->fetchAll(PDO::FETCH_ASSOC));		
-    }
-    renderItems($anomalyData,"7");		        	    
+        $anomalyData = array_merge($anomalyData,$req->fetchAll(PDO::FETCH_ASSOC));		
+    }    
+    renderItems($anomalyData,"7", "Anomaly items<br>");		        	    
 }
 
 function render($action){
-    $today = date('m/d/Y');	
-    $yesterday = date('m/d/Y',strtotime("-1 days"));
-
+    $today = date('Y-m-d');	
+    $yesterday = date('Y-m-d',strtotime("-1 days"));
+    
     if ($action == "NOLOC_ITEMS_TOD"){
         renderNoLocation();
     }
-    if ($action == "COSTZERO_ITEMS_TOD"){
+    else if ($action == "COSTZERO_ITEMS_TOD"){
         renderCostZero();
     }
-    if ($action == "ZEROSALE_ITEMS_TOD"){
+    else if ($action == "ZEROSALE_ITEMS_TOD"){
         renderZeroSale();
     }
-    if ($action == "LOWPROFIT_ITEMS_TOD"){
+    else if ($action == "LOWPROFIT_ITEMS_TOD"){
         renderLowProfit();
     }
-    if ($action == "NEGATIVEITEM_WH1_ITEMS_TOD"){
+    else if ($action == "NEGATIVEITEM_WH1_ITEMS_TOD"){
         renderNegativeWH1();
     }
-    if ($action == "NEGATIVEITEM_WH2_ITEMS_TOD"){
+    else if ($action == "NEGATIVEITEM_WH2_ITEMS_TOD"){
         renderNegativeWH2();
     }
-    if ($action == "NEGATIVEITEM_FRESH_ITEMS_TOD"){
+    else if ($action == "NEGATIVEITEM_FRESH_ITEMS_TOD"){
         renderNegativeFresh();
     }
-    if ($action == "EXPIRE_RET_ITEMS_TOD"){
+    else if ($action == "EXPIRE_RET_ITEMS_TOD"){
         renderExpireReturn(); 
     }
-    if ($action == "EXPIRE_NR_ITEMS_TOD"){
+    else if ($action == "EXPIRE_NR_ITEMS_TOD"){
         renderExpireNoReturn();
     }
-    if ($action == "NEEDMOVE_ITEMS_TOD"){
+    else if ($action == "NEEDMOVE_ITEMS_TOD"){
         renderNeedMove();
     }
-    if ($action == "TRF_RAT_ITEMS_YES"){    
+    else if ($action == "TRF_RAT_ITEMS_YES"){    
         renderTransfer("RAT",$yesterday);
     }
-    if ($action == "TRF_OX_ITEMS_YES"){
+    else if ($action == "TRF_OX_ITEMS_YES"){
         renderTransfer("OX",$yesterday);
     }
-    if ($action == "TRF_TIGER_ITEMS_YES"){
+    else if ($action == "TRF_TIGER_ITEMS_YES"){
         renderTransfer("TIGER",$yesterday);
     }
-    if ($action == "TRF_HARE_ITEMS_YES"){
+    else if ($action == "TRF_HARE_ITEMS_YES"){
         renderTransfer("HARE",$yesterday);
     }
-    if ($action == "TRF_SNAKE_ITEMS_YES"){
+    else if ($action == "TRF_SNAKE_ITEMS_YES"){
         renderTransfer("SNAKE",$yesterday);
     }
-    if ($action == "TRF_DRAGON_ITEMS_YES"){
+    else if ($action == "TRF_DRAGON_ITEMS_YES"){
         renderTransfer("DRAGON",$yesterday);
     }
-    if ($action == "TRF_GOAT_ITEMS_YES"){
+    else if ($action == "TRF_GOAT_ITEMS_YES"){
         renderTransfer("GOAT",$yesterday);
     }
-    if ($action == "TRF_HORSE_ITEMS_YES"){
+    else if ($action == "TRF_HORSE_ITEMS_YES"){
         renderTransfer("HORSE",$yesterday);
     }
-    if ($action == "TRF_RAT_ITEMS_TOD"){
+    else if ($action == "TRF_RAT_ITEMS_TOD"){
         renderTransfer("RAT",$today);
     }
-    if ($action == "TRF_OX_ITEMS_TOD"){
+    else if ($action == "TRF_OX_ITEMS_TOD"){
         renderTransfer("OX",$today);
     }
-    if ($action == "TRF_TIGER_ITEMS_TOD"){
+    else if ($action == "TRF_TIGER_ITEMS_TOD"){
         renderTransfer("TIGER",$today);
     }
-    if ($action == "TRF_HARE_ITEMS_TOD"){
+    else if ($action == "TRF_HARE_ITEMS_TOD"){
         renderTransfer("HARE",$today);
     }
-    if ($action == "TRF_SNAKE_ITEMS_TOD"){
+    else if ($action == "TRF_SNAKE_ITEMS_TOD"){
         renderTransfer("SNAKE",$today);
     }
-    if ($action == "TRF_DRAGON_ITEMS_TOD"){
+    else if ($action == "TRF_DRAGON_ITEMS_TOD"){
         renderTransfer("DRAGON",$today);
     }
-    if ($action == "TRF_GOAT_ITEMS_TOD"){
+    else if ($action == "TRF_GOAT_ITEMS_TOD"){
         renderTransfer("GOAT",$today);
     }
-    if ($action == "TRF_HORSE_ITEMS_TOD"){
+    else if ($action == "TRF_HORSE_ITEMS_TOD"){
         renderTransfer("HORSE",$today);
     }    
-    if ($action == "SALE_RAT_ITEMS_YES"){
+    else if ($action == "SALE_RAT_ITEMS_YES"){
         renderSale("RAT",$yesterday);
     }
-    if ($action == "SALE_OX_ITEMS_YES"){
+    else if ($action == "SALE_OX_ITEMS_YES"){
         renderSale("OX",$yesterday);
     }
-    if ($action == "SALE_TIGER_ITEMS_YES"){
+    else if ($action == "SALE_TIGER_ITEMS_YES"){
         renderSale("TIGER",$yesterday);
     }
-    if ($action == "SALE_HARE_ITEMS_YES"){
+    else if ($action == "SALE_HARE_ITEMS_YES"){
         renderSale("HARE",$yesterday);
     }
-    if ($action == "SALE_SNAKE_ITEMS_YES"){
+    else if ($action == "SALE_SNAKE_ITEMS_YES"){
         renderSale("SNAKE",$yesterday);
     }
-    if ($action == "SALE_DRAGON_ITEMS_YES"){
+    else if ($action == "SALE_DRAGON_ITEMS_YES"){
         renderSale("DRAGON",$yesterday);
     }
-    if ($action == "SALE_GOAT_ITEMS_YES"){
+    else if ($action == "SALE_GOAT_ITEMS_YES"){
         renderSale("GOAT",$yesterday);
     }
-    if ($action == "SALE_HORSE_ITEMS_YES"){
+    else if ($action == "SALE_HORSE_ITEMS_YES"){
         renderSale("HORSE",$yesterday);
     }
-    if ($action == "SALE_RAT_ITEMS_TOD"){
+    else if ($action == "SALE_RAT_ITEMS_TOD"){
         renderSale("RAT",$today);
     }
-    if ($action == "SALE_OX_ITEMS_TOD"){
+    else if ($action == "SALE_OX_ITEMS_TOD"){
         renderSale("OX",$today);
     }
-    if ($action == "SALE_TIGER_ITEMS_TOD"){
+    else if ($action == "SALE_TIGER_ITEMS_TOD"){
         renderSale("TIGER",$today);
     }
-    if ($action == "SALE_HARE_ITEMS_TOD"){
+    else if ($action == "SALE_HARE_ITEMS_TOD"){
         renderSale("HARE",$today);
     }
-    if ($action == "SALE_SNAKE_ITEMS_TOD"){
+    else if ($action == "SALE_SNAKE_ITEMS_TOD"){
         renderSale("SNAKE",$today);
     }
-    if ($action == "SALE_DRAGON_ITEMS_TOD"){
+    else if ($action == "SALE_DRAGON_ITEMS_TOD"){
         renderSale("DRAGON",$today);
     }
-    if ($action == "SALE_GOAT_ITEMS_TOD"){
+    else if ($action == "SALE_GOAT_ITEMS_TOD"){
         renderSale("GOAT",$today);
     }
-    if ($action == "SALE_HORSE_ITEMS_TOD"){
+    else if ($action == "SALE_HORSE_ITEMS_TOD"){
         renderSale("HORSE",$today);
     }    
-    if ($action == "OCC_RAT_ITEMS_TOD"){
+    else if ($action == "OCC_RAT_ITEMS_TOD"){
         renderOccupancy("RAT");
     }
-    if ($action == "OCC_OX_ITEMS_TOD"){
+    else if ($action == "OCC_OX_ITEMS_TOD"){
         renderOccupancy("OX");
     }
-    if ($action == "OCC_TIGER_ITEMS_TOD"){
+    else if ($action == "OCC_TIGER_ITEMS_TOD"){
         renderOccupancy("TIGER");
     }
-    if ($action == "OCC_HARE_ITEMS_TOD"){
+    else if ($action == "OCC_HARE_ITEMS_TOD"){
         renderOccupancy("HARE");
     }
-    if ($action == "OCC_SNAKE_ITEMS_TOD"){
+    else if ($action == "OCC_SNAKE_ITEMS_TOD"){
         renderOccupancy("SNAKE");
     }
-    if ($action == "OCC_DRAGON_ITEMS_TOD"){
+    else if ($action == "OCC_DRAGON_ITEMS_TOD"){
         renderOccupancy("DRAGON");
     }
-    if ($action == "OCC_GOAT_ITEMS_TOD"){
+    else if ($action == "OCC_GOAT_ITEMS_TOD"){
         renderOccupancy("GOAT");
     }
-    if ($action == "OCC_HORSE_ITEMS_TOD"){
+    else if ($action == "OCC_HORSE_ITEMS_TOD"){
         renderOccupancy("HORSE");
     }
-    if ($action == "ANOMALIES_ITEMS_TOD"){   
+    else if ($action == "ANOMALIES_ITEMS_TOD"){   
         renderAnomaly();
     }
-    if ($action == "PRICEDIFFERENCES_ITEMS_TOD"){
-        renderPriceDifference();
+    else if ($action == "PRICEDIFFERENCES_ITEMS_TOD"){
+        renderPriceDifference();    
+    }
+    else if ($action == "UNSOLD30_ITEMS_TOD"){
+        renderUnsold30();  
+    }
+    else if ($action == "RETURN_ITEMS_YES"){
+        renderReturn($yesterday);
+    }
+    else if ($action == "RETURN_ITEMS_TOD"){
+        renderReturn($today);        
+    }
+    else if ($action == "WASTE_ITEMS_YES"){
+        renderWaste($yesterday);
+    }
+    else if ($action == "WASTE_ITEMS_TOD"){
+        renderWaste($today);        
+    }else{
+        echo "action: ".$action." not found";
     }
 }
 
