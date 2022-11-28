@@ -6,6 +6,7 @@
 // Alert on Transfer request (Push Notification)
 // Generate EmptyRestock based on item WH2 have and WH1 not have
 // KPI By Row
+/*
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
@@ -144,5 +145,5 @@ function getInternalDatabase($base = "MAIN")
 
   GenerateGroupedRestocksByRowAndWarehouseStocks();
 
-
+  */
 ?>

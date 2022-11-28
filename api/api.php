@@ -9588,6 +9588,21 @@ $app->put('/returnrecord',function($request,Response $response) {
 	return $response;
 });
 
+
+$app->delete('/returnrecorditems/{id}', function($request,Response $response){	
+	$id = $request->getAttribute('id');
+	$db = getInternalDatabase();
+
+	$sql = "DELETE FROM RETURNRECORDITEM WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));	
+
+	$result["result"] = "OK";
+	$response = $response->withJson($result);
+	return $response;
+});
+
+
 $app->get('/returnrecordsearch',function($request,Response $response) {
 	$db = getInternalDatabase();
 	$start = $request->getParam('start','');

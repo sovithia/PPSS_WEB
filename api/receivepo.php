@@ -93,6 +93,9 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s" || $author == "PONLEU" )
 		$LOCID = "WH1";
 		
+	if ($LOCID != "WH1" && $LOCID != "WH2")
+		$LOCID = "WH2";
+
 	$USERADD = $author;
 	$DATEADD = $now;
 	$VAT_PERCENT = $vendor["TAX"];

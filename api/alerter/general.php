@@ -332,7 +332,7 @@ function renderStats()
                         <tr>        
                             <td>PriceDifferences -7days</td>
                             <td colspan='2' align='center'>".$d["PRICEDIFFERENCES_ITEMS_CNT_YES"]."</td>
-                            <td align='center'>".$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"]."</td><td>".DLX("ANOMALIES_ITEMS_TOD")."</td>
+                            <td align='center'>".$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"]."</td><td>".DLX("PRICEDIFFERENCES_ITEMS_TOD")."</td>
                             <td width='25%' align='center'>".EV($d["PRICEDIFFERENCES_ITEMS_CNT_YES"],$d["PRICEDIFFERENCES_ITEMS_CNT_TOD"],true)."</td>
                         </tr>
                         <tr>

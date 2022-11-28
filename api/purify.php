@@ -3,7 +3,7 @@
 require_once("functions.php");
 
 
-
+/*
 function purifyAll()
 {
     $db = getDatabase();
@@ -70,4 +70,61 @@ function purifyGroupedPurchases()
     }   
 }
 purifyGroupedPurchases();
+*/
+
+/*
+function difference()
+{
+    $db = getDatabase();
+    $sql = "SELECT PRODUCTID,ONHAND,
+            (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'
+     FROM ICPRODUCT";
+     $req = $db->prepare($sql);
+     $req->execute(array());
+     $items = $req->fetchAll();
+     foreach($items as $item){
+        $sum = $item['WH1'] + $item['WH2'];
+        if ($sum != $item["ONHAND"]){
+            echo $item["PRODUCTID"]." WH1: ".$item['WH1']." WH2:".$item["WH2"]." ONHAND:".$item["ONHAND"]."\n";
+        }
+     }    
+}
+difference();
+*/
+
+//UPDATE ICPRODUCT_SALEUNIT SET DISC = 0.0;
+function repricePack()
+{
+    $db = getDatabase();
+    $sql = "SELECT PRODUCTID,SALEFACTOR,SALEPRICE,DISC  FROM ICPRODUCT_SALEUNIT
+            WHERE PACK_CODE = '3179730012564' OR PACK_CODE = '3179732351517' ";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach($items as $item){
+        $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($item["PRODUCTID"]));
+        $oneData = $req->fetch(PDO::FETCH_ASSOC);
+        
+        echo $item["PRODUCTID"]."\n";
+        $expected = ($oneData["PRICE"] * $item["SALEFACTOR"]) * 1;
+        //if (round($item["SALEPRICE"],2) != round($expected,2)){
+            echo $item["PRODUCTID"].": SALEPRICE :".$item["SALEPRICE"];        
+            echo " EXPECTED: ".$expected."\n";    
+            $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PRODUCTID = ? AND SALEFACTOR = ?";
+            $req = $db->prepare($sql);
+            $req->execute(array($expected,$item["PRODUCTID"],$item["SALEFACTOR"]));
+            //break;
+        //}        
+        //sleep(1);
+    }
+}
+
+
+
+repricePack()
 ?>
+

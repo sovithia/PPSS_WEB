@@ -669,16 +669,18 @@ function GenerateToday($db,$indb,$forceRefresh)
     //*******************************************//	
 	echo "PRICE DIFFERENCES 7Days Back COUNT\n";
 	if (fieldIsNull($indb,"PRICEDIFFERENCES_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {
-		$todayMinusSeven = date('m/d/Y', strtotime('-7 days'))." 00:00:00.000";
-		$sql = "SELECT COUNT(PODETAIL.PRODUCTID) as 'CNT'  
+
+
+		$todayMinusSeven = date('Y-m-d', strtotime('-7 days'))." 00:00:00.000";
+		$sql = "SELECT COUNT(PODETAIL.PRODUCTID) as 'CNT'   
 		FROM PODETAIL,ICPRODUCT	
-		WHERE POSTATUS = 'C' 		
+		WHERE POSTATUS = 'C' 	
+		AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID	
 		AND ICPRODUCT.PPSS_IS_FRESH IS NULL
 		AND  PODETAIL.DATEADD BETWEEN ? AND ? 
 		AND PPSS_WAITING_PRICE <> PPSS_DELIVERED_PRICE";
 		$req = $db->prepare($sql);
-		$req->execute(array($todayMinusSeven,$endToday));
-		
+		$req->execute(array($todayMinusSeven,$endToday));		
 		updateStats($indb,$today,"PRICEDIFFERENCES_ITEMS_CNT_TOD",$req->fetch(PDO::FETCH_ASSOC)['CNT'],$forceRefresh);	
 	}
 
@@ -736,8 +738,8 @@ function GenerateBlankYesterday($indb)
 function GenerateYesterdayFromCache($indb)
 {
 	echo "YESTERDAY FROM CACHE\n";	
-	$today = date('m/d/Y');
-	$yesterday = date('m/d/Y',strtotime("-1 days"));
+	$today = date('Y-m-d');
+	$yesterday = date('Y-m-d',strtotime("-1 days"));
 		
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $indb->prepare($sql);

@@ -151,12 +151,14 @@ function renderItems($items,$type,$message = ""){
         echo "</table>";
     }else if ($type == "6"){
         echo "<table border='1'>
-            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PRICE EXPECTED</td><td>REAL PRICE</td></tr>";
+            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PONUMBER</td><td>RECEIVE_DATE</td><td>PRICE EXPECTED</td><td>REAL PRICE</td></tr>";
         foreach($items as $item){
             echo "<tr>
                     <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
                     <td>".$item["PRODUCTID"]."</td>
                     <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["PONUMBER"]."</td>
+                    <td>".$item["RECEIVE_DATE"]."</td>
                     <td>".round($item["PPSS_WAITING_PRICE"],4)."</td>                    
                     <td>".round($item["PPSS_DELIVERED_PRICE"],4)."</td>                                                          
                 </tr>";
@@ -164,12 +166,14 @@ function renderItems($items,$type,$message = ""){
         echo "</table>";
     }else if ($type == "7"){        
         echo "<table border='1'>
-            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PPSS_WAITING_CALCULATED</td><td>PPSS_WAITING_QUANTITY</td><td>CURRENTONHAND</td><td>ONHAND</td></tr>";
+            <tr><td>IMAGE</td><td>PRODUCTID</td><td>PRODUCTNAME</td><td>PONUMBER</td><td>RECEIVE_DATE</td><td>CALCULATED QTY</td><td>ORDER QTY</td><td>ONHAND AT ORDER</td><td>ONHAND NOW</td></tr>";
         foreach($items as $item){
             echo "<tr>
                     <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
                     <td>".$item["PRODUCTID"]."</td>
                     <td>".$item["PRODUCTNAME"]."</td>
+                    <td>".$item["PONUMBER"]."</td>
+                    <td>".$item["RECEIVE_DATE"]."</td>                                        
                     <td>".$item["PPSS_WAITING_CALCULATED"]."</td>                    
                     <td>".$item["PPSS_WAITING_QUANTITY"]."</td> 
                     <td>".$item["CURRENTONHAND"]."</td>
@@ -718,11 +722,11 @@ function renderPriceDifference()
     $db = getDatabase();
     $indb = getInternalDatabase();
 
-	$todayMinusSeven = date('m/d/Y', strtotime('-7 days'))." 00:00:00.000";
-    $endToday = date('m/d/Y')." 23:59:59.000";
+	$todayMinusSeven = date('Y-m-d', strtotime('-7 days'))." 00:00:00.000";
+    $endToday = date('Y-m-d')." 23:59:59.000";
 	echo "PRICE DIFFERENCES 7Days Back\n";
 	
-		$sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  
+		$sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,RECEIVE_DATE,PONUMBER,PPSS_WAITING_PRICE,PPSS_DELIVERED_PRICE  
 		FROM PODETAIL,ICPRODUCT
 		WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
 		AND ICPRODUCT.PPSS_IS_FRESH IS NULL
@@ -747,7 +751,7 @@ function renderAnomaly()
     $anomalyData = array();
     foreach($anomalies as $anomaly){
 
-        $sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,CURRENTONHAND,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,ONHAND
+        $sql = "SELECT PODETAIL.PRODUCTID,ICPRODUCT.PRODUCTNAME,CURRENTONHAND,PONUMBER,RECEIVE_DATE,PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,ONHAND
                 FROM PODETAIL, ICPRODUCT
                 WHERE PONUMBER = ? 
                 AND PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID

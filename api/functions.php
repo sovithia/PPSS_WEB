@@ -779,11 +779,11 @@ function orderStatistics($barcode,$lightmode = false)
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
-	$sql = "SELECT TOP(1) RECEIVE_DATE, RECEIVE_QTY  FROM PODETAIL WHERE PRODUCTID = ? AND POSTATUS = 'C' ORDER BY DATEADD DESC";
+	$sql = "SELECT TOP(1) RECEIVE_DATE, RECEIVE_QTY,TRANCOST  FROM PODETAIL WHERE PRODUCTID = ? AND POSTATUS = 'C' ORDER BY DATEADD DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
 	$res  = $req->fetch(PDO::FETCH_ASSOC);
-
+	$stats["COST"] = $res["TRANCOST"];
 	if($res == false){
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
