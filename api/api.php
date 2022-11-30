@@ -12477,6 +12477,61 @@ $app->get('/salespeed',function(Request $request,Response $response){
 });
 
 
+
+$app->get('/schedule',function(Request $request,Response $response){
+	$db = getInternalDatabase();
+	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation FROM USER";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$schedules = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["data"] = $schedules;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->put('/schedule/{userid}',function(Request $request,Response $response){
+
+	$userid = $request->getAttribute('userid');
+	$json = json_decode($request->getBody(),true);
+
+	$db = getInternalDatabase();
+	$sql = "UPDATE USER set dayoff = ?, 
+						starttime1 = ?,
+						  endtime1 = ?, 
+						starttime2 = ?,
+						  endtime2 = ?,
+						  location = ?, 
+					  sololocation = ?
+						WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array(
+			$json["DAYOFF"],
+			$json["STARTTIME1"],
+			$json["ENDTIME1"],
+			$json["STARTTIME2"],
+			$json["ENDTIME2"],
+			$json["LOCATION"],
+			$json["SOLOCATION"],
+	));
+
+	$resp = array();
+	$resp["data"] = $data;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+
+// Get All schedule 
+// Update schedule
+// -> DAYOFF, STARTTIME1, ENDTIME1 , STARTTIME1, ENDTIME2 
+// -> TEAM, LOCATION 
+// -> 
+
+
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
 $app->run();

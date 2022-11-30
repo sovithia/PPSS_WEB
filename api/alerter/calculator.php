@@ -4,6 +4,8 @@
 
 require_once("../functions.php");
 
+
+
 if(isset($_GET["BARCODE"]))
 {    
 
