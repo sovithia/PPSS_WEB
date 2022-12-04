@@ -4,10 +4,10 @@ header("refresh: 30;");
 <?php
 
 
-function getInternalDatabase($base = "MAIN")
+function getInternalDatabase()
 {
 	try{		
-		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');		
+		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStoreStats.sqlite');		
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -138,7 +138,7 @@ function DLX($action)
 function renderStats()
 {
     $today = date('Y-m-d');	
-	$db = getInternalDatabase();
+	$db = getInternalDatabase("STATS");
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $db->prepare($sql);
     $req->execute(array($today));
@@ -203,6 +203,13 @@ function renderStats()
                         <td width='10%' align='center'>".EV($d["UNSOLD30_ITEMS_CNT_YES"],$d["UNSOLD30_ITEMS_CNT_TOD"],true)."</td>
                     </tr>
                     
+                    <tr>
+                        <td>No Picture items</td>
+                        <td colspan='2' align='center'>".$d["NOPICTURE_ITEMS_CNT_YES"]."</td>                        
+                        <td align='center'>".$d["NOPICTURE_ITEMS_CNT_TOD"]."</td>
+                        <td align='center'>".DLX("NOPICTURE_ITEMS_TOD")."</td>
+                        <td align='center'>".EV($d["NOPICTURE_ITEMS_CNT_YES"],$d["NOPICTURE_ITEMS_CNT_TOD"],true)."</td>
+                    </tr>
                                 
                     <tr>
                         <td>No Loc items</td>

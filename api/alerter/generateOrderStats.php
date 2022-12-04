@@ -10,6 +10,8 @@ function generateCalculationForDate($day = null)
 	$endToday = $day." 23:59:59.999";		
 
     $db = getDatabase();
+    $indb = getInternalDatabase();
+    $statsdb = getInternalDatabase("STATS");
 
     $sql = "SELECT PONUMBER,PRODUCTID, PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,PURCHASE_DATE,CURRENTONHAND FROM PODETAIL WHERE PURCHASE_DATE BETWEEN ? AND ?";
     $req = $db->prepare($sql);
@@ -18,10 +20,11 @@ function generateCalculationForDate($day = null)
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
 
     foreach($items as $item){
+        echo $item["PRODUCTID"]."\n";
         $stats = orderStatistics($item["PRODUCTID"]);
 
         $sql = "SELECT * FROM ORDERSTATS WHERE PRODUCTID = ? AND PONUMBER = ? AND PURCHASE_DATE = ?";
-        $req = $db->prepare($sql);
+        $req = $indb->prepare($sql);
         $req->execute(array($item["PRODUCTID"],$item["PONUMBER"],$item["PURCHASE_DATE"]));
         $res = $req->fetch(PDO::FETCH_ASSOC);
         if ($res == false){
@@ -44,10 +47,10 @@ function generateCalculationForDate($day = null)
                     ?,?,?,?,?,
                     ?,?,?,?,?,
                     ?)";
-            $req = $db->prepare($sql);
+            $req = $statsdb->prepare($sql);
             $req->execute($params);
         }
     }
 }
 
-generateCalculationForDate();    
+generateCalculationForDate("2022-11-29");    

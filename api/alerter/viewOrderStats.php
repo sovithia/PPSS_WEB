@@ -1,6 +1,19 @@
 <?php 
+    function getInternalDatabase()
+    {
+        try{		
+            $db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStoreStats.sqlite');		
+            $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+            $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+        }
+        catch(Exception $ex)
+        {
+            die("Cannot open database".$ex->getMessage());
+        }
+        return $db;
+    }
 
-$db = getDatabase();
+
     $indb = getInternalDatabase();
 
     $sql = "SELECT * FROM ORDERSTATS ORDER BY PURCHASE_DATE DESC";
@@ -8,7 +21,9 @@ $db = getDatabase();
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
     
-    echo "<table border='1'>
+    echo "
+            <html style='background-color:#009183;color:white'>    
+            <table border='1'>
             <tr><td>IMAGE</td>
             <td>PRODUCTID</td>
             <td>PRODUCTNAME</td>
@@ -31,10 +46,8 @@ $db = getDatabase();
             <td>TOTALSALE</td>
             <td>SELFPROMO QTY</td>
             <td>WASTE QTY</td>
-            <td>PURCHASEDATE</td>
-
+            <td>PURCHASEDATE</td>";
             
-            <td>ONHAND AT ORDER</td><td>ONHAND NOW</td></tr>";
         foreach($items as $item){
             echo "<tr>
                     <td><img style='height:50px' src='http://phnompenhsuperstore.com/api/picture.php?barcode=".$item["PRODUCTID"]."'></td>
@@ -64,5 +77,5 @@ $db = getDatabase();
                                                            
                 </tr>";
         }
-        echo "</table>";        
+        echo "</table></html>";        
 ?>

@@ -72,7 +72,7 @@ function purifyGroupedPurchases()
 purifyGroupedPurchases();
 */
 
-/*
+
 function difference()
 {
     $db = getDatabase();
@@ -86,19 +86,22 @@ function difference()
      foreach($items as $item){
         $sum = $item['WH1'] + $item['WH2'];
         if ($sum != $item["ONHAND"]){
-            echo $item["PRODUCTID"]." WH1: ".$item['WH1']." WH2:".$item["WH2"]." ONHAND:".$item["ONHAND"]."\n";
+            echo $item["PRODUCTID"]." WH1: ".$item['WH1']." WH2:".$item["WH2"]." ONHAND:".$item["ONHAND"]."\n";            
+            $sql = "UPDATE ICPRODUCT SET ONHAND = ? WHERE PRODUCTID = ?";
+            $req = $db->prepare($sql);
+            $req->execute(array($sum,$item["PRODUCTID"]));
         }
      }    
 }
 difference();
-*/
+
 
 //UPDATE ICPRODUCT_SALEUNIT SET DISC = 0.0;
+/*
 function repricePack()
 {
     $db = getDatabase();
-    $sql = "SELECT PRODUCTID,SALEFACTOR,SALEPRICE,DISC  FROM ICPRODUCT_SALEUNIT
-            WHERE PACK_CODE = '3179730012564' OR PACK_CODE = '3179732351517' ";
+    $sql = "SELECT PRODUCTID,SALEFACTOR,SALEPRICE,DISC  FROM ICPRODUCT_SALEUNIT";
     $req = $db->prepare($sql);
     $req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -122,9 +125,9 @@ function repricePack()
         //sleep(1);
     }
 }
+*/
 
 
-
-repricePack()
+//repricePack()
 ?>
 

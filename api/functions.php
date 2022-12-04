@@ -274,6 +274,8 @@ function getInternalDatabase($base = "MAIN")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreTEST.sqlite');
 		else if ($base == "ECOMMERCE")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
+		else if ($base == "STATS")
+			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreStats.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -283,6 +285,8 @@ function getInternalDatabase($base = "MAIN")
 	}
 	return $db;
 }
+
+
 
 function findTmpUser($login,$password)
 {

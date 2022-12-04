@@ -255,6 +255,8 @@ function renderItems($items,$type,$message = ""){
                 </tr>";
         }
         echo "</table>";    
+    }else if ($type == "13"){
+
     }
     
     echo "</center>
@@ -763,6 +765,13 @@ function renderAnomaly()
     renderItems($anomalyData,"7", "Anomaly items<br>");		        	    
 }
 
+function renderNoPicture()
+{
+    $sql = "SELECT PRODUCTID FROM ICPRODUCT";
+    
+    renderItems($items,"7", "No pictures items<br>");		        	    
+}
+
 function render($action){
     $today = date('Y-m-d');	
     $yesterday = date('Y-m-d',strtotime("-1 days"));
@@ -936,8 +945,12 @@ function render($action){
         renderWaste($yesterday);
     }
     else if ($action == "WASTE_ITEMS_TOD"){
-        renderWaste($today);        
-    }else{
+        renderWaste($today);                
+    }
+    else if ($action == "NOPICTURE_ITEMS_TOD"){
+        renderNoPicture($today);                
+    }    
+    else{
         echo "action: ".$action." not found";
     }
 }
