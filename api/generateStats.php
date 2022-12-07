@@ -142,6 +142,7 @@ function getSaleByTeamCount($start,$end,$team)
 
 function Generate()
 {
+	error_log("Generating at ".date('l jS \of F Y h:i:s A'));
 	$db = getDatabase();
 	$indb = getInternalDatabase();
 	$statsdb = getInternalDatabase("STATS");
@@ -161,7 +162,7 @@ function Generate()
 		$req = $statsdb->prepare($sql);
 		$req->execute(array());
 		$count = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-		if ($count == 0){ // FIRST INSERT				
+		if ($count == 1){ // FIRST INSERT				
 			GenerateBlankYesterday($statsdb);
 			GenerateToday($db,$indb,$statsdb,false);
 		}else{			

@@ -3935,7 +3935,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 			
 		if ($res["LOCID"] == "WH1")
-			$status = 'RECEIVEDFORTRANSFERFRESH';
+			$status = "RECEIVEDFRESH";	//$status = 'RECEIVEDFORTRANSFERFRESH';			
 		else if ($res["LOCID"] == "WH2")
 			$status = 'RECEIVEDFORTRANSFER';
 		else 
@@ -3971,8 +3971,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
-		$res = $req->fetch(PDO::FETCH_ASSOC);		
-		$status = "RECEIVEDFORTRANSFERFRESH";
+		$res = $req->fetch(PDO::FETCH_ASSOC);	
+		$status = "RECEIVEDFRESH";	
+		//$status = "RECEIVEDFORTRANSFERFRESH";
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = :status, RECEIVER_USER = :author
 		WHERE ID = :identifier";			
 		   $req = $db->prepare($sql);			
@@ -12111,84 +12112,8 @@ $app->get('/pushone/{userid}',function(Request $request,Response $response){
 	return $response;
 });
 
-$app->get('/promotion/{productid}', function(Request $request,Response $response){
-	$db = getDatabase();
-	$productid = $request->getAttribute('productid');
-	$data = array();
 
-	$sql="SELECT PRODUCTNAME,
-	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
-	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
-	COST,PRICE
-	FROM dbo.ICPRODUCT  
-	WHERE BARCODE = ? OR OTHERCODE = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($productid,$productid));
-	$item = $req->fetch(PDO::FETCH_ASSOC);
-	if ($item != false){
-		$data["PRODUCTNAME"] = $item["PRODUCTNAME"];
-		$data["WH1"] = $item["WH1"];
-		$data["WH2"] = $item["WH2"];
-		$data["COST"] = $item["COST"];
-		$data["PRICE"] = $item["PRICE"];
 
-	}
-	$db = getDatabase();
-	$sql = "SELECT PROSTARTDATE,PROENDDATE,PROPRICE, FROM ICGROUPPRICE WHERE PRODUCTID = ? AND PROENDDATE > GETDATE() ";
-	$req = $db->prepare($sql);
-	$res = $req->execute(array($productid));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	
-	if ($res != false)
-	{
-		$data["TYPE"] = "AMOUNT";
-		$data["START"] = $res["PROSTARTDATE"];
-		$data["END"] = $res["PROENDDATE"];
-		$data["VALUE"] = $item["PRICE"] - $res["PROPRICE"];
-	}
-	else{
-		$sql = "SELECT TOP(1)DISCOUNT_VALUE,DATEFROM,DATETO  FROM ICNEWPROMOTION WHERE DISCOUNT_TYPE = 'DISCOUNT(%)' AND PRODUCTID = ? AND DATETO > GETDATE() ORDER BY DATETO DESC";  
-		$req = $db->prepare($sql);		
-		$req->execute(array($productid));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res != false){
-			$data["TYPE"] = "PERCENT";
-			$data["START"] = $res["DATEFROM"];
-			$data["END"] = $res["DATETO"];
-			$data["VALUE"] = "DISCOUNT_VALUE";
-
-		}else{
-			$data["TYPE"] = "N/A";
-			$data["START"] = "N/A";
-			$data["END"] = "N/A";
-			$data["VALUE"] = "N/A";
-		}
-	}		
-	$resp["result"] = "OK";	
-	$response = $response->withJson($resp);
-	return $response;			
-});
-
-$app->post('/promotion',function(Request $request,Response $response){
-	$db = getDatabase();
-	$json = json_decode($request->getBody(),true);
-
-	$productid = $json["PRODUCTID"];
-	$value = $json["VALUE"];
-	$start = 	$json["START"];
-	$end = 	$json["END"];
-	
-	$author = $json["AUTHOR"];
-	
-	if ($json["TYPE"] == "AMOUNT"){				
-		attachAmountPromotion($productid,$value,$start,$end,$author);
-	}else if ($json["TYPE"] == "PERCENT"){
-		attachPromotion($productid,$value,$start,$end,$author);
-	}	
-	$resp["result"] = "OK";	
-	$response = $response->withJson($resp);
-	return $response;			
-});
 
 $app->delete('/promotion/{productid}',function(Request $request,Response $response){
 	$db = getDatabase();
@@ -12377,9 +12302,7 @@ $app->get('/grade',function(Request $request,Response $response){
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$CURRENTMONTHTRANSFERS  += $res["COUNT"] ?? "0";		
 		}	
-	}
-
-		
+	}	
 	//- Number of itemCode Transfered
 	$data["LOCATIONS"] = $user["location"] ?? "";
 	
@@ -12524,12 +12447,150 @@ $app->put('/schedule/{userid}',function(Request $request,Response $response){
 	return $response;			
 });
 
+// PROMOTION
+$app->get('/promotion',function(Request $request,Response $response){
+	$json = json_decode($request->getBody(),true);	
+	$db=getDatabase();
 
-// Get All schedule 
-// Update schedule
-// -> DAYOFF, STARTTIME1, ENDTIME1 , STARTTIME1, ENDTIME2 
-// -> TEAM, LOCATION 
-// -> 
+
+	$sql = "SELECT DATEFROM,DATETO,ICNEWPROMOTION.PRODUCTID,DISCOUNT_VALUE,ICNEWPROMOTION.USERADD,
+			(SELECT TOP(1) PPSS_DELIVERED_EXPIRE FROM PODETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY RECEIVE_DATE DESC) as 'EXPIRATION',
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+			(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'
+			FROM ICNEWPROMOTION,ICPRODUCT
+			WHERE ICNEWPROMOTION.PRODUCTID  = ICPRODUCT.PRODUCTID";		
+	$req = $db->prepare($sql);
+
+	$req->execute(array());
+	$promotions = $req->fetchAll(PDO::FETCH_ASSOC);	
+	$newData = array();
+	foreach($promotions as $promotion){
+		$packs = array();
+		$sql = "SELECT SALEFACTOR,SALEPRICE,PACK_CODE  FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($promotion["PRODUCTID"]));	
+		$promotion["PACKS"] = $req->fetchAll(PDO::FETCH_ASSOC);
+		array_push($newData, $promotion);
+	}
+
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->post('/promotion',function(Request $request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$indb = getInternalDatabase();
+	$db = getDatabase();
+
+	// ATTACH ITEM PROMOTION 
+	$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$productname = $req->fetch(PDO::FETCH_ASSOC)["PRODUCTNAME"];
+	$params = array(
+		$json["START"],$json["END"],$json["PRODUCTID"],$productname,$json["AUTHOR"]
+	);
+	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,PCNAME,USERADD,DATEADD ) 
+										VALUES (?,?,'Per Item',?,?,'1.0','DISCOUNT(%)','APPLICATION',?,GETDATE()) ";
+
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	
+	// LOOP ON PACK
+	$sql = "SELECT * ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$packs = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($packs as $pack){
+
+		$sql = "INSERT INTO PACKPROMO (PACKCODE,END) VALUES (?,?)";
+		$req = $indb->prepare($sql);
+		$req->execute(array($pack["PACK_CODE"],$json["END"]));
+	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $newData;
+	$response = $response->withJson($resp);
+});
+
+
+$app->post('/amountpromotion',function(Request $request,Response $response){
+	$db = getDatabase();
+	$json = json_decode($request->getBody(),true);
+
+	$productid = $json["PRODUCTID"];
+	$value = $json["VALUE"];
+	$start = 	$json["START"];
+	$end = 	$json["END"];
+	
+	$author = $json["AUTHOR"];		
+	attachAmountPromotion($productid,$value,$start,$end,$author);	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->get('/promotion/{productid}', function(Request $request,Response $response){
+	$db = getDatabase();
+	$productid = $request->getAttribute('productid');
+	$data = array();
+
+	$sql="SELECT PRODUCTNAME,
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+	COST,PRICE
+	FROM dbo.ICPRODUCT  
+	WHERE BARCODE = ? OR OTHERCODE = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid,$productid));
+	$item = $req->fetch(PDO::FETCH_ASSOC);
+	if ($item != false){
+		$data["PRODUCTNAME"] = $item["PRODUCTNAME"];
+		$data["WH1"] = $item["WH1"];
+		$data["WH2"] = $item["WH2"];
+		$data["COST"] = $item["COST"];
+		$data["PRICE"] = $item["PRICE"];
+
+	}
+	$db = getDatabase();
+	$sql = "SELECT PROSTARTDATE,PROENDDATE,PROPRICE, FROM ICGROUPPRICE WHERE PRODUCTID = ? AND PROENDDATE > GETDATE() ";
+	$req = $db->prepare($sql);
+	$res = $req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	
+	if ($res != false)
+	{
+		$data["TYPE"] = "AMOUNT";
+		$data["START"] = $res["PROSTARTDATE"];
+		$data["END"] = $res["PROENDDATE"];
+		$data["VALUE"] = $item["PRICE"] - $res["PROPRICE"];
+	}
+	else{
+		$sql = "SELECT TOP(1)DISCOUNT_VALUE,DATEFROM,DATETO  FROM ICNEWPROMOTION WHERE DISCOUNT_TYPE = 'DISCOUNT(%)' AND PRODUCTID = ? AND DATETO > GETDATE() ORDER BY DATETO DESC";  
+		$req = $db->prepare($sql);		
+		$req->execute(array($productid));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res != false){
+			$data["TYPE"] = "PERCENT";
+			$data["START"] = $res["DATEFROM"];
+			$data["END"] = $res["DATETO"];
+			$data["VALUE"] = "DISCOUNT_VALUE";
+
+		}else{
+			$data["TYPE"] = "N/A";
+			$data["START"] = "N/A";
+			$data["END"] = "N/A";
+			$data["VALUE"] = "N/A";
+		}
+	}		
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 
 
 ini_set('max_execution_time', 0);
