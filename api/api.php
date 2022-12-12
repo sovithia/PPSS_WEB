@@ -12454,6 +12454,37 @@ $app->put('/schedule/{userid}',function(Request $request,Response $response){
 	return $response;			
 });
 
+$app->get('/team',function(Request $request,Response $response){
+	$db = getInternalDatabase();
+	$sql = "SELECT * FROM TEAM";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$teams = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["data"] = $teams;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->put('/team/{id}',function(Request $request,Response $response){
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$id = $request->getAttribute('id');
+
+	$sql = "UPDATE TEAM SET LOCATIONS = ? WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["LOCATIONS"],$id));
+
+	$resp = array();
+	$resp["data"] = $teams;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+
 // PROMOTION
 $app->get('/promotion',function(Request $request,Response $response){
 	$json = json_decode($request->getBody(),true);	
