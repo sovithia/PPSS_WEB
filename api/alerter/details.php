@@ -256,7 +256,15 @@ function renderItems($items,$type,$message = ""){
         }
         echo "</table>";    
     }else if ($type == "13"){
-
+        echo "<table border='1'>
+        <tr><td>PRODUCTID</td><td>PRODUCTNAME</td></tr>";
+        foreach($items as $item){
+            echo "<tr>                    
+                    <td>".$item["PRODUCTID"]."</td>
+                    <td>".$item["PRODUCTNAME"]."</td>                    
+                </tr>";
+        }
+        echo "</table>";    
     }
     
     echo "</center>
@@ -767,9 +775,20 @@ function renderAnomaly()
 
 function renderNoPicture()
 {
-    $sql = "SELECT PRODUCTID FROM ICPRODUCT";
-    
-    renderItems($items,"7", "No pictures items<br>");		        	    
+    $db = getDatabase();
+    $sql = "SELECT PRODUCTID,PRODUCTNAME FROM ICPRODUCT WHERE PICTURE_PATH = ''";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+    /*
+    $missing = array();
+    foreach($items as $item){
+        if (!file_exists("/Volumes/Image/".$item["PRODUCTID"].".jpg")){
+            array_push($missing,$item);
+        }
+    }
+    */
+    renderItems($items,"13", "No pictures items<br>");		        	    
 }
 
 function render($action){

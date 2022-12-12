@@ -1,6 +1,6 @@
 <?php 
 
-require_once("../functions.php");
+require_once("functions.php");
 
 function generateCalculationForDate($day = null)
 {
@@ -13,7 +13,11 @@ function generateCalculationForDate($day = null)
     $indb = getInternalDatabase();
     $statsdb = getInternalDatabase("STATS");
 
-    $sql = "SELECT PONUMBER,PRODUCTID, PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,PURCHASE_DATE,CURRENTONHAND FROM PODETAIL WHERE PURCHASE_DATE BETWEEN ? AND ?";
+    $sql = "SELECT PONUMBER,PODETAIL.PRODUCTID, PPSS_WAITING_CALCULATED,PPSS_WAITING_QUANTITY,PURCHASE_DATE,CURRENTONHAND 
+            FROM PODETAIL,ICPRODUCT 
+            WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID 
+            AND PPSS_IS_FRESH IS NULL
+            AND PURCHASE_DATE BETWEEN ? AND ?";
     $req = $db->prepare($sql);
     $req->execute(array($startToday,$endToday));
 
@@ -53,4 +57,4 @@ function generateCalculationForDate($day = null)
     }
 }
 
-generateCalculationForDate("2022-11-29");    
+generateCalculationForDate("2022-12-8");    

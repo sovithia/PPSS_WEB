@@ -87,7 +87,7 @@ function difference()
         $sum = $item['WH1'] + $item['WH2'];
         if ($sum != $item["ONHAND"]){
             echo $item["PRODUCTID"]." WH1: ".$item['WH1']." WH2:".$item["WH2"]." ONHAND:".$item["ONHAND"]."\n";            
-            $sql = "UPDATE ICPRODUCT SET ONHAND = ? WHERE PRODUCTID = ?";
+            $sql = "UPDATE ICPRODUCT SET ONHAND = ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
             $req = $db->prepare($sql);
             $req->execute(array($sum,$item["PRODUCTID"]));
         }

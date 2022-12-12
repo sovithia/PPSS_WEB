@@ -3635,8 +3635,15 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					$res = $req->fetch();
 					$TRANDISC = $res["TRANDISC"];		
 
-					if (floatval($value["PPSS_DELIVERED_PRICE"]) > floatval($res["PPSS_WAITING_PRICE"]))
-						$HaveAnomaly  = true;					
+					if (floatval($value["PPSS_DELIVERED_PRICE"]) <> floatval($res["PPSS_WAITING_PRICE"])){						
+						$sql2 = "SELECT PPSS_IS_FRESH FROM ICPRODUCT WHERE PRODUCTID = ?";
+						$req2 = $dbBLUE->prepare($sql2);
+						$req2->execute(array($key));						
+						$isFresh = $req2->fetch(PDO::FETCH_ASSOC);
+						if ($isFresh == null)
+							$HaveAnomaly  = true;	
+					}
+										
 
 					//if (!isset($value["PPSS_DELIVERED_QUANTITY"]) ||  $value["PPSS_DELIVERED_QUANTITY"] == null)				
 					//	$value["PPSS_DELIVERED_QUANTITY"] = "0";
