@@ -12554,6 +12554,19 @@ $app->post('/promotion',function(Request $request,Response $response){
 	$response = $response->withJson($resp);
 });
 
+$app->delete('/promotion',function(Request $request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$sql = "DELETE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND DATEFROM = ? AND DATETO = ?";
+	$req = $db->prepare($sql);	
+	$req->execute(array($json["PRODUCTID"]),$json["DATEFROM"],$json["DATETO"]);
+	$resp = array();
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 
 $app->post('/amountpromotion',function(Request $request,Response $response){
 	$db = getDatabase();
@@ -12627,6 +12640,59 @@ $app->get('/promotion/{productid}', function(Request $request,Response $response
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;			
+});
+
+// CREATED, APPROVED, DENIED
+$app->get('/restrequestpending', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = 'CREATED'";
+	$req = $indb->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp["data"] = $items;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->get('/restrequestmine/{creator}', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$creator = $request->getAttribute('creator');
+	$sql = "SELECT * FROM RESTREQUEST WHERE CREATOR = ? ORDER BY CREATED DESC";
+	$req = $indb->prepare($sql);
+	$req->execute(array($creator));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
+
+	$resp["data"] = $items;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->post('/restrequest', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);
+	$sql = "INSERT INTO RESTREQUEST (moment,reason,status,creator) VALUES (?,?,?,?)";
+	$req = $indb->prepare($sql);
+	$req->execute($json["MOMENT"],$json["REASON"],'CREATOR',$json["CREATOR"]);
+	
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->put('/restrequest/{id}', function(Request $request,Response $response){
+	$json = json_decode($request->getBody(),true);
+	$id = $request->getAttribute('id');
+	$indb = getInternalDatabase();
+	$sql = "UPDATE RESTREQUEST set STATUS = ?  WHERE ID = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($json["STATUS"],$id));
+
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;				
 });
 
 
