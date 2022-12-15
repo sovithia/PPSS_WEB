@@ -19,6 +19,6 @@ function detachPromotion()
     $req->execute(array());
     echo date("Y-m-d") .": Detaching promotion\n";
 }
-detachPromotion();
+//detachPromotion();
 //echo "coucou";
 ?>

@@ -247,6 +247,10 @@ function getDatabase($name = "MAIN")
 			else 
 				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 		}
+		else if ($name == "CASHIER")
+		{
+			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
+		}
 		else if ($name == "TRAINING")
 		{
 			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue');
@@ -1255,17 +1259,17 @@ function calculatePenalty($barcode, $expiration,$type = null){
 			$data["end"] = $today->format('Y-m-d');
 			$data["duration"] = "30";
 			$data["status"] = "OK";
-			if ($type == "CLEARANCELOWDAMAGEDPROMOTION")			
+			if ($type == "DAMAGE(20)")			
 				$data["percentpromo"] = "20";
-			else if($type == "CLEARANCEMEDIUMDAMAGEDPROMOTION")					
+			else if($type == "DAMAGE(50)")					
 				$data["percentpromo"] = "50";
-			else if($type == "CLEARANCEHIGHDAMAGEDPROMOTION")		
+			else if($type == "DAMAGE(70)")		
 				$data["percentpromo"] = "70";
-			else if ($type == "CLEARANCETOOMUCHPROMOTION")
+			else if ($type == "SLOWSALE(20)")
 				$data["percentpromo"] = "20";
-			else if ($type == "CLEARANCELOWSELLPROMOTION")
+			else if ($type == "SLOWSALE(50)")
 				$data["percentpromo"] = "50";
-			else if ($type == "CLEARANCEDESTOCKPROMOTION")
+			else if ($type == "SLOWSALE(70)")
 				$data["percentpromo"] = "70";	 		
 	 		return $data;
 		}	
@@ -1672,5 +1676,21 @@ function getSaleByTeam($start,$end,$team)
 }
 
 
+function getProductOccupancy($barcode){
+	$db = getDatabase();
+	$sql = "select isnull(sum(DATEDIFF(day,LASTRECEIVE,GETDATE())),0) as 'CNT'
+			FROM ICLOCATION
+			WHERE LOCID = 'WH1' 
+			AND LOCONHAND > 0
+			AND DATEDIFF(day,LASTRECEIVE,GETDATE()) > 30
+			AND PRODUCTID  = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+	if ($data != false)
+		return $data["CNT"];
+	else
+		return 0;
+}
 
 ?>
