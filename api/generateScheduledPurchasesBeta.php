@@ -120,9 +120,8 @@ function GenerateDailyGroupedPurchases()
 			
 			if ($new == true){
 				$stats = orderStatistics($item["PRODUCTID"]);						
-				echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
-				/*
-				
+				//echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
+								
 				$sql = "INSERT INTO ITEMREQUEST (
 				PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
 				LASTRECEIVEQUANTITY,MOMENTONHAND,TOTALWASTEQUANTITY,TOTALPROMOTIONQUANTITY,SALESINCELASTRECEIVE,
@@ -137,30 +136,33 @@ function GenerateDailyGroupedPurchases()
 				$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$res["TRANDISC"],$stats["LASTRCVDATE"],
 				$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],
 				$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
-				$stats["FINALQTY"],$stats["DECISION"],'AUTOMATIC',$theID));
-				*/
-				/*
-				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));
-				echo "Inserting non-existent: ".$item["PRODUCTID"]."\n";
-				*/
+				$stats["FINALQTY"],$stats["DECISION"],'ALGO',$theID));
+				
+				
 			}
 			else
 			{
-				echo "Existing item ".$item["PRODUCTID"]."\n";
-				/*
-				$sql = "UPDATE ITEMREQUEST SET REQUESTTYPE = 'BOTH'	WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+				//echo "Existing item ".$item["PRODUCTID"]."\n";
+				$stats = orderStatistics($item["PRODUCTID"]);						
+				$sql = "UPDATE ITEMREQUEST SET REQUESTTYPE = 'ALGO',
+				REQUEST_QUANTITY = ?,LASTRECEIVEDATE = ?,LASTRECEIVEQUANTITY = ?,MOMENTONHAND = ?,TOTALWASTEQUANTITY = ?,
+				TOTALPROMOTIONQUANTITY = ?,SALESINCELASTRECEIVE = ?,SALE70PERCENTDAYS = ?,LASTSALEDAY = ?,TOTALORDERTIME = ?,
+				TOTALRECEIVE = ?,TOTALSALE = ?, CALCULATED_QUANTITY = ? ,DECISION = ? 				
+				WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($item["PRODUCTID"],$theID));
+				$req->execute(array(
+				$stats["FINALQTY"], $stats["LASTRCVDATE"],$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],
+				$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],
+				$stats["TOTALRECEIVE"],$stats["TOTALSALE"],$stats["FINALQTY"],$stats["DECISION"],					
+				$item["PRODUCTID"],$theID));
 				echo "Updating existent: ".$item["PRODUCTID"]."\n";
-				*/
+				
 			}
 
-			//$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
-			//$req = $dbBlue->prepare($sql);
-			//$req->execute(array($item["PRODUCTID"]));	
-			//sleep(1);	
+			$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));	
+			sleep(1);	
 		}
 		//break;		
 	}
