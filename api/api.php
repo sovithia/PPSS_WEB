@@ -1637,7 +1637,7 @@ $app->get('/KPICategories',function(Request $request,Response $response) {
 	return $response;	
 });
 function clientToExclude(){
-	return "'1111','200-100','200-101','2222','6666','L0026'";
+	return "'1111','200-100','200-101','200-103','2222','6666','L0026'";
 }
 
 $app->get('/KPISales',function(Request $request,Response $response) {   
@@ -4696,9 +4696,8 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);	
+	$items = json_decode($json["ITEMS"],true);
 
-
-	error_log($json["TYPE"]);
 	$db->beginTransaction();    
 	if($json["TYPE"] == "PURCHASE" || $json["TYPE"] == "RESTOCK") {		
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,REQUESTEE) VALUES(?,?,'AUTO')";		
@@ -4712,6 +4711,37 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$req->execute(array("DEMAND",$json["REQUESTER"]));
 	}
 	else if ($json["TYPE"] == "TRANSFER"){
+		// CHECK IF THERE IS NO ITEM LOCATION MIX
+		/*
+		$firstStoreBin = null;
+		$firstProduct = null;
+		foreach($items as $item){
+				$sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$data = $req->fetch(PDO::FETCH_ASSOC);				
+				if ($data != false){
+
+					$storebin = explode($data["STORBIN"],'-')[0];
+					if ($firstProduct == null){
+						$firstStoreBin = explode($storebin,'-')[0];
+						$firstProduct = $item["PRODUCTID"];					
+					}else{
+						if ($firstStoreBin != $storebin){
+							$data["result"] = "KO";
+							$data["message"] = "items with location mix: ".$firstProduct.":".$firstStoreBin."|".$item["PRODUCTID"].":".$storebin;
+							$response = $response->withJson($data);
+							return $response;
+						}
+					}
+				}else{
+					if ($firstProduct == null){
+						$firstStoreBin = null;
+						$firstProduct = $item["PRODUCTID"];
+					}
+				}												
+		}
+		*/
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES(?,?,?)";
 		$req = $db->prepare($sql);
 		if (isset($json["LOCATION"]))
@@ -4749,7 +4779,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	$imageData = base64_decode($json["REQUESTERSIGNATURE"]);
 	file_put_contents("./img/requestaction/R" .$lastID.".png" , $imageData);
 
-	$items = json_decode($json["ITEMS"],true);
+	
 
 	if (count($items) == 0)
 	{
@@ -7812,7 +7842,8 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 		}else{
 			$item["WH2"] = "";
 			$item["STOREBIN2"] = "";	
-		}		
+		}	
+		$item["OCCUPANCY"] = getProductOccupancy($barcode);		
 	}
 	else
 	{
@@ -7832,6 +7863,8 @@ $app->get('/selfpromotionitemstats',function(Request $request,Response $response
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
 			// PICTURE PACK
 			$result["ISPACK"] = "PACK";
+			// OCCUPANCY
+			$item["OCCUPANCY"] = getProductOccupancy($packInfo["PRODUCTID"]);	
 			$item = $result; 
 
 			$resp["result"] = "OK";
@@ -8002,6 +8035,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			$item["SOLDINPERIOD4"] = $res["QTY"];
 		}
+		$item["OCCUPANCY"] = getProductOccupancy($item["PRODUCTID"]);
 		array_push($newItems,$item);
 	}
 
@@ -12558,7 +12592,7 @@ $app->delete('/promotion',function(Request $request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	$sql = "DELETE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND DATEFROM = ? AND DATETO = ?";
 	$req = $db->prepare($sql);	
-	$req->execute(array($json["PRODUCTID"]),$json["DATEFROM"],$json["DATETO"]);
+	$req->execute(array($json["PRODUCTID"]),$json["START"],$json["END"]);
 	$resp = array();
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
@@ -12695,6 +12729,23 @@ $app->put('/restrequest/{id}', function(Request $request,Response $response){
 	return $response;				
 });
 
+$app->get('/vendorautoitem/{id}', function(Request $request,Response $response){
+	$id = $request->getAttribute('id');
+	$db = getDatabase();
+	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE VENDID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$data = array();
+	foreach($items as $item){
+		$stats = orderStatistics($item["PRODUCTID"]);
+		array_push($data,$stats);		
+	}	
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;				
+});
 
 
 ini_set('max_execution_time', 0);
