@@ -125,8 +125,11 @@ function initialize()
 }
 
 
-//go();
-initialize();
+if ($argc > 1 && $argv[1] == "CROCODILE")
+	go();
+else
+	error_log("WARNING !!! foodpanda go attempt");
+//initialize();
 
 
 ?>

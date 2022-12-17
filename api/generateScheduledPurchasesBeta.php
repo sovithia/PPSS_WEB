@@ -97,7 +97,11 @@ function GenerateDailyGroupedPurchases()
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
-
+			if ($res == false){
+				$TRANDISC = 0;
+			}else{
+				$TRANDISC = $res["TRANDISC"];
+			}
 
 			$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $dbBlue->prepare($sql);
@@ -116,11 +120,12 @@ function GenerateDailyGroupedPurchases()
 				else 
 					$TRANCOST = $res["TRANCOST"];
 			}
-				
 			
 			if ($new == true){
-				$stats = orderStatistics($item["PRODUCTID"]);						
-				//echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
+				$stats = orderStatistics($item["PRODUCTID"]);	
+				if($stats["DECISION"] == "TOOEARLY")
+					continue;				
+				echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
 								
 				$sql = "INSERT INTO ITEMREQUEST (
 				PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
@@ -133,7 +138,7 @@ function GenerateDailyGroupedPurchases()
 						?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array(
-				$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$res["TRANDISC"],$stats["LASTRCVDATE"],
+				$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$TRANDISC,$stats["LASTRCVDATE"],
 				$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],
 				$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
 				$stats["FINALQTY"],$stats["DECISION"],'ALGO',$theID));
@@ -142,8 +147,12 @@ function GenerateDailyGroupedPurchases()
 			}
 			else
 			{
+				echo "Already exists: ".$item["PRODUCTID"]."\n";
 				//echo "Existing item ".$item["PRODUCTID"]."\n";
-				$stats = orderStatistics($item["PRODUCTID"]);						
+				/*
+				$stats = orderStatistics($item["PRODUCTID"]);
+				if($stats["DECISION"] == "TOOEARLY")
+					continue;										
 				$sql = "UPDATE ITEMREQUEST SET REQUESTTYPE = 'ALGO',
 				REQUEST_QUANTITY = ?,LASTRECEIVEDATE = ?,LASTRECEIVEQUANTITY = ?,MOMENTONHAND = ?,TOTALWASTEQUANTITY = ?,
 				TOTALPROMOTIONQUANTITY = ?,SALESINCELASTRECEIVE = ?,SALE70PERCENTDAYS = ?,LASTSALEDAY = ?,TOTALORDERTIME = ?,
@@ -156,7 +165,7 @@ function GenerateDailyGroupedPurchases()
 				$stats["TOTALRECEIVE"],$stats["TOTALSALE"],$stats["FINALQTY"],$stats["DECISION"],					
 				$item["PRODUCTID"],$theID));
 				echo "Updating existent: ".$item["PRODUCTID"]."\n";
-				
+				*/
 			}
 
 			$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
@@ -168,6 +177,10 @@ function GenerateDailyGroupedPurchases()
 	}
 }
 
-//GenerateDailyGroupedPurchases();
+
+if ($argc > 1 && $argv[1] == "CROCODILE")
+	GenerateDailyGroupedPurchases();
+else
+	error_log("WARNING !!! generateScheduledPurchases attempt");
 
 ?>
