@@ -817,6 +817,11 @@ function GenerateYesterdayFromCache($indb)
 
 }
 
-
+if ($argc > 1 && $argv[1] == "CROCODILE")
 Generate();
+else
+	error_log("WARNING !!! generate stats attempt");
+
+
+
 ?>

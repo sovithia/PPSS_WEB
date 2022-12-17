@@ -111,24 +111,7 @@ function GenerateDailyGroupedPurchases()
 				
 			
 			if ($new == true){
-				/*
-				$stats = orderStatistics($item["PRODUCTID"]);						
-				$sql = "INSERT INTO ITEMREQUEST (
-				PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
-				LASTRECEIVEQUANTITY,MOMENTONHAND,TOTALWASTEQUANTITY,TOTALPROMOTIONQUANTITY,SALESINCELASTRECEIVE,
-				SALE70PERCENTDAYS,LASTSALEDAY,TOTALORDERTIME,TOTALRECEIVE,TOTALSALE,
-				CALCULATED_QUANTITY,DECISION,REQUESTTYPE,ITEMREQUESTACTION_ID) 
-				VALUES (?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?,?,
-						?,?,?,?)";
-				$req = $db->prepare($sql);
-				$req->execute(array(
-				$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$res["TRANDISC"],$stats["LASTRCVDATE"],
-				$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],
-				$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
-				$stats["FINALQTY"],$stats["DECISION"],'AUTOMATIC',$theID));
-				*/
+				
 				$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));
@@ -151,9 +134,9 @@ function GenerateDailyGroupedPurchases()
 	}
 }
 
-
-
-
-GenerateDailyGroupedPurchases();
+if ($argc > 1 && $argv[1] == "CROCODILE")
+	GenerateDailyGroupedPurchases();
+else
+	error_log("WARNING !!! generateScheduledPurchases attempt");
 
 ?>

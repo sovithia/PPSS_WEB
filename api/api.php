@@ -3081,6 +3081,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	// CHECK IF ITEM IS SAME VENDOR
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
+	$ignoreSpecial = false;
 	
 	$json = json_decode($request->getBody(),true);	
 	$userid = $json["USERID"];	
@@ -3106,8 +3107,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	}
 	$message = "";
 	foreach($items as $item)
-	{
-		error_log($item["PRODUCTID"]);
+	{		
 		updateCost($item["PRODUCTID"]);
 
 		if (!isset($item["TAX"]))
@@ -3133,7 +3133,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$specialqty = $item["SPECIALQTY"] ?? "";
 		
 		$stats = orderStatistics($item["PRODUCTID"],true);		
-		error_log("-");
+		
 		//if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
 		//{
 		//	$message .= "\n".$item["PRODUCTID"]." Not Added:".$decision;
@@ -3176,7 +3176,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		}
 		$item["DECISION"] = $stats["DECISION"] ?? "";
 
-		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0")
+		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0" && $ignoreSpecial == false)
 			$QUANTITY = $item["SPECIALQTY"];
 		else
 			$QUANTITY = $item["ALGOQTY"];
@@ -3798,7 +3798,9 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}	
 	
 		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
-				WHERE ID = :identifier";			
+				WHERE ID = :identifier";		
+		//$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'TOCHECK', TRANSFERER_USER = :author 
+		//			WHERE ID = :identifier";		
 		$req = $db->prepare($sql);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);					
@@ -3807,6 +3809,19 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		pictureRecord($json["SIGNATURE"],"TR",$json["IDENTIFIER"]);
 		$data["result"] = "OK";
 
+	}
+	else if ($json["ACTIONTYPE"] == "CHK"){
+		$sql = "UPDATE SUPPLY_RECORD SET 
+					   CHECKER_USER = :author,
+					   STATUS = 'RECEIVED' 
+					   WHERE ID = :identifier";	
+		$req = $db->prepare($sql);
+		$image = base64_decode($json["SIGNATURE"]);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);		
+		$req->execute();
+		pictureRecord($json["SIGNATURE"],"CHK",$json["IDENTIFIER"]);
+		$data["result"] = "OK";
 	}
 	else if ($json["ACTIONTYPE"] == "TRF"){
 		// AUTO TRANSFER ITEMS TO TRANSFERPOOL
@@ -4711,8 +4726,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$req->execute(array("DEMAND",$json["REQUESTER"]));
 	}
 	else if ($json["TYPE"] == "TRANSFER"){
-		// CHECK IF THERE IS NO ITEM LOCATION MIX
-		/*
+		/* 		
 		$firstStoreBin = null;
 		$firstProduct = null;
 		foreach($items as $item){
@@ -4722,12 +4736,12 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				$data = $req->fetch(PDO::FETCH_ASSOC);				
 				if ($data != false){
 
-					$storebin = explode($data["STORBIN"],'-')[0];
+					$storebin = $data["STORBIN"];
 					if ($firstProduct == null){
-						$firstStoreBin = explode($storebin,'-')[0];
+						$firstStoreBin = $storebin; 
 						$firstProduct = $item["PRODUCTID"];					
 					}else{
-						if ($firstStoreBin != $storebin){
+						if (!LocationSameTeam($firstStoreBin,$storebin)){
 							$data["result"] = "KO";
 							$data["message"] = "items with location mix: ".$firstProduct.":".$firstStoreBin."|".$item["PRODUCTID"].":".$storebin;
 							$response = $response->withJson($data);
@@ -4742,6 +4756,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 				}												
 		}
 		*/
+		
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES(?,?,?)";
 		$req = $db->prepare($sql);
 		if (isset($json["LOCATION"]))
@@ -5525,6 +5540,74 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 
 			array_push($newData,$item);
 	}
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"]["items"] = $newData;
+	$resp["data"]["tax"] = $tax;
+	$resp["data"]["permadiscount"] = "0";
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+
+
+$app->get('/groupedpurchasedetails3/{id}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	
+	$id = $request->getAttribute('id');		
+	$sql = "SELECT *
+			FROM ITEMREQUEST 
+			WHERE ITEMREQUESTACTION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
+	$mapA = array();
+	foreach($items as $item){
+		$mapA[$item["PRODUCTID"]] = $item;
+	}
+
+	$asql = "SELECT * FROM ITEMREQUESTACTION WHERE ID = ?";
+	$req = $db->prepare($asql);
+	$req->execute(array($id));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res != false){
+		$type = $res["TYPE"];
+		$requester = $res["REQUESTER"];	
+	}
+		
+	if (count($items) > 0){
+		$inStr = "(";
+		foreach($items as $item){
+			$inStr .= "'".$item["PRODUCTID"]."',";
+		}
+		$inStr = substr($inStr,0,-1);
+		$inStr .= ")";
+	}else{
+		$inStr = "('DECOY')";
+	}	
+
+	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,PRODUCTID,
+	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STORE_QTY',
+	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'WAREHOUSE_QTY',				
+	(SELECT STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN1',				
+	(SELECT STORBIN FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN2'			
+	FROM dbo.ICPRODUCT,APVENDOR
+	WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+	AND PRODUCTID in ".$inStr;
+	
+	$req=$dbBlue->prepare($sql);
+	$req->execute(array());	
+	$itemsA = $req->fetchAll(PDO::FETCH_ASSOC);
+	$tax = $itemsA[0]["TAX"] ?? "0";	
+
+	$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	$req= $db->prepare($sql);	
+	$req->execute(array($id));
+	$newData = $req->fetchAll(PDO::FETCH_ASSOC);
+	
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"]["items"] = $newData;
@@ -12123,8 +12206,6 @@ $app->get('/purchaseamounts', function(Request $request,Response $response) {
 	return $response;			
 });
 
-
-
 $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$message = $request->getAttribute('message');
 	$db=getInternalDatabase(); 
@@ -12578,7 +12659,7 @@ $app->post('/promotion',function(Request $request,Response $response){
 	$packs = $req->fetchAll(PDO::FETCH_ASSOC);
 	foreach($packs as $pack){
 
-		$sql = "INSERT INTO PACKPROMO (PACKCODE,END) VALUES (?,?)";
+		$sql = "INSERT INTO PACKPROMO (PACKCODE,ENDPROMO) VALUES (?,?)";
 		$req = $indb->prepare($sql);
 		$req->execute(array($pack["PACK_CODE"],$json["END"]));
 	}

@@ -170,7 +170,9 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";		
 		else if ($type == "ACC")
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
-		else if ($type == "TR")
+		else if ($type == "CHK")
+			$filename = "./img/supplyrecords_signatures/CHK_".$id.".png";
+		else if ($type == "TR")		
 			$filename = "./img/supplyrecords_signatures/TR_".$id.".png";
 		else if ($type == "TRF")
 			$filename = "./img/supplyrecords_signatures/TRF_".$id.".png";
@@ -783,16 +785,17 @@ function externalAlertStats($barcode){
 
 
 function orderStatistics($barcode,$lightmode = false)
-{
+{	
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
 	$sql = "SELECT TOP(1) RECEIVE_DATE, RECEIVE_QTY,TRANCOST  FROM PODETAIL WHERE PRODUCTID = ? AND POSTATUS = 'C' ORDER BY DATEADD DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
-	$res  = $req->fetch(PDO::FETCH_ASSOC);
-	$stats["COST"] = $res["TRANCOST"];
+	$res  = $req->fetch(PDO::FETCH_ASSOC);	
+	
 	if($res == false){
+		$stats["COST"] = 0;
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($barcode));
@@ -807,6 +810,7 @@ function orderStatistics($barcode,$lightmode = false)
 	}
 	else
 	{
+		$stats["COST"] = $res["TRANCOST"];
 		$sql = "SELECT ACTIVE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($barcode));  
@@ -1692,5 +1696,51 @@ function getProductOccupancy($barcode){
 	else
 		return 0;
 }
+
+function locationSameTeam($loc1, $loc2){
+	$l1 = explode('|',$loc1)[0];
+	$l2 = explode('|',$loc2)[0];
+	
+	$G1 = array("G01A","G01B","G02A","G02B","G03A","G03B");	
+	$G2 = array("G01A","G01B","G02A","G02B","G03A","G03B");	
+	$G3 = array("G04A","G04B","G05A","G05B","GSOF");
+	$G4 = array("G06A","G06B","G07A","G07B","GMIL");
+	$G5 = array("N08A","N08B","N09A","N09B","N10A","N10B","N11A","N11B","N12A","N12B","NCHA");
+	$G6 = array("N20A","N20B","N21A","N21B","N22A","N22B","N23A","N23B","N24A","N24B");
+	$G7 = array("N14A","N14B","N15A","N15B","N16A","N16B","N17A","N17B","N18A","N18B","N19A","N19B");
+	$G8 = array("N13A","N13B","NBAB","GWIN");
+	$G9 = array("CHIL","FROZ");
+	
+	if (in_array($l1,$G1)){
+		return in_array($l2,$G1);
+	}
+	else if (in_array($l1,$G2)){
+		return in_array($l2,$G2);
+	}
+	else if (in_array($l1,$G3)){
+		return in_array($l2,$G3);
+	}
+	else if (in_array($l1,$G4)){
+		return in_array($l2,$G4);
+	}
+	else if (in_array($l1,$G5)){
+		return in_array($l2,$G5);
+	}
+	else if (in_array($l1,$G6)){
+		return in_array($l2,$G6);
+	}
+	else if (in_array($l1,$G7)){
+		return in_array($l2,$G7);
+	}
+	else if (in_array($l1,$G8)){
+		return in_array($l2,$G8);
+	}
+	else if (in_array($l1,$G9)){
+		return in_array($l2,$G9);
+	}else{
+		return false;		
+	}
+}
+
 
 ?>

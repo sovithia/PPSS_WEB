@@ -57,4 +57,4 @@ function generateCalculationForDate($day = null)
     }
 }
 
-generateCalculationForDate("2022-12-8");    
+//generateCalculationForDate("2022-12-8");    
