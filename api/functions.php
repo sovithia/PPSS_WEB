@@ -1742,5 +1742,36 @@ function locationSameTeam($loc1, $loc2){
 	}
 }
 
+function getworkingemployees($date){
+	$db = getDatabase();
+
+	$json = json_decode($request->getBody(),true);
+	$dayOfWeek = date('l', strtotime($date));
+	$sql = "SELECT user_id FROM RESTREQUEST where date = ? AND STATUS = 'APPROVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
+	$instr = "(";
+	foreach($rested as $rest){
+		$instr .= substr($rest["user_id"]).",";
+	}
+	$instr = substr($instr,0,-1);
+	$instr .= ")";
+
+	$sql = "SELECT * FROM USER WHERE dayoff != ? 
+			where role_id = 21 
+			OR role_id = 4 
+			OR role_id = 14 
+			OR role_id = 22
+			AND user_id not in ".$instr;
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp["result"] = "OK";
+	$resp["data"] = $employees;
+	$response = $response->withJson($resp);
+	return $response;				
+}
 
 ?>

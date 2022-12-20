@@ -12758,12 +12758,23 @@ $app->get('/promotion/{productid}', function(Request $request,Response $response
 });
 
 // CREATED, APPROVED, DENIED
-$app->get('/restrequestpending', function(Request $request,Response $response){
+$app->get('/restrequest/{status}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
-	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = 'CREATED'";
+	$status = $request->getAttribute('status');
+	
+	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?";
 	$req = $indb->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	if ($status == "CREATED"){
+		$newData = array();
+		foreach($items as $item){
+			$item["WORKING"] = getworkingemployees($item["date"]);
+			array_push($newData,$item);
+		}
+		$items = $newData;
+	}
 
 	$resp["data"] = $items;
 	$resp["result"] = "OK";
@@ -12778,13 +12789,26 @@ $app->get('/restrequestmine/{creator}', function(Request $request,Response $resp
 	$req = $indb->prepare($sql);
 	$req->execute(array($creator));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
-
+	
 	$resp["data"] = $items;
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;			
 });
 
+// PRE-CHECK
+$app->get('/getworkingemployee/{moment}',function(Request $request,Response $response){
+	$creator = $request->getAttribute('moment');
+	$employees = getworkingemployees($date);
+
+	$resp["data"] = $employees;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+
+});
+
+// THEN DO REST REQUESt
 $app->post('/restrequest', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
