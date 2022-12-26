@@ -1123,7 +1123,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 		$req = $conn->prepare($sql);
 		$req->execute(array($barcode));
 		$res2 = $req->fetch(PDO::FETCH_ASSOC);
-		if ($res2 != false ||  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
+		if ($res2 != false &&  $res2["PPSS_NEW_COST"] != null && $res2["PPSS_NEW_COST"] != "0" && $res2["PPSS_NEW_COST"] != 0)
 			$item["COST"] =  sprintf("%.4f",$res2["PPSS_NEW_COST"]);	
 	}
 	
@@ -3098,7 +3098,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 			$item["PACKING"] = "";
 		$item["DISCOUNT"] = $json["DISCOUNT"];
 		$item["ALGOQTY"] = $json["ALGOQTY"];
-		$item["REASON"] = $json["REASON"];
+		$item["REASON"] = $json["REASON"] ?? "N/A";
 		$item["VAT"] = $json["VAT"];
 		$items = array();
 		array_push($items,$item);
@@ -3215,13 +3215,13 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 				$sql = "UPDATE SUPPLYRECORDPOOL set REQUEST_QUANTITY = ?, ALGOQTY = ?, REASON = ?,COST = ?,DECISION = ? 
 					WHERE  USERID = ? AND PRODUCTID = ?";
 				$req = $db->prepare($sql);
-				$req->execute(array($QUANTITY,$item["ALGOQTY"],$item["REASON"],trim($item["COST"],'$'),$item["DECISION"],$userid,$item["PRODUCTID"]));	
+				$req->execute(array($QUANTITY,$item["ALGOQTY"],($item["REASON"] ?? ""),trim($item["COST"],'$'),$item["DECISION"],$userid,$item["PRODUCTID"]));	
 			}
 			else
 			{
 				$sql = "INSERT INTO SUPPLYRECORDPOOL (PRODUCTID,ALGOQTY,REQUEST_QUANTITY,DISCOUNT,REASON,COST,DECISION,VAT,USERID) values (?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],$item["REASON"],trim($item["COST"],'$'),$item["DECISION"],$item["VAT"],$userid));
+			$req->execute(array($item["PRODUCTID"],$item["ALGOQTY"],$QUANTITY,$item["DISCOUNT"],($item["REASON"] ?? ""),trim($item["COST"],'$'),$item["DECISION"],$item["VAT"],$userid));
 			}
 		}
 	}
@@ -12523,9 +12523,10 @@ $app->get('/salespeed',function(Request $request,Response $response){
 
 
 
-$app->get('/schedule',function(Request $request,Response $response){
+$app->get('/storeschedule',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation FROM USER";
+	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation 
+				FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4')";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$schedules = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12536,6 +12537,22 @@ $app->get('/schedule',function(Request $request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;			
 });
+
+$app->get('/officeschedule',function(Request $request,Response $response){
+	$db = getInternalDatabase();
+	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation 
+				FROM USER WHERE role_id not in ('18','21','5','7','13','17','21','22','19','4')";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$schedules = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp = array();
+	$resp["data"] = $schedules;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 
 $app->put('/schedule/{userid}',function(Request $request,Response $response){
 
@@ -12782,10 +12799,62 @@ $app->get('/restrequest/{status}', function(Request $request,Response $response)
 	return $response;			
 });
 
+$app->get('/officerestrequest/{status}', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$status = $request->getAttribute('status');
+	
+	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?
+			AND user_id not in (SELECT ID FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'));
+			";
+	$req = $indb->prepare($sql);
+	$req->execute(array($status));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	if ($status == "CREATED"){
+		$newData = array();
+		foreach($items as $item){
+			$item["WORKING"] = getworkingemployees($item["date"]);
+			array_push($newData,$item);
+		}
+		$items = $newData;
+	}
+
+	$resp["data"] = $items;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+$app->get('/storerestrequest/{status}', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$status = $request->getAttribute('status');
+	
+	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?
+			AND user_id not in (SELECT ID FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'));
+			";
+	$req = $indb->prepare($sql);
+	$req->execute(array($status));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	if ($status == "CREATED"){
+		$newData = array();
+		foreach($items as $item){
+			$item["WORKING"] = getworkingemployees($item["date"]);
+			array_push($newData,$item);
+		}
+		$items = $newData;
+	}
+
+	$resp["data"] = $items;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
 $app->get('/restrequestmine/{creator}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$creator = $request->getAttribute('creator');
-	$sql = "SELECT * FROM RESTREQUEST WHERE CREATOR = ? ORDER BY CREATED DESC";
+	$sql = "SELECT * FROM RESTREQUEST WHERE CREATOR = ? ORDER BY created DESC";
 	$req = $indb->prepare($sql);
 	$req->execute(array($creator));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -12797,8 +12866,8 @@ $app->get('/restrequestmine/{creator}', function(Request $request,Response $resp
 });
 
 // PRE-CHECK
-$app->get('/getworkingemployee/{moment}',function(Request $request,Response $response){
-	$creator = $request->getAttribute('moment');
+$app->get('/getworkingemployee/{date}',function(Request $request,Response $response){
+	$date = $request->getAttribute('date');
 	$employees = getworkingemployees($date);
 
 	$resp["data"] = $employees;
@@ -12852,6 +12921,107 @@ $app->get('/vendorautoitem/{id}', function(Request $request,Response $response){
 	return $response;				
 });
 
+
+function extractEmployeeByHour($hour,$employees)
+{
+	$data = array();
+	foreach($employees as $employee){
+		if ( ($employee["starttime1"] >= strtotime($hour) &&  strtotime($hour) < $employee["endtime1"]) ||
+			 ($employee["starttime2"] >= strtotime($hour) &&  strtotime($hour) < $employee["endtime2"]) 
+		   ){
+			array_push($data,$employee);		
+		   }	   
+	}
+	return $data;
+}
+$app->get('/storeschedulebyday/{date}', function(Request $request,Response $response){
+
+	$indb = getInternalDatabase();
+	$date = $request->getAttribute('date');
+	$employees = getStoreWorkingEmployees($date);
+	
+	$data["7:00"]  = extractEmployeeByHour("7:00",$employees);
+	$data["7:30"]  = extractEmployeeByHour("7:30",$employees);
+	$data["8:00"]  = extractEmployeeByHour("8:00",$employees);
+	
+	$data["8:30"]  = extractEmployeeByHour("8:30",$employees);
+	$data["9:00"]  = extractEmployeeByHour("9:00",$employees);
+	$data["9:30"]  = extractEmployeeByHour("9:30",$employees);
+	$data["10:00"] = extractEmployeeByHour("10:00",$employees);
+	$data["10:30"] = extractEmployeeByHour("10:30",$employees);
+	$data["11:00"] = extractEmployeeByHour("11:00",$employees);
+	$data["11:30"] = extractEmployeeByHour("11:30",$employees);
+	$data["12:00"] = extractEmployeeByHour("12:00",$employees);
+	$data["12:30"] = extractEmployeeByHour("12:30",$employees);
+	$data["13:00"] = extractEmployeeByHour("13:00",$employees);
+	$data["13:30"] = extractEmployeeByHour("13:30",$employees);
+	$data["14:00"] = extractEmployeeByHour("14:00",$employees);
+	$data["14:30"] = extractEmployeeByHour("14:30",$employees);
+	$data["15:00"] = extractEmployeeByHour("15:30",$employees);
+	$data["15:30"] = extractEmployeeByHour("15:30",$employees);
+	$data["16:00"] = extractEmployeeByHour("16:00",$employees);
+	$data["16:30"] = extractEmployeeByHour("16:30",$employees);
+	$data["17:00"] = extractEmployeeByHour("17:00",$employees);
+	$data["17:30"] = extractEmployeeByHour("17:30",$employees);
+	$data["18:00"] = extractEmployeeByHour("18:00",$employees);
+	$data["18:30"] = extractEmployeeByHour("18:30",$employees);
+	$data["19:00"] = extractEmployeeByHour("19:00",$employees);
+	$data["19:30"] = extractEmployeeByHour("19:30",$employees);
+	$data["20:00"] = extractEmployeeByHour("20:00",$employees);
+	$data["20:30"] = extractEmployeeByHour("20:30",$employees);
+	$data["21:00"] = extractEmployeeByHour("21:00",$employees);
+	$data["21:30"] = extractEmployeeByHour("21:30",$employees);
+	
+	// Remove Day off 
+	$sql = "SELECT * FROM RESTREQUEST where date = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($date));
+	$excludes = $req->fetchAll(PDO::FETCH_ASSOC);	
+	if (count($excludes) > 0)
+	{
+		foreach($data as $key => $value)
+		{
+			$newData = array();			
+			// Each 30 minute
+			foreach($value as $oneEmp)
+			{			
+				foreach($excludes as $exclude)
+				{
+					if ($exclude["id"] == $oneEmp["id"] && $key >= $exclude["start"] && $key <= $exclude["end"]){
+							echo "We don't add";
+							exit;
+					}	
+					else{
+						array_push($newData,$oneEmp);				
+					}						
+					
+				}
+			}
+			$data[$key] = $newData;		
+		}
+	}
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;				
+});
+
+$app->get('/maincode/{code}', function(Request $request,Response $response){
+	$db = getDatabase();
+	$code = $request->getAttribute('code');
+	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE OTHERCODE = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($code));
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+	if ($data != false)
+		$resp["data"] = $data["PRODUCTID"];
+	else 
+		$resp["data"] = "N/A";
+	$resp["result"] = "OK";
+	
+	$response = $response->withJson($resp);
+	return $response;			
+});
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');

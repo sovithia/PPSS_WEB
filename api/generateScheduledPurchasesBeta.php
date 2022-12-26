@@ -5,7 +5,7 @@ require_once("functions.php");
 
 function GenerateGroupedPurchasesByDay()
 {
-	$day = strtoupper(date('D'));
+	$day = strtoupper(date('D'));	
 	echo "GENERATING FOR ".$day."\n";
 	$indb = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -21,7 +21,7 @@ function GenerateGroupedPurchasesByDay()
 	foreach($vendors as $vendor){
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ? AND REQUESTEE IS null"; 
 		$req = $indb->prepare($sql);
-		$req->execute(array());
+		$req->execute(array($vendor["ID"]));
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);
 		if ($data != false)
 			$vendorGenerated++;
@@ -31,10 +31,11 @@ function GenerateGroupedPurchasesByDay()
 	foreach($vendors as $vendor){		
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDPURCHASE' AND ARG1 = ? AND REQUESTEE IS null"; 
 		$req = $indb->prepare($sql);
-		$req->execute(array());
+		$req->execute(array($vendor["ID"]));
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);
 		if ($data != false){
-			echo "VENDOR: ".$vendor["ID"]." already generated\n";			
+			echo "VENDOR: ".$vendor["ID"]." already generated\n";
+			continue;			
 		}
 		else{
 			// CREATE THE ITEMREQUESTACTION
@@ -77,7 +78,7 @@ function GenerateGroupedPurchasesByDay()
 		foreach($items as $item){	
 			$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 			$req = $indb->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$theID));
+			$req->execute(array($item["PRODUCTID"],$vendor["ID"]));
 			$res = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res != false){
 				echo $item["PRODUCTID"] . " already generated\n";
@@ -93,10 +94,15 @@ function GenerateGroupedPurchasesByDay()
 			$req->execute(array($item["PRODUCTID"]));
 			$res2 = $req->fetch(PDO::FETCH_ASSOC);
 			if ($res2 == false || $res2["PPSS_NEW_COST"] == null){
-				if ($res == false)
+				if ($res == false){
 					$TRANCOST = 0;
-				else
+					$TRANDISC = 0;
+				}					
+				else{
 					$TRANCOST = $res["TRANCOST"];
+					$TRANDISC = $res["TRANDISC"];
+				}
+					
 			}				
 			else
 			{
@@ -107,29 +113,34 @@ function GenerateGroupedPurchasesByDay()
 			}
 								
 			
-			$stats = orderStatistics($item["PRODUCTID"]);						
-			echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
-			// SHOULD WE EXCLUDE TOO EARLY ITEMS ? 				
-			$sql = "INSERT INTO ITEMREQUEST (
-			PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
-			LASTRECEIVEQUANTITY,MOMENTONHAND,TOTALWASTEQUANTITY,TOTALPROMOTIONQUANTITY,SALESINCELASTRECEIVE,
-			SALE70PERCENTDAYS,LASTSALEDAY,TOTALORDERTIME,TOTALRECEIVE,TOTALSALE,
-			CALCULATED_QUANTITY,DECISION,REQUESTTYPE,ITEMREQUESTACTION_ID) 
-			VALUES (?,?,?,?,?,
-					?,?,?,?,?,
-					?,?,?,?,?,
-					?,?,?,?)";
-			$req = $indb->prepare($sql);
-			$req->execute(array(
-			$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$res["TRANDISC"],$stats["LASTRCVDATE"],
-			$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],
-			$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
-			$stats["FINALQTY"],$stats["DECISION"],'ALGO',$theID));										
-						
-			$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array($item["PRODUCTID"]));	
-			sleep(1);	
+			$stats = orderStatistics($item["PRODUCTID"]);	
+			if ($stats["DECISION"] != "TOOEARLY"){							
+				echo $item["PRODUCTID"]."-".$item["PRODUCTNAME"].":".$stats["DECISION"]." ORDERPOINT:".$stats["ORDERPOINT"]. " QTY:".$stats["FINALQTY"]." ONHAND: ".$item["ONHAND"]."\n";
+				// SHOULD WE EXCLUDE TOO EARLY ITEMS ? 				
+				$sql = "INSERT INTO ITEMREQUEST (
+				PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,LASTRECEIVEDATE,
+				LASTRECEIVEQUANTITY,MOMENTONHAND,TOTALWASTEQUANTITY,TOTALPROMOTIONQUANTITY,SALESINCELASTRECEIVE,
+				SALE70PERCENTDAYS,LASTSALEDAY,TOTALORDERTIME,TOTALRECEIVE,TOTALSALE,
+				CALCULATED_QUANTITY,DECISION,REQUESTTYPE,ITEMREQUESTACTION_ID) 
+				VALUES (?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?)";
+				$req = $indb->prepare($sql);
+				$req->execute(array(
+				$item["PRODUCTID"],$stats["FINALQTY"], $TRANCOST,$TRANDISC,$stats["LASTRCVDATE"],
+				$stats["LASTRECEIVEQUANTITY"],$stats["ONHAND"],$stats["WASTE"],$stats["PROMO"],$stats["SALESINCELASTRECEIVE"],
+				$stats["SALESPEED"],$stats["LASTSALEDAY"],$stats["TOTALORDERTIME"],$stats["TOTALRECEIVE"],$stats["TOTALSALE"],
+				$stats["FINALQTY"],$stats["DECISION"],'ALGO',$vendor["ID"]));										
+							
+				$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));	
+				sleep(1);	
+			}
+			else{
+				echo  $item["PRODUCTID"].": TOO EARLY\n";
+			}
 		}	
 	}		
 }

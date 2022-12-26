@@ -801,11 +801,23 @@ function orderStatistics($barcode,$lightmode = false)
 		$req->execute(array($barcode));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$stats["FINALQTY"] = 0;
-		$stats["PRICE"] = $res["PRICE"];				
+		$stats["PRICE"] = $res["PRICE"] ?? "0";				
 		if ($res == false)
 			$stats["DECISION"] = "NOT FOUND";			
 		else 
-			$stats["DECISION"] = "NEVER RECEIVED";			
+			$stats["DECISION"] = "NEVER RECEIVED";		
+		$stats["ORDERPOINT"] = "0";
+		$stats["LASTRCVDATE"] = null;
+		$stats["LASTRECEIVEQUANTITY"] = "0";
+		$stats["ONHAND"] = "0";
+		$stats["WASTE"] = "0";
+		$stats["PROMO"] = "0";
+		$stats["SALESINCELASTRECEIVE"] = "0";
+		$stats["SALESPEED"] = "0";
+		$stats["LASTSALEDAY"] = "0";
+		$stats["TOTALORDERTIME"] = "0";
+		$stats["TOTALRECEIVE"] = "0";
+		$stats["TOTALSALE"] = "0";	
 		return $stats;
 	}
 	else
@@ -1742,36 +1754,38 @@ function locationSameTeam($loc1, $loc2){
 	}
 }
 
-function getworkingemployees($date){
-	$db = getDatabase();
-
-	$json = json_decode($request->getBody(),true);
+function getStoreWorkingEmployees($date){
+	$db = getInternalDatabase();
+	
 	$dayOfWeek = date('l', strtotime($date));
-	$sql = "SELECT user_id FROM RESTREQUEST where date = ? AND STATUS = 'APPROVED'";
+	$sql = "SELECT user_id FROM RESTREQUEST 
+	where user_id in ( select ID from USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'))
+	AND date = ? 
+	AND STATUS = 'APPROVED'";
 	$req = $db->prepare($sql);
 	$req->execute(array($dayOfWeek));
 	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
-	$instr = "(";
-	foreach($rested as $rest){
-		$instr .= substr($rest["user_id"]).",";
+	if ($rested != false){
+		$instr = "(";
+		foreach($rested as $rest){
+			$instr .= substr($rest["user_id"]).",";
+		}
+		$instr = substr($instr,0,-1);
+		$instr .= ")";
+	}else{
+		$instr = "('DECOY')";
 	}
-	$instr = substr($instr,0,-1);
-	$instr .= ")";
+	
 
-	$sql = "SELECT * FROM USER WHERE dayoff != ? 
-			where role_id = 21 
-			OR role_id = 4 
-			OR role_id = 14 
-			OR role_id = 22
-			AND user_id not in ".$instr;
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
+			AND role_id in ('18','21','5','7','13','17','21','22','19','4')
+			AND ID not in ".$instr;
+	error_log($sql);
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($dayOfWeek));
 	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$resp["result"] = "OK";
-	$resp["data"] = $employees;
-	$response = $response->withJson($resp);
-	return $response;				
+	
+	return $employees;	
 }
 
 ?>
