@@ -3,8 +3,8 @@
 
 if (isset($_GET["id"])){
     $id = $_GET["id"];
-    if (file_exists("./img/employee/".$id.".png"))	
-		$path = "./img/employee/".$id.".png";					
+    if (file_exists("./img/employee/".$id.".jpg"))	
+		$path = "./img/employee/".$id.".jpg";					
 	else 	
         $path = "img/mystery.png";					
     $final = file_get_contents($path);

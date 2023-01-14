@@ -1563,6 +1563,8 @@ function sendPushToUser($title,$body,$userid)
 	$req = $db->prepare($sql);
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if (!isset($res["fcmtoken"]))
+		return null;
 	$TOKEN = $res["fcmtoken"];
 	$url = 'https://fcm.googleapis.com/fcm/send';	
 	$fields = array (
@@ -1754,12 +1756,27 @@ function locationSameTeam($loc1, $loc2){
 	}
 }
 
+
+function getRETHFCM()
+{
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE login = 'prom_r'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($data == false)
+		return null;
+	else 
+		return $data["fcmtoken"];
+}
+
 function getStoreWorkingEmployees($date){
 	$db = getInternalDatabase();
 	
 	$dayOfWeek = date('l', strtotime($date));
 	$sql = "SELECT user_id FROM RESTREQUEST 
-	where user_id in ( select ID from USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'))
+	where user_id in ( select ID from USER WHERE role_id in ('401','402','403','404','405'))
 	AND date = ? 
 	AND STATUS = 'APPROVED'";
 	$req = $db->prepare($sql);
@@ -1778,9 +1795,8 @@ function getStoreWorkingEmployees($date){
 	
 
 	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
-			AND role_id in ('18','21','5','7','13','17','21','22','19','4')
-			AND ID not in ".$instr;
-	error_log($sql);
+			AND role_id in ('401','402','403','404','405')
+			AND ID not in ".$instr;	
 	$req = $db->prepare($sql);
 	$req->execute(array($dayOfWeek));
 	$employees = $req->fetchAll(PDO::FETCH_ASSOC);

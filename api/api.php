@@ -3797,10 +3797,10 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		}	
 	
-		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
-				WHERE ID = :identifier";		
-		//$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'TOCHECK', TRANSFERER_USER = :author 
-		//			WHERE ID = :identifier";		
+		//$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'RECEIVED', TRANSFERER_USER = :author 
+		//		WHERE ID = :identifier";		
+		$sql = "UPDATE SUPPLY_RECORD SET STATUS = 'TOCHECK', TRANSFERER_USER = :author 
+					WHERE ID = :identifier";		
 		$req = $db->prepare($sql);
 		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);					
@@ -3808,6 +3808,8 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		
 		pictureRecord($json["SIGNATURE"],"TR",$json["IDENTIFIER"]);
 		$data["result"] = "OK";
+
+		sendPush("TO CHECK READY", "Items needs to be checked",getRETHFCM());
 
 	}
 	else if ($json["ACTIONTYPE"] == "CHK"){
@@ -9714,7 +9716,7 @@ $app->put('/returnrecord',function($request,Response $response) {
 });
 
 
-$app->delete('/returnrecorditems/{id}', function($request,Response $response){	
+$app->delete('/returnrecorditem/{id}', function($request,Response $response){	
 	$id = $request->getAttribute('id');
 	$db = getInternalDatabase();
 
@@ -12593,11 +12595,26 @@ $app->get('/team',function(Request $request,Response $response){
 	$req->execute(array());
 	$teams = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	$tmpteams = array();
+	foreach($teams as $team ){
+		$sql = "SELECT * FROM USER WHERE team_id = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($team["ID"]));
+		$team["MEMBERS"] = $req->fetchAll(PDO::FETCH_ASSOC);		
+		array_push($tmpteams,$team);
+	}
+	$data["TEAMS"] = $tmpteams;
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit 
+			FROM USER  
+			WHERE role_id in ('400','401','402','403','404')";
+	$req = $db->prepare($sql);			
+	$req->execute(array());
+	$data["ALLMEMBERS"] = $req->fetchAll(PDO::FETCH_ASSOC);
 	$resp = array();
-	$resp["data"] = $teams;
+	$resp["data"] = $data;
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
-	return $response;			
+	return $response;
 });
 
 $app->put('/team/{id}',function(Request $request,Response $response){
@@ -12938,8 +12955,7 @@ $app->get('/storeschedulebyday/{date}', function(Request $request,Response $resp
 
 	$indb = getInternalDatabase();
 	$date = $request->getAttribute('date');
-	$employees = getStoreWorkingEmployees($date);
-	
+	$employees = getStoreWorkingEmployees($date);	
 	$data["7:00"]  = extractEmployeeByHour("7:00",$employees);
 	$data["7:30"]  = extractEmployeeByHour("7:30",$employees);
 	$data["8:00"]  = extractEmployeeByHour("8:00",$employees);
