@@ -12603,6 +12603,7 @@ $app->get('/team',function(Request $request,Response $response){
 		$team["MEMBERS"] = $req->fetchAll(PDO::FETCH_ASSOC);		
 		array_push($tmpteams,$team);
 	}
+
 	$data["TEAMS"] = $tmpteams;
 	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit 
 			FROM USER  
@@ -12885,7 +12886,7 @@ $app->get('/restrequestmine/{creator}', function(Request $request,Response $resp
 // PRE-CHECK
 $app->get('/getworkingemployee/{date}',function(Request $request,Response $response){
 	$date = $request->getAttribute('date');
-	$employees = getworkingemployees($date);
+	$employees = getStoreWorkingEmployees($date);
 
 	$resp["data"] = $employees;
 	$resp["result"] = "OK";
@@ -12898,10 +12899,9 @@ $app->get('/getworkingemployee/{date}',function(Request $request,Response $respo
 $app->post('/restrequest', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-	$sql = "INSERT INTO RESTREQUEST (moment,reason,status,creator) VALUES (?,?,?,?)";
+	$sql = "INSERT INTO RESTREQUEST (date,starttime,endtime,reason,status,creator) VALUES (?,?,?,?,?,?)";
 	$req = $indb->prepare($sql);
-	$req->execute($json["MOMENT"],$json["REASON"],'CREATOR',$json["CREATOR"]);
-	
+	$req->execute(array($json["DATE"],$json["STARTTIME"],$json["ENDTIME"],$json["REASON"],'CREATED',$json["CREATOR"]));		
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;			
