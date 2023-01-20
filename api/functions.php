@@ -1792,8 +1792,6 @@ function getStoreWorkingEmployees($date){
 	}else{
 		$instr = "('DECOY')";
 	}
-	
-
 	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
 			AND role_id in ('401','402','403','404','405')
 			AND ID not in ".$instr;	
@@ -1803,5 +1801,51 @@ function getStoreWorkingEmployees($date){
 	
 	return $employees;	
 }
+
+
+function extractEmployeeByHour($hour,$employees)
+{
+	$data = array();
+	foreach($employees as $employee){
+		if ( (strtotime($employee["starttime1"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime1"])) ||
+			 (strtotime($employee["starttime2"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime2"])) 
+		   ){
+			array_push($data,$employee);		
+		   }	   
+	}	
+	return $data;
+}
+
+function getPresentWorker($date,$start,$end)
+{
+	$employees = getStoreWorkingEmployees($date);	
+	
+	$hours = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00",
+			  "12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00",
+			  "17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];
+	$startCnt = 0;		
+	foreach($hours as $hour){
+		if ($hour == $start)
+			break;		
+		$startCnt++;
+	}
+	$endCnt = 0;
+	foreach($hours as $hour){
+		if ($hour == $end)
+			break;		
+		$endCnt++;
+	}	
+	$data = array();
+	for($i = $startCnt;$i < $endCnt; $i++){			
+		$tmp = extractEmployeeByHour($hours[$i],$employees);				
+		foreach($tmp as $employee){
+			if (!in_array($employee,$employees))
+				array_push($data,$employee);
+		}
+	}
+	
+	return $employees;
+}
+
 
 ?>
