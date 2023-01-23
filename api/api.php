@@ -11895,6 +11895,7 @@ $app->post('/pricechange',function ($request,Response $response){
 
 $app->put('/pricechange',function ($request,Response $response){
 	$db = getInternalDatabase();
+	$blueDB = getDatabase();
 	$json = json_decode($request->getBody(),true);
 
 	$sql = "UPDATE PRICECHANGE SET STATUS = 'VALIDATED', REQUESTEE = ? WHERE ID = ?";
@@ -11907,9 +11908,49 @@ $app->put('/pricechange',function ($request,Response $response){
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	$dbBlue = getDatabase();
-	$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ? WHERE PRODUCTID = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+
+	$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $blueDB->prepare($sql);
+	$req->execute(array($res["PRODUCTID"]));
+	$price = $req->fetch(PDO::FETCH_ASSOC);
+	$price = $price["PRICE"];
+	if (round($price,4) != round($res["NEWPRICE"],4))
+	{
+		$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+	}
+
+	$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+	$req = $blueDB->prepare($sql);
+	$req->execute(array($res["PRODUCTID"]));
+	$pack = $req->fetch(PDO::FETCH_ASSOC);
+	if ($pack != false) // IF HAVE PACK
+	{
+		$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
+        $req = $dbBlue->prepare($sql);
+        $req->execute(array($pack["PRODUCTID"]));
+        $promo = $req->fetch(PDO::FETCH_ASSOC);
+
+		$UNITPRICE = $res["NEWPRICE"];
+		if($promo == false){ // IF NO PROMO 10% DISC ON PRICE                                                
+				$calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);			
+				if (floatval($pack["SALEPRICE"]) != $calculated){				
+					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+					$req = $blueDB->prepare($sql);
+					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+				}            
+		}else{ // FULL PRICE     
+				$calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           			
+				if (floatval($pack["SALEPRICE"]) != $calculated){				
+					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+					$req = $blueDB->prepare($sql);
+					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+				}
+		} 
+	}
+	
+	
 
 	$resp = array();
 	$resp["result"] = "OK";	
@@ -12686,20 +12727,11 @@ $app->post('/promotion',function(Request $request,Response $response){
 	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,PCNAME,USERADD,DATEADD ) 
 										VALUES (?,?,'Per Item',?,?,'1.0','DISCOUNT(%)','APPLICATION',?,GETDATE()) ";
 
+
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
-	
-	// LOOP ON PACK
-	$sql = "SELECT * ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
-	$packs = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($packs as $pack){
 
-		$sql = "INSERT INTO PACKPROMO (PACKCODE,ENDPROMO) VALUES (?,?)";
-		$req = $indb->prepare($sql);
-		$req->execute(array($pack["PACK_CODE"],$json["END"]));
-	}
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $newData;

@@ -909,6 +909,5 @@ function getGeneralStats($begin,$end){
 	return $data;
 }
 
-//loadStats("09","2022");
-echo render("09","2022");
+loadStats("10","2022");
 ?>
