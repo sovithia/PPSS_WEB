@@ -652,12 +652,18 @@ function calculateMultiple($barcode){
 		$left = explode('X',$res["PACKINGNOTE"])[0];
 	else 
 		$left = 1;
-	return $left;
+	$left = str_replace(' ','',$left);	
+	if ($left > $res["QTY_ORDER"])
+		return $res["QTY_ORDER"];
+	else
+		return $left;
 }
 
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
+	LG("MULTIPLE:".$multiple);
+	LG("LASTRCVQTY:".$lastrcvqty);
 	if (!is_numeric($multiple))
 		$multiple = 1;	
 	if ($lastrcvqty % $multiple != 0)
@@ -674,7 +680,6 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 		if ($price < 5)
 		{		
 				$total = $increasedQty + ($multiple - $remains);
-
 				return $total; // +1
 		}
 		else
@@ -781,6 +786,10 @@ function externalAlertStats($barcode){
 
     return $data;
 
+}
+
+function LG($str){
+	error_log($str);
 }
 
 
@@ -918,33 +927,39 @@ function orderStatistics($barcode,$lightmode = false)
 	
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
-			if($stats["SALESPEED"] < 30){				
+			LG("1)RATIOSALE(A):" . $RATIOSALE);
+			if($stats["SALESPEED"] < 30){		
+				LG("2)SALESPEED (A):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){								
+				LG("2)SALESPEED (B):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			
-		  else if ($ONHAND < ($RCVQTY * 0.5) )
+		  	else if ($ONHAND < ($RCVQTY * 0.5) )
 			{
-					$multiple = calculateMultiple($barcode);
-					$remains = $RCVQTY % $multiple;
-					if ($remains == 0)
-						$stats["FINALQTY"] = $RCVQTY;
-					else{
-						$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
-					}			
-					$stats["DECISION"] = "SAMEQTY";	
+				LG("2)ONHAND<50%RCVQTY (C)");		
+				$multiple = calculateMultiple($barcode);
+				$remains = $RCVQTY % $multiple;
+				if ($remains == 0)
+					$stats["FINALQTY"] = $RCVQTY;
+				else{
+					$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+				}			
+				$stats["DECISION"] = "SAMEQTY";	
 			}
 			else
 			{
-						$stats["FINALQTY"] = 0;
-						$stats["DECISION"] = "TOOEARLY";	
+				LG("2)ELSE");		
+				$stats["FINALQTY"] = 0;
+				$stats["DECISION"] = "TOOEARLY";	
 			}
 		}
 		else if ($RATIOSALE >= 70 && $RATIOSALE < 100) // Speed not important here
 		{
+			LG("2)RATIOSALE(B):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 				if ($WASTE >= 0.1 * $RCVQTY && $PROMO >= 0.1 * $RCVQTY){
@@ -993,6 +1008,7 @@ function orderStatistics($barcode,$lightmode = false)
 		}
 		else if ($RATIOSALE >= 50 && $RATIOSALE < 70 ) // Normal Sale
 		{
+			LG("1)RATIOSALE(C):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
@@ -1029,6 +1045,7 @@ function orderStatistics($barcode,$lightmode = false)
 		}
 		else if ($RATIOSALE < 50)
 		{
+			LG("1)RATIOSALE(D):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
