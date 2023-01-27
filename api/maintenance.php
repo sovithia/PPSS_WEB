@@ -57,6 +57,32 @@ function ScanPack()
     }
 }
 
+function ResetPack()
+{
+    $db = getDatabase();
+    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $packs = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($packs as $pack){
+        
+        $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($pack["PRODUCTID"]));
+        $res2 = $req->fetch(PDO::FETCH_ASSOC);
+        if ($res2 != false){
+            $UNITPRICE = $res2["PRICE"];        
+            $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           
+            //echo "CURR:".floatval($pack["SALEPRICE"])."|EXP:".$calculated."\n";            
+            echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
+            $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+            $req = $db->prepare($sql);
+            $req->execute(array($UNITPRICE,$pack["PACK_CODE"]));                     
+        }
+               
+    }
+}
+
 // Once Every 5 minutes
 function ScanPriceChange()
 {
@@ -115,34 +141,47 @@ function ScanPriceChange()
             $oldPrice = $oneitem["PRICE"];
             $newPrice = $oneitem["PRICE"] + ($oneitem["PRICE"] * $percent);
 
-            $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER) values(?,?,?,?,?)";	
-            $req = $indb->prepare($sql);
-            $req->execute(array($item["PRODUCTID"], $oldPrice, $newPrice,'CREATED',"AUTO"));	
+            $sql = "SELECT * FROM PRICECHANGE WHERE PRODUCTID = ? AND REQUESTEE IS NOT null";            
+            $req = $db->prepare($sql);
+            $req->execute(array($item["PRODUCTID"]));
+            $res = $req->fetch(PDO::FETCH_ASSOC);
+            if ($res == false){
+                $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER) values(?,?,?,?,?)";	
+                $req = $indb->prepare($sql);
+                $req->execute(array($item["PRODUCTID"], $oldPrice, $newPrice,'CREATED',"AUTO"));	
+
+                $sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+	            $req = $db->prepare($sql);
+	            $req->execute(array($item["PRODUCTID"]));
+	            $res = $req->fetch(PDO::FETCH_ASSOC);
+	            $STORBIN = $res["STORBIN"] ?? "";
+	            $STORBIN = explode('-',$STORBIN)[0];
+    
+                $sql = "SELECT * FROM USER,TEAM 
+                        WHERE USER.team_id = TEAM.ID                         
+                        AND LOCATION LIKE ?"; 
+                $req = $db->prepare($sql);
+                $req->execute(array("%".$STORBIN."%"));
+                $userstopush = $req->fetchAll(PDO::FETCH_ASSOC);
+                foreach($userstopush as $user){
+                    sendPushToUser("PRICE CHANGE","Price change requested for product ".$json["PRODUCTID"],$user["ID"]);
+                }                 
+            }            
         }  
     }  
-	$sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$STORBIN = $res["STORBIN"] ?? "";
-	$STORBIN = explode('-',$STORBIN)[0];
-
-	$sql = "SELECT * FROM USER WHERE LOCATION LIKE ?"; 
-	$req = $db->prepare($sql);
-	$req->execute(array($STORBIN));
-	$userstopush = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($userstopush as $user){
-		sendPushToUser("PRICE CHANGE","Price change requested for product ".$json["PRODUCTID"],$user["ID"]);
-	}    
+    
+	 
     $sql = "DELETE FROM RS_PRICECHANGE_QUEUE";
     $req = $db->prepare($sql);
     $req->execute(array());    
 }
 
 
-if ($argc > 1 && $argv[1] == "PACK"){
+if ($argc > 1 && $argv[1] == "PACK")
     ScanPack();
-}else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
+else if ($argc > 1 && $argv[1] == "RESETPACK")
+    ResetPack();
+else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
     ScanPriceChange();
 }else if ($argc > 1 && $argv[1] == "AL"){
     AddAnnualLeave();

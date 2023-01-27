@@ -134,7 +134,7 @@ function repricePack()
 function extractWrongPacking()
 {
     $db = getDatabase();
-    $sql = "SELECT ICPRODUCT.PRODUCTNAME,ICPRODUCT.PRODUCTID,QTY_ORDER, PACKINGNOTE,TRANDATE
+    $sql = "SELECT ICPRODUCT.PRODUCTNAME,ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,QTY_ORDER, PACKINGNOTE,TRANDATE
             FROM PORECEIVEDETAIL,ICPRODUCT 
             WHERE PORECEIVEDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
             AND PACKINGNOTE <> 'NR'
@@ -167,7 +167,7 @@ function extractWrongPacking()
     }
     $content = "";
     foreach($problemData as $data){
-        $content .= $data["PRODUCTID"].";".str_replace('\n','',$data["PRODUCTNAME"]).";".$data["PACKINGNOTE"].";".$data["QTY_ORDER"]."\n";
+        $content .= $data["VENDID"].";".$data["PRODUCTID"].";".str_replace('\n','',$data["PRODUCTNAME"]).";".$data["PACKINGNOTE"].";".$data["QTY_ORDER"]."\n";
 
     }
     file_put_contents("problems.csv",$content);

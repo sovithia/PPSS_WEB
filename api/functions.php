@@ -1819,6 +1819,37 @@ function getStoreWorkingEmployees($date){
 	return $employees;	
 }
 
+function getOfficeWorkingEmployees($date){
+	$db = getInternalDatabase();
+	
+	$dayOfWeek = date('l', strtotime($date));
+	$sql = "SELECT user_id FROM RESTREQUEST 
+	where user_id in ( select ID from USER WHERE role_id in ('200','201','300','301','302'))
+	AND date = ? 
+	AND STATUS = 'APPROVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
+	if ($rested != false){
+		$instr = "(";
+		foreach($rested as $rest){
+			$instr .= substr($rest["user_id"]).",";
+		}
+		$instr = substr($instr,0,-1);
+		$instr .= ")";
+	}else{
+		$instr = "('DECOY')";
+	}
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
+			AND role_id in ('200','201','300','301','302')
+			AND ID not in ".$instr;	
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	return $employees;	
+}
+
 
 function extractEmployeeByHour($hour,$employees)
 {
@@ -1833,10 +1864,13 @@ function extractEmployeeByHour($hour,$employees)
 	return $data;
 }
 
-function getPresentWorker($date,$start,$end)
+function getPresentWorker($date,$start,$end,$store = true)
 {
-	$employees = getStoreWorkingEmployees($date);	
-	
+	if ($store == true)
+		$employees = getStoreWorkingEmployees($date);	
+	else
+		$employees = getOfficeWorkingEmployees($date);	
+			
 	$hours = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00",
 			  "12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00",
 			  "17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];

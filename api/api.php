@@ -110,7 +110,8 @@ function getModules($role)
 function getUserSession($login,$password)
 {
     $db = getInternalDatabase();
-    $stmt = $db->prepare("SELECT USER.ID as 'USERID',ROLE.name as 'ROLENAME' FROM USER ,ROLE     			
+    $stmt = $db->prepare("SELECT USER.ID as 'USERID',ROLE.name as 'ROLENAME', restcredit as 'RESTCREDIT'
+						  FROM USER ,ROLE     			
     				      WHERE USER.role_id = ROLE.ID		 
     					  AND login = ? 
     					  AND  password = ?");
@@ -128,6 +129,7 @@ function getUserSession($login,$password)
         $session["token"] = $token;
         $session["role"] = $user["ROLENAME"];	// name of the module
         $session["appmodules"] = getModules($user["ROLENAME"]);  
+		$session["restcredit"] = $user["RESTCREDIT"];
         $session["ID"] = $user["USERID"];
         return $session;  	
     }
@@ -185,7 +187,9 @@ $app->post('/login',function(Request $request,Response $response) {
 			$data["role"] = $session["role"];
 			$data["appmodules"] = $session["appmodules"];
 			$data["token"] = $session["token"];
+			$data["restcredit"] = $session["restcredit"];
 			$data["ID"] = $session["ID"];
+
 			$result["data"] = $data;
 			$result["result"] = "OK";
 
@@ -1340,11 +1344,13 @@ function getSaleByLocations($start,$end,$userid)
 	$params = array();
 	if ($userid != 0){
 		$indb = getInternalDatabase();
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$sql2 = "SELECT TEAM.LOCATIONS from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				 AND USER.ID = ?";
 		$req = $indb->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$allloc = $res["location"];
+		$allloc = $res["LOCATIONS"];
 		$locs = explode('|',$allloc);
 		$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
 		
@@ -4547,17 +4553,20 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 	$db = getInternalDatabase();
 	$userid = $request->getAttribute('userid');
 	
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT TEAM.LOCATIONS 
+		FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res["location"] == "ALL"){
+	if ($res["LOCATIONS"] == "ALL"){
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUESTEE IS NULL";
 		$req = $db->prepare($sql);
 		$req->execute();
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);
 	}else{
-		$locations = $res["location"];
+		$locations = $res["LOCATIONS"];
 		$locations = explode('|',$locations);
 		$data = array();	
 		foreach($locations as $location){
@@ -4767,7 +4776,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$location = "";		
 		$req->execute(array("TRANSFER",$json["REQUESTER"],$location));
 
-		$sql = "SELECT ID,fcmtoken FROM USER WHERE team_id = ifnull((SELECT  ID FROM TEAM WHERE LOCATIONS LIKE ? OR location = 'ALL'),0)"; 
+		$sql = "SELECT ID,fcmtoken FROM USER WHERE team_id = ifnull((SELECT ID FROM TEAM WHERE LOCATIONS LIKE ? OR LOCATIONS = 'ALL'),0)"; 
 		$req = $db->prepare($sql);
 		$req->execute(array('%'.$location.'%'));
 		$users = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -7748,13 +7757,16 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 			AND DATE() < EXPIRATION ";
 
 	if ($userid != null){
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		
+		$sql2 = "SELECT TEAM.LOCATIONS from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				 AND USER.ID = ?";
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$params = array();
-		if ($res["location"] != 'ALL'){
-			$locations = explode("|",$res["location"]);
+		if ($res["LOCATIONS"] != 'ALL'){
+			$locations = explode("|",$res["LOCATIONS"]);
 			$count = 0;			
 			foreach($locations as $location){
 				if ($count == 0){
@@ -8022,13 +8034,16 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$sql .= " AND CREATED > date('now','-45 day')";
 
 	if ($userid != null){
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$sql2 = "SELECT TEAM.LOCATIONS 
+				 from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				AND USER.ID = ?";
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);				
-		if ($res["location"] != 'ALL' && $userid != "66" && $userid != "10")
+		if ($res["LOCATIONS"] != 'ALL' && $userid != "66" && $userid != "10")
 		{
-			$locations = explode("|",$res["location"]);
+			$locations = explode("|",$res["LOCATIONS"]);
 			$count = 0;			
 			foreach($locations as $location){
 				if ($count == 0){
@@ -8944,7 +8959,10 @@ $app->get('/expirealert',function ($request,Response $response){
 	$userid = $request->getParam('userid','');
 	
 	if ($userid != ''){
-		$sql = "SELECT location FROM USER WHERE ID = ?";
+		$sql = "SELECT TEAM.LOCATIONS  
+				FROM USER,TEAM 
+				WHERE USER.team_id = TEAM.ID
+				AND USER.ID = ?";
 		$req = $db->prepare($sql); 	
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9187,15 +9205,17 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$dbBlue = getDatabase();
 
 	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res != false){
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 		}	
 	}
@@ -9290,23 +9310,23 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	$dbBlue = getDatabase();
 
 	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 
 	$req->execute(array($userid));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false){
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 		}	
 	}
 	else
 		$locations = array();
-	
-
 
 	$data = array();
 
@@ -12003,19 +12023,21 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$db = getInternalDatabase();	
 	$dbBlue = getDatabase();	
 
-	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$userid = $request->getAttribute('userid');	
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false)
 	{		
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 			$ALL = true;
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 			$ALL = false;
 		}
@@ -12028,7 +12050,6 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
-
 	$created = array();
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -12566,7 +12587,7 @@ $app->get('/salespeed',function(Request $request,Response $response){
 
 $app->get('/storeschedule',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT USER.ID,lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,NAME as 'teamname'
+	$sql = "SELECT USER.ID,lastname,restcredit,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,NAME as 'teamname'
 				FROM USER,TEAM 
 				WHERE role_id in ('400','401','402','403','404','405','406','500','500','501','600','601')
 				AND USER.team_id = TEAM.ID";
@@ -12583,9 +12604,9 @@ $app->get('/storeschedule',function(Request $request,Response $response){
 
 $app->get('/officeschedule',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT USER.ID,lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location, NAME as 'teamname'
+	$sql = "SELECT USER.ID,lastname,firstname,restcredit,dayoff,starttime1,endtime1,starttime2,endtime2,location, NAME as 'teamname'
 				FROM USER, TEAM 
-				WHERE role_id in ('100','101','102','200','201','202','300','301','302')
+				WHERE role_id in ('200','201','202','300','301','302')
 				AND USER.team_id = TEAM.ID";
 	$req = $db->prepare($sql);
 	$req->execute(array());
@@ -12826,6 +12847,7 @@ $app->get('/promotion/{productid}', function(Request $request,Response $response
 	return $response;			
 });
 
+
 // CREATED, APPROVED, DENIED
 $app->get('/restrequest/{status}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
@@ -12871,7 +12893,7 @@ $app->get('/officerestrequest/{status}', function(Request $request,Response $res
 	if ($status == "CREATED"){
 		$newData = array();
 		foreach($items as $item){
-			$item["workingemployees"] = getPresentWorker($item["date"],$item["starttime"],$item["endtime"]);
+			$item["workingemployees"] = getPresentWorker($item["date"],$item["starttime"],$item["endtime"],false);
 			array_push($newData,$item);
 		}
 		$items = $newData;
@@ -12912,10 +12934,10 @@ $app->get('/storerestrequest/{status}', function(Request $request,Response $resp
 	return $response;			
 });
 
-$app->get('/restrequestmine/{creator}', function(Request $request,Response $response){
+$app->get('/restrequestmine/{userid}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
-	$creator = $request->getAttribute('creator');
-	$sql = "SELECT * FROM RESTREQUEST WHERE CREATOR = ? ORDER BY created DESC";
+	$creator = $request->getAttribute('userid');
+	$sql = "SELECT * FROM RESTREQUEST WHERE user_id = ? ORDER BY created DESC";
 	$req = $indb->prepare($sql);
 	$req->execute(array($creator));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -12938,7 +12960,7 @@ $app->get('/getworkingemployee/{date}',function(Request $request,Response $respo
 
 });
 
-// THEN DO REST REQUESt
+// THEN DO REST REQUEST
 $app->post('/restrequest', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -12958,6 +12980,22 @@ $app->put('/restrequest/{id}', function(Request $request,Response $response){
 	$req = $indb->prepare($sql);
 	$req->execute(array($json["STATUS"],$id));
 
+	$sql = "SELECT * FROM RESTREQUEST WHERE ID = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($id));
+	$rest = $req->fetch(PDO::FETCH_ASSOC);
+
+	$a = new DateTime($rest["starttime"]);
+	$b = new DateTime($rest["endtime"]);
+	$interval = $a->diff($b);
+	if ($interval->format("%H") > 8)
+		$interval = 8;
+	else 
+		$interval = $interval->format("%H");
+	$sql = "UPDATE USER set restcredit = restcredit - ? WHERE ID = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($interval,$rest["user_id"]));
+	
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;				
@@ -13069,9 +13107,23 @@ $app->get('/maincode/{code}', function(Request $request,Response $response){
 });
 
 
+$app->get('/cpu',function(Request $request,Response $response){
+
+	$cpu = shell_exec("ps -A -o %cpu | awk '{s+=$1} END {print s}'");    	
+	if (floatval(substr($cpu, 0, -1)) > 50)
+		$answ = "NO";
+	else 
+		$answ = "YES";
+	$resp["data"] = $answ;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	 return $response;			
+});
+
 $app->get('/usage',function(Request $request,Response $response){
 	$loadtime = sys_getloadavg();
-	$resp["data"] = $loadtime[0];
+	//$resp["data"] = $loadtime[0];
+	$resp["data"] = "1.4";
 	$resp["result"] = "OK";
 
 	$response = $response->withJson($resp);
