@@ -93,7 +93,7 @@ function difference()
         }
      }    
 }
-difference();
+//difference();
 
 
 //UPDATE ICPRODUCT_SALEUNIT SET DISC = 0.0;
@@ -129,5 +129,52 @@ function repricePack()
 
 
 //repricePack()
+
+
+function extractWrongPacking()
+{
+    $db = getDatabase();
+    $sql = "SELECT ICPRODUCT.PRODUCTNAME,ICPRODUCT.VENDID,ICPRODUCT.PRODUCTID,QTY_ORDER, PACKINGNOTE,TRANDATE
+            FROM PORECEIVEDETAIL,ICPRODUCT 
+            WHERE PORECEIVEDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+            AND PACKINGNOTE <> 'NR'
+            AND PACKINGNOTE <> ''
+            AND PACKINGNOTE <> 'N/A'
+            AND PACKINGNOTE <> 'NOEXPIRE'
+            AND PACKINGNOTE <> 'NO'
+            AND SUBSTRING(PACKINGNOTE, 0, 3) <> '1x'
+            AND SUBSTRING(PACKINGNOTE, 0, 3) <> '1X'";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $data = $req->fetchAll(PDO::FETCH_ASSOC);
+
+    $problemData = array();
+    foreach($data as $item){
+        if (str_contains($item["PACKINGNOTE"],"x")){
+            $qty = explode('x',$item["PACKINGNOTE"])[0];
+            $qty = str_replace(' ', '', $qty);
+            
+        }else if (str_contains($item["PACKINGNOTE"],"X")){
+            $qty = explode('X',$item["PACKINGNOTE"])[0];
+            $qty = str_replace(' ', '', $qty);
+        }else
+            continue;        
+        if ($item["QTY_ORDER"] <  $qty)
+        {
+            //echo $item["QTY_ORDER"].":".$qty."\n";
+            $problemData[$item["PRODUCTID"]] = $item;            
+        }     
+    }
+    $content = "";
+    foreach($problemData as $data){
+        $content .= $data["VENDID"].";".$data["PRODUCTID"].";".str_replace('\n','',$data["PRODUCTNAME"]).";".$data["PACKINGNOTE"].";".$data["QTY_ORDER"]."\n";
+
+    }
+    file_put_contents("problems.csv",$content);
+    //var_dump(count($problemData));
+
+}
+
+extractWrongPacking();
 ?>
 

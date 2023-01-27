@@ -652,12 +652,18 @@ function calculateMultiple($barcode){
 		$left = explode('X',$res["PACKINGNOTE"])[0];
 	else 
 		$left = 1;
-	return $left;
+	$left = str_replace(' ','',$left);	
+	if ($left > $res["QTY_ORDER"])
+		return $res["QTY_ORDER"];
+	else
+		return $left;
 }
 
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
+	LG("MULTIPLE:".$multiple);
+	LG("LASTRCVQTY:".$lastrcvqty);
 	if (!is_numeric($multiple))
 		$multiple = 1;	
 	if ($lastrcvqty % $multiple != 0)
@@ -674,7 +680,6 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 		if ($price < 5)
 		{		
 				$total = $increasedQty + ($multiple - $remains);
-
 				return $total; // +1
 		}
 		else
@@ -781,6 +786,10 @@ function externalAlertStats($barcode){
 
     return $data;
 
+}
+
+function LG($str){
+	error_log($str);
 }
 
 
@@ -918,33 +927,39 @@ function orderStatistics($barcode,$lightmode = false)
 	
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
-			if($stats["SALESPEED"] < 30){				
+			LG("1)RATIOSALE(A):" . $RATIOSALE);
+			if($stats["SALESPEED"] < 30){		
+				LG("2)SALESPEED (A):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
 			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){								
+				LG("2)SALESPEED (B):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			
-		  else if ($ONHAND < ($RCVQTY * 0.5) )
+		  	else if ($ONHAND < ($RCVQTY * 0.5) )
 			{
-					$multiple = calculateMultiple($barcode);
-					$remains = $RCVQTY % $multiple;
-					if ($remains == 0)
-						$stats["FINALQTY"] = $RCVQTY;
-					else{
-						$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
-					}			
-					$stats["DECISION"] = "SAMEQTY";	
+				LG("2)ONHAND<50%RCVQTY (C)");		
+				$multiple = calculateMultiple($barcode);
+				$remains = $RCVQTY % $multiple;
+				if ($remains == 0)
+					$stats["FINALQTY"] = $RCVQTY;
+				else{
+					$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+				}			
+				$stats["DECISION"] = "SAMEQTY";	
 			}
 			else
 			{
-						$stats["FINALQTY"] = 0;
-						$stats["DECISION"] = "TOOEARLY";	
+				LG("2)ELSE");		
+				$stats["FINALQTY"] = 0;
+				$stats["DECISION"] = "TOOEARLY";	
 			}
 		}
 		else if ($RATIOSALE >= 70 && $RATIOSALE < 100) // Speed not important here
 		{
+			LG("2)RATIOSALE(B):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 				if ($WASTE >= 0.1 * $RCVQTY && $PROMO >= 0.1 * $RCVQTY){
@@ -993,6 +1008,7 @@ function orderStatistics($barcode,$lightmode = false)
 		}
 		else if ($RATIOSALE >= 50 && $RATIOSALE < 70 ) // Normal Sale
 		{
+			LG("1)RATIOSALE(C):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
@@ -1029,6 +1045,7 @@ function orderStatistics($barcode,$lightmode = false)
 		}
 		else if ($RATIOSALE < 50)
 		{
+			LG("1)RATIOSALE(D):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
@@ -1792,8 +1809,6 @@ function getStoreWorkingEmployees($date){
 	}else{
 		$instr = "('DECOY')";
 	}
-	
-
 	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
 			AND role_id in ('401','402','403','404','405')
 			AND ID not in ".$instr;	
@@ -1803,5 +1818,85 @@ function getStoreWorkingEmployees($date){
 	
 	return $employees;	
 }
+
+function getOfficeWorkingEmployees($date){
+	$db = getInternalDatabase();
+	
+	$dayOfWeek = date('l', strtotime($date));
+	$sql = "SELECT user_id FROM RESTREQUEST 
+	where user_id in ( select ID from USER WHERE role_id in ('200','201','300','301','302'))
+	AND date = ? 
+	AND STATUS = 'APPROVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
+	if ($rested != false){
+		$instr = "(";
+		foreach($rested as $rest){
+			$instr .= substr($rest["user_id"]).",";
+		}
+		$instr = substr($instr,0,-1);
+		$instr .= ")";
+	}else{
+		$instr = "('DECOY')";
+	}
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
+			AND role_id in ('200','201','300','301','302')
+			AND ID not in ".$instr;	
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	return $employees;	
+}
+
+
+function extractEmployeeByHour($hour,$employees)
+{
+	$data = array();
+	foreach($employees as $employee){
+		if ( (strtotime($employee["starttime1"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime1"])) ||
+			 (strtotime($employee["starttime2"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime2"])) 
+		   ){
+			array_push($data,$employee);		
+		   }	   
+	}	
+	return $data;
+}
+
+function getPresentWorker($date,$start,$end,$store = true)
+{
+	if ($store == true)
+		$employees = getStoreWorkingEmployees($date);	
+	else
+		$employees = getOfficeWorkingEmployees($date);	
+			
+	$hours = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00",
+			  "12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00",
+			  "17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];
+	$startCnt = 0;		
+	foreach($hours as $hour){
+		if ($hour == $start)
+			break;		
+		$startCnt++;
+	}
+	$endCnt = 0;
+	foreach($hours as $hour){
+		if ($hour == $end)
+			break;		
+		$endCnt++;
+	}	
+	$data = array();
+	for($i = $startCnt;$i < $endCnt; $i++){			
+		$tmp = extractEmployeeByHour($hours[$i],$employees);				
+		foreach($tmp as $employee){
+			if (!in_array($employee,$employees))
+				array_push($data,$employee);
+		}
+	}
+	
+	return $employees;
+}
+
 
 ?>

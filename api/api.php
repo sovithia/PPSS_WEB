@@ -110,7 +110,8 @@ function getModules($role)
 function getUserSession($login,$password)
 {
     $db = getInternalDatabase();
-    $stmt = $db->prepare("SELECT USER.ID as 'USERID',ROLE.name as 'ROLENAME' FROM USER ,ROLE     			
+    $stmt = $db->prepare("SELECT USER.ID as 'USERID',ROLE.name as 'ROLENAME', restcredit as 'RESTCREDIT'
+						  FROM USER ,ROLE     			
     				      WHERE USER.role_id = ROLE.ID		 
     					  AND login = ? 
     					  AND  password = ?");
@@ -128,6 +129,7 @@ function getUserSession($login,$password)
         $session["token"] = $token;
         $session["role"] = $user["ROLENAME"];	// name of the module
         $session["appmodules"] = getModules($user["ROLENAME"]);  
+		$session["restcredit"] = $user["RESTCREDIT"];
         $session["ID"] = $user["USERID"];
         return $session;  	
     }
@@ -185,7 +187,9 @@ $app->post('/login',function(Request $request,Response $response) {
 			$data["role"] = $session["role"];
 			$data["appmodules"] = $session["appmodules"];
 			$data["token"] = $session["token"];
+			$data["restcredit"] = $session["restcredit"];
 			$data["ID"] = $session["ID"];
+
 			$result["data"] = $data;
 			$result["result"] = "OK";
 
@@ -1340,11 +1344,13 @@ function getSaleByLocations($start,$end,$userid)
 	$params = array();
 	if ($userid != 0){
 		$indb = getInternalDatabase();
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$sql2 = "SELECT TEAM.LOCATIONS from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				 AND USER.ID = ?";
 		$req = $indb->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$allloc = $res["location"];
+		$allloc = $res["LOCATIONS"];
 		$locs = explode('|',$allloc);
 		$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
 		
@@ -1448,8 +1454,8 @@ $app->get('/KPIOneCategory',function(Request $request,Response $response) {
 			$req->execute(array());
 			$result = $req->fetch(PDO::FETCH_ASSOC);					
 			$oneResponse = array();
-			$oneResponse["PROFIT"] = truncateNumber($result["PROFIT"]);
-			$oneResponse["SALE"] = truncateNumber($result["SALE"]);								
+			$oneResponse["PROFIT"] = round($result["PROFIT"],4);
+			$oneResponse["SALE"] = round($result["SALE"],4);								
 			$data[$i] = $oneResponse;											
 		}
 	}
@@ -1472,8 +1478,8 @@ $app->get('/KPIOneCategory',function(Request $request,Response $response) {
 			$req->execute(array());
 			$result = $req->fetch(PDO::FETCH_ASSOC);					
 			$oneResponse = array();			
-			$oneResponse["PROFIT"] = truncateNumber($result["PROFIT"]);
-			$oneResponse["SALE"] = truncateNumber($result["SALE"]);								
+			$oneResponse["PROFIT"] = round($result["PROFIT"],4);
+			$oneResponse["SALE"] = round($result["SALE"],4);								
 			$data[$i] = $oneResponse;					
 		}		
 	}	
@@ -1500,8 +1506,8 @@ function querySection($section,$begin,$end){
 	$oneResponse = array();
 	foreach($result as $oneResult){
 		$tmp = array();
-		$tmp["PROFIT"] = truncateNumber($oneResult["PROFIT"]);
-		$tmp["SALE"] = truncateNumber($oneResult["SALE"]);				
+		$tmp["PROFIT"] = round($oneResult["PROFIT"],4);
+		$tmp["SALE"] = round($oneResult["SALE"],4);				
 		//$tmp["NAME"] = 	;
 		$oneResponse[$oneResult["DEPARTMENT"]] = $tmp;
 	}	
@@ -1525,8 +1531,8 @@ function queryAllSection($begin,$end){
 	foreach($result as $oneResult){
 		$obj = array();
 		$tmp = array();
-		$tmp["PROFIT"] = truncateNumber($oneResult["PROFIT"]);
-		$tmp["SALE"] = truncateNumber($oneResult["SALE"]);				
+		$tmp["PROFIT"] = round($oneResult["PROFIT"],4);
+		$tmp["SALE"] = round($oneResult["SALE"],4);				
 		$oneResponse[$oneResult["SECTION"]] = 	$tmp;		
 	}	
 	return $oneResponse;		
@@ -1670,8 +1676,8 @@ $app->get('/KPISales',function(Request $request,Response $response) {
 		$req = $conn->prepare($sql);
 		$req->execute(array());
 		$result = $req->fetch(PDO::FETCH_ASSOC);
-		$result["PROFIT"] =	truncateNumber($result["PROFIT"]);
-		$result["SALE"] =	truncateNumber($result["SALE"]);
+		$result["PROFIT"] =	round($result["PROFIT"],4);
+		$result["SALE"] =	round($result["SALE"],4);
 
 		$yearData[$i] = $result;
 
@@ -1694,8 +1700,8 @@ $app->get('/KPISales',function(Request $request,Response $response) {
 			$req = $conn->prepare($sql);
 			$req->execute(array());
 			$result = $req->fetch(PDO::FETCH_ASSOC);			
-			$result["PROFIT"] = truncateNumber($result["PROFIT"]);		
-			$result["SALE"] = truncateNumber($result["SALE"]);
+			$result["PROFIT"] = round($result["PROFIT"],4);		
+			$result["SALE"] = round($result["SALE"],4);
 			$oneMonthData[$j] = $result;
 		}	
 		$monthData[$i] = $oneMonthData;		
@@ -4547,17 +4553,20 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 	$db = getInternalDatabase();
 	$userid = $request->getAttribute('userid');
 	
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT TEAM.LOCATIONS 
+		FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res["location"] == "ALL"){
+	if ($res["LOCATIONS"] == "ALL"){
 		$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND REQUESTEE IS NULL";
 		$req = $db->prepare($sql);
 		$req->execute();
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);
 	}else{
-		$locations = $res["location"];
+		$locations = $res["LOCATIONS"];
 		$locations = explode('|',$locations);
 		$data = array();	
 		foreach($locations as $location){
@@ -4767,7 +4776,7 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 			$location = "";		
 		$req->execute(array("TRANSFER",$json["REQUESTER"],$location));
 
-		$sql = "SELECT ID,fcmtoken,login from USER WHERE location LIKE ? OR location = 'ALL'";
+		$sql = "SELECT ID,fcmtoken FROM USER WHERE team_id = ifnull((SELECT ID FROM TEAM WHERE LOCATIONS LIKE ? OR LOCATIONS = 'ALL'),0)"; 
 		$req = $db->prepare($sql);
 		$req->execute(array('%'.$location.'%'));
 		$users = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -7748,13 +7757,16 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 			AND DATE() < EXPIRATION ";
 
 	if ($userid != null){
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		
+		$sql2 = "SELECT TEAM.LOCATIONS from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				 AND USER.ID = ?";
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$params = array();
-		if ($res["location"] != 'ALL'){
-			$locations = explode("|",$res["location"]);
+		if ($res["LOCATIONS"] != 'ALL'){
+			$locations = explode("|",$res["LOCATIONS"]);
 			$count = 0;			
 			foreach($locations as $location){
 				if ($count == 0){
@@ -8022,13 +8034,16 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$sql .= " AND CREATED > date('now','-45 day')";
 
 	if ($userid != null){
-		$sql2 = "SELECT location from USER WHERE ID = ?";
+		$sql2 = "SELECT TEAM.LOCATIONS 
+				 from USER,TEAM 
+				 WHERE USER.team_id = TEAM.ID
+				AND USER.ID = ?";
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);				
-		if ($res["location"] != 'ALL' && $userid != "66" && $userid != "10")
+		if ($res["LOCATIONS"] != 'ALL' && $userid != "66" && $userid != "10")
 		{
-			$locations = explode("|",$res["location"]);
+			$locations = explode("|",$res["LOCATIONS"]);
 			$count = 0;			
 			foreach($locations as $location){
 				if ($count == 0){
@@ -8194,7 +8209,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 	$req->execute(array($id)); 
 	$item = $req->fetch(PDO::FETCH_ASSOC);	
 
-	$sql = "SELECT * FROM USER WHERE LOCATION LIKE ?"; 
+	$sql = "SELECT * FROM USER WHERE team_id = ifnull((SELECT  ID FROM TEAM WHERE LOCATIONS LIKE ?),0)";
 	$req = $db->prepare($sql);
 	$req->execute(array("%".($item["LOCATION"] ?? "")."%"));
 	$userstopush = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -8944,7 +8959,10 @@ $app->get('/expirealert',function ($request,Response $response){
 	$userid = $request->getParam('userid','');
 	
 	if ($userid != ''){
-		$sql = "SELECT location FROM USER WHERE ID = ?";
+		$sql = "SELECT TEAM.LOCATIONS  
+				FROM USER,TEAM 
+				WHERE USER.team_id = TEAM.ID
+				AND USER.ID = ?";
 		$req = $db->prepare($sql); 	
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -9187,15 +9205,17 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$dbBlue = getDatabase();
 
 	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res != false){
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 		}	
 	}
@@ -9290,23 +9310,23 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	$dbBlue = getDatabase();
 
 	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 
 	$req->execute(array($userid));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false){
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 		}	
 	}
 	else
 		$locations = array();
-	
-
 
 	$data = array();
 
@@ -11878,7 +11898,7 @@ $app->post('/pricechange',function ($request,Response $response){
 	$STORBIN = $res["STORBIN"] ?? "";
 	$STORBIN = explode('-',$STORBIN)[0];
 
-	$sql = "SELECT * FROM USER WHERE LOCATION LIKE ?"; 
+	$sql = "SELECT * FROM USER WHERE team_id = ifnull((SELECT  ID FROM TEAM WHERE LOCATIONS LIKE ?),0)";
 	$req = $db->prepare($sql);
 	$req->execute(array($STORBIN));
 	$userstopush = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -11895,6 +11915,7 @@ $app->post('/pricechange',function ($request,Response $response){
 
 $app->put('/pricechange',function ($request,Response $response){
 	$db = getInternalDatabase();
+	$blueDB = getDatabase();
 	$json = json_decode($request->getBody(),true);
 
 	$sql = "UPDATE PRICECHANGE SET STATUS = 'VALIDATED', REQUESTEE = ? WHERE ID = ?";
@@ -11907,9 +11928,49 @@ $app->put('/pricechange',function ($request,Response $response){
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	$dbBlue = getDatabase();
-	$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ? WHERE PRODUCTID = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+
+	$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $blueDB->prepare($sql);
+	$req->execute(array($res["PRODUCTID"]));
+	$price = $req->fetch(PDO::FETCH_ASSOC);
+	$price = $price["PRICE"];
+	if (round($price,4) != round($res["NEWPRICE"],4))
+	{
+		$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+	}
+
+	$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+	$req = $blueDB->prepare($sql);
+	$req->execute(array($res["PRODUCTID"]));
+	$pack = $req->fetch(PDO::FETCH_ASSOC);
+	if ($pack != false) // IF HAVE PACK
+	{
+		$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
+        $req = $dbBlue->prepare($sql);
+        $req->execute(array($pack["PRODUCTID"]));
+        $promo = $req->fetch(PDO::FETCH_ASSOC);
+
+		$UNITPRICE = $res["NEWPRICE"];
+		if($promo == false){ // IF NO PROMO 10% DISC ON PRICE                                                
+				$calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);			
+				if (floatval($pack["SALEPRICE"]) != $calculated){				
+					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+					$req = $blueDB->prepare($sql);
+					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+				}            
+		}else{ // FULL PRICE     
+				$calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           			
+				if (floatval($pack["SALEPRICE"]) != $calculated){				
+					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+					$req = $blueDB->prepare($sql);
+					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+				}
+		} 
+	}
+	
+	
 
 	$resp = array();
 	$resp["result"] = "OK";	
@@ -11962,19 +12023,21 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$db = getInternalDatabase();	
 	$dbBlue = getDatabase();	
 
-	$userid = $request->getAttribute('userid');
-	$sql = "SELECT location FROM USER WHERE ID = ?";
+	$userid = $request->getAttribute('userid');	
+	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
+			WHERE USER.team_id = TEAM.ID
+			AND USER.ID = ?";
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 
 	if ($res != false)
 	{		
-		if ($res["location"] == "ALL"){
+		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 			$ALL = true;
 		}else{
-			$locations = $res["location"];		
+			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 			$ALL = false;
 		}
@@ -11987,7 +12050,6 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
-
 	$created = array();
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -12523,12 +12585,12 @@ $app->get('/salespeed',function(Request $request,Response $response){
 
 });
 
-
-
 $app->get('/storeschedule',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation 
-				FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4')";
+	$sql = "SELECT USER.ID,lastname,restcredit,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,NAME as 'teamname'
+				FROM USER,TEAM 
+				WHERE role_id in ('400','401','402','403','404','405','406','500','500','501','600','601')
+				AND USER.team_id = TEAM.ID";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$schedules = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12542,8 +12604,10 @@ $app->get('/storeschedule',function(Request $request,Response $response){
 
 $app->get('/officeschedule',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT lastname,firstname,dayoff,starttime1,endtime1,starttime2,endtime2,location,sololocation 
-				FROM USER WHERE role_id not in ('18','21','5','7','13','17','21','22','19','4')";
+	$sql = "SELECT USER.ID,lastname,firstname,restcredit,dayoff,starttime1,endtime1,starttime2,endtime2,location, NAME as 'teamname'
+				FROM USER, TEAM 
+				WHERE role_id in ('200','201','202','300','301','302')
+				AND USER.team_id = TEAM.ID";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$schedules = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12555,7 +12619,6 @@ $app->get('/officeschedule',function(Request $request,Response $response){
 	return $response;			
 });
 
-
 $app->put('/schedule/{userid}',function(Request $request,Response $response){
 
 	$userid = $request->getAttribute('userid');
@@ -12566,9 +12629,7 @@ $app->put('/schedule/{userid}',function(Request $request,Response $response){
 						starttime1 = ?,
 						  endtime1 = ?, 
 						starttime2 = ?,
-						  endtime2 = ?,
-						  location = ?, 
-					  sololocation = ?
+						  endtime2 = ?						  
 						WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array(
@@ -12577,12 +12638,10 @@ $app->put('/schedule/{userid}',function(Request $request,Response $response){
 			$json["ENDTIME1"],
 			$json["STARTTIME2"],
 			$json["ENDTIME2"],
-			$json["LOCATION"],
-			$json["SOLOCATION"],
+			$userid						
 	));
 
-	$resp = array();
-	$resp["data"] = $data;
+	$resp = array();	
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;			
@@ -12590,7 +12649,7 @@ $app->put('/schedule/{userid}',function(Request $request,Response $response){
 
 $app->get('/team',function(Request $request,Response $response){
 	$db = getInternalDatabase();
-	$sql = "SELECT * FROM TEAM";
+	$sql = "SELECT * FROM TEAM WHERE ID <> 9 AND ID <> 10"; 
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$teams = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12627,13 +12686,18 @@ $app->put('/team/{id}',function(Request $request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($json["LOCATIONS"],$id));
 
-	$resp = array();
-	$resp["data"] = $teams;
+	$members = explode('|',$json["MEMBERS"]);
+	foreach($members as $member){
+		$sql = "UPDATE USER SET team_id = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id,$member));
+	}
+
+	$resp = array();	
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;			
 });
-
 
 // PROMOTION
 $app->get('/promotion',function(Request $request,Response $response){
@@ -12684,20 +12748,11 @@ $app->post('/promotion',function(Request $request,Response $response){
 	$sql = "INSERT INTO ICNEWPROMOTION (DATEFROM,DATETO,PRO_TYPE,PRODUCTID,PRO_DESCRIPTION,SALE_QTY,DISCOUNT_TYPE,PCNAME,USERADD,DATEADD ) 
 										VALUES (?,?,'Per Item',?,?,'1.0','DISCOUNT(%)','APPLICATION',?,GETDATE()) ";
 
+
+
 	$req = $db->prepare($sql);
 	$req->execute($params);
-	
-	// LOOP ON PACK
-	$sql = "SELECT * ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"]));
-	$packs = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($packs as $pack){
 
-		$sql = "INSERT INTO PACKPROMO (PACKCODE,ENDPROMO) VALUES (?,?)";
-		$req = $indb->prepare($sql);
-		$req->execute(array($pack["PACK_CODE"],$json["END"]));
-	}
 	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $newData;
@@ -12792,12 +12847,16 @@ $app->get('/promotion/{productid}', function(Request $request,Response $response
 	return $response;			
 });
 
+
 // CREATED, APPROVED, DENIED
 $app->get('/restrequest/{status}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$status = $request->getAttribute('status');
 	
-	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?";
+	$sql = "SELECT *,USER.firstname as 'displayname' 
+			FROM RESTREQUEST,USER 
+			WHERE STATUS = ?
+			AND RESTREQUEST.user_id = USER.ID";
 	$req = $indb->prepare($sql);
 	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12805,7 +12864,7 @@ $app->get('/restrequest/{status}', function(Request $request,Response $response)
 	if ($status == "CREATED"){
 		$newData = array();
 		foreach($items as $item){
-			$item["WORKING"] = getworkingemployees($item["date"]);
+			$item["workingemployees"] = getworkingemployees($item["date"]);
 			array_push($newData,$item);
 		}
 		$items = $newData;
@@ -12821,8 +12880,11 @@ $app->get('/officerestrequest/{status}', function(Request $request,Response $res
 	$indb = getInternalDatabase();
 	$status = $request->getAttribute('status');
 	
-	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?
-			AND user_id not in (SELECT ID FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'));
+	$sql = "SELECT RESTREQUEST.*,USER.firstname as 'displayname' 
+			FROM USER,RESTREQUEST 
+			WHERE STATUS = ?
+			AND USER.ID = RESTREQUEST.user_id
+			AND user_id  in (SELECT ID FROM USER WHERE role_id in ('100','101','102','200','201','202','300','301','302'));
 			";
 	$req = $indb->prepare($sql);
 	$req->execute(array($status));
@@ -12831,7 +12893,7 @@ $app->get('/officerestrequest/{status}', function(Request $request,Response $res
 	if ($status == "CREATED"){
 		$newData = array();
 		foreach($items as $item){
-			$item["WORKING"] = getworkingemployees($item["date"]);
+			$item["workingemployees"] = getPresentWorker($item["date"],$item["starttime"],$item["endtime"],false);
 			array_push($newData,$item);
 		}
 		$items = $newData;
@@ -12847,8 +12909,11 @@ $app->get('/storerestrequest/{status}', function(Request $request,Response $resp
 	$indb = getInternalDatabase();
 	$status = $request->getAttribute('status');
 	
-	$sql = "SELECT * FROM RESTREQUEST WHERE STATUS = ?
-			AND user_id not in (SELECT ID FROM USER WHERE role_id in ('18','21','5','7','13','17','21','22','19','4'));
+	$sql = "SELECT RESTREQUEST.*,USER.firstname as 'displayname'
+			FROM USER,RESTREQUEST 
+			WHERE STATUS = ?
+			AND USER.ID = RESTREQUEST.user_id
+			AND user_id in (SELECT ID FROM USER WHERE role_id in ('400','401','402','403','404','405','406','500','500','501','600','601'));
 			";
 	$req = $indb->prepare($sql);
 	$req->execute(array($status));
@@ -12857,7 +12922,7 @@ $app->get('/storerestrequest/{status}', function(Request $request,Response $resp
 	if ($status == "CREATED"){
 		$newData = array();
 		foreach($items as $item){
-			$item["WORKING"] = getworkingemployees($item["date"]);
+			$item["workingemployees"] = getPresentWorker($item["date"],$item["starttime"],$item["endtime"]);
 			array_push($newData,$item);
 		}
 		$items = $newData;
@@ -12869,10 +12934,10 @@ $app->get('/storerestrequest/{status}', function(Request $request,Response $resp
 	return $response;			
 });
 
-$app->get('/restrequestmine/{creator}', function(Request $request,Response $response){
+$app->get('/restrequestmine/{userid}', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
-	$creator = $request->getAttribute('creator');
-	$sql = "SELECT * FROM RESTREQUEST WHERE CREATOR = ? ORDER BY created DESC";
+	$creator = $request->getAttribute('userid');
+	$sql = "SELECT * FROM RESTREQUEST WHERE user_id = ? ORDER BY created DESC";
 	$req = $indb->prepare($sql);
 	$req->execute(array($creator));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -12895,13 +12960,13 @@ $app->get('/getworkingemployee/{date}',function(Request $request,Response $respo
 
 });
 
-// THEN DO REST REQUESt
+// THEN DO REST REQUEST
 $app->post('/restrequest', function(Request $request,Response $response){
 	$indb = getInternalDatabase();
 	$json = json_decode($request->getBody(),true);
-	$sql = "INSERT INTO RESTREQUEST (date,starttime,endtime,reason,status,creator) VALUES (?,?,?,?,?,?)";
+	$sql = "INSERT INTO RESTREQUEST (date,starttime,endtime,reason,status,creator,user_id) VALUES (?,?,?,?,?,?,?)";
 	$req = $indb->prepare($sql);
-	$req->execute(array($json["DATE"],$json["STARTTIME"],$json["ENDTIME"],$json["REASON"],'CREATED',$json["CREATOR"]));		
+	$req->execute(array($json["DATE"],$json["STARTTIME"],$json["ENDTIME"],$json["REASON"],'CREATED',$json["CREATOR"],$json["USERID"]));		
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;			
@@ -12915,6 +12980,22 @@ $app->put('/restrequest/{id}', function(Request $request,Response $response){
 	$req = $indb->prepare($sql);
 	$req->execute(array($json["STATUS"],$id));
 
+	$sql = "SELECT * FROM RESTREQUEST WHERE ID = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($id));
+	$rest = $req->fetch(PDO::FETCH_ASSOC);
+
+	$a = new DateTime($rest["starttime"]);
+	$b = new DateTime($rest["endtime"]);
+	$interval = $a->diff($b);
+	if ($interval->format("%H") > 8)
+		$interval = 8;
+	else 
+		$interval = $interval->format("%H");
+	$sql = "UPDATE USER set restcredit = restcredit - ? WHERE ID = ?";
+	$req = $indb->prepare($sql);
+	$req->execute(array($interval,$rest["user_id"]));
+	
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	return $response;				
@@ -12939,18 +13020,6 @@ $app->get('/vendorautoitem/{id}', function(Request $request,Response $response){
 });
 
 
-function extractEmployeeByHour($hour,$employees)
-{
-	$data = array();
-	foreach($employees as $employee){
-		if ( ($employee["starttime1"] >= strtotime($hour) &&  strtotime($hour) < $employee["endtime1"]) ||
-			 ($employee["starttime2"] >= strtotime($hour) &&  strtotime($hour) < $employee["endtime2"]) 
-		   ){
-			array_push($data,$employee);		
-		   }	   
-	}
-	return $data;
-}
 $app->get('/storeschedulebyday/{date}', function(Request $request,Response $response){
 
 	$indb = getInternalDatabase();
@@ -13003,9 +13072,7 @@ $app->get('/storeschedulebyday/{date}', function(Request $request,Response $resp
 			{			
 				foreach($excludes as $exclude)
 				{
-					if ($exclude["id"] == $oneEmp["id"] && $key >= $exclude["start"] && $key <= $exclude["end"]){
-							echo "We don't add";
-							exit;
+					if ($exclude["ID"] == $oneEmp["ID"] && $key >= $exclude["starttime"] && $key <= $exclude["endtime"]){														
 					}	
 					else{
 						array_push($newData,$oneEmp);				
@@ -13037,6 +13104,30 @@ $app->get('/maincode/{code}', function(Request $request,Response $response){
 	
 	$response = $response->withJson($resp);
 	return $response;			
+});
+
+
+$app->get('/cpu',function(Request $request,Response $response){
+
+	$cpu = shell_exec("ps -A -o %cpu | awk '{s+=$1} END {print s}'");    	
+	if (floatval(substr($cpu, 0, -1)) > 50)
+		$answ = "NO";
+	else 
+		$answ = "YES";
+	$resp["data"] = $answ;
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);
+	 return $response;			
+});
+
+$app->get('/usage',function(Request $request,Response $response){
+	$loadtime = sys_getloadavg();
+	//$resp["data"] = $loadtime[0];
+	$resp["data"] = "1.4";
+	$resp["result"] = "OK";
+
+	$response = $response->withJson($resp);
+	 return $response;			
 });
 
 ini_set('max_execution_time', 0);

@@ -18,6 +18,19 @@ function getInternalDatabase()
 	return $db;
 }
 
+function getInternalDatabase2()
+{
+	try{		
+		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');		
+		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	}
+	catch(Exception $ex)
+	{
+		die("Cannot open database".$ex->getMessage());
+	}
+	return $db;
+}
 
 function getDatabase($name = "MAIN")
 { 	
@@ -134,6 +147,46 @@ function DLX($action)
 {
     return "<a target='_blank' href='details.php?ACTION=".$action."'><img height='25px' src='img/eye.png'></a>";
 }
+
+function renderSign($sign)
+{
+    $db = getInternalDatabase2();
+    if ($sign == "RAT"){
+        $teamid = "1";
+        $render = "<img height='50' src='img/signRat.png'><br>";
+    }else if ($sign == "OX"){
+        $teamid = "2";
+        $render = "<img height='50' src='img/signOx.png'><br>";
+    }else if ($sign == "TIGER"){
+        $teamid = "3";
+        $render = "<img height='50' src='img/signTiger.png'><br>";
+    }else if ($sign == "HARE"){
+        $teamid = "4";
+        $render = "<img height='50' src='img/signHare.png'><br>";
+    }else if ($sign == "SNAKE"){
+        $teamid = "5";
+        $render = "<img height='50' src='img/signSnake.png'><br>";
+    }else if ($sign == "DRAGON"){
+        $teamid = "6";
+        $render = "<img height='50' src='img/signDragon.png'><br>";
+    }else if ($sign == "GOAT"){
+        $teamid = "7";
+        $render = "<img height='50' src='img/signGoat.png'><br>";
+    }else if ($sign == "HORSE"){
+        $teamid = "8";
+        $render = "<img height='50' src='img/signHorse.png'><br>";
+    }
+    $sql = "SELECT ID FROM USER where team_id = ?";
+    $req = $db->prepare($sql);
+    $req->execute(array($teamid));
+    $pictures = $req->fetchAll();
+    $render .= "<hr>";
+    foreach($pictures as $picture){
+        $render .= "<img height='50px'   src='http://phnompenhsuperstore.com/api/profilepicture.php?id=".$picture["ID"]."'>";
+    }
+    return $render;
+}
+
 
 function renderStats()
 {
@@ -396,10 +449,10 @@ function renderStats()
                 <table border='1' >
                     <tr align='center'>
                             <td></td>        
-                            <td colspan='5'><img height='50' src='img/signRat.png'></td>                
-                            <td colspan='5'><img height='50' src='img/signOx.png'></td>                
-                            <td colspan='5'><img height='50' src='img/signTiger.png'></td>
-                            <td colspan='5'><img height='50' src='img/signHare.png'></td>            
+                            <td colspan='5'>".renderSign("RAT")."</td>                
+                            <td colspan='5'>".renderSign("OX")."</td>                
+                            <td colspan='5'>".renderSign("TIGER")."</td>
+                            <td colspan='5'>".renderSign("HARE")."</td>            
                     </tr>
                     <tr>
                             <td width='4%'></td>  
@@ -444,10 +497,10 @@ function renderStats()
                 <table border='1' >
                     <tr align='center'>
                             <td></td>                            
-                            <td colspan='5'><img height='50' src='img/signSnake.png'></td>            
-                            <td colspan='5'><img height='50' src='img/signDragon.png'></td>                
-                            <td colspan='5'><img height='50' src='img/signGoat.png'></td>                
-                            <td colspan='5'><img height='50' src='img/signHorse.png'></td>                
+                            <td colspan='5'>".renderSign("SNAKE")."</td>            
+                            <td colspan='5'>".renderSign("DRAGON")."</td>                
+                            <td colspan='5'>".renderSign("GOAT")."</td>                
+                            <td colspan='5'>".renderSign("HORSE")."</td>                
                     </tr>
                     <tr>
                             <td width='4%'></td>                      

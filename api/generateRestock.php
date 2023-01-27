@@ -6,7 +6,7 @@
 // Alert on Transfer request (Push Notification)
 // Generate EmptyRestock based on item WH2 have and WH1 not have
 // KPI By Row
-/*
+
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
@@ -143,7 +143,9 @@ function getInternalDatabase($base = "MAIN")
      }
   } 
 
+if ($argc > 1 && $argv[1] == "CROCODILE")
   GenerateGroupedRestocksByRowAndWarehouseStocks();
-
-  */
+else
+  echo "GenerateRestock Attempt";
+  
 ?>
