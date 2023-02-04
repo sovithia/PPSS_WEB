@@ -3,8 +3,7 @@
 require_once("functions.php");
 
 // Once Per Month 
-function AddAnnualLeave()
-{
+function AddAnnualLeave(){
     $db = getInternalDatabase();
     $sql = "UPDATE USER SET RESTCREDIT = RESTCREDIT + 12";
     $req = $db->prepare($sql);
@@ -13,14 +12,12 @@ function AddAnnualLeave()
 }
 
 // Once Every 2 Hours
-function ScanPack()
-{
+function ScanPack(){
     $db = getDatabase();
     $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
     $req = $db->prepare($sql);
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
-
     foreach($packs as $pack){
         $sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
@@ -33,7 +30,7 @@ function ScanPack()
         $res2 = $req->fetch(PDO::FETCH_ASSOC);
         if ($res2 != false){
             $UNITPRICE = $res2["PRICE"];
-            if($res == false){ // IF NO PROMO 10% DISC ON PRICE                                                
+            if($res == false){ // IF NO PROMO, 10% DISC ON PRICE                                                
                 $calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);
                 //echo "CURR:".floatval($pack["SALEPRICE"])."|EXP:".$calculated."\n";
                 if (floatval($pack["SALEPRICE"]) != $calculated){
@@ -57,8 +54,7 @@ function ScanPack()
     }
 }
 
-function ResetPack()
-{
+function ResetPack(){
     $db = getDatabase();
     $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
     $req = $db->prepare($sql);
@@ -84,8 +80,7 @@ function ResetPack()
 }
 
 // Once Every 5 minutes
-function ScanPriceChange()
-{
+function ScanPriceChange(){
     $indb = getInternalDatabase();
     $db = getDatabase();
     $sql = "SELECT * FROM RS_PRICECHANGE_QUEUE";    
@@ -188,4 +183,27 @@ else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
 }
 else
 	error_log("WARNING !!! maintenance attempt");
+
+/*
+    function ResetSpecificPack($packcode){
+        $db = getDatabase();
+        $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($packcode));
+        $pack = $req->fetch(PDO::FETCH_ASSOC);
+    
+    
+        $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($pack["PRODUCTID"]));
+        $res2 = $req->fetch(PDO::FETCH_ASSOC);
+    
+        $UNITPRICE = $res2["PRICE"];        
+        $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                                              
+        $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($UNITPRICE,$pack["PACK_CODE"]));                         
+    }
+    ResetSpecificPack("18888200082113");    
+*/
 ?>

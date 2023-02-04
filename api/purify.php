@@ -93,7 +93,7 @@ function difference()
         }
      }    
 }
-//difference();
+difference();
 
 
 //UPDATE ICPRODUCT_SALEUNIT SET DISC = 0.0;
@@ -130,7 +130,7 @@ function repricePack()
 
 //repricePack()
 
-
+/*
 function extractWrongPacking()
 {
     $db = getDatabase();
@@ -172,9 +172,9 @@ function extractWrongPacking()
     }
     file_put_contents("problems.csv",$content);
     //var_dump(count($problemData));
-
 }
+*/
 
-extractWrongPacking();
+//extractWrongPacking();
 ?>
 

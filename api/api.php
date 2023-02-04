@@ -13115,6 +13115,7 @@ $app->get('/cpu',function(Request $request,Response $response){
 	else 
 		$answ = "YES";
 	$resp["data"] = $answ;
+	$resp["cpu"] = $cpu;
 	$resp["result"] = "OK";
 	$response = $response->withJson($resp);
 	 return $response;			

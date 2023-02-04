@@ -48,14 +48,17 @@ padding: 10px;
 <?php 
 // display images from directory
 // directory path
-$dir = "./img/slideshow/";
+$dir = "/Volumes/Image/PROMOTION/";
  
 $scan_dir = scandir($dir);
 foreach($scan_dir as $img):
 	if(in_array($img,array('.','..')))
 	continue;
+$data = file_get_contents($dir.$img);
+$type = pathinfo($dir.$img,PATHINFO_EXTENSION);
+$base64 = 'data:image/'.$type.';base64,'.base64_encode($data);	
+echo "<img src=".$base64." width='500px'>";
 ?>
-<img src="<?php echo $dir.$img ?>" width="500px">
 <?php endforeach; ?>
 </div>
 </body>
