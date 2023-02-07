@@ -4081,9 +4081,17 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					WHERE ID = :identifier";
 		$req = $db->prepare($sql);		
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);				
+		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 		if(file_exists("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png"))
 			unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
+		$data["result"] = "OK";	
+	}
+	else if ($json["ACTIONTYPE"] == "ANOCHK"){
+		$sql = "UPDATE SUPPLY_RECORD SET ANOMALY_STATUS = 'NOANOMALY' WHERE ID = :identifier";
+		$req = $db->prepare($sql);
+		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);						
+		$req->execute();
 		$data["result"] = "OK";	
 	}
 	else{
@@ -5560,6 +5568,66 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	return $response;
 });
 
+$app->get('/groupedpurchasedetails2/{id}', function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();
+	
+	$id = $request->getAttribute('id');		
+	$sql = "SELECT *
+			FROM ITEMREQUEST,ITEMREQUESTSTATS 
+			WHERE ITEMREQUEST.ID = ITEMREQUESTSTATS.itemrequest_id
+			AND ITEMREQUESTACTION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
+
+	if (count($items) > 0){
+		$inStr = "(";
+		foreach($items as $item){
+				$inStr .= "'".$item["PRODUCTID"]."',";
+		}
+		$inStr = substr($inStr,0,-1);
+		$inStr .= ")";
+	}else{
+		$inStr = "('DECOY')";
+	}
+	
+	
+	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,PRODUCTID,
+	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
+	isnull((SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID),0) as 'STORE_QTY',
+	isnull((SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID),0) as 'WAREHOUSE_QTY'							
+	FROM dbo.ICPRODUCT,APVENDOR
+	WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+	AND PRODUCTID in ".$inStr;
+	error_log($sql);
+	
+	$req=$dbBlue->prepare($sql);
+	$req->execute(array());	
+	$itemsA = $req->fetchAll(PDO::FETCH_ASSOC);
+	$tax = $itemsA[0]["TAX"] ?? "0";		
+	$mapA = array();
+	foreach($itemsA as $item){
+		$mapA[$item["PRODUCTID"]] = $item;
+	}	
+	$newData = array();
+	foreach($items as $item){
+		$item["PRODUCTNAME"] = $mapA[$item["PRODUCTID"]]["PRODUCTNAME"]; 
+		$item["PACKINGNOTE"] = $mapA[$item["PRODUCTID"]]["PACKINGNOTE"]; 
+		$item["VENDNAME"] = $mapA[$item["PRODUCTID"]]["VENDNAME"];  
+		$item["STORE_QTY"] = $mapA[$item["PRODUCTID"]]["STORE_QTY"];  
+		$item["WAREHOUSE_QTY"] = $mapA[$item["PRODUCTID"]]["WAREHOUSE_QTY"];  
+				
+		array_push($newData,$item);
+	}	
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"]["items"] = $items;
+	$resp["data"]["tax"] = $tax;
+	$resp["data"]["permadiscount"] = "0";
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 
 $app->get('/groupedpurchasedetails3/{id}', function(Request $request,Response $response) {
