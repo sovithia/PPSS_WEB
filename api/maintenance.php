@@ -163,9 +163,7 @@ function ScanPriceChange(){
                 }                 
             }            
         }  
-    }  
-    
-	 
+    }   
     $sql = "DELETE FROM RS_PRICECHANGE_QUEUE";
     $req = $db->prepare($sql);
     $req->execute(array());    
