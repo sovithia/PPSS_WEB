@@ -169,15 +169,26 @@ function ScanPriceChange(){
     $req->execute(array());    
 }
 
+function LogAction($str){
+    system("echo '".$str."' >> /var/log/daemon.log");
+}
 
-if ($argc > 1 && $argv[1] == "PACK")
+if ($argc > 1 && $argv[1] == "PACK"){
     ScanPack();
-else if ($argc > 1 && $argv[1] == "RESETPACK")
+    LogAction(date("Y-m-d H:i:s").":SCANPACK");
+}
+else if ($argc > 1 && $argv[1] == "RESETPACK"){
     ResetPack();
-else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
+    LogAction(date("Y-m-d H:i:s").":RESETPACK");
+}    
+else if ($argc > 1 && $argv[1] == "PRICECHANGE"){    
     ScanPriceChange();
+    LogAction(date("Y-m-d H:i:s").":PRICECHANGE");
 }else if ($argc > 1 && $argv[1] == "AL"){
     AddAnnualLeave();
+    LogAction(date("Y-m-d H:i:s").":AL");
+}else if ($argc > 1 && $argv[1] == "TONIGHT"){
+    LogAction(date("Y-m-d H:i:s").":TONIIIIGHT");
 }
 else
 	error_log("WARNING !!! maintenance attempt");

@@ -3035,7 +3035,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 				$req->execute(array($supplyrecordid,"WAITING",$json["PAYMENTAMOUNT"],$json["AUTHOR"],$json["PAYMENTTYPE"],$json["PAYMENTNUMBER"],$json["PAYMENTNAME"],$author));	
 			
 			if ($json["PAYMENTTYPE"] == "ABA" || $json["PAYMENTTYPE"] == "ACLEDA")
-				sendPushToUser("Payment Waiting", $json["PAYMENTTYPE"] . " with amount ".$json["PAYMENTAMOUNT"]." waiting to be paid",66);
+				sendPushToUser("Payment Waiting", $json["PAYMENTTYPE"] . " with amount ".$json["PAYMENTAMOUNT"]." waiting to be paid",GetUserId("PAYER"));
 			
 	} 
 	else if (isset($json["TYPE"]) &&  ($json["TYPE"] ==  "PO" || $json["TYPE"] ==  "POPOOL") ) // GroupedPurchase OR SupplyRecord Create
@@ -3055,7 +3055,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			$ponumber = createPO($items,$author);
 
 			$resp["message"] = "Po created with number ".$ponumber;
-			if ($author == 'prem_v' || $author == 'soeurng_s' || $author == 'SOPHY' || $author == 'VANNA1')
+			if ($author == 'prem_v' || $author == 'soeurng_s' || $author == 'SOPHY' || $author == 'VANNA1' || $author == "ly_n" || $author == "HEAK")
 				$status = 'ORDERED';
 			else 
 				$status = 'WAITING';
@@ -3069,7 +3069,7 @@ $app->post('/supplyrecord', function(Request $request,Response $response) {
 			pictureRecord($json["PURCHASERSIGNATUREIMAGE"],"PCH",$lastID);
 			
 			if ($status == "WAITING"){
-				sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$lastID." is waiting validation" ,66);		
+				sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$lastID." is waiting validation" ,GetUserId("VALIDATOR"));		
 			}
 
 			if ($json["TYPE"] ==  "POPOOL"){
@@ -3552,8 +3552,16 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		}
 		$data["result"] = "OK";
 
-		sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,7);
-		sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,9);
+		$sql = "SELECT PURCHASER_USER FROM SUPPLY_RECORD WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["IDENTIFIER"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res["PURCHASER_USER"] == "ith_p")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("PUTHEAVY"));
+		else if ($res["PURCHASER_USER"] == "meng_g")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("GECKMEY"));
+		else if($res["PURCHASER_USER"] == "prum_p")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("PONLEU"));
 	}
 	else if ($json["ACTIONTYPE"] == "DENY"){
 		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'DENIED'  WHERE ID = :identifier";
@@ -3563,8 +3571,17 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->execute();
 		pictureRecord($json["SIGNATURE"],"VAL",$json["IDENTIFIER"]);		
 		$data["result"] = "OK";	
-		sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was denied" ,7);
-		sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was denied" ,9);
+
+		$sql = "SELECT PURCHASER_USER FROM SUPPLY_RECORD WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($json["IDENTIFIER"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res["PURCHASER_USER"] == "ith_p")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("PUTHEAVY"));
+		else if ($res["PURCHASER_USER"] == "meng_g")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("GECKMEY"));
+		else if ($res["PURCHASER_USER"] == "prum_p")		
+			sendPushToUser("SUPPLYRECORD", "SUPPY RECORD with ID ".$json["IDENTIFIER"]." was validated" ,GetUserId("PONLEU"));
 	}
 	else if ($json["ACTIONTYPE"] == "PCH"){ // PCH SET AS ORDERED			
 		$sql = "UPDATE SUPPLY_RECORD SET PURCHASER_USER = :author ,STATUS = 'ORDERED'  WHERE ID = :identifier";
@@ -4798,9 +4815,11 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
 		$req = $db->prepare($sql);
 		$req->execute(array($json["TYPE"],$json["REQUESTER"]));
-		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,18);
-		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,19);
-		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,20);
+		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,GetUserId("SOPHAL"));
+		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,GetUserId("WAREHOUSE1"));
+		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,GetUserId("WAREHOUSE2"));
+		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,GetUserId("WAREHOUSE3"));
+		sendPushToUser("TRANSFERBACK", "Some items are transferred back to warehouse" ,GetUserId("WAREHOUSE4"));
 	}
 	else {
 		$sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER) VALUES(?,?)";
@@ -5463,7 +5482,7 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 });
 		
 
-$app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $response) {
+$app->get('/groupedpurchasedetails_OLD/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
@@ -5568,7 +5587,7 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	return $response;
 });
 
-$app->get('/groupedpurchasedetails2/{id}', function(Request $request,Response $response) {
+$app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
@@ -5580,15 +5599,15 @@ $app->get('/groupedpurchasedetails2/{id}', function(Request $request,Response $r
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
-
-	if (count($items) > 0){
+	if (count($items) > 0)
+	{
 		$inStr = "(";
-		foreach($items as $item){
-				$inStr .= "'".$item["PRODUCTID"]."',";
-		}
+		foreach($items as $item)
+			$inStr .= "'".$item["PRODUCTID"]."',";	
 		$inStr = substr($inStr,0,-1);
 		$inStr .= ")";
-	}else{
+	}	
+	else{
 		$inStr = "('DECOY')";
 	}
 	
@@ -5599,8 +5618,7 @@ $app->get('/groupedpurchasedetails2/{id}', function(Request $request,Response $r
 	isnull((SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND PRODUCTID = ICPRODUCT.PRODUCTID),0) as 'WAREHOUSE_QTY'							
 	FROM dbo.ICPRODUCT,APVENDOR
 	WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
-	AND PRODUCTID in ".$inStr;
-	error_log($sql);
+	AND PRODUCTID in ".$inStr;	
 	
 	$req=$dbBlue->prepare($sql);
 	$req->execute(array());	
@@ -5622,7 +5640,7 @@ $app->get('/groupedpurchasedetails2/{id}', function(Request $request,Response $r
 	}	
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"]["items"] = $items;
+	$resp["data"]["items"] = $newData;
 	$resp["data"]["tax"] = $tax;
 	$resp["data"]["permadiscount"] = "0";
 	$response = $response->withJson($resp);
@@ -8252,7 +8270,7 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 		 $count++;        
 	  	}				
 	}
-	sendPushToUser("SELFPROMOTION","New promotion to validate",66);	
+	sendPushToUser("SELFPROMOTION","New promotion to validate",GetUserId("PROMOVALIDATOR"));	
 
 	$sql = "DELETE FROM SELFPROMOTIONITEMPOOL WHERE USERID = ?";
 	$req = $db->prepare($sql);
@@ -8612,7 +8630,8 @@ $app->post('/waste', function($request,Response $response) {
 		}
 		movePicture($depreciationItemId,$item["ID"],"WASTE");					
 	}
-	sendPushToUser("WASTE","Waste created",18);
+	sendPushToUser("WASTE","Waste created",GetUserId("SOPHAL"));
+
 	$resp = array();		
 	$sql = "DELETE FROM WASTEPOOL where USERID = ?";			
 	$req = $db->prepare($sql);
@@ -8643,7 +8662,7 @@ $app->put('/waste', function($request,Response $response) {
 		if (isset($json["SIGNATURE"]))
 			pictureRecord($json["SIGNATURE"],"WASTE_VALIDATOR",$id);
 		$data["DULL"] = "1";	
-		sendPushToUser("WASTE","Waste ready to clear",1);
+		sendPushToUser("WASTE","Waste ready to clear",GetUserId("SOPHIRETH"));
 	}
 	else if ($status == "CLEARED"){
 		
@@ -9660,7 +9679,7 @@ $app->post('/returnrecord',function($request,Response $response) {
 	$req = $db->prepare($sql);
 	$req->execute(array($USERID));
 
-	sendPushToUser("RETURNRECORD","RETURNRECORD created",1);
+	sendPushToUser("RETURNRECORD","RETURNRECORD created",GetUserId("SOPHIRETH"));
 
 	$resp = array();
 	$resp["result"] = "OK";
@@ -9712,10 +9731,13 @@ $app->put('/returnrecord',function($request,Response $response) {
 			$sql = "UPDATE RETURNRECORDITEM SET QUANTITY = ?,COST = ?,VAT = ?,DISCOUNT = ? WHERE PRODUCTID = ? AND RETURNRECORD_ID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($item["QUANTITY"],$item["COST"],$item["VAT"],$item["DISCOUNT"],$item["PRODUCTID"],$id));
-		}
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",21);
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",49);
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",58);		
+		}		
+
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("SOPHAL"));
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE1"));
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE2"));
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE3"));
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE4"));		
 	}
 	else if ($STATUS == "TOTRANSFER"){
 		$sql = "UPDATE RETURNRECORD SET STATUS = 'TOTRANSFER',TRANSFERER = ? WHERE ID = ?";
@@ -12347,11 +12369,11 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$tokens = $req->fetchAll(PDO::FETCH_ASSOC);
 	
 	foreach($tokens as $token){
-		sendPush("Title",$message,$token);		
+		$result = sendPush("Title",$message,$token);		
+		error_log($result);
 	}
 	$resp = array();	
-	$resp["result"] = "OK";	
-	$resp["message"] = $result;
+	$resp["result"] = "OK";		
 	$response = $response->withJson($resp);
 	return $response;
 });

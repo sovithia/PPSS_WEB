@@ -2,6 +2,8 @@
 
 <html lang="en">
 <head>
+<?php header("refresh: 60;"); ?>
+
 <style>
 body {font-family:Arial, Helvetica, sans-serif; font-size:12px;}
  
@@ -41,11 +43,12 @@ padding: 10px;
 </style>
 
 <title>Phnom Penh SuperStore</title>
- 
 </head>
 <body>
 <div class="fadein">
 <?php 
+
+
 // display images from directory
 // directory path
 $dir = "/Volumes/Image/PROMOTION/";

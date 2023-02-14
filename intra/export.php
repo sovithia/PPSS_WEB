@@ -62,7 +62,8 @@ function fieldsPresets($type)
         return ["IMAGE","BARCODE","PRODUCTNAME","last1","last2","last3","last4","last4"];    
     else if ($type == "ecommerce")
         return ["IMAGE","PRODUCTNAME","PRODUCTNAME1","PACKING","ONHAND","CATEGORYID","COUNTRY","COST","PRICE","MARGIN"];  
-    
+    else if ($type == "foodpanda")
+        return ["IMAGE","SKU","CATEGORY","BARCODE","BRAND","NAMEEN","NAMEKH","PRICE","THRESHOLD"];        
     else if ($type == "itemrequestactionpool_PURCHASE" || 
              $type == "itemrequestactionpool_TRANSFER" ||  
              $type == "itemrequestactionpool_RESTOCK")
@@ -96,7 +97,6 @@ function extractItems($data)
     return $result;
 }
 
-
 function purifySelectedData($data)
 {
     $result = array();    
@@ -113,7 +113,6 @@ function purifySelectedData($data)
     return $result;
 
 }
-
 
 function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = true)
 {
@@ -161,7 +160,7 @@ function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = tr
     $count = 2;    
     foreach($items as $item)    
     {  
-
+        
         if($skipNullProduct == true)
         {
             if (!isset($item["PRODUCTID"]))
@@ -214,14 +213,16 @@ function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = tr
             else if ($field == "QTY")            
                 $sheet->setCellValue($alphabet[$alphacount].$count, $_POST["qty".$item["PRODUCTID"]]);                                   
             else
-            {            
-                if (isset($item[$field])){
+            {     
+
+                if (isset($item[$field])){                 
                     $item[$field] = str_replace("<hr>","\n",$item[$field]);
                     $sheet->setCellValue($alphabet[$alphacount].$count, $item[$field]);                       
-                }
+                }                
+                    
             }
            $alphacount++;
-        }
+        }        
         $count++;             
     }
     $writer = new Xlsx($spreadsheet);
@@ -233,8 +234,6 @@ function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = tr
       //  unlink($file); 
     //}
 }
-
-
 
 function generateCSV($data)
 {   
@@ -314,7 +313,6 @@ function downloadFile($filename)
     exit(); 
 }
 
-
 $type = isset($_POST["type"]) ? $_POST["type"] : 0;
 if ($type == "EXPORTALL")
 {
@@ -374,6 +372,9 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
         $items = json_decode($_POST["items"],true);
     else 
         $items = extractItems($_POST);
+
+    //var_dump($items);
+    //exit; 
       
     if (isset($_POST["fields"]))
         $fields = json_decode($_POST["fields"],true);

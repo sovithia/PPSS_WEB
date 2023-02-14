@@ -1570,7 +1570,6 @@ function sendPush($title,$body, $fcmtoken) {
 		)		
 	);    
     $fields = json_encode ( $fields );
-
     $headers = array (
             'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
             'Content-Type: application/json'
@@ -1580,10 +1579,12 @@ function sendPush($title,$body, $fcmtoken) {
     curl_setopt ( $ch, CURLOPT_POST, true );
     curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
     curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
 	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
-    $result = curl_exec ( $ch );    
+    $result = curl_exec ( $ch );    	
     curl_close ( $ch );
+	return $result;
 }
 
 function sendPushToUser($title,$body,$userid)
@@ -1607,7 +1608,6 @@ function sendPushToUser($title,$body,$userid)
 			'body' => $body,
 			'vibrate' => 1,
 			'sound' => 1			
-
 		),
 		'notification' => array(
 			'title' => $title,
@@ -1634,6 +1634,7 @@ function sendPushToUser($title,$body,$userid)
     $result = curl_exec ( $ch );    
     curl_close ( $ch );
 	$result.= " TOKEN = ".$TOKEN;
+	error_log($result);
 	return $result;
 }
 
@@ -1910,6 +1911,31 @@ function getPresentWorker($date,$start,$end,$store = true)
 	
 	return $employees;
 }
-
+function GetUserId($type){
+    if ($type == "PAYER")
+        return 1001;
+	else if ($type == "PROMOVALIDATOR")
+        return 1001;
+    else if ($type == "VALIDATOR")
+        return 1001;
+	else if ($type == "SOPHIRETH")
+        return 201;
+    else if ($type == "PUTHEAVY")
+        return 205;
+    else if ($type == "GECKMEY")
+        return 206;
+    else if ($type == "PONLEU")
+        return 402;
+    else if ($type == "SOPHAL")
+        return 603;
+    else if ($type == "WAREHOUSE1")
+        return 601;
+    else if ($type == "WAREHOUSE2")
+        return 602;
+    else if ($type == "WAREHOUSE3")
+        return 604;        
+    else if ($type == "WAREHOUSE4")
+        return "605";        
+}
 
 ?>
