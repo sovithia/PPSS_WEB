@@ -19,10 +19,23 @@ function ScanPack(){
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
     foreach($packs as $pack){
-        $sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
+
+        //if ($pack["PACK_CODE"] != '4891599331288'){
+        //   continue;
+        //}
+        $sql = "SELECT DISCOUNT_TYPE,DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND GETDATE() < DATETO ";
         $req = $db->prepare($sql);
         $req->execute(array($pack["PRODUCTID"]));
         $res = $req->fetch(PDO::FETCH_ASSOC);
+        
+        if ($res != false){
+            $disctype = $res["DISCOUNT_TYPE"];
+            $discvalue = $res["DISCOUNT_VALUE"];
+        }else{
+            $disctype = "";
+            $discvalue = "";
+        }
+        
 
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
@@ -31,7 +44,7 @@ function ScanPack(){
         if ($res2 != false){
             $UNITPRICE = $res2["PRICE"];
             if($res == false){ // IF NO PROMO, 10% DISC ON PRICE                                                
-                $calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);
+                $calculated = round((($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);
                 //echo "CURR:".floatval($pack["SALEPRICE"])."|EXP:".$calculated."\n";
                 if (floatval($pack["SALEPRICE"]) != $calculated){
                     echo "SETTING 10% DISC FOR ".$pack["PACK_CODE"].":".$calculated."\n";
@@ -39,14 +52,20 @@ function ScanPack(){
                     $req = $db->prepare($sql);
                     $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
                 }            
-            }else{ // FULL PRICE     
-                $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           
+            }else{ // FULL PRICE 
+                    
+                //echo "DISC:".$discvalue;
+                if ($disctype == "DISCOUNT(%)"){
+                    $UNITPRICE = ($UNITPRICE * ((100 - $discvalue) / 100));
+                }
+                $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);
+                //echo "FINALPRICE:".$calculated;
                 //echo "CURR:".floatval($pack["SALEPRICE"])."|EXP:".$calculated."\n";
                 if (floatval($pack["SALEPRICE"]) != $calculated){
                     echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
-                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
                     $req = $db->prepare($sql);
-                    $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+                    $req->execute(array($calculated,$pack["PACK_CODE"])); 
                 }
             } 
         }
@@ -111,18 +130,28 @@ function ScanPriceChange(){
         'SEALED TOFU',
         'SEALED VEGETABLES'
     );
+    echo "Items count: ". count($items)."\n";
+    $i = 0;
     foreach($items as $item){
-
+        $i++;
+        echo $i."\n";
         $sql = "SELECT CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
         $req->execute(array($item["PRODUCTID"]));
         $category = $req->fetch(PDO::FETCH_ASSOC);
-        if ($category == false)
+        if ($category == false){
+            echo "category false\n";
             continue;        
-        if (in_array($category["CATEGORYID"],$excludeCategories))
+        }
+        
+            
+        if (in_array($category["CATEGORYID"],$excludeCategories)){
+            echo "exclude category\n";
             continue;
+        }
+            
 
-        if ($item["NEWCOST"] > $item["OLDCOST"] &&  (($item["NEWCOST"] - $item["OLDCOST"]) > 0.02) )
+        if (floatval($item["NEWCOST"]) > floatval($item["OLDCOST"]) &&  ((floatval($item["NEWCOST"]) - floatval($item["OLDCOST"])) > 0.02) )
         {
             if ($item["NEWCOST"] == 0 || $item["OLDCOST"] == 0)
                 continue;
@@ -135,15 +164,17 @@ function ScanPriceChange(){
 
             $oldPrice = $oneitem["PRICE"];
             $newPrice = $oneitem["PRICE"] + ($oneitem["PRICE"] * $percent);
+            $newPrice = round($newPrice,2);
 
             $sql = "SELECT * FROM PRICECHANGE WHERE PRODUCTID = ? AND REQUESTEE IS NOT null";            
-            $req = $db->prepare($sql);
+            $req = $indb->prepare($sql);
             $req->execute(array($item["PRODUCTID"]));
             $res = $req->fetch(PDO::FETCH_ASSOC);
             if ($res == false){
-                $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER) values(?,?,?,?,?)";	
+                echo "insert\n";
+                $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER,OLDCOST,NEWCOST) values(?,?,?,?,?,?,?)";	
                 $req = $indb->prepare($sql);
-                $req->execute(array($item["PRODUCTID"], $oldPrice, $newPrice,'CREATED',"AUTO"));	
+                $req->execute(array($item["PRODUCTID"], $oldPrice, $newPrice,'CREATED',"AUTO",$item["OLDCOST"],$item["NEWCOST"]));	
 
                 $sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
 	            $req = $db->prepare($sql);
@@ -152,11 +183,12 @@ function ScanPriceChange(){
 	            $STORBIN = $res["STORBIN"] ?? "";
 	            $STORBIN = explode('-',$STORBIN)[0];
     
-                $sql = "SELECT * FROM USER,TEAM 
+                $sql = "SELECT * 
+                        FROM USER,TEAM 
                         WHERE USER.team_id = TEAM.ID                         
                         AND LOCATION LIKE ?"; 
-                $req = $db->prepare($sql);
-                $req->execute(array("%".$STORBIN."%"));
+                $req = $indb->prepare($sql);
+                $req->execute(array("'%".$STORBIN."%'"));
                 $userstopush = $req->fetchAll(PDO::FETCH_ASSOC);
                 foreach($userstopush as $user){
                     sendPushToUser("PRICE CHANGE","Price change requested for product ".$json["PRODUCTID"],$user["ID"]);
@@ -166,7 +198,7 @@ function ScanPriceChange(){
     }   
     $sql = "DELETE FROM RS_PRICECHANGE_QUEUE";
     $req = $db->prepare($sql);
-    $req->execute(array());    
+    $req->execute(array());        
 }
 
 function LogAction($str){

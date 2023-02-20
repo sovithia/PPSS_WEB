@@ -1,6 +1,6 @@
 <?php 
 
-require_once("../api/RestEngine.php");
+require_once("/Users/ppss/Sites/PPSS/api/RestEngine.php");
 
 function getDatabase()
 { 	
@@ -29,10 +29,35 @@ function getInternalDatabase()
 }
 
 
+function foodpandaUpdatePrice($sku,$price)
+{
+	echo "Updating price...\n";
+	$curl = curl_init();
+	$data["sku"] = $sku;
+	$data["price"] = $price;
 
+	curl_setopt_array($curl, array(
+	CURLOPT_URL => 'https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/eyn4/product',
+	CURLOPT_RETURNTRANSFER => true,
+	CURLOPT_ENCODING => '',
+	CURLOPT_MAXREDIRS => 10,
+	CURLOPT_TIMEOUT => 0,
+	CURLOPT_FOLLOWLOCATION => true,
+	CURLOPT_SSL_VERIFYPEER => false,
+	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+	CURLOPT_CUSTOMREQUEST => 'PUT',
+	CURLOPT_POSTFIELDS => json_encode($data),
+  	CURLOPT_HTTPHEADER => array(
+    'Authorization: Bearer eyJJRCI6IiIsIk5hbWUiOiIiLCJHbG9iYWxFbnRpdHlJRCI6IkZQX0tIIiwiQ2hhaW5HbG9iYWxJRCI6IjVjNjkxODM5LTA2N2QtNDMzYi1iOTY4LTk4N2U4NDlhMDA2MiIsIlRva2VuIjoiNnlLWTl0Tk5xOWZteTVrcyIsIkdlbmVyYXRlZEF0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQo=',
+    'Content-Type: application/json'
+  	),
+	));
+	$response = curl_exec($curl);
+	curl_close($curl);	
+}
 
 function foodpandaUpdate($sku,$active)
-{
+{	
 	$curl = curl_init();
 
 	$data["sku"] = $sku;
@@ -94,8 +119,41 @@ function go()
 	$sql = "DELETE FROM RS_MENU_QUEUE";
 	$req = $blueDB->prepare($sql);
 	$req->execute(array());
+
+	LogAction(date("Y-m-d H:i:s")." FOODPANDA REFRESHED");
 }
 
+function initializePrice()
+{
+	$db = getInternalDatabase();
+	$blueDB = getDatabase();
+    $sql = "SELECT * FROM ITEM";
+    $req = $db->prepare($sql);
+	$req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+    foreach($items as $item){
+		echo $item["BARCODE"]. " ";
+        $sql = "SELECT PRICE FROM ICPRODUCT WHERE BARCODE = ?";
+        $req = $blueDB->prepare($sql);
+        $req->execute(array($item["BARCODE"]));
+        $itemdetail = $req->fetch(PDO::FETCH_ASSOC);				
+		if ($itemdetail == false)
+			continue;
+		$FPrice = floatval(str_replace(",",".",substr($item["PRICE"],1)));
+		$SPrice = floatval($itemdetail["PRICE"]);
+		echo "Foodpanda price : ".$FPrice." | PPSS price:".$SPrice."\n"; 
+		if ($FPrice != $SPrice){
+			echo " changing\n";
+			foodpandaUpdatePrice($item["SKU"],$SPrice);
+			$newPrice = "$".str_replace(".",",",$itemdetail["PRICE"]);
+			$sql = "UPDATE ITEM SET PRICE = ? WHERE SKU = ?";
+			$req = $db->prepare($sql);
+			$req->execute(array($newPrice,$item["SKU"]));
+		}	
+		//sleep(1);		
+    }
+}
 
 function initialize()
 {
@@ -119,14 +177,21 @@ function initialize()
 		else {
 			echo "Item : ".$item["BARCODE"]." ACTIVE\n";
 			foodpandaUpdate($item["SKU"],true);            		
-		}
-			
+		}			
     }
+	LogAction(date("Y-m-d H:i:s")." FOODPANDA INITIALIZED");
 }
 
+function LogAction($str){
+    system("echo '".$str."' >> /var/log/daemon.log");
+}
 
-if ($argc > 1 && $argv[1] == "CROCODILE")
-	go();
+if ($argc > 1 && $argv[1] == "INITIALIZE")
+	initialize();
+if ($argc > 1 && $argv[1] == "INITIALIZEPRICE")
+	initializePrice();
+else if($argc > 1 && $argv[1] == "REFRESH")
+	go();	
 else
 	error_log("WARNING !!! foodpanda go attempt");
 //initialize();
