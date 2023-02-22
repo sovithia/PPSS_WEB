@@ -1,42 +1,40 @@
-<?
+<?php
 
-function getQuantityBefore()
-{
-    $sql = "SELECT TOP(1) TRANQTY, VENDID,TRANDISC FROM PORECEIVEDDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC";
-}
 
 function calculateRealLastReceivedQuantity($productID)
 {
     //$discount,$vendid
-	if ($discount == 0)
-		return false;
+	
     $db = getDatabase();
-    $sql = "SELECT TOP(1) TRANQTY, VENDID,TRANDISC FROM PORECEIVEDDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC";
+    $sql = "SELECT TOP(1) TRANQTY, VENDID,TRANDISC FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC";
     $req = $db->prepare($sql);
     $req->execute(array($productID));
-    $res = $req->fetchAll(PDO::FETCH_ASSOC);
+    $res = $req->fetch(PDO::FETCH_ASSOC);
+
     $discount = $res["TRANDISC"];
+	
     $vendid = $res["VENDID"]; 
     $lastRcvQty = $res["TRANQTY"];
 
     if ($discount == 0)
         return $lastRcvQty;
 	$vendorDisc = getDiscountByVendor($vendid);
+
 	if ($vendorDisc == 0) // NO PERMA DISC
     {            
         $productDisc = getProductPermaDiscount($productID);
         if ($productDisc == 0){ 
-            $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC AND TRANDISC = ?";
+            $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' AND TRANDISC = ? ORDER BY DATEADD DESC ";
             $req = $db->prepare($sql);
-            $req->execute(array(0));
-            $res = $req->fetch(PDO:FETCH_ASSOC);
+            $req->execute(array($productID,0));
+            $res = $req->fetch(PDO::FETCH_ASSOC);
             return $res["TRANQTY"];
         }else{ // special disc on product ie : same as vendor perma                    
             if ($discount > $productDisc){
-                $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC AND TRANDISC = ?";
+                $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' AND TRANDISC = ? ORDER BY DATEADD DESC ";
                 $req = $db->prepare($sql);
-                $req->execute(array(productDisc));
-                $res = $req->fetch(PDO:FETCH_ASSOC);
+                $req->execute(array($productID,$productDisc));
+                $res = $req->fetch(PDO::FETCH_ASSOC);
                 return $res["TRANQTY"];
             }else // {
                 return $lastRcvQty;
@@ -45,10 +43,10 @@ function calculateRealLastReceivedQuantity($productID)
     else // PERMA DISC
     {
         if ($discount > $vendorDisc){
-            $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' ORDER BY DATEADD DESC AND TRANDISC = ?";
+            $sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463' AND TRANDISC = ? ORDER BY DATEADD DESC";
             $req = $db->prepare($sql);
-            $req->execute(array($vendorDisc));
-            $res = $req->fetch(PDO:FETCH_ASSOC);
+            $req->execute(array($productID,$vendorDisc));
+            $res = $req->fetch(PDO::FETCH_ASSOC);
             return $res["TRANQTY"];
         }            
         else 
@@ -58,85 +56,85 @@ function calculateRealLastReceivedQuantity($productID)
 }
 
 function getDiscountByVendor($vendid){
-	"100-064" = 5;
-	"100-016" = 1; 
-	"400-368" = 5;
-	"400-049" = 5;
-	"100-088" = 2;
-	"400-199" = 5;
-	"400-064" = 3;
-	"400-579" = 10
-	"100-101" = 1.5;
-	"400-035" = 5;
-	"100-045" = 5;
-	"100-244" = 5;
-	"100-586" = 5;
-	"400-122" = 3;
-	"100-355" = 3;
-	"400-037" = 3;
-	"400-112" = 5;
-	"400-659" = 5;
-	"400-663" = 5;
-	"100-039" = 5;
-	"100-516" = 5;
-	"400-337" = 5;
-	"100-092" = 2;
-	"100-152" = 3; 
-	"100-218" = 3;
-	"100-094" = 5;
-	"100-410" = 5;
-	"400-080" = 5;
-	"100-053" = 5;
-	"100-185" = 5;
-	"100-074" = 5;
-	"100-094" = 5;
-	"100-591" = 10;
-	"400-041" = 5;
-	"400-385" = 5;
-	"400-667" = 5;
-	"100-266" = 3;
-	"100-020" = 5;
-	"400-085" = 5;
-	"100-123" = 2;
-	"400-050" = 4;
-	"100-356" = 2;
-	"400-039" = 3;
-	"100-049" = 5;
-	"100-571" = 5;
-	"100-126" = 5;
-	"400-082" = 2;
-	"100-335" = 1;
-	"100-176" = 3;
-	"100-138" = 10;
-	"400-032" = 3;
-	"100-057" = 5;
-	"100-297" = 3;
-	"101-008" = 5;
-	"100-186" = 3;
-	"100-301" = 2;
-	"100-498" = 5;
-	"400-105" = 5;
-	"100-107" = 5;
-	"400-357" = 5;
-	"100-131" = 5;
-	"100-398" = 5;
-	"400-038" = 5;
-	"400-223" = 2;
-	"100-338" = 5;
-	"400-169" = 3;
-	"400-428" = 3;
-	"400-208" = 5;
-	"100-095" = 5;
-	"100-021" = 5;
-	"100-011" = 5;
-	"100-045" = 5; 
+	$data["100-064"] = 5;
+	$data["100-016"] = 1; 
+	$data["400-368"] = 5;
+	$data["400-049"] = 5;
+	$data["100-088"] = 2;
+	$data["400-199"] = 5;
+	$data["400-064"] = 3;
+	$data["400-579"] = 10;
+	$data["100-101"] = 1.5;
+	$data["400-035"] = 5;
+	$data["100-045"] = 5;
+	$data["100-244"] = 5;
+	$data["100-586"] = 5;
+	$data["400-122"] = 3;
+	$data["100-355"] = 3;
+	$data["400-037"] = 3;
+	$data["400-112"] = 5;
+	$data["400-659"] = 5;
+	$data["400-663"] = 5;
+	$data["100-039"] = 5;
+	$data["100-516"] = 5;
+	$data["400-337"] = 5;
+	$data["100-092"] = 2;
+	$data["100-152"] = 3; 
+	$data["100-218"] = 3;
+	$data["100-094"] = 5;
+	$data["100-410"] = 5;
+	$data["400-080"] = 5;
+	$data["100-053"] = 5;
+	$data["100-185"] = 5;
+	$data["100-074"] = 5;
+	$data["100-094"] = 5;
+	$data["100-591"] = 10;
+	$data["400-041"] = 5;
+	$data["400-385"] = 5;
+	$data["400-667"] = 5;
+	$data["100-266"] = 3;
+	$data["100-020"] = 5;
+	$data["400-085"] = 5;
+	$data["100-123"] = 2;
+	$data["400-050"] = 4;
+	$data["100-356"] = 2;
+	$data["400-039"] = 3;
+	$data["100-049"] = 5;
+	$data["100-571"] = 5;
+	$data["100-126"] = 5;
+	$data["400-082"] = 2;
+	$data["100-335"] = 1;
+	$data["100-176"] = 3;
+	$data["100-138"] = 10;
+	$data["400-032"] = 3;
+	$data["100-057"] = 5;
+	$data["100-297"] = 3;
+	$data["101-008"] = 5;
+	$data["100-186"] = 3;
+	$data["100-301"] = 2;
+	$data["100-498"] = 5;
+	$data["400-105"] = 5;
+	$data["100-107"] = 5;
+	$data["400-357"] = 5;
+	$data["100-131"] = 5;
+	$data["100-398"] = 5;
+	$data["400-038"] = 5;
+	$data["400-223"] = 2;
+	$data["100-338"] = 5;
+	$data["400-169"] = 3;
+	$data["400-428"] = 3;
+	$data["400-208"] = 5;
+	$data["100-095"] = 5;
+	$data["100-021"] = 5;
+	$data["100-011"] = 5;
+	$data["100-045"] = 5; 
+	if (isset($data[$vendid]))
+		return $data[$vendid];	
+	else
+		return 0;
 }
 
-
-
-
-function getProductPermaDiscount($barcode)
-{
+function getProductPermaDiscount($barcode){
 
 	$data["8935006540613"]=	8;
 	$data["8935006540606"]=	8;
@@ -899,24 +897,4 @@ function getProductPermaDiscount($barcode)
 	}else
 		return 0;
 }	
-
-
 ?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

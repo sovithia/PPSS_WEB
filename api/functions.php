@@ -1,7 +1,7 @@
 <?php 
 
 require_once 'RestEngine.php';
-
+require_once 'exceptionalPromo.php';
 
 function extractIDS($items,$keyname = "PRODUCTID"){
 	if (count($items) == 0)
@@ -845,6 +845,9 @@ function orderStatistics($barcode,$lightmode = false)
 		else{
 			$stats["ONHAND"] = $res2["ONHAND"];
 			$RCVDATE = $res["RECEIVE_DATE"];
+			//$RCVQTY = calculateRealLastReceivedQuantity($barcode);
+			//error_log("rcv qty:".$RCVQTY);
+			
 			if ($res["RECEIVE_QTY"] == null){
 				$sql = "SELECT TOP(1) QTY_ORDER FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 				$req = $db->prepare($sql);
@@ -853,6 +856,7 @@ function orderStatistics($barcode,$lightmode = false)
 			}else{
 				$RCVQTY = $res["RECEIVE_QTY"];
 			}
+			
 			
 		}	
 	}	 
