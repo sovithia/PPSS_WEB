@@ -251,6 +251,7 @@ function GenerateDailyGroupedPurchases()
 			$TOTALSALE = $stats["TOTALSALE"];
 			$MOMENTONHAND = $stats["ONHAND"];	
 			$DECISION = $stats["DECISION"];
+			$CALCULATEDQUANTITY = $stats["FINALQTY"];
 			
 			if ($new == true){
 				
@@ -262,13 +263,13 @@ function GenerateDailyGroupedPurchases()
 
 				echo "INSERTING ITEMREQUESTSTATS\n...";
 				$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
-						totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,momentonhand,decision,itemrequest_id)		 
+						totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,momentonhand,calculatedquantity,decision,itemrequest_id)		 
 						VALUES (?,?,?,?,?,
 								?,?,?,?,?,
 								?,?,?)";
 				$req = $db->prepare($sql);								
 				$req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
-				$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$DECISION, $ITEMREQUESTID));
+				$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));
 			}
 			else
 			{
@@ -290,7 +291,8 @@ function GenerateDailyGroupedPurchases()
 							lastsaleday = ?,
 							totalsale = ?,
 							momentonhand = ?,
-							decision = ? 
+							decision = ?,
+							calculatedquantity = ?
 							WHERE itemrequest_id = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array(
@@ -306,6 +308,7 @@ function GenerateDailyGroupedPurchases()
 					$TOTALSALE, 
 					$MOMENTONHAND,
 					$DECISION,
+					$CALCULATEDQUANTITY,
 					$ITEMREQUESTID
 				));
 

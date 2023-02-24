@@ -845,9 +845,9 @@ function orderStatistics($barcode,$lightmode = false)
 		else{
 			$stats["ONHAND"] = $res2["ONHAND"];
 			$RCVDATE = $res["RECEIVE_DATE"];
-			//$RCVQTY = calculateRealLastReceivedQuantity($barcode);
+			$RCVQTY = calculateRealLastReceivedQuantity($barcode);
 			//error_log("rcv qty:".$RCVQTY);
-			
+			/*
 			if ($res["RECEIVE_QTY"] == null){
 				$sql = "SELECT TOP(1) QTY_ORDER FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 				$req = $db->prepare($sql);
@@ -856,7 +856,7 @@ function orderStatistics($barcode,$lightmode = false)
 			}else{
 				$RCVQTY = $res["RECEIVE_QTY"];
 			}
-			
+			*/
 			
 		}	
 	}	 
@@ -1561,7 +1561,6 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 	else 
 		return false;
 }
-
 
 function sendPush($title,$body, $fcmtoken) {
     $url = 'https://fcm.googleapis.com/fcm/send';	

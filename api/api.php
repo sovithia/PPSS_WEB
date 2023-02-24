@@ -5481,7 +5481,6 @@ $app->put('/itemrequestaction/{id}', function(Request $request,Response $respons
 	return $response;
 });
 		
-
 $app->get('/groupedpurchasedetails_OLD/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
@@ -8808,12 +8807,14 @@ $app->put('/waste', function($request,Response $response) {
 	$notes = $json["NOTES"] ?? "";	
 	$resp = array();
 	$data = array();
+
+	error_log($status);
+
 	if(isset($json["LOCID"]))
 		$locid = $json["LOCID"];
 	else
 		$locid = "";
-	if ($status == "
-	VALIDATED"){
+	if ($status == "VALIDATED"){
 		$sql = "UPDATE WASTE SET STATUS = 'VALIDATED', VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
@@ -13389,21 +13390,47 @@ $app->post('/priceadjust',function(Request $request,Response $response){
 		$items = json_decode($json["ITEMS"],true);	
 		
 		foreach($items as $item){			
-			$sql = "SELECT LASTCOST,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";		
+			$sql = "SELECT PRODUCTNAME,LASTCOST,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";		
 			$req = $dbBlue->prepare($sql);
 			$req->execute(array($item["PRODUCTID"]));
 			$itemData = $req->fetch(PDO::FETCH_ASSOC);
-			$price = $itemData["PRICE"];
-			$lastcost = $itemData["LASTCOST"];
+			if ($itemData != false){
+				$price = $itemData["PRICE"];
+				$lastcost = $itemData["LASTCOST"];
+				$productname = $itemData["PRODUCTNAME"];
+			}else{
+				$sql = "SELECT SALEPRICE,PRODUCTID,SALEFACTOR FROM  ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($item["PRODUCTID"]));
+				$pack = $req->fetch(PDO::FETCH_ASSOC);
+				if ($pack == false){
+					$resp = array();
+					$resp["result"] = "KO";
+					$resp["message"] = "Barcode ".$item["PRODUCTID"]." not found";
+					$response = $response->withJson($resp);	
+					return $response;			
+				}
+				$price = $pack["SALEPRICE"];
+				$packproductid = $pack["PRODUCTID"];
+				$salefactor = $pack["SALEFACTOR"];
+
+				$sql = "SELECT PRODUCTNAME,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($packproductid));
+				$packitem = $req->fetch(PDO::FETCH_ASSOC);				
+				$lastcost = $packitem["LASTCOST"] * $salefactor;
+				$productname = $packitem["PRODUCTNAME"] . "(PACK)";
+			}
+			
 
 			$lucky = (isset($item["LUCKY"])) ? $item["LUCKY"] : "";
 			$chipmong = (isset($item["CHIPMONG"])) ? $item["CHIPMONG"] : "";
 			$aeon = (isset($item["AEON"])) ? $item["AEON"] : "";
 			$makro = (isset($item["MAKRO"])) ? $item["MAKRO"] : "";
 
-			$sql = "INSERT INTO PRICEADJUSTREQUEST (PRODUCTID,LUCKY,CHIPMONG,AEON,MAKRO,STATUS,AUTHOR,COST,CURRENTPRICE) VALUES (?,?,?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO PRICEADJUSTREQUEST (PRODUCTID,LUCKY,CHIPMONG,AEON,MAKRO,STATUS,AUTHOR,COST,CURRENTPRICE,PRODUCTNAME) VALUES (?,?,?,?,?,?,?,?,?,?)";
 			$req = $db->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$lucky,$chipmong,$aeon,$makro,'CREATED',$item["AUTHOR"],$lastcost,$price)); 										
+			$req->execute(array($item["PRODUCTID"],$lucky,$chipmong,$aeon,$makro,'CREATED',$item["AUTHOR"],$lastcost,$price,$productname)); 										
 		}
 	}
 	$resp = array();
@@ -13411,6 +13438,21 @@ $app->post('/priceadjust',function(Request $request,Response $response){
 	$response = $response->withJson($resp);	
 	return $response;			
 });
+
+$app->delete('/priceadjust/{id}',function(Request $request,Response $response){
+	$db = getInternalDatabase();	
+		
+	$id = $request->getAttribute('id');
+	$sql = "DELETE FROM PRICEADJUSTREQUEST WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	
+	$resp = array();
+	$resp["result"] = "OK";
+	$response = $response->withJson($resp);	
+	return $response;			
+});
+
 
 $app->get('/priceadjust/{status}',function(Request $request,Response $response){
 	$db = getInternalDatabase();
@@ -13433,17 +13475,23 @@ $app->put('/priceadjust/{id}',function(Request $request,Response $response){
 	$json = json_decode($request->getBody(),true);
 	if ($json["ACTION"] == "VALIDATE"){
 				
-		$sql = "UPDATE PRICEADJUSTREQUEST SET STATUS = ? WHERE ID = ?";
+		$sql = "UPDATE PRICEADJUSTREQUEST SET STATUS = ?,VALIDATEDPRICE = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array("VALIDATED",$id)); 
+		$req->execute(array("VALIDATED",$json["NEWPRICE"],$id)); 
+
+		$sql = "SELECT PRODUCTID FROM PRICEADJUSTREQUEST WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$productid = $res["PRODUCTID"];
 
 		$sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER) values(?,?,?,?,?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"], $json["OLDPRICE"], $json["NEWPRICE"],'CREATED',$json["AUTHOR"]));	
+		$req->execute(array($productid, $json["OLDPRICE"], $json["NEWPRICE"],'CREATED',$json["AUTHOR"]));	
 
 		$sql = "UPDATE ICPRODUCT SET PPSS_IS_PRICEFIXED = 'Y' WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
-		$req->execute(array($json["PRODUCTID"])); 		
+		$req->execute(array($productid)); 		
 	}
 	else if ($json["ACTION"] == "ESTIMATE"){
 		$sql = "UPDATE PRICEADJUSTREQUEST SET STATUS = 'ESTIMATED', ESTIMATEDPRICE = ? WHERE ID = ?";
@@ -13459,6 +13507,8 @@ $app->put('/priceadjust/{id}',function(Request $request,Response $response){
 	$response = $response->withJson($resp);
 	return $response;			
 });
+
+
 
 $app->get('/score',function(Request $request,Response $response){
 
@@ -13562,32 +13612,32 @@ $app->get('/score',function(Request $request,Response $response){
 		$OCCUPANCY_OX_LAST  += $stats["OCC_OX_TOD"];		
 		$OCCUPANCY_TIGER_LAST += $stats["OCC_TIGER_TOD"];
 		$OCCUPANCY_HARE_LAST += $stats["OCC_HARE_TOD"];
-		$OCCUPANCY_DRAGON_LAST += $stats["OCC_DRAGON_LAST"];
-		$OCCUPANCY_SNAKE_LAST += $stats["OCC_SNAKE_LAST"];	
-		$OCCUPANCY_HORSE_LAST += $stats["OCC_HORSE_LAST"];	
-		$OCCUPANCY_GOAT_LAST += $stats["OCC_DRAGON_LAST"];	
+		$OCCUPANCY_DRAGON_LAST += isset($stats["OCC_DRAGON_LAST"]) ? $stats["OCC_DRAGON_LAST"] : 0; // TO CHECK
+		$OCCUPANCY_SNAKE_LAST += isset($stats["OCC_SNAKE_LAST"]) ? $stats["OCC_SNAKE_LAST"] : 0; // TO CHECK	
+		$OCCUPANCY_HORSE_LAST += isset($stats["OCC_HORSE_LAST"]) ? $stats["OCC_HORSE_LAST"] : 0; // TO CHECK	
+		$OCCUPANCY_GOAT_LAST += isset($stats["OCC_DRAGON_LAST"]) ? $stats["OCC_DRAGON_LAST"] : 0; // TO CHECK	
 
-		$tmp = json_encode($stats["TRF_ALL_TOD"]);	
+		$tmp = json_decode($stats["TRF_ALL_TOD"],true);	
 		$TRANSFER_ALL_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_RAT_TOD"]);		
+		$tmp = json_decode($stats["TRF_RAT_TOD"],true);		
 		$TRANSFER_RAT_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_OX_TOD"]);		
+		$tmp = json_decode($stats["TRF_OX_TOD"],true);		
 		$TRANSFER_OX_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_TIGER_TOD"]);
+		$tmp = json_decode($stats["TRF_TIGER_TOD"],true);
 		$TRANSFER_TIGER_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_HARE_TOD"]);
+		$tmp = json_decode($stats["TRF_HARE_TOD"],true);
 		$TRANSFER_HARE_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_DRAGON_TOD"]);
+		$tmp = json_decode($stats["TRF_DRAGON_TOD"],true);
 		$TRANSFER_DRAGON_LAST += $tmp["QUANTITY"];		
-		$tmp = json_encode($stats["TRF_SNAKE_TOD"]);
+		$tmp = json_decode($stats["TRF_SNAKE_TOD"],true);
 		$TRANSFER_SNAKE_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_HORSE_TOD"]);
+		$tmp = json_decode($stats["TRF_HORSE_TOD"],true);
 		$TRANSFER_HORSE_LAST += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_GOAT_TOD"]);
+		$tmp = json_decode($stats["TRF_GOAT_TOD"],true);
 		$TRANSFER_GOAT_LAST += $tmp["QUANTITY"];
 		
-		$SALE_ALL_LAST += $stat["SALE_RAT_TOD"] + $stat["SALE_OX_TOD"] + $stat["SALE_TIGER_TOD"] + $stat["SALE_HARE_CURRENT"] + 
-							 $stat["SALE_DRAGON_CURRENT"] + $stat["SALE_SNAKE_CURRENT"] + $stat["SALE_HORSE_CURRENT"] + $stat["SALE_GOAT_CURRENT"];
+		$SALE_ALL_LAST += $stats["SALE_RAT_TOD"] + $stats["SALE_OX_TOD"] + $stats["SALE_TIGER_TOD"] + $stats["SALE_HARE_CURRENT"] + 
+							 $stat["SALE_DRAGON_CURRENT"] + $stats["SALE_SNAKE_CURRENT"] + $stats["SALE_HORSE_CURRENT"] + $stats["SALE_GOAT_CURRENT"];
 		$SALE_RAT_LAST  += $tmp["SALE_RAT_TOD"]; 
 		$SALE_OX_LAST  += $tmp["SALE_OX_TOD"];
 		$SALE_TIGER_LAST  += $tmp["SALE_TIGER_TOD"];
@@ -13610,23 +13660,23 @@ $app->get('/score',function(Request $request,Response $response){
 		$OCCUPANCY_HORSE_CURRENT += $stats["OCC_HORSE_LAST"];	
 		$OCCUPANCY_GOAT_CURRENT += $stats["OCC_DRAGON_LAST"];	
 
-		$tmp = json_encode($stats["TRF_ALL_TOD"]);	
+		$tmp = json_decode($stats["TRF_ALL_TOD"],true);	
 		$TRANSFER_ALL_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_RAT_TOD"]);		
+		$tmp = json_decode($stats["TRF_RAT_TOD"],true);		
 		$TRANSFER_RAT_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_OX_TOD"]);		
+		$tmp = json_decode($stats["TRF_OX_TOD"],true);		
 		$TRANSFER_OX_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_TIGER_TOD"]);
+		$tmp = json_decode($stats["TRF_TIGER_TOD"],true);
 		$TRANSFER_TIGER_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_HARE_TOD"]);
+		$tmp = json_decode($stats["TRF_HARE_TOD"],true);
 		$TRANSFER_HARE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_DRAGON_TOD"]);
+		$tmp = json_decode($stats["TRF_DRAGON_TOD"],true);
 		$TRANSFER_DRAGON_CURRENT += $tmp["QUANTITY"];		
-		$tmp = json_encode($stats["TRF_SNAKE_TOD"]);
+		$tmp = json_encode($stats["TRF_SNAKE_TOD"],true);
 		$TRANSFER_SNAKE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_HORSE_TOD"]);
+		$tmp = json_encode($stats["TRF_HORSE_TOD"],true);
 		$TRANSFER_HORSE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_GOAT_TOD"]);
+		$tmp = json_encode($stats["TRF_GOAT_TOD"],true);
 		$TRANSFER_GOAT_CURRENT += $tmp["QUANTITY"];
 
 		$SALE_ALL_CURRENT += $stat["SALE_RAT_TOD"] + $stat["SALE_OX_TOD"] + $stat["SALE_TIGER_TOD"] + $stat["SALE_HARE_CURRENT"] + 

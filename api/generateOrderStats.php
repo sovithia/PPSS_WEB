@@ -56,5 +56,5 @@ function generateCalculationForDate($day = null)
         }
     }
 }
-
-//generateCalculationForDate("2022-12-8");    
+ // DEPRECATED, WE USER ITEMSTATS IN INTERNALDB
+//generateCalculationForDate();    
