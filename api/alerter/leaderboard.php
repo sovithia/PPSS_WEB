@@ -132,105 +132,111 @@
             array_push($sortedSale, array("SIGN" => $sign, "VALUE" => $value));
             unset($saleToSort[$sign]);
         }
+
+        echo "
+            <table>
+                <tr><td colspan='8'>OVERALL</td></tr>
+                <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>    
+                <tr>        
+                    <td><img src=".$sortedOverview[0]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[1]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[2]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[3]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[4]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[5]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[6]["SIGN"].".png"."></td>
+                    <td><img src=".$sortedOverview[7]["SIGN"].".png"."></td>        
+                </tr>
+                <tr>        
+                    <td>".$sortedOverview[0]["VALUE"]."</td>
+                    <td>".$sortedOverview[1]["VALUE"]."</td>
+                    <td>".$sortedOverview[2]["VALUE"]."</td>
+                    <td>".$sortedOverview[3]["VALUE"]."</td>
+                    <td>".$sortedOverview[4]["VALUE"]."</td>
+                    <td>".$sortedOverview[5]["VALUE"]."</td>
+                    <td>".$sortedOverview[6]["VALUE"]."</td>
+                    <td>".$sortedOverview[7]["VALUE"]."</td>   
+                </tr>
+            </table>
+    
+            <table>
+                <tr><td colspan='8'>OCCUPANCY</td></tr>
+                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+                <tr>        
+                    <td><img src=".$sortedOccupancy["1"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["2"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["3"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["4"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["5"]["SIGN"].".png</td>
+                    <td><img src=.".$sortedOccupancy["6"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["7"]["SIGN"].".png></td>
+                    <td><img src=.".$sortedOccupancy["8"]["SIGN"].".png></td>        
+                </tr>
+                <tr>        
+                    <td>".$sortedOccupancy[0]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[1]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[2]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[3]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[4]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[5]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[6]["VALUE"]."</td>
+                    <td>".$sortedOccupancy[7]["VALUE"]."</td>   
+                </tr>
+            </table>
+
+            <table>
+                <tr><td>TRANSFER</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+                <tr>        
+                    <td><img src='".$sortedTransfer[0]["SIGN"].".png'></td>
+                    <td><img src='".$sortedTransfer[1]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedTransfer[2]["SIGN"].".png' >/td>
+                    <td><img src='".$sortedTransfer[3]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedTransfer[4]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedTransfer[5]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedTransfer[6]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedTransfer[7]["SIGN"].".png' ></td>        
+                </tr>
+                <tr>        
+                    <td>".$sortedTransfer[0]["VALUE"]."</td>
+                    <td>".$sortedTransfer[1]["VALUE"]."</td>
+                    <td>".$sortedTransfer[2]["VALUE"]."</td>
+                    <td>".$sortedTransfer[3]["VALUE"]."</td>
+                    <td>".$sortedTransfer[4]["VALUE"]."</td>
+                    <td>".$sortedTransfer[5]["VALUE"]."</td>
+                    <td>".$sortedTransfer[6]["VALUE"]."</td>
+                    <td>".$sortedTransfer[7]["VALUE"]."</td>   
+                </tr>
+            </table>
+
+            <table>
+                <tr><td>SALE</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+                <tr>        
+                    <td><img src='".$sortedSale[0]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[1]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[2]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[3]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[4]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[5]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[6]["SIGN"].".png' ></td>
+                    <td><img src='".$sortedSale[7]["SIGN"].".png' ></td>        
+                </tr>
+                <tr>        
+                    <td>".$sortedSale[0]["VALUE"] ."</td>
+                    <td>".$sortedSale[1]["VALUE"] ."</td>
+                    <td>".$sortedSale[2]["VALUE"] ."</td>
+                    <td>".$sortedSale[3]["VALUE"] ."</td>
+                    <td>".$sortedSale[4]["VALUE"] ."</td>
+                    <td>".$sortedSale[5]["VALUE"] ."</td>
+                    <td>".$sortedSale[6]["VALUE"] ."</td>
+                    <td>".$sortedSale[7]["VALUE"] ."</td>   
+                </tr>
+            </table>
+        ";
+        
     }
 ?>
 
-<table>
-    <tr><td colspan='8'>OVERALL</td></tr>
-    <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>    
-    <tr>        
-        <td><img src='<?=$sortedOverview[0]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[1]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[2]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[3]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[4]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[5]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[6]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOverview[7]["SIGN"].".png" ?>'></td>        
-    </tr>
-    <tr>        
-        <td><?=$sortedOverview[0]["VALUE"] ?></td>
-        <td><?=$sortedOverview[1]["VALUE"] ?></td>
-        <td><?=$sortedOverview[2]["VALUE"] ?></td>
-        <td><?=$sortedOverview[3]["VALUE"] ?></td>
-        <td><?=$sortedOverview[4]["VALUE"] ?></td>
-        <td><?=$sortedOverview[5]["VALUE"] ?></td>
-        <td><?=$sortedOverview[6]["VALUE"] ?></td>
-        <td><?=$sortedOverview[7]["VALUE"] ?></td>   
-    </tr>
-</table>
 
-<table>
-    <tr><td colspan='8'>OCCUPANCY</td></tr>
-    <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-    <tr>        
-        <td><img src='<?=$sortedOccupancy["1"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["2"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["3"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["4"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["5"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["6"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["7"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedOccupancy["8"]["SIGN"].".png" ?>'></td>        
-    </tr>
-    <tr>        
-        <td><?=$sortedOccupancy[0]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[1]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[2]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[3]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[4]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[5]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[6]["VALUE"] ?></td>
-        <td><?=$sortedOccupancy[7]["VALUE"] ?></td>   
-    </tr>
-</table>
 
-<table>
-    <tr><td>TRANSFER</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-    <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-    <tr>        
-        <td><img src='<?=$sortedTransfer["1"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["2"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["3"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["4"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["5"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["6"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["7"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedTransfer["8"]["SIGN"].".png" ?>'></td>        
-    </tr>
-    <tr>        
-        <td><?=$sortedTransfer[0]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[1]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[2]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[3]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[4]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[5]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[6]["VALUE"] ?></td>
-        <td><?=$sortedTransfer[7]["VALUE"] ?></td>   
-    </tr>
-</table>
-
-<table>
-    <tr><td>SALE</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-    <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-    <tr>        
-        <td><img src='<?=$sortedSale["1"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["2"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["3"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["4"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["5"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["6"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["7"]["SIGN"].".png" ?>'></td>
-        <td><img src='<?=$sortedSale["8"]["SIGN"].".png" ?>'></td>        
-    </tr>
-    <tr>        
-        <td><?=$sortedSale[0]["VALUE"] ?></td>
-        <td><?=$sortedSale[1]["VALUE"] ?></td>
-        <td><?=$sortedSale[2]["VALUE"] ?></td>
-        <td><?=$sortedSale[3]["VALUE"] ?></td>
-        <td><?=$sortedSale[4]["VALUE"] ?></td>
-        <td><?=$sortedSale[5]["VALUE"] ?></td>
-        <td><?=$sortedSale[6]["VALUE"] ?></td>
-        <td><?=$sortedSale[7]["VALUE"] ?></td>   
-    </tr>
-</table>
