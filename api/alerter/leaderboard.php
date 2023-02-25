@@ -5,32 +5,32 @@
     }
 
     function renderLeaderBoard($data){
-        $data["OCCUPANCY_RAT_EVOL"] =   Evol($data["OCCUPANCY_RAT_LAST"],$data["OCCUPANCY_RAT_LAST"]);
-        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OCCUPANCY_OX_LAST"],$data["OCCUPANCY_OX_LAST"]);
-        $data["OCCUPANCY_TIGER_EVOL"] =   Evol($data["OCCUPANCY_TIGER_LAST"],$data["OCCUPANCY_TIGER_LAST"]);
-        $data["OCCUPANCY_HARE_EVOL"] =   Evol($data["OCCUPANCY_HARE_LAST"],$data["OCCUPANCY_HARE_LAST"]);
-        $data["OCCUPANCY_DRAGON_EVOL"] =   Evol($data["OCCUPANCY_DRAGON_LAST"],$data["OCCUPANCY_DRAGON_LAST"]);
-        $data["OCCUPANCY_SNAKE_EVOL"] =   Evol($data["OCCUPANCY_SNAKE_LAST"],$data["OCCUPANCY_SNAKE_LAST"]);
-        $data["OCCUPANCY_HORSE_EVOL"] =   Evol($data["OCCUPANCY_HORSE_LAST"],$data["OCCUPANCY_HORSE_LAST"]);
-        $data["OCCUPANCY_GOAT_EVOL"] =   Evol($data["OCCUPANCY_GOAT_LAST"],$data["OCCUPANCY_GOAT_LAST"]);
+        $data["OCCUPANCY_RAT_EVOL"] =   Evol($data["RAT"]["OCCUPANCY_LAST"],$data["RAT"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OX"]["OCCUPANCY_OX_LAST"],$data["OX"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_TIGER_EVOL"] =   Evol($data["TIGER"]["OCCUPANCY_LAST"],$data["TIGER"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_HARE_EVOL"] =   Evol($data["HARE"]["OCCUPANCY_LAST"],$data["HARE"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_DRAGON_EVOL"] =   Evol($data["DRAGON"]["OCCUPANCY_LAST"],$data["DRAGON"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_SNAKE_EVOL"] =   Evol($data["SNAKE"]["OCCUPANCY_LAST"],$data["SNAKE"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_HORSE_EVOL"] =   Evol($data["HORSE"]["OCCUPANCY_LAST"],$data["HORSE"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_GOAT_EVOL"] =   Evol($data["GOAT"]["OCCUPANCY_LAST"],$data["GOAT"]["OCCUPANCY_CURRENT"]);
 
-        $data["TRANSFER_RAT_EVOL"] =   Evol($data["TRANSFER_RAT_LAST"],$data["TRANSFER_RAT_LAST"]);
-        $data["TRANSFER_OX_EVOL"] =   Evol($data["TRANSFER_OX_LAST"],$data["TRANSFER_OX_LAST"]);
-        $data["TRANSFER_TIGER_EVOL"] =   Evol($data["TRANSFER_TIGER_LAST"],$data["TRANSFER_TIGER_LAST"]);
-        $data["TRANSFER_HARE_EVOL"] =   Evol($data["TRANSFER_HARE_LAST"],$data["TRANSFER_HARE_LAST"]);
-        $data["TRANSFER_DRAGON_EVOL"] =   Evol($data["TRANSFER_DRAGON_LAST"],$data["TRANSFER_DRAGON_LAST"]);
-        $data["TRANSFER_SNAKE_EVOL"] =   Evol($data["TRANSFER_SNAKE_LAST"],$data["TRANSFER_SNAKE_LAST"]);
-        $data["TRANSFER_HORSE_EVOL"] =   Evol($data["TRANSFER_HORSE_LAST"],$data["TRANSFER_HORSE_LAST"]);
-        $data["TRANSFER_GOAT_EVOL"] =   Evol($data["TRANSFER_GOAT_LAST"],$data["TRANSFER_GOAT_LAST"]);
+        $data["TRANSFER_RAT_EVOL"] =   Evol($data["RAT"]["TRANSFER_LAST"],$data["RAT"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_OX_EVOL"] =   Evol($data["OX"]["TRANSFER_LAST"],$data["OX"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_TIGER_EVOL"] =   Evol($data["TIGER"]["TRANSFER_LAST"],$data["TIGER"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_HARE_EVOL"] =   Evol($data["HARE"]["TRANSFER_LAST"],$data["HARE"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_DRAGON_EVOL"] =   Evol($data["DRAGON"]["TRANSFER_LAST"],$data["DRAGON"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_SNAKE_EVOL"] =   Evol($data["SNAKE"]["TRANSFER_LAST"],$data["SNAKE"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_HORSE_EVOL"] =   Evol($data["HORSE"]["TRANSFER_LAST"],$data["HORSE"]["TRANSFER_CURRENT"]);
+        $data["TRANSFER_GOAT_EVOL"] =   Evol($data["GOAT"]["TRANSFER_LAST"],$data["GOAT"]["TRANSFER_CURRENT"]);
 
-        $data["SALE_RAT_EVOL"] =   Evol($data["SALE_RAT_LAST"],$data["SALE_RAT_LAST"]);
-        $data["SALE_OX_EVOL"] =   Evol($data["SALE_OX_LAST"],$data["SALE_OX_LAST"]);
-        $data["SALE_TIGER_EVOL"] =   Evol($data["SALE_TIGER_LAST"],$data["SALE_TIGER_LAST"]);
-        $data["SALE_HARE_EVOL"] =   Evol($data["SALE_HARE_LAST"],$data["SALE_HARE_LAST"]);
-        $data["SALE_DRAGON_EVOL"] =   Evol($data["SALE_DRAGON_LAST"],$data["SALE_DRAGON_LAST"]);
-        $data["SALE_SNAKE_EVOL"] =   Evol($data["SALE_SNAKE_LAST"],$data["SALE_SNAKE_LAST"]);
-        $data["SALE_HORSE_EVOL"] =   Evol($data["SALE_HORSE_LAST"],$data["SALE_HORSE_LAST"]);
-        $data["SALE_GOAT_EVOL"] =   Evol($data["SALE_GOAT_LAST"],$data["SALE_GOAT_LAST"]);
+        $data["SALE_RAT_EVOL"] =   Evol($data["RAT"]["SALE_LAST"],$data["RAT"]["SALE_CURRENT"]);
+        $data["SALE_OX_EVOL"] =   Evol($data["OX"]["SALE_LAST"],$data["OX"]["SALE_CURRENT"]);
+        $data["SALE_TIGER_EVOL"] =   Evol($data["TIGER"]["SALE_LAST"],$data["TIGER"]["SALE_CURRENT"]);
+        $data["SALE_HARE_EVOL"] =   Evol($data["HARE"]["SALE_LAST"],$data["HARE"]["SALE_CURRENT"]);
+        $data["SALE_DRAGON_EVOL"] =   Evol($data["DRAGON"]["SALE_LAST"],$data["DRAGON"]["SALE_CURRENT"]);
+        $data["SALE_SNAKE_EVOL"] =   Evol($data["SNAKE"]["SALE_LAST"],$data["SNAKE"]["SALE_CURRENT"]);
+        $data["SALE_HORSE_EVOL"] =   Evol($data["HORSE"]["SALE_LAST"],$data["HORSE"]["SALE_CURRENT"]);
+        $data["SALE_GOAT_EVOL"] =   Evol($data["GOAT"]["SALE_LAST"],$data["GOAT"]["SALE_CURRENT"]);
 
         $data["OVERVIEW_RAT_EVOL"] = $data["OCCUPANCY_RAT_EVOL"] + $data["TRANSFER_RAT_EVOL"] + $data["SALE_RAT_EVOL"];
         $data["OVERVIEW_OX_EVOL"] = $data["OCCUPANCY_OX_EVOL"] + $data["TRANSFER_OX_EVOL"] + $data["SALE_OX_EVOL"];
