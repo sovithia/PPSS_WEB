@@ -13636,16 +13636,16 @@ $app->get('/score',function(Request $request,Response $response){
 		$tmp = json_decode($stats["TRF_GOAT_TOD"],true);
 		$TRANSFER_GOAT_LAST += $tmp["QUANTITY"];
 		
-		$SALE_ALL_LAST += $stats["SALE_RAT_TOD"] + $stats["SALE_OX_TOD"] + $stats["SALE_TIGER_TOD"] + $stats["SALE_HARE_CURRENT"] + 
-							 $stat["SALE_DRAGON_CURRENT"] + $stats["SALE_SNAKE_CURRENT"] + $stats["SALE_HORSE_CURRENT"] + $stats["SALE_GOAT_CURRENT"];
-		$SALE_RAT_LAST  += $tmp["SALE_RAT_TOD"]; 
-		$SALE_OX_LAST  += $tmp["SALE_OX_TOD"];
-		$SALE_TIGER_LAST  += $tmp["SALE_TIGER_TOD"];
-		$SALE_HARE_LAST  += $tmp["SALE_HARE_CURRENT"];
-		$SALE_DRAGON_LAST  += $tmp["SALE_DRAGON_CURRENT"];
-		$SALE_SNAKE_LAST  += $tmp["SALE_SNAKE_CURRENT"];
-		$SALE_HORSE_LAST  +=$tmp["SALE_SNAKE_CURRENT"];
-		$SALE_GOAT_LAST  += $tmp["SALE_GOAT_CURRENT"];
+		$SALE_ALL_LAST += $stats["SALE_RAT_TOD"] + $stats["SALE_OX_TOD"] + $stats["SALE_TIGER_TOD"] + $stats["SALE_HARE_TOD"] + 
+							 $stats["SALE_DRAGON_TOD"] + $stats["SALE_SNAKE_TOD"] + $stats["SALE_HORSE_TOD"] + $stats["SALE_GOAT_TOD"];
+		$SALE_RAT_LAST  += $stats["SALE_RAT_TOD"]; 
+		$SALE_OX_LAST  += $stats["SALE_OX_TOD"];
+		$SALE_TIGER_LAST  += $stats["SALE_TIGER_TOD"];
+		$SALE_HARE_LAST  += $stats["SALE_HARE_TOD"];
+		$SALE_DRAGON_LAST  += $stats["SALE_DRAGON_TOD"];
+		$SALE_SNAKE_LAST  += $stats["SALE_SNAKE_TOD"];
+		$SALE_HORSE_LAST  += $stats["SALE_SNAKE_TOD"];
+		$SALE_GOAT_LAST  += $stats["SALE_GOAT_TOD"];
 	}
 
 	// CURRENT MONTH 
@@ -13763,11 +13763,117 @@ $app->get('/score',function(Request $request,Response $response){
 	$data["GOAT"]["SALE_LAST"] = $SALE_GOAT_LAST;	
 	$data["GOAT"]["SALE_CURRENT"] = $SALE_GOAT_CURRENT;
 
+	$resp = array();
 	$resp["result"] = "OK";
 	$resp["data"] = $data; 
 	$response = $response->withJson($resp);
 	return $response;			
 });
+
+
+$app->get('/wikisearch/{productid}',function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$productid = $request->getAttribute('productid');
+	if ($productid == "ALL"){
+		$sql = "SELECT * FROM WIKI WHERE STATUS = 'COMPLETE' ORDER BY CREATED DESC";
+		$req = $db->prepare($sql);
+		$req->execute(array($productid));
+	}else{
+		$sql = "SELECT * FROM WIKI WHERE AND PRODUCTID = ? AND STATUS = 'COMPLETE'";
+		$req = $db->prepare($sql);
+		$req->execute(array($productid));
+		$data = $req->fetchAll(PDO::FETCH_ASSOC);	
+	}
+	
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+
+$app->get('/wiki/{status}',function(Request $request,Response $response) {
+	$db = getInternalDatabase();
+	$status = $request->getAttribute('status');
+	$sql = "SELECT * FROM WIKI WHERE STATUS = ? ORDER BY CREATED DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($status));
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+	$resp = array(); 
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;			
+});
+
+
+$app->post('/wiki',function(Request $request,Response $response) {
+	$db = getInternalDatabase();	
+	$dbBlue = getDatabase();	
+
+	$json = json_decode($request->getBody(),true);
+
+	$sql = "SELECT PRODUCTNAME,PRODUCTNAME1 FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res == false){
+		$resp = array();
+		$resp["message"] = "product not found";
+		$resp["result"] = "KO";	
+		$response = $response->withJson($resp);
+		return $response;	
+	}
+	$nameen = $res["PRODUCTNAME"];
+	$namekh = $res["PRODUCTNAME1"];
+
+	$sql = "SELECT * FROM WIKI WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res == false){
+		$sql = "INSERT INTO WIKI (PRODUCTID,NAMEEN,NAMEKH,STATUS) VALUES (?,?,?,?)";	
+		$req = $db->prepare($sql);
+		$req->execute(array($json["PRODUCTID"],$nameen,$namekh,"CREATED"));
+		$resp = array();
+		$resp["result"] = "OK";	
+		$response = $response->withJson($resp);
+		return $response;			
+	}else{
+		$resp = array();
+		$resp["message"] = "product already in WIKI";
+		$resp["result"] = "KO";	
+		$response = $response->withJson($resp);
+		return $response;			
+	}
+
+	
+});
+
+$app->put('/wiki/{id}',function(Request $request,Response $response) {
+	$db = getDatabase();
+	$id = $request->getAttribute('id');
+	$json = json_decode($request->getBody(),true);
+	$sql = "UPDATE WIKI SET DESCRIPTION = ? WHERE ID = ?";
+	$req = $db->prepare($sql);	
+	$req->execute(array($json["DESCRIPTION"]));
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;	
+});
+
+$app->delete('/wiki/{id}',function(Request $request,Response $response) {
+	$db = getDatabase();
+	$id = $request->getAttribute('id');	
+	$sql = "DELETE FROM WIKI WHERE ID = ?";
+	$req = $db->prepare($sql);	
+	$req->execute(array(array()));
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;	
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');

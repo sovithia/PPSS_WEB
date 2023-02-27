@@ -1,12 +1,22 @@
 <?php 
+require_once("../RestEngine.php");
 
     function Evol($last,$current){
-        return ((($current - $last) / $last)*100)."%" ;
+        if ($last == 0)
+            return ((($current - $last) / 1)*100);
+        else 
+        return ((($current - $last) / $last)*100);
+    }
+
+    function IMG($sign){
+        return "./img/Sign".(ucfirst(strtolower($sign))).".png";
     }
 
     function renderLeaderBoard($data){
+        //var_dump($data);
+        echo $data["RAT"]["OCCUPANCY_LAST"]."|".$data["RAT"]["OCCUPANCY_CURRENT"];
         $data["OCCUPANCY_RAT_EVOL"] =   Evol($data["RAT"]["OCCUPANCY_LAST"],$data["RAT"]["OCCUPANCY_CURRENT"]);
-        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OX"]["OCCUPANCY_OX_LAST"],$data["OX"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OX"]["OCCUPANCY_LAST"],$data["OX"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_TIGER_EVOL"] =   Evol($data["TIGER"]["OCCUPANCY_LAST"],$data["TIGER"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_HARE_EVOL"] =   Evol($data["HARE"]["OCCUPANCY_LAST"],$data["HARE"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_DRAGON_EVOL"] =   Evol($data["DRAGON"]["OCCUPANCY_LAST"],$data["DRAGON"]["OCCUPANCY_CURRENT"]);
@@ -43,10 +53,10 @@
 
         $overviewToSort = array();
         $overviewToSort["RAT"] = $data["OVERVIEW_RAT_EVOL"];    
-        $$overviewToSort["OX"] =  $data["OVERVIEW_OX_EVOL"];
-        $$overviewToSort["TIGER"] = $data["OVERVIEW_TIGER_EVOL"];
-        $$overviewToSort["HARE"] = $data["OVERVIEW_HARE_EVOL"];
-        $$overviewToSort["DRAGON"] = $data["OVERVIEW_DRAGON_EVOL"];
+        $overviewToSort["OX"] =  $data["OVERVIEW_OX_EVOL"];
+        $overviewToSort["TIGER"] = $data["OVERVIEW_TIGER_EVOL"];
+        $overviewToSort["HARE"] = $data["OVERVIEW_HARE_EVOL"];
+        $overviewToSort["DRAGON"] = $data["OVERVIEW_DRAGON_EVOL"];
         $overviewToSort["SNAKE"] = $data["OVERVIEW_SNAKE_EVOL"];
         $overviewToSort["HORSE"] = $data["OVERVIEW_HORSE_EVOL"];
         $overviewToSort["GOAT"] = $data["OVERVIEW_GOAT_EVOL"];
@@ -91,10 +101,10 @@
         $transferToSort["RAT"] = $data["OCCUPANCY_RAT_EVOL"];    
         $transferToSort["OX"] =  $data["OCCUPANCY_OX_EVOL"];
         $transferToSort["TIGER"] = $data["OCCUPANCY_TIGER_EVOL"];
-        $$transferToSort["HARE"] = $data["OCCUPANCY_HARE_EVOL"];
-        $$transferToSort["DRAGON"] = $data["OCCUPANCY_DRAGON_EVOL"];
-        $$transferToSort["SNAKE"] = $data["OCCUPANCY_SNAKE_EVOL"];
-        $$transferToSort["HORSE"] = $data["OCCUPANCY_HORSE_EVOL"];
+        $transferToSort["HARE"] = $data["OCCUPANCY_HARE_EVOL"];
+        $transferToSort["DRAGON"] = $data["OCCUPANCY_DRAGON_EVOL"];
+        $transferToSort["SNAKE"] = $data["OCCUPANCY_SNAKE_EVOL"];
+        $transferToSort["HORSE"] = $data["OCCUPANCY_HORSE_EVOL"];
         $transferToSort["GOAT"] = $data["OCCUPANCY_GOAT_EVOL"];
         $sortedTransfer = array();
         while(count($transferToSort) > 0){
@@ -122,30 +132,34 @@
         $sortedSale = array();
         while(count($saleToSort) > 0){
             $min = 0;
-            $sign = "";
-            foreach($transferToSort as $key => $value ){
+            $sign = null;
+            foreach($saleToSort as $key => $value )
+            {
                 if ($min == 0 || $value < $min){
                     $sign = $key;
                     $min = $value;    
                 }
             }
-            array_push($sortedSale, array("SIGN" => $sign, "VALUE" => $value));
+            $obj = array();
+            $obj["SIGN"] = $sign;
+            $obj["VALUE"] = $min;
+            array_push($sortedSale, $obj);
             unset($saleToSort[$sign]);
         }
 
         echo "
-            <table>
-                <tr><td colspan='8'>OVERALL</td></tr>
+            <table border='1'> 
+                <tr><td colspan='8' align='center'>OVERALL</td></tr>
                 <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>    
                 <tr>        
-                    <td><img src=".$sortedOverview[0]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[1]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[2]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[3]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[4]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[5]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[6]["SIGN"].".png"."></td>
-                    <td><img src=".$sortedOverview[7]["SIGN"].".png"."></td>        
+                    <td><img src=".IMG($sortedOverview[0]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[1]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[2]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[3]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[4]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[5]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[6]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[7]["SIGN"])."></td>        
                 </tr>
                 <tr>        
                     <td>".$sortedOverview[0]["VALUE"]."</td>
@@ -159,18 +173,19 @@
                 </tr>
             </table>
     
-            <table>
-                <tr><td colspan='8'>OCCUPANCY</td></tr>
-                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+            <table border='1'>
+                <tr><td colspan='8' align='center'>OCCUPANCY</td></tr>
+                <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
                 <tr>        
-                    <td><img src=".$sortedOccupancy["1"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["2"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["3"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["4"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["5"]["SIGN"].".png</td>
-                    <td><img src=.".$sortedOccupancy["6"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["7"]["SIGN"].".png></td>
-                    <td><img src=.".$sortedOccupancy["8"]["SIGN"].".png></td>        
+                    <td><img src=".IMG($sortedOccupancy["0"]["SIGN"])."></td>        
+                    <td><img src=".IMG($sortedOccupancy["1"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["2"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["3"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["4"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["5"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["6"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy["7"]["SIGN"])."></td>
+                    
                 </tr>
                 <tr>        
                     <td>".$sortedOccupancy[0]["VALUE"]."</td>
@@ -184,18 +199,18 @@
                 </tr>
             </table>
 
-            <table>
-                <tr><td>TRANSFER</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+            <table border='1'>
+                <tr><td colspan='8' align='center'>TRANSFER</td></tr>
+                <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>                
                 <tr>        
-                    <td><img src='".$sortedTransfer[0]["SIGN"].".png'></td>
-                    <td><img src='".$sortedTransfer[1]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedTransfer[2]["SIGN"].".png' >/td>
-                    <td><img src='".$sortedTransfer[3]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedTransfer[4]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedTransfer[5]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedTransfer[6]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedTransfer[7]["SIGN"].".png' ></td>        
+                    <td><img src='".IMG($sortedTransfer[0]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[1]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[2]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[3]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[4]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[5]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[6]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[7]["SIGN"])."' ></td>        
                 </tr>
                 <tr>        
                     <td>".$sortedTransfer[0]["VALUE"]."</td>
@@ -209,18 +224,18 @@
                 </tr>
             </table>
 
-            <table>
-                <tr><td>SALE</td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
-                <tr><td></td><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
+            <table border='1'>
+                <tr><td colspan='8' align='center'>SALE</td></tr>
+                <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>                
                 <tr>        
-                    <td><img src='".$sortedSale[0]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[1]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[2]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[3]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[4]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[5]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[6]["SIGN"].".png' ></td>
-                    <td><img src='".$sortedSale[7]["SIGN"].".png' ></td>        
+                    <td><img src='".IMG($sortedSale[0]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[1]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[2]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[3]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[4]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[5]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[6]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedSale[7]["SIGN"])."' ></td>        
                 </tr>
                 <tr>        
                     <td>".$sortedSale[0]["VALUE"] ."</td>
@@ -236,6 +251,9 @@
         ";
         
     }
+
+    $data = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/score?YEAR=2023&MONTH=1");
+    renderLeaderBoard($data);
 ?>
 
 
