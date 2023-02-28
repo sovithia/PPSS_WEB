@@ -192,13 +192,13 @@ function fieldIsNull($db,$key,$day){
 function updateStats($db,$day,$key,$value){
 	
 	echo "UPDATE ".$key."\n";
-	$sql = "UPDATE GENERATEDSTATS SET ".$key." = ?";
+	$sql = "UPDATE GENERATEDSTATS SET ".$key." = ? WHERE DAY = ?";
 	$req = $db->prepare($sql);		
 	try{
 		if (is_array($value))
-		$req->execute(array(json_encode($value,true)));
+		$req->execute(array(json_encode($value,true),$day));
 	else
-		$req->execute(array($value));	
+		$req->execute(array($value),$day);	
 	sleep(1);		
 	}catch(Exception $ex){
 		var_dump($ex);
@@ -303,8 +303,10 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 	echo "OCCUPANCY TODAY.\n";
 	if (fieldIsNull($statsdb,"OCC_ALL_TOD",$today) || $forceRefresh == true)
 		updateStats($statsdb,$today,"OCC_ALL_TOD",OccupancyByTeamCount($db,"ALL"));
-	if 	(fieldIsNull($statsdb,"OCC_RAT_TOD",$today) || $forceRefresh == true)
+	if 	(fieldIsNull($statsdb,"OCC_RAT_TOD",$today) || $forceRefresh == true){
+		echo "RAT ".OccupancyByTeamCount($db,"RAT");
 		updateStats($statsdb,$today,"OCC_RAT_TOD",OccupancyByTeamCount($db,"RAT"));
+	}
 	if (fieldIsNull($statsdb,"OCC_OX_TOD",$today) || $forceRefresh == true)	
 		updateStats($statsdb,$today,"OCC_OX_TOD",OccupancyByTeamCount($db,"OX"));
 	if (fieldIsNull($statsdb,"OCC_TIGER_TOD",$today) || $forceRefresh == true)	
