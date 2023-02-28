@@ -819,8 +819,149 @@ function GenerateYesterdayFromCache($indb)
 
 }
 
+function PatchStats()
+{
+	$db = getInternalDatabase("STATS");	
+	$sql = "SELECT *,DATE(DAY, '+1 days') as 'DAYAFTER' FROM GENERATEDSTATS";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+
+	$allstats = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach($allstats as $stats)
+	{
+		
+		if ($stats["DAY"] == '2023-02-28')
+			continue;
+		//echo $stats["DAY"]."|".$stats["DAYAFTER"]."\n";			
+		$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($stats["DAYAFTER"]));
+		$tomorrow = $req->fetch(PDO::FETCH_ASSOC);
+		
+
+		$sql = "UPDATE GENERATEDSTATS SET   TRF_ALL_TOD = ?,
+											TRF_RAT_TOD = ?, 
+											TRF_OX_TOD = ?,
+											TRF_TIGER_TOD = ?,
+											TRF_HARE_TOD = ?,
+											TRF_DRAGON_TOD = ?,
+											TRF_SNAKE_TOD = ?,
+											TRF_HORSE_TOD = ?,
+											TRF_GOAT_TOD = ?, 
+											OCC_ALL_TOD = ?,
+											OCC_RAT_TOD = ?, 
+											OCC_OX_TOD = ?,
+											OCC_TIGER_TOD = ?,
+											OCC_HARE_TOD = ?,
+											OCC_DRAGON_TOD = ?,
+											OCC_SNAKE_TOD = ?,
+											OCC_HORSE_TOD = ?,
+											OCC_GOAT_TOD = ?, 											
+											SALE_RAT_TOD = ?, 
+											SALE_OX_TOD = ?,
+											SALE_TIGER_TOD = ?,
+											SALE_HARE_TOD = ?,
+											SALE_DRAGON_TOD = ?,
+											SALE_SNAKE_TOD = ?,
+											SALE_HORSE_TOD = ?,
+											SALE_GOAT_TOD = ?, 
+											TRAFFIC_TOD = ?,
+											AVGBASKET_TOD = ?,
+											NEGATIVEITEM_WH1_CNT_TOD = ?,
+											NEGATIVEITEM_FRESH_CNT_TOD = ?,
+											NEGATIVEITEM_WH2_CNT_TOD = ?,
+											EXPIRE_RET_CNT_TOD = ?,
+											EXPIRE_NR_CNT_TOD = ?,
+											NEEDMOVE_CNT_TOD = ?,
+											NOLOC_ITEMS_CNT_TOD = ?,
+											COSTZERO_TOD = ?,
+											ZEROSALE_TOD = ?,
+											LOWPROFIT_TOD = ?,
+											UNSOLD30_ITEMS_CNT_TOD = ?,
+											PORECEIVED_TOD = ?,
+											NBITEMRECEIVED_TOD = ?,
+											ITEMQTYRECEIVED_TOD = ?,
+											WASTE_QTY_TOD = ?,
+											WASTE_NBITEMS_TOD = ?,
+											WASTE_SUM_TOD = ?,
+											RETURN_NBITEM_TOD = ?,
+											RETURN_SUMITEM_TOD = ?,
+											RETURN_AMOUNT_TOD = ?,
+											POCREATED_TOD = ?,
+											NBITEMORDERED_TOD = ?,
+											QTYITEMORDERED_TOD = ?,
+											ANOMALIES_ITEMS_CNT_TOD = ?,
+											PRICEDIFFERENCES_ITEMS_CNT_TOD = ?,
+											NOPICTURE_ITEMS_CNT_TOD = ?
+											WHERE DAY = ?";
+		$req = $db->prepare($sql);
+		/*
+		$req->execute(array(
+							$tomorrow["TRF_ALL_YES"],
+							$tomorrow["TRF_RAT_YES"],
+							$tomorrow["TRF_OX_YES"],
+							$tomorrow["TRF_TIGER_YES"],
+							$tomorrow["TRF_HARE_YES"],
+							$tomorrow["TRF_DRAGON_YES"],
+							$tomorrow["TRF_SNAKE_YES"],
+							$tomorrow["TRF_HORSE_YES"],
+							$tomorrow["TRF_GOAT_YES"],
+							$tomorrow["OCC_ALL_YES"],
+							$tomorrow["OCC_RAT_YES"],
+							$tomorrow["OCC_OX_YES"],
+							$tomorrow["OCC_TIGER_YES"],
+							$tomorrow["OCC_HARE_YES"],
+							$tomorrow["OCC_DRAGON_YES"],
+							$tomorrow["OCC_SNAKE_YES"],
+							$tomorrow["OCC_HORSE_YES"],
+							$tomorrow["OCC_GOAT_YES"],							
+							$tomorrow["SALE_RAT_YES"],
+							$tomorrow["SALE_OX_YES"],
+							$tomorrow["SALE_TIGER_YES"],
+							$tomorrow["SALE_HARE_YES"],
+							$tomorrow["SALE_DRAGON_YES"],
+							$tomorrow["SALE_SNAKE_YES"],
+							$tomorrow["SALE_HORSE_YES"],
+							$tomorrow["SALE_GOAT_YES"],
+							$tomorrow["TRAFFIC_YES"],
+							$tomorrow["AVGBASKET_YES"],
+							$tomorrow["NEGATIVEITEM_WH1_CNT_YES"],
+							$tomorrow["NEGATIVEITEM_FRESH_CNT_YES"],
+							$tomorrow["NEGATIVEITEM_WH2_CNT_YES"],
+							$tomorrow["EXPIRE_RET_CNT_YES"],
+							$tomorrow["EXPIRE_NR_CNT_YES"],
+							$tomorrow["NEEDMOVE_CNT_YES"],
+							$tomorrow["NOLOC_ITEMS_CNT_YES"],
+							$tomorrow["COSTZERO_YES"],
+							$tomorrow["ZEROSALE_YES"],
+							$tomorrow["LOWPROFIT_YES"],
+							$tomorrow["UNSOLD30_ITEMS_CNT_YES"],
+							$tomorrow["PORECEIVED_YES"],
+							$tomorrow["NBITEMRECEIVED_YES"],
+							$tomorrow["ITEMQTYRECEIVED_YES"],
+							$tomorrow["WASTE_QTY_YES"],
+							$tomorrow["WASTE_NBITEMS_YES"],
+							$tomorrow["WASTE_SUM_YES"],
+							$tomorrow["RETURN_NBITEM_YES"],
+							$tomorrow["RETURN_SUMITEM_YES"],
+							$tomorrow["RETURN_AMOUNT_YES"],
+							$tomorrow["POCREATED_YES"],
+							$tomorrow["NBITEMORDERED_YES"],
+							$tomorrow["QTYITEMORDERED_YES"],
+							$tomorrow["ANOMALIES_ITEMS_CNT_YES"],
+							$tomorrow["PRICEDIFFERENCES_ITEMS_CNT_YES"],
+							$tomorrow["NOPICTURE_ITEMS_CNT_YES"],
+							$stats["DAY"]
+		));
+		*/
+	}
+}
+
 if ($argc > 1 && $argv[1] == "CROCODILE")
-Generate();
+	Generate();
+else if ($argc > 1 && $argv[1] == "PATCH")
+	PatchStats();
 else
 	error_log("WARNING !!! generate stats attempt");
 
