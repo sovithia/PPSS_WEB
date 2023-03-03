@@ -3,23 +3,31 @@ require_once("../RestEngine.php");
 
     function Evol($last,$current){
         if ($last == 0)
-            return ((($current - $last) / 1)*100);
+            return 100;
+            //return round(((($current - $last) / 1)*100),2);
         else 
-        return ((($current - $last) / $last)*100);
+        return round(((($current - $last) / $last)*100),2);
     }
 
     function IMG($sign){
         return "./img/Sign".(ucfirst(strtolower($sign))).".png";
     }
 
-    function renderLeaderBoard($data){
-        //var_dump($data);
-        echo $data["RAT"]["OCCUPANCY_LAST"]."|".$data["RAT"]["OCCUPANCY_CURRENT"];
+    function DIS($value){
+        if ($value > 0)
+            return "+".$value."%";
+        else 
+        return $value."%";
+    }
+
+    function renderLeaderBoard($data){        
         $data["OCCUPANCY_RAT_EVOL"] =   Evol($data["RAT"]["OCCUPANCY_LAST"],$data["RAT"]["OCCUPANCY_CURRENT"]);
-        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OX"]["OCCUPANCY_LAST"],$data["OX"]["OCCUPANCY_CURRENT"]);
+        $data["OCCUPANCY_OX_EVOL"] =   Evol($data["OX"]["OCCUPANCY_LAST"],$data["OX"]["OCCUPANCY_CURRENT"]);        
         $data["OCCUPANCY_TIGER_EVOL"] =   Evol($data["TIGER"]["OCCUPANCY_LAST"],$data["TIGER"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_HARE_EVOL"] =   Evol($data["HARE"]["OCCUPANCY_LAST"],$data["HARE"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_DRAGON_EVOL"] =   Evol($data["DRAGON"]["OCCUPANCY_LAST"],$data["DRAGON"]["OCCUPANCY_CURRENT"]);
+        //echo ($data["DRAGON"]["OCCUPANCY_LAST"]."|".$data["DRAGON"]["OCCUPANCY_CURRENT"]);
+        //exit;
         $data["OCCUPANCY_SNAKE_EVOL"] =   Evol($data["SNAKE"]["OCCUPANCY_LAST"],$data["SNAKE"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_HORSE_EVOL"] =   Evol($data["HORSE"]["OCCUPANCY_LAST"],$data["HORSE"]["OCCUPANCY_CURRENT"]);
         $data["OCCUPANCY_GOAT_EVOL"] =   Evol($data["GOAT"]["OCCUPANCY_LAST"],$data["GOAT"]["OCCUPANCY_CURRENT"]);
@@ -42,14 +50,14 @@ require_once("../RestEngine.php");
         $data["SALE_HORSE_EVOL"] =   Evol($data["HORSE"]["SALE_LAST"],$data["HORSE"]["SALE_CURRENT"]);
         $data["SALE_GOAT_EVOL"] =   Evol($data["GOAT"]["SALE_LAST"],$data["GOAT"]["SALE_CURRENT"]);
 
-        $data["OVERVIEW_RAT_EVOL"] = $data["OCCUPANCY_RAT_EVOL"] + $data["TRANSFER_RAT_EVOL"] + $data["SALE_RAT_EVOL"];
-        $data["OVERVIEW_OX_EVOL"] = $data["OCCUPANCY_OX_EVOL"] + $data["TRANSFER_OX_EVOL"] + $data["SALE_OX_EVOL"];
-        $data["OVERVIEW_TIGER_EVOL"] = $data["OCCUPANCY_TIGER_EVOL"] + $data["TRANSFER_TIGER_EVOL"] + $data["SALE_TIGER_EVOL"];
-        $data["OVERVIEW_HARE_EVOL"] = $data["OCCUPANCY_HARE_EVOL"] + $data["TRANSFER_HARE_EVOL"] + $data["SALE_HARE_EVOL"];
-        $data["OVERVIEW_DRAGON_EVOL"] = $data["OCCUPANCY_DRAGON_EVOL"] + $data["TRANSFER_DRAGON_EVOL"] + $data["SALE_DRAGON_EVOL"];
-        $data["OVERVIEW_SNAKE_EVOL"] = $data["OCCUPANCY_SNAKE_EVOL"] + $data["TRANSFER_SNAKE_EVOL"] + $data["SALE_SNAKE_EVOL"];
-        $data["OVERVIEW_HORSE_EVOL"] = $data["OCCUPANCY_HORSE_EVOL"] + $data["TRANSFER_HORSE_EVOL"] + $data["SALE_HORSE_EVOL"];
-        $data["OVERVIEW_GOAT_EVOL"] = $data["OCCUPANCY_GOAT_EVOL"] + $data["TRANSFER_GOAT_EVOL"] + $data["SALE_GOAT_EVOL"];
+        $data["OVERVIEW_RAT_EVOL"] = -$data["OCCUPANCY_RAT_EVOL"] + $data["TRANSFER_RAT_EVOL"] + $data["SALE_RAT_EVOL"];
+        $data["OVERVIEW_OX_EVOL"] = -$data["OCCUPANCY_OX_EVOL"] + $data["TRANSFER_OX_EVOL"] + $data["SALE_OX_EVOL"];
+        $data["OVERVIEW_TIGER_EVOL"] = -$data["OCCUPANCY_TIGER_EVOL"] + $data["TRANSFER_TIGER_EVOL"] + $data["SALE_TIGER_EVOL"];
+        $data["OVERVIEW_HARE_EVOL"] = -$data["OCCUPANCY_HARE_EVOL"] + $data["TRANSFER_HARE_EVOL"] + $data["SALE_HARE_EVOL"];
+        $data["OVERVIEW_DRAGON_EVOL"] = -$data["OCCUPANCY_DRAGON_EVOL"] + $data["TRANSFER_DRAGON_EVOL"] + $data["SALE_DRAGON_EVOL"];
+        $data["OVERVIEW_SNAKE_EVOL"] = -$data["OCCUPANCY_SNAKE_EVOL"] + $data["TRANSFER_SNAKE_EVOL"] + $data["SALE_SNAKE_EVOL"];
+        $data["OVERVIEW_HORSE_EVOL"] = -$data["OCCUPANCY_HORSE_EVOL"] + $data["TRANSFER_HORSE_EVOL"] + $data["SALE_HORSE_EVOL"];
+        $data["OVERVIEW_GOAT_EVOL"] = -$data["OCCUPANCY_GOAT_EVOL"] + $data["TRANSFER_GOAT_EVOL"] + $data["SALE_GOAT_EVOL"];
 
         $overviewToSort = array();
         $overviewToSort["RAT"] = $data["OVERVIEW_RAT_EVOL"];    
@@ -62,18 +70,18 @@ require_once("../RestEngine.php");
         $overviewToSort["GOAT"] = $data["OVERVIEW_GOAT_EVOL"];
         $sortedOverview = array();        
         while(count($overviewToSort) > 0){
-            $min = 0;
+            $min = -100;
             $sign = "";
             foreach($overviewToSort as $key => $value ){
-                if ($min == 0 || $value < $min){
-                    $sign = $key;
+                if ($min == -100 || $value < $min){                    
+                    $sign = $key;                    
                     $min = $value;    
                 }
             }
-            array_push($sortedOverview, array("SIGN" => $sign, "VALUE" => $value));
-            unset($overviewToSort[$sign]);
+            array_push($sortedOverview, array("SIGN" => $sign, "VALUE" => $min));
+            unset($overviewToSort[$sign]);            
         }
-
+        
         $occupancyToSort = array();
         $occupancyToSort["RAT"] = $data["OCCUPANCY_RAT_EVOL"];    
         $occupancyToSort["OX"] =  $data["OCCUPANCY_OX_EVOL"];
@@ -83,7 +91,7 @@ require_once("../RestEngine.php");
         $occupancyToSort["SNAKE"] = $data["OCCUPANCY_SNAKE_EVOL"];
         $occupancyToSort["HORSE"] = $data["OCCUPANCY_HORSE_EVOL"];
         $occupancyToSort["GOAT"] = $data["OCCUPANCY_GOAT_EVOL"];
-        $sortedOccupancy = array();
+        $sortedOccupancy = array();                
         while(count($occupancyToSort) > 0){
             $min = 0;
             $sign = "";
@@ -93,19 +101,19 @@ require_once("../RestEngine.php");
                     $min = $value;    
                 }
             }
-            array_push($sortedOccupancy, array("SIGN" => $sign, "VALUE" => $value));
+            array_push($sortedOccupancy, array("SIGN" => $sign, "VALUE" => $min));
             unset($occupancyToSort[$sign]);
-        }
+        }     
 
         $transferToSort = array();
-        $transferToSort["RAT"] = $data["OCCUPANCY_RAT_EVOL"];    
-        $transferToSort["OX"] =  $data["OCCUPANCY_OX_EVOL"];
-        $transferToSort["TIGER"] = $data["OCCUPANCY_TIGER_EVOL"];
-        $transferToSort["HARE"] = $data["OCCUPANCY_HARE_EVOL"];
-        $transferToSort["DRAGON"] = $data["OCCUPANCY_DRAGON_EVOL"];
-        $transferToSort["SNAKE"] = $data["OCCUPANCY_SNAKE_EVOL"];
-        $transferToSort["HORSE"] = $data["OCCUPANCY_HORSE_EVOL"];
-        $transferToSort["GOAT"] = $data["OCCUPANCY_GOAT_EVOL"];
+        $transferToSort["RAT"] = $data["TRANSFER_RAT_EVOL"];    
+        $transferToSort["OX"] =  $data["TRANSFER_OX_EVOL"];
+        $transferToSort["TIGER"] = $data["TRANSFER_TIGER_EVOL"];
+        $transferToSort["HARE"] = $data["TRANSFER_HARE_EVOL"];
+        $transferToSort["DRAGON"] = $data["TRANSFER_DRAGON_EVOL"];
+        $transferToSort["SNAKE"] = $data["TRANSFER_SNAKE_EVOL"];
+        $transferToSort["HORSE"] = $data["TRANSFER_HORSE_EVOL"];
+        $transferToSort["GOAT"] = $data["TRANSFER_GOAT_EVOL"];
         $sortedTransfer = array();
         while(count($transferToSort) > 0){
             $min = 0;
@@ -116,19 +124,19 @@ require_once("../RestEngine.php");
                     $min = $value;    
                 }
             }
-            array_push($sortedTransfer, array("SIGN" => $sign, "VALUE" => $value));
+            array_push($sortedTransfer, array("SIGN" => $sign, "VALUE" => $min));
             unset($transferToSort[$sign]);
         }
 
         $saleToSort = array();
-        $saleToSort["RAT"] = $data["OCCUPANCY_RAT_EVOL"];    
-        $saleToSort["OX"] =  $data["OCCUPANCY_OX_EVOL"];
-        $saleToSort["TIGER"] = $data["OCCUPANCY_TIGER_EVOL"];
-        $saleToSort["HARE"] = $data["OCCUPANCY_HARE_EVOL"];
-        $saleToSort["DRAGON"] = $data["OCCUPANCY_DRAGON_EVOL"];
-        $saleToSort["SNAKE"] = $data["OCCUPANCY_SNAKE_EVOL"];
-        $saleToSort["HORSE"] = $data["OCCUPANCY_HORSE_EVOL"];
-        $saleToSort["GOAT"] = $data["OCCUPANCY_GOAT_EVOL"];
+        $saleToSort["RAT"] = $data["SALE_RAT_EVOL"];    
+        $saleToSort["OX"] =  $data["SALE_OX_EVOL"];
+        $saleToSort["TIGER"] = $data["SALE_TIGER_EVOL"];
+        $saleToSort["HARE"] = $data["SALE_HARE_EVOL"];
+        $saleToSort["DRAGON"] = $data["SALE_DRAGON_EVOL"];
+        $saleToSort["SNAKE"] = $data["SALE_SNAKE_EVOL"];
+        $saleToSort["HORSE"] = $data["SALE_HORSE_EVOL"];
+        $saleToSort["GOAT"] = $data["SALE_GOAT_EVOL"];
         $sortedSale = array();
         while(count($saleToSort) > 0){
             $min = 0;
@@ -140,36 +148,34 @@ require_once("../RestEngine.php");
                     $min = $value;    
                 }
             }
-            $obj = array();
-            $obj["SIGN"] = $sign;
-            $obj["VALUE"] = $min;
-            array_push($sortedSale, $obj);
+            $obj = array();            
+            array_push($sortedSale, array("SIGN" => $sign, "VALUE" => $min));
             unset($saleToSort[$sign]);
         }
 
-        echo "
+        echo "<center>
             <table border='1'> 
                 <tr><td colspan='8' align='center'>OVERALL</td></tr>
                 <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>    
                 <tr>        
-                    <td><img src=".IMG($sortedOverview[0]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[1]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[2]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[3]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[4]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[5]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[7]["SIGN"])."></td>
                     <td><img src=".IMG($sortedOverview[6]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOverview[7]["SIGN"])."></td>        
+                    <td><img src=".IMG($sortedOverview[5]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[4]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[3]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[2]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[1]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOverview[0]["SIGN"])."></td>        
                 </tr>
                 <tr>        
-                    <td>".$sortedOverview[0]["VALUE"]."</td>
-                    <td>".$sortedOverview[1]["VALUE"]."</td>
-                    <td>".$sortedOverview[2]["VALUE"]."</td>
-                    <td>".$sortedOverview[3]["VALUE"]."</td>
-                    <td>".$sortedOverview[4]["VALUE"]."</td>
-                    <td>".$sortedOverview[5]["VALUE"]."</td>
-                    <td>".$sortedOverview[6]["VALUE"]."</td>
-                    <td>".$sortedOverview[7]["VALUE"]."</td>   
+                    <td>".DIS($sortedOverview[7]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[6]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[5]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[4]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[3]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[2]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[1]["VALUE"])."</td>
+                    <td>".DIS($sortedOverview[0]["VALUE"])."</td>   
                 </tr>
             </table>
     
@@ -177,25 +183,25 @@ require_once("../RestEngine.php");
                 <tr><td colspan='8' align='center'>OCCUPANCY</td></tr>
                 <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>
                 <tr>        
-                    <td><img src=".IMG($sortedOccupancy["0"]["SIGN"])."></td>        
-                    <td><img src=".IMG($sortedOccupancy["1"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["2"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["3"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["4"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["5"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["6"]["SIGN"])."></td>
-                    <td><img src=".IMG($sortedOccupancy["7"]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[0]["SIGN"])."></td>        
+                    <td><img src=".IMG($sortedOccupancy[1]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[2]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[3]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[4]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[5]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[6]["SIGN"])."></td>
+                    <td><img src=".IMG($sortedOccupancy[7]["SIGN"])."></td>
                     
                 </tr>
                 <tr>        
-                    <td>".$sortedOccupancy[0]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[1]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[2]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[3]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[4]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[5]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[6]["VALUE"]."</td>
-                    <td>".$sortedOccupancy[7]["VALUE"]."</td>   
+                    <td>".DIS($sortedOccupancy[0]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[1]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[2]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[3]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[4]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[5]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[6]["VALUE"])."</td>
+                    <td>".DIS($sortedOccupancy[7]["VALUE"])."</td>   
                 </tr>
             </table>
 
@@ -203,24 +209,24 @@ require_once("../RestEngine.php");
                 <tr><td colspan='8' align='center'>TRANSFER</td></tr>
                 <tr><td>1rst</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td></tr>                
                 <tr>        
-                    <td><img src='".IMG($sortedTransfer[0]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[1]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[2]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[3]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[4]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[5]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[7]["SIGN"])."' ></td>
                     <td><img src='".IMG($sortedTransfer[6]["SIGN"])."' ></td>
-                    <td><img src='".IMG($sortedTransfer[7]["SIGN"])."' ></td>        
+                    <td><img src='".IMG($sortedTransfer[5]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[4]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[3]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[2]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[1]["SIGN"])."' ></td>
+                    <td><img src='".IMG($sortedTransfer[0]["SIGN"])."' ></td>        
                 </tr>
                 <tr>        
-                    <td>".$sortedTransfer[0]["VALUE"]."</td>
-                    <td>".$sortedTransfer[1]["VALUE"]."</td>
-                    <td>".$sortedTransfer[2]["VALUE"]."</td>
-                    <td>".$sortedTransfer[3]["VALUE"]."</td>
-                    <td>".$sortedTransfer[4]["VALUE"]."</td>
-                    <td>".$sortedTransfer[5]["VALUE"]."</td>
-                    <td>".$sortedTransfer[6]["VALUE"]."</td>
-                    <td>".$sortedTransfer[7]["VALUE"]."</td>   
+                    <td>".DIS($sortedTransfer[7]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[6]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[5]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[4]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[3]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[2]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[1]["VALUE"])."</td>
+                    <td>".DIS($sortedTransfer[0]["VALUE"])."</td>   
                 </tr>
             </table>
 
@@ -238,21 +244,21 @@ require_once("../RestEngine.php");
                     <td><img src='".IMG($sortedSale[7]["SIGN"])."' ></td>        
                 </tr>
                 <tr>        
-                    <td>".$sortedSale[0]["VALUE"] ."</td>
-                    <td>".$sortedSale[1]["VALUE"] ."</td>
-                    <td>".$sortedSale[2]["VALUE"] ."</td>
-                    <td>".$sortedSale[3]["VALUE"] ."</td>
-                    <td>".$sortedSale[4]["VALUE"] ."</td>
-                    <td>".$sortedSale[5]["VALUE"] ."</td>
-                    <td>".$sortedSale[6]["VALUE"] ."</td>
-                    <td>".$sortedSale[7]["VALUE"] ."</td>   
+                    <td>".DIS($sortedSale[0]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[1]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[2]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[3]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[4]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[5]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[6]["VALUE"]) ."</td>
+                    <td>".DIS($sortedSale[7]["VALUE"]) ."</td>   
                 </tr>
-            </table>
+            </table><center>
         ";
         
     }
-
-    $data = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/score?YEAR=2023&MONTH=1");
+    echo "<center><h1>FEBRUARY 2023 Leaderboard</h1></center>";
+    $data = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/score?YEAR=2023&MONTH=2");
     renderLeaderBoard($data);
 ?>
 

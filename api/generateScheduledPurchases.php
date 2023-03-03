@@ -263,22 +263,25 @@ function GenerateDailyGroupedPurchases()
 
 				echo "INSERTING ITEMREQUESTSTATS\n...";
 				$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
-						totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,momentonhand,calculatedquantity,decision,itemrequest_id)		 
+						totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
+						momentonhand,calculatedquantity,decision,itemrequest_id)		 
 						VALUES (?,?,?,?,?,
 								?,?,?,?,?,
-								?,?,?)";
+								?,?,?,?)";
 				$req = $db->prepare($sql);								
 				$req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
 				$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));
 			}
 			else
 			{
+				
 				$sql = "UPDATE ITEMREQUEST SET REQUESTTYPE = 'BOTH'	WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"],$theID));
 				echo "Updating existent: ".$item["PRODUCTID"]."\n";
 				echo "Updating itemrequeststats \n";
 				$ITEMREQUESTID = $theID;
+				echo "Updating ".$ITEMREQUESTID." with CALCULATED:".$CALCULATEDQUANTITY."\n";
 				$sql = "UPDATE ITEMREQUESTSTATS 
 						SET lastreceivedate = ?,
 							lastreceivequantity = ?,

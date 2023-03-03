@@ -5586,11 +5586,20 @@ $app->get('/groupedpurchasedetails_OLD/{id}', function(Request $request,Response
 	return $response;
 });
 
+
 $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-	
-	$id = $request->getAttribute('id');		
+
+	$id = $request->getAttribute('id');			
+	$sql = "SELECT PRODUCTID FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($id));
+	$itemrequests = $req->fetchAll(PDO::FETCH_ASSOC);
+	foreach($itemrequests as $itemrequest){
+		GenerateItemStats($itemrequest["PRODUCTID"],$id);
+	}
+
 	$sql = "SELECT *
 			FROM ITEMREQUEST,ITEMREQUESTSTATS 
 			WHERE ITEMREQUEST.ID = ITEMREQUESTSTATS.itemrequest_id
@@ -5609,7 +5618,6 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	else{
 		$inStr = "('DECOY')";
 	}
-	
 	
 	$sql = "SELECT PACKINGNOTE,TAX,PRODUCTNAME,PRODUCTID,
 	replace(APVENDOR.VENDNAME,char(39),'') as 'VENDNAME',
@@ -8512,13 +8520,13 @@ $app->delete('/selfpromotionitempool/{id}', function($request,Response $response
 });
 
 // SUPPLIERPROMOTION
-$app->get('/supplierpromotion/{status}', function($request,Response $response) {
+$app->get('/supplierpromotionitems/{status}', function($request,Response $response) {
 	$status =  $request->getParam('status','');	
 
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
 	$params = array();	
-	$sql = "SELECT * FROM SUPPLIERPROMOTION WHERE STATUS = ? AND CREATED > date('now','-45 day')";
+	$sql = "SELECT * FROM SUPPLIERPROMOTIONITEM WHERE STATUS = ? AND CREATED > date('now','-45 day')";
 	$req = $db->prepare($sql);
 	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -8551,36 +8559,37 @@ $app->get('/supplierpromotion/{status}', function($request,Response $response) {
 	return $response;
 });
 
-$app->post('/supplierpromotion', function($request,Response $response) {
+$app->post('/supplierpromotionitems', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$json = json_decode($request->getBody(),true);
 
-	$sql = "INSERT INTO SUPPLIERPROMOTION 
+	$items = json_decode($json["ITEMS"]);
+	foreach($items as $item){
+		$sql = "INSERT INTO SUPPLIERPROMOTIONITEM 
 			(PRODUCTID,QUANTITY,EXPIRATION,LINKTYPE,STARTIME,
 			ENDTIME,NEEDLABEL,PERCENTPROMO,STATUS,USERID,
 			LOCATION) 
 			VALUES (?,?,?,?,?,
 					?,?,?,?,?,
 					?,?)";
-	$req = $db->prepare($sql);
-	$resp = array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$json["LINKTYPE"],$json["STARTTIME"],
-					$json["ENDTIME"], $json["NEEDLABEL"],$json["PERCENTPROMO"], $json["STATUS"],$json["USERID"],
-					$json["LOCATION"]);
-
-	
+		$req = $db->prepare($sql);
+		$resp = array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$item["LINKTYPE"],$item["STARTTIME"],
+					$item["ENDTIME"], $item["NEEDLABEL"],$item["PERCENTPROMO"], $item["STATUS"],$item["USERID"],
+					$item["LOCATION"]);
+	}
 
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
 });
 
-$app->put('/supplierpromotion/{id}', function($request,Response $response) {
+$app->put('/supplierpromotionitem/{id}', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$json = json_decode($request->getBody(),true);
 	$status = $json["STATUS"];	
 	$id =  $request->getParam('id','');	
 
-	$sql = "UPDATE SUPPLIERPROMOTION SET STATUS = ? WHERE ID = ?";
+	$sql = "UPDATE SUPPLIERPROMOTIONITEM SET STATUS = ? WHERE ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($status,$id));
 	
@@ -8589,8 +8598,6 @@ $app->put('/supplierpromotion/{id}', function($request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 });
-
-
 
 $app->get('/supplierpromotionitempool/{userid}', function($request,Response $response){
 	$db = getInternalDatabase();
@@ -13515,7 +13522,7 @@ $app->get('/score',function(Request $request,Response $response){
 	$db = getInternalDatabase("STATS");
 	$month =  $request->getParam('MONTH','');
 	$year =  $request->getParam('YEAR','');
-
+	
 	if ($month == "" || $year == ""){
 		$resp["result"] = "KO";
 		$resp["message"] = "Missing year or month";
@@ -13525,27 +13532,32 @@ $app->get('/score',function(Request $request,Response $response){
 
 	if ($month == 1){
 		$lastmonth = 12;
-		$lastyear = $year - 1;
+		$lastyear = $year - 1;		
 		
 	}else{
 		$lastmonth = $month - 1;
 		$lastyear = $year;
 	}
+	
 	$daysInMonthLast = cal_days_in_month(CAL_GREGORIAN,$lastmonth,intval($lastyear));
-	$startLast = $lastyear."-".$lastmonth."-01";
-	$endLast = $lastyear."-".$lastmonth."-".$daysInMonthLast;
-	$sql = "SELECT * FROM GENERATEDSTATS WHERE  strftime('%s', DAY) BETWEEN strftime('%s', ?) AND strftime('%s', ?)";
+	$startLast = $lastyear."-".sprintf("%02d",$lastmonth)."-01";
+	$endLast = $lastyear."-".sprintf("%02d",$lastmonth)."-".$daysInMonthLast;
+	$sql = "SELECT * FROM GENERATEDSTATS WHERE  strftime('%s', DAY) BETWEEN strftime('%s', ?) AND strftime('%s', ?)";	
 	$req = $db->prepare($sql);	
 	$req->execute(array($startLast,$endLast));
 	$lastmonthData = $req->fetchAll(PDO::FETCH_ASSOC);
-	
+			
 	$daysInMonthCurrent = cal_days_in_month(CAL_GREGORIAN,$lastmonth,intval($lastyear));
-	$startCurrent = "1/".$month."/".$year;
-	$endCurrent =  $daysInMonthLast."/".$month."/".$lastyear;
+	$startCurrent = $year."-".sprintf("%02d",$month,)."-01";
+	$endCurrent =  $lastyear."-".sprintf("%02d",$month,)."-".$daysInMonthLast;	
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE   strftime('%s', DAY) BETWEEN strftime('%s', ?) AND strftime('%s', ?)";
 	$req = $db->prepare($sql);
 	$req->execute(array($startCurrent,$endCurrent));
 	$currentmonthData = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	//echo "STARTLAST:".$startLast."| ENDLAST:".$endLast."<br>";
+	//echo "STARTCURRENT:".$startCurrent."| ENDCURRENT:".$endCurrent."<br>";
+	
 
 	$OCCUPANCY_ALL_LAST = 0;
 	$OCCUPANCY_ALL_CURRENT = 0;
@@ -13607,7 +13619,7 @@ $app->get('/score',function(Request $request,Response $response){
 
 	// LAST MONTH 
 	foreach($lastmonthData as $stats){
-		$OCCUPANCY_ALL_LAST += $stats["OCC_ALL_TOD"];	
+		$OCCUPANCY_ALL_LAST += $stats["OCC_ALL_TOD"];			
 		$OCCUPANCY_RAT_LAST += $stats["OCC_RAT_TOD"];
 		$OCCUPANCY_OX_LAST  += $stats["OCC_OX_TOD"];		
 		$OCCUPANCY_TIGER_LAST += $stats["OCC_TIGER_TOD"];
@@ -13649,46 +13661,64 @@ $app->get('/score',function(Request $request,Response $response){
 	}
 
 	// CURRENT MONTH 
-	foreach($currentmonthData as $stat){
-		$OCCUPANCY_ALL_CURRENT += $stats["OCC_ALL_TOD"];	
-		$OCCUPANCY_RAT_CURRENT += $stats["OCC_RAT_TOD"];
+	
+	foreach($currentmonthData as $stats){
+		$OCCUPANCY_ALL_CURRENT += $stats["OCC_ALL_TOD"];		
+		$OCCUPANCY_RAT_CURRENT += $stats["OCC_RAT_TOD"];		
 		$OCCUPANCY_OX_CURRENT  += $stats["OCC_OX_TOD"];		
 		$OCCUPANCY_TIGER_CURRENT += $stats["OCC_TIGER_TOD"];
 		$OCCUPANCY_HARE_CURRENT += $stats["OCC_HARE_TOD"];
-		$OCCUPANCY_DRAGON_CURRENT += $stats["OCC_DRAGON_LAST"];
-		$OCCUPANCY_SNAKE_CURRENT += $stats["OCC_SNAKE_LAST"];	
-		$OCCUPANCY_HORSE_CURRENT += $stats["OCC_HORSE_LAST"];	
-		$OCCUPANCY_GOAT_CURRENT += $stats["OCC_DRAGON_LAST"];	
+		$OCCUPANCY_DRAGON_CURRENT += $stats["OCC_DRAGON_TOD"];
+		$OCCUPANCY_SNAKE_CURRENT += $stats["OCC_SNAKE_TOD"];	
+		$OCCUPANCY_HORSE_CURRENT += $stats["OCC_HORSE_TOD"];	
+		$OCCUPANCY_GOAT_CURRENT += $stats["OCC_DRAGON_TOD"];	
 
-		$tmp = json_decode($stats["TRF_ALL_TOD"],true);	
-		$TRANSFER_ALL_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_decode($stats["TRF_RAT_TOD"],true);		
-		$TRANSFER_RAT_CURRENT += $tmp["QUANTITY"];
+		$tmp = json_decode($stats["TRF_ALL_TOD"],true);					
+		if ($tmp != null)
+			$TRANSFER_ALL_CURRENT += $tmp["QUANTITY"];		
+
+		$tmp = json_decode($stats["TRF_RAT_TOD"],true);					
+		if ($tmp != null)
+			$TRANSFER_RAT_CURRENT += $tmp["QUANTITY"];		
+
 		$tmp = json_decode($stats["TRF_OX_TOD"],true);		
-		$TRANSFER_OX_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_decode($stats["TRF_TIGER_TOD"],true);
-		$TRANSFER_TIGER_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_decode($stats["TRF_HARE_TOD"],true);
-		$TRANSFER_HARE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_decode($stats["TRF_DRAGON_TOD"],true);
-		$TRANSFER_DRAGON_CURRENT += $tmp["QUANTITY"];		
-		$tmp = json_encode($stats["TRF_SNAKE_TOD"],true);
-		$TRANSFER_SNAKE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_HORSE_TOD"],true);
-		$TRANSFER_HORSE_CURRENT += $tmp["QUANTITY"];
-		$tmp = json_encode($stats["TRF_GOAT_TOD"],true);
-		$TRANSFER_GOAT_CURRENT += $tmp["QUANTITY"];
+		if ($tmp != null)
+			$TRANSFER_OX_CURRENT += $tmp["QUANTITY"];
 
-		$SALE_ALL_CURRENT += $stat["SALE_RAT_TOD"] + $stat["SALE_OX_TOD"] + $stat["SALE_TIGER_TOD"] + $stat["SALE_HARE_CURRENT"] + 
-							 $stat["SALE_DRAGON_CURRENT"] + $stat["SALE_SNAKE_CURRENT"] + $stat["SALE_HORSE_CURRENT"] + $stat["SALE_GOAT_CURRENT"];
-		$SALE_RAT_CURRENT  += $stat["SALE_RAT_TOD"]; 
-		$SALE_OX_CURRENT  += $stat["SALE_OX_TOD"];
-		$SALE_TIGER_CURRENT  += $stat["SALE_TIGER_TOD"];
-		$SALE_HARE_CURRENT  += $stat["SALE_HARE_CURRENT"];
-		$SALE_DRAGON_CURRENT  += $stat["SALE_DRAGON_CURRENT"];
-		$SALE_SNAKE_CURRENT  += $stat["SALE_SNAKE_CURRENT"];
-		$SALE_HORSE_CURRENT  += $stat["SALE_HORSE_CURRENT"];
-		$SALE_GOAT_CURRENT  += $stat["SALE_GOAT_CURRENT"];		
+		$tmp = json_decode($stats["TRF_TIGER_TOD"],true);
+		if ($tmp != null)
+			$TRANSFER_TIGER_CURRENT += $tmp["QUANTITY"];
+			
+		$tmp = json_decode($stats["TRF_HARE_TOD"],true);
+		if ($tmp != null)
+			$TRANSFER_HARE_CURRENT += $tmp["QUANTITY"];
+
+		$tmp = json_decode($stats["TRF_DRAGON_TOD"],true);
+		if ($tmp != null)	
+			$TRANSFER_DRAGON_CURRENT += $tmp["QUANTITY"];		
+
+		$tmp = json_decode($stats["TRF_SNAKE_TOD"],true);		
+		if ($tmp != null)	
+			$TRANSFER_SNAKE_CURRENT += $tmp["QUANTITY"];
+
+		$tmp = json_decode($stats["TRF_HORSE_TOD"],true);
+		if ($tmp != null)	
+			$TRANSFER_HORSE_CURRENT += $tmp["QUANTITY"];
+
+		$tmp = json_decode($stats["TRF_GOAT_TOD"],true);
+		if ($tmp != null)	
+			$TRANSFER_GOAT_CURRENT += $tmp["QUANTITY"];
+
+		$SALE_ALL_CURRENT += $stats["SALE_RAT_TOD"] + $stats["SALE_OX_TOD"] + $stats["SALE_TIGER_TOD"] + $stats["SALE_HARE_TOD"] + 
+							 $stats["SALE_DRAGON_TOD"] + $stats["SALE_SNAKE_TOD"] + $stats["SALE_HORSE_TOD"] + $stats["SALE_GOAT_TOD"];
+		$SALE_RAT_CURRENT  += $stats["SALE_RAT_TOD"]; 
+		$SALE_OX_CURRENT  += $stats["SALE_OX_TOD"];
+		$SALE_TIGER_CURRENT  += $stats["SALE_TIGER_TOD"];
+		$SALE_HARE_CURRENT  += $stats["SALE_HARE_TOD"];
+		$SALE_DRAGON_CURRENT  += $stats["SALE_DRAGON_TOD"];
+		$SALE_SNAKE_CURRENT  += $stats["SALE_SNAKE_TOD"];
+		$SALE_HORSE_CURRENT  += $stats["SALE_HORSE_TOD"];
+		$SALE_GOAT_CURRENT  += $stats["SALE_GOAT_TOD"];		
 
 	}
 	$data["ALL"] = array();
@@ -13775,14 +13805,16 @@ $app->get('/wikisearch/{productid}',function(Request $request,Response $response
 	$db = getInternalDatabase();
 	$productid = $request->getAttribute('productid');
 	if ($productid == "ALL"){
-		$sql = "SELECT * FROM WIKI WHERE STATUS = 'COMPLETE' ORDER BY CREATED DESC";
+		$sql = "SELECT * FROM WIKI WHERE STATUS = 'COMPLETED' ORDER BY CREATED DESC";
 		$req = $db->prepare($sql);
-		$req->execute(array($productid));
+		$req->execute(array());
+		$data = $req->fetchAll(PDO::FETCH_ASSOC);	
 	}else{
-		$sql = "SELECT * FROM WIKI WHERE AND PRODUCTID = ? AND STATUS = 'COMPLETE'";
+		$sql = "SELECT * FROM WIKI WHERE PRODUCTID = ? AND STATUS = 'COMPLETED'";
 		$req = $db->prepare($sql);
 		$req->execute(array($productid));
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);	
+
 	}
 	
 	$resp["result"] = "OK";
@@ -13852,23 +13884,26 @@ $app->post('/wiki',function(Request $request,Response $response) {
 });
 
 $app->put('/wiki/{id}',function(Request $request,Response $response) {
-	$db = getDatabase();
+	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
+	
 	$json = json_decode($request->getBody(),true);
-	$sql = "UPDATE WIKI SET DESCRIPTION = ? WHERE ID = ?";
+	error_log($json["DESCRIPTION"]);
+	error_log($id);
+	$sql = "UPDATE WIKI SET DESCRIPTION = ?, STATUS = 'COMPLETED' WHERE ID = ?";
 	$req = $db->prepare($sql);	
-	$req->execute(array($json["DESCRIPTION"]));
+	$req->execute(array($json["DESCRIPTION"],$id));
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;	
 });
 
 $app->delete('/wiki/{id}',function(Request $request,Response $response) {
-	$db = getDatabase();
+	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');	
 	$sql = "DELETE FROM WIKI WHERE ID = ?";
 	$req = $db->prepare($sql);	
-	$req->execute(array(array()));
+	$req->execute(array($id));
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;	

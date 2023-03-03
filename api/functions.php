@@ -1867,9 +1867,7 @@ function getOfficeWorkingEmployees($date){
 	return $employees;	
 }
 
-
-function extractEmployeeByHour($hour,$employees)
-{
+function extractEmployeeByHour($hour,$employees){
 	$data = array();
 	foreach($employees as $employee){
 		if ( (strtotime($employee["starttime1"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime1"])) ||
@@ -1881,8 +1879,7 @@ function extractEmployeeByHour($hour,$employees)
 	return $data;
 }
 
-function getPresentWorker($date,$start,$end,$store = true)
-{
+function getPresentWorker($date,$start,$end,$store = true){
 	if ($store == true)
 		$employees = getStoreWorkingEmployees($date);	
 	else
@@ -1914,6 +1911,7 @@ function getPresentWorker($date,$start,$end,$store = true)
 	
 	return $employees;
 }
+
 function GetUserId($type){
     if ($type == "PAYER")
         return 1001;
@@ -1939,6 +1937,79 @@ function GetUserId($type){
         return 604;        
     else if ($type == "WAREHOUSE4")
         return "605";        
+}
+
+function GenerateItemStats($productid,$ITEMREQUESTID)
+{
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();	
+
+	// ITEM START	
+	$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid,$ITEMREQUESTID));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != false)			
+		return;
+
+	$sql = "SELECT TOP(1) TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));
+	$res2 = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
+	{
+		if ($res == false)
+			$TRANCOST = 0;
+		else
+			$TRANCOST = $res["TRANCOST"];
+	}				
+	else{
+		if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
+			$TRANCOST = $res2["PPSS_NEW_COST"];
+		else 
+			$TRANCOST = $res["TRANCOST"];
+	}				
+	$stats = orderStatistics($productid);
+	$LASTRECEIVEDATE = 	$stats["LASTRCVDATE"];
+	$LASTRECEIVEQUANTITY = $stats["LASTRECEIVEQUANTITY"];				
+	$TOTALWASTEQUANTITY = $stats["WASTE"];
+	$TOTALPROMOQUANTITY = $stats["PROMO"];
+	$TOTALORDERTIME = $stats["TOTALORDERTIME"];		
+	$TOTALRECEIVE = $stats["TOTALRECEIVE"];	
+	$SALESINCELASTRECEIVE = $stats["SALESINCELASTRECEIVE"];
+	$SALESPEED75 = $stats["SALESPEED"];
+	$LASTSALEDAY = $stats["LASTSALEDAY"];
+	$TOTALSALE = $stats["TOTALSALE"];
+	$MOMENTONHAND = $stats["ONHAND"];	
+	$DECISION = $stats["DECISION"];
+	$CALCULATEDQUANTITY = $stats["FINALQTY"];
+
+	$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid,$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));	
+	$ITEMREQUESTID = $db->lastInsertId();		
+
+	
+	$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
+				totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
+				momentonhand,calculatedquantity,decision,itemrequest_id)		 
+				VALUES (?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?)";
+	$req = $db->prepare($sql);								
+	$req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
+	$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));	
+	
+	$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));			
+	
 }
 
 ?>

@@ -896,7 +896,7 @@ function PatchStats()
 											NOPICTURE_ITEMS_CNT_TOD = ?
 											WHERE DAY = ?";
 		$req = $db->prepare($sql);
-		/*
+		
 		$req->execute(array(
 							$tomorrow["TRF_ALL_YES"],
 							$tomorrow["TRF_RAT_YES"],
@@ -954,7 +954,7 @@ function PatchStats()
 							$tomorrow["NOPICTURE_ITEMS_CNT_YES"],
 							$stats["DAY"]
 		));
-		*/
+		
 	}
 }
 

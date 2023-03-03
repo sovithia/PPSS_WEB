@@ -199,7 +199,7 @@ function renderStats()
     
 
     $d["TRF_ALL_YES"] = json_decode($d["TRF_ALL_YES"] ,true);
-    $d["TRF_RAT_YES"] = json_decode($d["TRF_RAT_YES"] ,true);
+    $d["TRF_RAT_YES"] = json_decode($d["TRF_RAT_YES"] ,true);    
     $d["TRF_OX_YES"] = json_decode($d["TRF_OX_YES"] ,true);
     $d["TRF_TIGER_YES"] = json_decode($d["TRF_TIGER_YES"] ,true);
     $d["TRF_HARE_YES"] = json_decode($d["TRF_HARE_YES"] ,true);
@@ -463,18 +463,18 @@ function renderStats()
                     <tr>
                     <tr align='center'>
                         <td>Transfer NB items</td>            
-                        <td width='4%'>".$d["TRF_RAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_RAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_RAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["NBITEM"],$d["TRF_RAT_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_OX_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_OX_ITEMS_YES")."</td><td width='4%'>".$d["TRF_OX_TOD"]["NBITEM"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["NBITEM"],$d["TRF_OX_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_TIGER_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_TIGER_ITEMS_YES")."</td><td width='4%'>".$d["TRF_TIGER_TOD"]["NBITEM"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["NBITEM"],$d["TRF_TIGER_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_HARE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HARE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HARE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["NBITEM"],$d["TRF_HARE_TOD"]["NBITEM"])."</td>            
+                        <td width='4%'>".($d["TRF_RAT_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_RAT_ITEMS_YES")."</td><td width='4%'>".($d["TRF_RAT_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["NBITEM"] ?? 0,$d["TRF_RAT_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_OX_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_OX_ITEMS_YES")."</td><td width='4%'>".($d["TRF_OX_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["NBITEM"] ?? 0,$d["TRF_OX_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_TIGER_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_TIGER_ITEMS_YES")."</td><td width='4%'>".($d["TRF_TIGER_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["NBITEM"] ?? 0,$d["TRF_TIGER_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_HARE_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_HARE_ITEMS_YES")."</td><td width='4%'>".($d["TRF_HARE_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["NBITEM"] ?? 0,$d["TRF_HARE_TOD"]["NBITEM"] ?? 0)."</td>            
                     </tr>
             
                     <tr align='center'>
                         <td>Transfer Qty items</td>            
-                        <td>".$d["TRF_RAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_YES")."</td><td>".$d["TRF_RAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["QUANTITY"],$d["TRF_RAT_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_OX_YES"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_YES")."</td><td>".$d["TRF_OX_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["QUANTITY"],$d["TRF_OX_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_TIGER_YES"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_YES")."</td><td>".$d["TRF_TIGER_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["QUANTITY"],$d["TRF_TIGER_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_HARE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_YES")."</td><td>".$d["TRF_HARE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["QUANTITY"],$d["TRF_HARE_TOD"]["QUANTITY"])."</td>            
+                        <td>".($d["TRF_RAT_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_RAT_ITEMS_YES")."</td><td>".($d["TRF_RAT_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_RAT_ITEMS_TOD")."</td><td>".EV($d["TRF_RAT_YES"]["QUANTITY"] ?? 0,$d["TRF_RAT_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_OX_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_OX_ITEMS_YES")."</td><td>".($d["TRF_OX_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_OX_ITEMS_TOD")."</td><td>".EV($d["TRF_OX_YES"]["QUANTITY"] ?? 0,$d["TRF_OX_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_TIGER_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_TIGER_ITEMS_YES")."</td><td>".($d["TRF_TIGER_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_TIGER_ITEMS_TOD")."</td><td>".EV($d["TRF_TIGER_YES"]["QUANTITY"] ?? 0,$d["TRF_TIGER_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_HARE_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HARE_ITEMS_YES")."</td><td>".($d["TRF_HARE_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HARE_ITEMS_TOD")."</td><td>".EV($d["TRF_HARE_YES"]["QUANTITY"] ?? 0,$d["TRF_HARE_TOD"]["QUANTITY"] ?? 0)."</td>            
                     </tr>
                     
                     <tr align='center'>
@@ -503,26 +503,26 @@ function renderStats()
                             <td colspan='5'>".renderSign("HORSE")."</td>                
                     </tr>
                     <tr>
-                            <td width='4%'></td>                      
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                         <td width='4%'></td>                      
+                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
                     <tr>
                     <tr align='center'>
                         <td>Transfer NB items</td>                            
-                        <td width='4%'>".$d["TRF_SNAKE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_SNAKE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["NBITEM"],$d["TRF_SNAKE_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_DRAGON_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".$d["TRF_DRAGON_TOD"]["NBITEM"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"],$d["TRF_DRAGON_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_GOAT_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_GOAT_ITEMS_YES")."</td><td width='4%'>".$d["TRF_GOAT_TOD"]["NBITEM"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["NBITEM"],$d["TRF_GOAT_TOD"]["NBITEM"])."</td>
-                        <td width='4%'>".$d["TRF_HORSE_YES"]["NBITEM"]."</td><td width='1%'>".DLX("TRF_HORSE_ITEMS_YES")."</td><td width='4%'>".$d["TRF_HORSE_TOD"]["NBITEM"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["NBITEM"],$d["TRF_HORSE_TOD"]["NBITEM"])."</td>            
+                        <td width='4%'>".($d["TRF_SNAKE_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td width='4%'>".($d["TRF_SNAKE_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["NBITEM"] ?? 0,$d["TRF_SNAKE_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_DRAGON_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".($d["TRF_DRAGON_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"] ?? 0,$d["TRF_DRAGON_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_GOAT_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_GOAT_ITEMS_YES")."</td><td width='4%'>".($d["TRF_GOAT_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["NBITEM"] ?? 0,$d["TRF_GOAT_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_HORSE_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_HORSE_ITEMS_YES")."</td><td width='4%'>".($d["TRF_HORSE_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["NBITEM"] ?? 0,$d["TRF_HORSE_TOD"]["NBITEM"] ?? 0)."</td>            
                     </tr>
                 
                     <tr align='center'>
                         <td>Transfer Qty items</td>                            
-                        <td>".$d["TRF_SNAKE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td>".$d["TRF_SNAKE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["QUANTITY"],$d["TRF_SNAKE_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_DRAGON_YES"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".$d["TRF_DRAGON_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"],$d["TRF_DRAGON_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_GOAT_YES"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_YES")."</td><td>".$d["TRF_GOAT_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["QUANTITY"],$d["TRF_GOAT_TOD"]["QUANTITY"])."</td>
-                        <td>".$d["TRF_HORSE_YES"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_YES")."</td><td>".$d["TRF_HORSE_TOD"]["QUANTITY"]."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["QUANTITY"],$d["TRF_HORSE_TOD"]["QUANTITY"])."</td>
+                        <td>".($d["TRF_SNAKE_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td>".($d["TRF_SNAKE_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["QUANTITY"] ?? 0,$d["TRF_SNAKE_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_DRAGON_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".($d["TRF_DRAGON_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"] ?? 0,$d["TRF_DRAGON_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_GOAT_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_YES")."</td><td>".($d["TRF_GOAT_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["QUANTITY"] ?? 0,$d["TRF_GOAT_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_HORSE_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_YES")."</td><td>".($d["TRF_HORSE_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["QUANTITY"] ?? 0,$d["TRF_HORSE_TOD"]["QUANTITY"] ?? 0)."</td>
                     </tr>
                     
                 
