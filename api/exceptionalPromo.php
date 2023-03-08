@@ -28,6 +28,12 @@ function calculateRealLastReceivedQuantity($productID)
             $req = $db->prepare($sql);
             $req->execute(array($productID,0));
             $res = $req->fetch(PDO::FETCH_ASSOC);
+			if ($res == false){
+				$sql = "SELECT TOP(1) TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND VENDID <> '400-463'  ORDER BY DATEADD DESC ";
+            	$req = $db->prepare($sql);
+            	$req->execute(array($productID));
+            	$res = $req->fetch(PDO::FETCH_ASSOC);
+			}
             return $res["TRANQTY"];
         }else{ // special disc on product ie : same as vendor perma                    
             if ($discount > $productDisc){

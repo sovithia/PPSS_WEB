@@ -19,5 +19,6 @@ function attachPromotion()
     $req->execute(array());
     echo date("Y-m-d") .": Attaching promotion\n";
 }
-//attachPromotion();
+if ($argc > 1 && $argv[1] == "CROCODILE")
+    attachPromotion();
 ?>

@@ -251,7 +251,7 @@ function getDatabase($name = "MAIN")
 		}
 		else if ($name == "CASHIER")
 		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
+			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
 		}
 		else if ($name == "TRAINING")
 		{
@@ -290,6 +290,28 @@ function getInternalDatabase($base = "MAIN")
 		die("Cannot open database".$ex->getMessage());
 	}
 	return $db;
+}
+
+function getInternalDatabaseNew()
+{
+	$host = '127.0.0.1';
+	$db   = 'test';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+	}
 }
 
 
@@ -789,7 +811,7 @@ function externalAlertStats($barcode){
 }
 
 function LG($str){
-	error_log($str);
+	//error_log($str);
 }
 
 
@@ -1641,6 +1663,60 @@ function sendPushToUser($title,$body,$userid)
 	return $result;
 }
 
+function sendPushToAll($title,$body)
+{
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE fcmtoken is not null";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	foreach($res as $oneToken){
+		$TOKEN = $oneToken["fcmtoken"];
+		$url = 'https://fcm.googleapis.com/fcm/send';	
+		$fields = array (
+			'to' => $TOKEN,
+			'data' => array(
+				'type' => 104,
+				'type_name' => 'post',
+				'title' => $title,
+				'badge' => '1',			
+				'body' => $body,
+				'vibrate' => 1,
+				'sound' => 1			
+			),
+			'notification' => array(
+				'title' => $title,
+				'body' => $body,                
+				'sound' => 'default',
+				'badge' => '1'
+			),
+			'priority' => 'high'		
+		);    
+		$fields = json_encode ( $fields );
+	
+		$headers = array (
+				'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+				'Content-Type: application/json'
+		);
+		$ch = curl_init ();
+		curl_setopt ( $ch, CURLOPT_URL, $url );
+		curl_setopt ( $ch, CURLOPT_POST, true );
+		curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+		$result = curl_exec ( $ch );    
+		curl_close ( $ch );
+		$result.= " TOKEN = ".$TOKEN;		
+	}
+	
+}
+
+// Wiki Created
+// Wiki Answered
+
 function getSaleByLocation($start,$end,$location)
 {
 	$db=getDatabase();	
@@ -1945,14 +2021,17 @@ function GenerateItemStats($productid,$ITEMREQUESTID)
 	$dbBlue = getDatabase();	
 
 	// ITEM START	
-	$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
+	$sql = "SELECT * FROM ITEMREQUEST,ITEMREQUESTSTATS 
+			WHERE ITEMREQUESTSTATS.itemrequest_id = ITEMREQUEST.ID			
+			AND ITEMREQUEST.PRODUCTID = ? 
+			AND ITEMREQUESTSTATS.itemrequest_id = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($productid,$ITEMREQUESTID));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-
+	$res = $req->fetch(PDO::FETCH_ASSOC);	
 	if ($res != false)			
 		return;
 
+	echo("GENERATING ".$productid."...\n");
 	$sql = "SELECT TOP(1) TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($productid));
@@ -1989,12 +2068,6 @@ function GenerateItemStats($productid,$ITEMREQUESTID)
 	$MOMENTONHAND = $stats["ONHAND"];	
 	$DECISION = $stats["DECISION"];
 	$CALCULATEDQUANTITY = $stats["FINALQTY"];
-
-	$sql = "INSERT INTO ITEMREQUEST (PRODUCTID,REQUEST_QUANTITY,COST,DISCOUNT,REQUESTTYPE,ITEMREQUESTACTION_ID) VALUES (?,?,?,?,?,?)";
-	$req = $db->prepare($sql);
-	$req->execute(array($productid,$res["TRANQTY"], $TRANCOST,$res["TRANDISC"] ,'AUTOMATIC',$theID));	
-	$ITEMREQUESTID = $db->lastInsertId();		
-
 	
 	$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
 				totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
@@ -2003,9 +2076,8 @@ function GenerateItemStats($productid,$ITEMREQUESTID)
 						?,?,?,?,?,
 						?,?,?,?)";
 	$req = $db->prepare($sql);								
-	$req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
-	$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));	
-	
+	$res = $req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
+	$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));		
 	$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($productid));			

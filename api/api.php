@@ -367,7 +367,7 @@ function packLookup($barcode)
 	$item=$req->fetch(PDO::FETCH_ASSOC);		
 	if ($item != false){		
 		if ($item["EXPIRED_DATE"] > $item["NOW"])
-			$item["DISC"] = round($item["DISC"],2);
+			$item["DISC"] = round($item["DISC"],4);
 		else
 			$item["DISC"] = "0";
 		$item["PICTURE"]= loadPicture($barcode,true);		
@@ -1024,6 +1024,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$res2=$req->fetch()["CNT"];
 
 		$resp["result"] = "OK";
+		$item["OCCUPANCY"] = getProductOccupancy($barcode);		
 		$resp["data"] = $item;
 
 		if ($res1 < 1)
@@ -3496,10 +3497,10 @@ $app->get('/supplyrecordnopopool/{userid}', function(Request $request,Response $
 	}
 	$tmp = array();
 	$tmp["ITEMS"] = $newData;
-	$tmp["AMTEXCLVAT"] = round($amountexcludevat,2);
-	$tmp["AMTVAT"] = round($amountvat,2);
-	$tmp["AMTDISCOUNT"] = round($amountDiscount,2);
-	$tmp["GRANDTOTAL"] = round($grandtotal,2) - $tmp["AMTDISCOUNT"];
+	$tmp["AMTEXCLVAT"] = round($amountexcludevat,4);
+	$tmp["AMTVAT"] = round($amountvat,4);
+	$tmp["AMTDISCOUNT"] = round($amountDiscount,4);
+	$tmp["GRANDTOTAL"] = round($grandtotal,4) - $tmp["AMTDISCOUNT"];
 	
 	$data["result"] = "OK";				
 	$data["data"] = $tmp;
@@ -3744,11 +3745,11 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$req = $dbBLUE->prepare($sql);
 			$req->execute(array($json["PONUMBER"]));
 			$res2 = $req->fetch(PDO::FETCH_ASSOC);
-			$sumvat = round($res2["SUMVAT"],2);
+			$sumvat = round($res2["SUMVAT"],4);
 		
 			$sql = "UPDATE POHEADER SET PURCHASE_AMT = ?,CURRENCY_AMOUNT = ?,VAT_AMT = ?,CURRENCY_VATAMOUNT = ? WHERE PONUMBER = ?";
 			$req = $dbBLUE->prepare($sql);
-			$sum = round($res["SUM"] + $res2["SUMVAT"],2);
+			$sum = round($res["SUM"] + $res2["SUMVAT"],4);
 			$req->execute(array($sum, $sum,$sumvat,$sumvat,$json["PONUMBER"]));
 
 		}
@@ -4156,7 +4157,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVEQTY',	
 					PPSS_WAITING_CALCULATED,		
 				   TRANDISC,EXTCOST,
-				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
+				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,PPSS_WAITING_COMMENT,
 				   PPSS_VALIDATED_QUANTITY,
 				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE,PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ? AND PRODUCTID IN (SELECT PRODUCTID FROM PORECEIVEDETAIL WHERE PONUMBER = ?)	 ORDER BY PRODUCTID ASC";	
@@ -4168,7 +4169,7 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 					(SELECT  TOP(1) TRANQTY  FROM PORECEIVEDETAIL WHERE PONUMBER = ?  AND PRODUCTID = PODETAIL.PRODUCTID ORDER BY COLID DESC) as 'RECEIVEQTY',			
 					PPSS_WAITING_CALCULATED,
 					TRANDISC,EXTCOST,
-				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,
+				   PPSS_WAITING_QUANTITY,PPSS_WAITING_PRICE,PPSS_WAITING_VAT,PPSS_WAITING_DISCOUNT,PPSS_WAITING_COMMENT,
 				   PPSS_VALIDATED_QUANTITY,
 				   PPSS_DELIVERED_QUANTITY,PPSS_DELIVERED_PRICE,PPSS_DELIVERED_VAT,PPSS_DELIVERED_DISCOUNT,PPSS_DELIVERED_EXPIRE,PPSS_NOTE
 				   FROM PODETAIL WHERE PONUMBER = ?  ORDER BY PRODUCTID ASC";
@@ -4236,15 +4237,15 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$extradata = array();
 	if ($res != false)
-		$extradata["VAT"] = round($res["VAT_PERCENT"],2);
+		$extradata["VAT"] = round($res["VAT_PERCENT"],4);
 	else 
 		$extradata["VAT"] = "0";
 
-	$extradata["AMTEXCVAT"] = round($amountexcludevat,2);
-	$extradata["AMTVAT"] = round($amountvat,2);
-	$extradata["AMTPLT"] = round($amtplt,2);
-	$extradata["AMTDISC"] = round($amountDiscount,2);
-	$extradata["GRANDTOTAL"] = round($grandtotal,2) - $extradata["AMTDISC"];
+	$extradata["AMTEXCVAT"] = round($amountexcludevat,4);
+	$extradata["AMTVAT"] = round($amountvat,4);
+	$extradata["AMTPLT"] = round($amtplt,4);
+	$extradata["AMTDISC"] = round($amountDiscount,4);
+	$extradata["GRANDTOTAL"] = round($grandtotal,4) - $extradata["AMTDISC"];
 	$extradata["PONUMBER"] = $rr["PONUMBER"];
 	$extradata["VENDID"] = $rr["VENDID"];
 	$extradata["VENDNAME"] = $rr["VENDNAME"];
@@ -4330,11 +4331,11 @@ $app->post('/supplyrecordadditem', function(Request $request,Response $response)
 		$CURRENTONHAND = $newitem["ONHAND"];
 
 		$CURRENCY_COST = floatval($TRANCOST); // *  floatval( (100 - $item["DISCOUNT"]) / 100);
-		$CURRENCY_COST = round($CURRENCY_COST,2);
+		$CURRENCY_COST = round($CURRENCY_COST,4);
 
 		$CURRENCY_AMOUNT = floatval($TRANCOST)  * floatval($QUANTITY);	
 		$CURRENCY_AMOUNT = $CURRENCY_AMOUNT * ((100 - $TRANDISC) / 100); // REMOVE DISCOUNT
-		$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,2);
+		$CURRENCY_AMOUNT = round($CURRENCY_AMOUNT,4);
 
 		$STKFACTOR = "1.00000";
 		$BASECURR_ID = "USD";
@@ -4349,7 +4350,7 @@ $app->post('/supplyrecordadditem', function(Request $request,Response $response)
 		$OLDWEIGHT = "1.00000";
 		$RECEIVE_QTY = "0.00000";
 		
-		$EXTCOST = round($CURRENCY_AMOUNT, 2);				
+		$EXTCOST = round($CURRENCY_AMOUNT, 4);				
 		$RECEIVE_QTY = "0.0000";
 		$COMMENT = "";
 		$POSTATUS = "";
@@ -5592,12 +5593,12 @@ $app->get('/groupedpurchasedetails/{id}', function(Request $request,Response $re
 	$dbBlue = getDatabase();
 
 	$id = $request->getAttribute('id');			
-	$sql = "SELECT PRODUCTID FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+	$sql = "SELECT ID,PRODUCTID FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($id));
 	$itemrequests = $req->fetchAll(PDO::FETCH_ASSOC);
-	foreach($itemrequests as $itemrequest){
-		GenerateItemStats($itemrequest["PRODUCTID"],$id);
+	foreach($itemrequests as $itemrequest){		
+		GenerateItemStats($itemrequest["PRODUCTID"],$itemrequest["ID"]);
 	}
 
 	$sql = "SELECT *
@@ -7731,6 +7732,29 @@ $app->get('/info',function(Request $request,Response $response){
 	phpinfo();	
 });
 
+$app->get('/info2',function(Request $request,Response $response){
+	//$db = getInternalDatabaseNew();
+	$db = getDatabase();
+
+	$sql = "SELECT  * FROM ICPRODUCT";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+	var_dump($data);
+	/*
+	$sql = "SELECT * FROM SUPPLY_RECORD";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$data = $req->fetchAll(PDO::FETCH);
+	*/
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+
+	return $response;	
+});
+
 
 $app->get('/depleteditems', function($request,Response $response) {
 	$db=getDatabase();
@@ -8563,19 +8587,20 @@ $app->post('/supplierpromotionitems', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$json = json_decode($request->getBody(),true);
 
-	$items = json_decode($json["ITEMS"]);
+	$items = $json["ITEMS"];
 	foreach($items as $item){
 		$sql = "INSERT INTO SUPPLIERPROMOTIONITEM 
-			(PRODUCTID,QUANTITY,EXPIRATION,LINKTYPE,STARTIME,
-			ENDTIME,NEEDLABEL,PERCENTPROMO,STATUS,USERID,
-			LOCATION) 
+			(PRODUCTID,QUANTITY,LINKTYPE,STARTTIME,ENDTIME,
+			PERCENTPROMO,STATUS,CREATOR) 
 			VALUES (?,?,?,?,?,
-					?,?,?,?,?,
-					?,?)";
+					?,?,?)";
 		$req = $db->prepare($sql);
-		$resp = array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$item["LINKTYPE"],$item["STARTTIME"],
-					$item["ENDTIME"], $item["NEEDLABEL"],$item["PERCENTPROMO"], $item["STATUS"],$item["USERID"],
-					$item["LOCATION"]);
+		$resp = array($item["PRODUCTID"],$item["QUANTITY"],$item["LINKTYPE"],$item["STARTTIME"],$item["ENDTIME"],
+					$item["PERCENTPROMO"], 'CREATED',$json["AUTHOR"]);
+
+		$sql = "DELETE FROM SUPPLIERPROMOTIONITEM WHERE PRODUCTID = ? AND USERID = ?";
+		$req = $db->prepare($sql);
+		$req->execute($item["PRODUCTID"],array($json["USERID"]));					
 	}
 
 	$resp["result"] = "OK";	
@@ -8620,27 +8645,40 @@ $app->post('/supplierpromotionitempool', function($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	
-	$sql = "SELECT STORBIN FROM ICLOCATION WHERE PRODUCTID = ? AND LOCID = 'WH1'";
+	$sql = "SELECT * FROM SUPPLIERPROMOTIONITEMPOOL WHERE PRODUCTID = ? AND USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["PRODUCTID"],$json["USERID"]));
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+	if ($data != false){
+		$result = array();
+		$result["result"] = "KO";
+		$result["message"] = "Item already in pool";
+		return $result;
+	}
+
+
+
+	$sql = "SELECT PRODUCTNAME,LASTCOST,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$storbin = $res["STORBIN"] ?? "";
-
+	$productname = $res["PRODUCTNAME"];
+	$cost = $res["LASTCOST"];
+	$price = $res["PRICE"];
+	
 	$db->beginTransaction();    
 	$now = date("Y-m-d");
-	$sql = "INSERT INTO SUPPLIERPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
-												TYPE,PERCENTPROMO,STATUS,USERID,LOCATION) 
+	$sql = "INSERT INTO SUPPLIERPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,STARTTIME,ENDTIME,LINKTYPE,
+												TYPE,PERCENTPROMO,PRODUCTNAME,COST,PRICE,USERID) 
 												VALUES (?,?,?,?,?,
-														?,?,?,?,?)";	
+														?,?,?,?,?,?)";	
 	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,$json["LINKTYPE"],
-	$json["TYPE"],$json["PERCENTPROMO"],$json["STATUS"],$json["USERID"],$storbin));	
+	$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["STARTTIME"],$json["ENDTIME"],$json["LINKTYPE"],
+						$json["TYPE"],$json["PERCENTPROMO"],$productname,$cost,$price,
+						$json["USERID"]));	
 	$result["result"] = "OK";
 	$lastId = $db->lastInsertId();
-	$db->commit();    
-	if (isset($json["PROOFS"]))
-		pictureRecord($json["PROOFS"],"PROMOPOOLPROOFS",$lastId);
-
+	$db->commit();    	
 	$response = $response->withJson($result);
 	return $response;
 });
@@ -10738,7 +10776,7 @@ $app->get('/externalitemalertbyvendor/{id}', function($request,Response $respons
 		//$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,4),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -10875,7 +10913,7 @@ $app->get('/externalitemalert', function($request,Response $response){
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		*/
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,4),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -11532,7 +11570,7 @@ $app->get('/externalfruititemalertbyvendor/{id}', function($request,Response $re
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 		
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,4),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -11666,7 +11704,7 @@ $app->get('/externalfruititemalert', function($request,Response $response){
 		$item["DAYS30BACK"] = $stats["DAYS30BACK"];
 
 
-		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,2),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+		$sql = "SELECT TOP(1) VENDNAME,round(CURRENCY_COST,4),TRANDATE,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$lastreceive = $req->fetch(PDO::FETCH_ASSOC);
@@ -13865,12 +13903,13 @@ $app->post('/wiki',function(Request $request,Response $response) {
 	$req->execute(array($json["PRODUCTID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	if ($res == false){
-		$sql = "INSERT INTO WIKI (PRODUCTID,NAMEEN,NAMEKH,STATUS) VALUES (?,?,?,?)";	
+		$sql = "INSERT INTO WIKI (PRODUCTID,NAMEEN,NAMEKH,STATUS,CREATOR) VALUES (?,?,?,?,?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$nameen,$namekh,"CREATED"));
+		$req->execute(array($json["PRODUCTID"],$nameen,$namekh,"CREATED",$json["AUTHOR"]));
 		$resp = array();
 		$resp["result"] = "OK";	
 		$response = $response->withJson($resp);
+		sendPushToAll("WIKI","New WIKI request created");
 		return $response;			
 	}else{
 		$resp = array();
@@ -13887,12 +13926,11 @@ $app->put('/wiki/{id}',function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$id = $request->getAttribute('id');
 	
-	$json = json_decode($request->getBody(),true);
-	error_log($json["DESCRIPTION"]);
-	error_log($id);
-	$sql = "UPDATE WIKI SET DESCRIPTION = ?, STATUS = 'COMPLETED' WHERE ID = ?";
+	$json = json_decode($request->getBody(),true);	
+	$sql = "UPDATE WIKI SET DESCRIPTION = ?, STATUS = 'COMPLETED', CONTRIBUTOR = ? WHERE ID = ?";
 	$req = $db->prepare($sql);	
-	$req->execute(array($json["DESCRIPTION"],$id));
+	$req->execute(array($json["DESCRIPTION"],$json["AUTHOR"],$id));
+	sendPushToAll("WIKI","New WIKI request fulfilled");
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;	
@@ -13909,6 +13947,33 @@ $app->delete('/wiki/{id}',function(Request $request,Response $response) {
 	return $response;	
 });
 
+$app->get('/history/{barcode}', function(Request $request,Response $response) {
+	
+	$barcode = $request->getAttribute('barcode');	
+	$db = getDatabase();
+	
+	//$sql = "SELECT COLOR FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode)); 
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$POLICY = $res["COLOR"];
+
+	/*
+	$sql = "SELECT VENDNAME,RECEIVE_QTY,PPSS_DELIVERED_EXPIRE,PURCHASE_DATE,RECEIVE_DATE 
+			FROM PORECEIVEDETAIL WHERE POSTATUS = 'C' AND  PRODUCTID = ? 
+			ORDER BY RECEIVE_DATE DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$items = $req->fetch(PDO::FETCH_ASSOC);
+	$data["RECEIVED"] = $items;
+	$data["POLICY"] = $POLICY;
+	*/
+	$resp = array();
+	$resp["data"] = "coucou";
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');

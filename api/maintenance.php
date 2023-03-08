@@ -144,6 +144,9 @@ function ScanPriceChange(){
 
         if (floatval($item["NEWCOST"]) > floatval($item["OLDCOST"]) &&  ((floatval($item["NEWCOST"]) - floatval($item["OLDCOST"])) > 0.02) )
         {
+
+            $diff = floatval($item["NEWCOST"]) - floatval($item["OLDCOST"]);
+
             if ($item["NEWCOST"] == 0 || $item["OLDCOST"] == 0)
                 continue;
             $percent = (($item["NEWCOST"] - $item["OLDCOST"]) / $item["OLDCOST"]);
@@ -154,10 +157,11 @@ function ScanPriceChange(){
             $oneitem = $req->fetch(PDO::FETCH_ASSOC);
 
             $oldPrice = $oneitem["PRICE"];
-            $newPrice = $oneitem["PRICE"] + ($oneitem["PRICE"] * $percent);
+            //$newPrice = $oneitem["PRICE"] + ($oneitem["PRICE"] * $percent);
+            $newPrice = $oneitem["PRICE"] + $diff;
             $newPrice = round($newPrice,2);
 
-            $sql = "SELECT * FROM PRICECHANGE WHERE PRODUCTID = ? AND REQUESTEE IS NOT null";            
+            $sql = "SELECT * FROM PRICECHANGE WHERE PRODUCTID = ? AND REQUESTEE IS null";            
             $req = $indb->prepare($sql);
             $req->execute(array($item["PRODUCTID"]));
             $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -192,6 +196,17 @@ function ScanPriceChange(){
     $req->execute(array());        
 }
 
+// Once Per Day 
+function CashierClean(){
+    
+    $cashierDB = getDatabase("CASHIER");
+    $sql = "DELETE FROM ICPRODUCT WHERE PRODUCTID NOT IN (SELECT PRODUCTID FROM link_main.PhnomPenhsuperstore2019.dbo.icproduct)";
+    $req = $cashierDB->prepare($sql);
+    $res = $req->execute(array());    
+    var_dump($res);
+}
+
+
 function LogAction($str){
     system("echo '".$str."' >> /var/log/daemon.log");
 }
@@ -210,30 +225,12 @@ else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
 }else if ($argc > 1 && $argv[1] == "AL"){
     AddAnnualLeave();
     LogAction(date("Y-m-d H:i:s").":AL");
+}else if ($argc > 1 && $argv[1] == "CASHIERCLEAN"){
+    CashierClean();
+    LogAction(date("Y-m-d H:i:s").":CASHIERCLEAN");
 }
 else
 	error_log("WARNING !!! maintenance attempt");
 
-/*
-    function ResetSpecificPack($packcode){
-        $db = getDatabase();
-        $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
-        $req = $db->prepare($sql);
-        $req->execute(array($packcode));
-        $pack = $req->fetch(PDO::FETCH_ASSOC);
-    
-    
-        $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
-        $req = $db->prepare($sql);
-        $req->execute(array($pack["PRODUCTID"]));
-        $res2 = $req->fetch(PDO::FETCH_ASSOC);
-    
-        $UNITPRICE = $res2["PRICE"];        
-        $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                                              
-        $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
-        $req = $db->prepare($sql);
-        $req->execute(array($UNITPRICE,$pack["PACK_CODE"]));                         
-    }
-    ResetSpecificPack("18888200082113");    
-*/
+
 ?>

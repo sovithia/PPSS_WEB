@@ -19,6 +19,8 @@ function detachPromotion()
     $req->execute(array());
     echo date("Y-m-d") .": Detaching promotion\n";
 }
-//detachPromotion();
-//echo "coucou";
+
+if ($argc > 1 && $argv[1] == "CROCODILE")
+    detachPromotion();
+
 ?>

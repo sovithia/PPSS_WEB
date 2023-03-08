@@ -133,17 +133,20 @@ function initializePrice()
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
     foreach($items as $item){
-		echo $item["BARCODE"]. " ";
+		//echo $item["BARCODE"]. " ";
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE BARCODE = ?";
         $req = $blueDB->prepare($sql);
         $req->execute(array($item["BARCODE"]));
         $itemdetail = $req->fetch(PDO::FETCH_ASSOC);				
-		if ($itemdetail == false)
+		if ($itemdetail == false){
+			echo $item["BARCODE"]."NOT FOUND\n";
 			continue;
+		}
+			
 		$FPrice = floatval(str_replace(",",".",substr($item["PRICE"],1)));
-		$SPrice = floatval($itemdetail["PRICE"]);
-		echo "Foodpanda price : ".$FPrice." | PPSS price:".$SPrice."\n"; 
+		$SPrice = floatval($itemdetail["PRICE"]);		
 		if ($FPrice != $SPrice){
+			echo "Foodpanda price : ".$FPrice." | PPSS price:".$SPrice."\n"; 
 			echo " changing\n";
 			foodpandaUpdatePrice($item["SKU"],$SPrice);
 			$newPrice = "$".str_replace(".",",",$itemdetail["PRICE"]);

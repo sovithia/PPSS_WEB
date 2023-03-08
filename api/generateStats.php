@@ -140,8 +140,7 @@ function getSaleByTeamCount($start,$end,$team)
 	return $items["CNT"];
 }
 
-function Generate()
-{
+function Generate(){
 	error_log("Generating at ".date('l jS \of F Y h:i:s A'));
 	$db = getDatabase();
 	$indb = getInternalDatabase();
@@ -151,8 +150,7 @@ function Generate()
 	$sql = "SELECT * FROM GENERATEDSTATS WHERE DAY = ?";
 	$req = $statsdb->prepare($sql);
 	$req->execute(array($today));
-	$data = $req->fetch(PDO::FETCH_ASSOC);
-
+	$data = $req->fetch(PDO::FETCH_ASSOC);	
 	if ($data == false){ // EMPTY DAY 
 		$sql = "INSERT INTO GENERATEDSTATS (DAY) VALUES (?)";
 		$req = $statsdb->prepare($sql);
@@ -162,10 +160,11 @@ function Generate()
 		$req = $statsdb->prepare($sql);
 		$req->execute(array());
 		$count = $req->fetch(PDO::FETCH_ASSOC)['CNT'];
-		if ($count == 1){ // FIRST INSERT				
+		if ($count == 1){ // FIRST INSERT			
+			
 			GenerateBlankYesterday($statsdb);
 			GenerateToday($db,$indb,$statsdb,false);
-		}else{			
+		}else{						
 			GenerateYesterdayFromCache($statsdb);
 			GenerateToday($db,$indb,$statsdb,false);
 		}
@@ -198,7 +197,7 @@ function updateStats($db,$day,$key,$value){
 		if (is_array($value))
 		$req->execute(array(json_encode($value,true),$day));
 	else
-		$req->execute(array($value),$day);	
+		$req->execute(array($value,$day));	
 	sleep(1);		
 	}catch(Exception $ex){
 		var_dump($ex);
@@ -206,7 +205,6 @@ function updateStats($db,$day,$key,$value){
 	}
 	
 }
-
 
 function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 {	
@@ -259,7 +257,7 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 		$amountItemReturned = 0;
 		foreach($returnData as $oneReturn){
 			$sql = "SELECT QUANTITY,COST,VAT,DISCOUNT FROM RETURNRECORDITEM WHERE RETURNRECORD_ID = ?";
-			$req = $db->prepare($sql);
+			$req = $indb->prepare($sql);
 			$req->execute(array($oneReturn["ID"]));
 			$items = $req->fetchAll(PDO::FETCH_ASSOC);
 			foreach($items as $item){
@@ -958,13 +956,15 @@ function PatchStats()
 	}
 }
 
+
 if ($argc > 1 && $argv[1] == "CROCODILE")
 	Generate();
+else if ($argc > 1 && $argv[1] == "DAY")
+	GenerateYesterdayDay();
 else if ($argc > 1 && $argv[1] == "PATCH")
 	PatchStats();
 else
 	error_log("WARNING !!! generate stats attempt");
-
 
 
 ?>

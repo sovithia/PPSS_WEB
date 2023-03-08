@@ -327,8 +327,31 @@ function GenerateDailyGroupedPurchases()
 		//break;		
 	}
 }
+
+function GenerateMissingStats()
+{
+	$db = getInternalDatabase();
+
+	$sql = "select ID FROM ITEMREQUESTACTION WHERE REQUESTER = 'AUTO' AND TYPE = 'GROUPEDPURCHASE' AND REQUESTEE IS NULL";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach($actions as $action){
+		$sql = "SELECT * FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($action["ID"]));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		foreach($items as $item){
+			GenerateItemStats($item["PRODUCTID"],$item["ID"]);
+		}
+	}
+}
+
 if ($argc > 1 && $argv[1] == "CROCODILE")
 	GenerateDailyGroupedPurchases();
+else if ($argc > 1 && $argv[1] == "REFRESH")
+	GenerateMissingStats();
 else
 	error_log("WARNING !!! generateScheduledPurchases attempt");
 
