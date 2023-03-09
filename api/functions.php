@@ -251,7 +251,7 @@ function getDatabase($name = "MAIN")
 		}
 		else if ($name == "CASHIER")
 		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
+			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
 		}
 		else if ($name == "TRAINING")
 		{
@@ -410,32 +410,32 @@ function writePicture($barcode,$b64Image)
 
 function getImage($path) {
 
-switch(mime_content_type($path)) {
-  case 'image/png':
-    $img = imagecreatefrompng($path);
-    break;
-  case 'image/gif':
-    $img = imagecreatefromgif($path);
-    break;
-  case 'image/jpeg':
-    $img = imagecreatefromjpeg($path);
-    break;
-  case 'image/jpg':
-	$img = imagecreatefromjpeg($path);
-	break;
-  case 'image/bmp':
-    $img = imagecreatefrombmp($path);
-    break;
-case 'image/x-ms-bmp':
-	$img = imagecreatefrombmp($path);
-	break;
-  default:
-     $img = @imagecreatefromjpeg($path);
-  }
-  
-  if (!$img)
-  	$img = imagecreatefrombmp($path);
-  return $img;
+	switch(mime_content_type($path)) {
+	case 'image/png':
+		$img = imagecreatefrompng($path);
+		break;
+	case 'image/gif':
+		$img = imagecreatefromgif($path);
+		break;
+	case 'image/jpeg':
+		$img = imagecreatefromjpeg($path);
+		break;
+	case 'image/jpg':
+		$img = imagecreatefromjpeg($path);
+		break;
+	case 'image/bmp':
+		$img = imagecreatefrombmp($path);
+		break;
+	case 'image/x-ms-bmp':
+		$img = imagecreatefrombmp($path);
+		break;
+	default:
+		$img = @imagecreatefromjpeg($path);
+	}
+	
+	if (!$img)
+		$img = imagecreatefrombmp($path);
+	return $img;
 }
 
 function loadPictureByPath($path,$base64 = false)

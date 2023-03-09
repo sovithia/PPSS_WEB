@@ -42,9 +42,6 @@
 
 
 
-
-//require_once 'src/vendor/autoload.php';
-require_once 'vendor/autoload.php';
 require_once 'RestEngine.php';
 require_once 'functions.php';
 require_once 'issuestock.php';
@@ -53,11 +50,16 @@ require_once 'generator.php';
 require_once 'createcreditnote.php';
 
 
-use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
-$app = new \Slim\App;
+use \Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\Exception\NotFoundException;
+use Slim\Factory\AppFactory;
 
+require_once 'vendor/autoload.php';
 
+$app = AppFactory::create();
+$app->setBasePath("/api/api.php");
+$app->addErrorMiddleware(true,true,true);
 /**************CORE ***************/
 
 
@@ -948,7 +950,13 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
-	
+	if ($item == false){
+		$resp = array();
+		$resp["message"] = "Product not found";
+		$resp["result"] = "KO";
+		$response = $response->withJson($resp);
+		return $response;
+	}
 	if ($item != false && $item["OTHERCODE"] != null)
 		$item["PRODUCTID"] = $item["OTHERCODE"];
 	if ($item != false && isset($item["LASTCOST"]))
@@ -7730,11 +7738,18 @@ $app->get('/bestseller',function($request,Response $response) {
 
 $app->get('/info',function(Request $request,Response $response){
 	phpinfo();	
+	$resp = array();
+	//$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;	
 });
 
 $app->get('/info2',function(Request $request,Response $response){
-	//$db = getInternalDatabaseNew();
 	$db = getDatabase();
+	
+	//$db = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');	
+	//$db = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+	$db = getInternalDatabaseNew();
 
 	$sql = "SELECT  * FROM ICPRODUCT";
 	$req = $db->prepare($sql);
@@ -13973,8 +13988,13 @@ $app->get('/history/{barcode}', function(Request $request,Response $response) {
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
-});
+}); 
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
-$app->run();
+
+try{
+	$app->run();
+}catch(Exception $e){
+	die (json_encode(array("status" => "failed", "message" => "This action is not allowed")));
+}
