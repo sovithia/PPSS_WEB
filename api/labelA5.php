@@ -68,10 +68,25 @@ error_reporting(E_ALL);
   }
   else if (isset($_GET["barcode1"]) )
   {
-    $b1 = str_replace(" ","%20",$_GET['barcode1']);
-    $b2 = str_replace(" ","%20",$_GET['barcode2']);
-    $b3 = str_replace(" ","%20",$_GET['barcode3']);
-    $b4 = str_replace(" ","%20",$_GET['barcode4']);
+	if (isset($_GET['barcode1']))
+    	$b1 = str_replace(" ","%20",$_GET['barcode1']);
+	else
+		$b1 = "";
+
+	if (isset($_GET['barcode2']))
+    	$b2 = str_replace(" ","%20",$_GET['barcode2']);
+	else
+		$b2 = "";
+
+	if (isset($_GET['barcode2']))	
+    	$b3 = str_replace(" ","%20",$_GET['barcode3']);
+	else
+		$b3 = "";
+	
+	if(isset($_GET['barcode4']))
+    	$b4 = str_replace(" ","%20",$_GET['barcode4']);
+	else
+		$b4 = "";
 
     $barcodes = implode("|",array($b1,$b2,$b3,$b4));
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes);      
