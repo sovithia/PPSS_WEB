@@ -508,7 +508,7 @@ function itemLookup($barcode){
 function generateBarcodeImage($barcode)
 {
 	$generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
-	return base64_encode($generator->getBarcode($barcode, $generator::TYPE_CODE_128,1.5));
+	return base64_encode($generator->getBarcode($barcode, $generator::TYPE_CODE_128,2));
 }
 
 /************** SMALL LABEL PRINTING ********/
@@ -4091,7 +4091,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			unlink("./img/supplyrecords_signatures/WH_".$json["IDENTIFIER"].".png");
 
 		// Cancel all validation
-		error_log("DANGER CANCEL !!! ".$json["PONUMBER"]);
+		error_log("DANGER CANCEL !!! ");
 		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = '0',PPSS_DELIVERED_PRICE = '0',PPSS_WAITING_QUANTITY = '0', PPSS_NOTE = null,PPSS_DELIVERED_EXPIRE = null WHERE  PONUMBER = ? ";
 		$req = $dbBLUE->prepare($sql);
 		if (isset($json["PONUMBER"]))
@@ -6856,8 +6856,11 @@ $app->get('/averagebasket', function(Request $request, Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($begin,$end));
 	$result =$req->fetch(PDO::FETCH_ASSOC);
-
-	return $result["BASKET"];
+	$resp = array();
+	$resp["result"] = "OK";
+	$resp["data"] = $result["BASKET"];
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 
@@ -13967,24 +13970,26 @@ $app->get('/history/{barcode}', function(Request $request,Response $response) {
 	$barcode = $request->getAttribute('barcode');	
 	$db = getDatabase();
 	
-	//$sql = "SELECT COLOR FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$sql = "SELECT SIZE,PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode)); 
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$POLICY = $res["COLOR"];
+	$POLICY = $res["SIZE"];
+	$PRODUCTNAME = $res["PRODUCTNAME"];
 
-	/*
+	
 	$sql = "SELECT VENDNAME,RECEIVE_QTY,PPSS_DELIVERED_EXPIRE,PURCHASE_DATE,RECEIVE_DATE 
-			FROM PORECEIVEDETAIL WHERE POSTATUS = 'C' AND  PRODUCTID = ? 
+			FROM PODETAIL WHERE POSTATUS = 'C' AND  PRODUCTID = ? 
 			ORDER BY RECEIVE_DATE DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
-	$items = $req->fetch(PDO::FETCH_ASSOC);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data["RECEIVED"] = $items;
 	$data["POLICY"] = $POLICY;
-	*/
+	$data["PRODUCTNAME"] = $PRODUCTNAME;
+	
 	$resp = array();
-	$resp["data"] = "coucou";
+	$resp["data"] = $data;
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;

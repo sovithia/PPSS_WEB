@@ -5,24 +5,24 @@ require 'vendor/autoload.php';
 class RestEngine
 {
 	static function GET($uri,$headers = array())
-	{											
+	{												
 		$response = \Httpful\Request::get($uri)
 				->expectsJson()
 				->addHeaders($headers)
 				->send();	
-		$json = json_decode(json_encode($response->body), TRUE);			
+		$json = json_decode(json_encode($response->body), TRUE);					
 		return $json["data"];
 	}
 
 	static function POST($uri, $data, $headers = array())
-	{			
+	{					
 		$response = \Httpful\Request::post($uri)
 				->sendsJson()
 				->body($data)
 				->expectsJson()
 				->addHeaders($headers)
-				->send();					
-				$json = json_decode(json_encode($response->body), TRUE);
+				->send();									
+				$json = json_decode(json_encode($response->body), TRUE);				
 		return $json;
 	}
 

@@ -2,12 +2,29 @@
 
 
 //require_once 'src/vendor/autoload.php';
+
+
+//use \Psr\Http\Message\ResponseInterface as Response;
+//use \Psr\Http\Message\ServerRequestInterface as Request;
+
+//use Slim\Factory\AppFactory;
+
+use Slim\Exception\HttpNotFoundException;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\Exception\NotFoundException;
+use Slim\Factory\AppFactory;
+
 require_once 'vendor/autoload.php';
 
-use \Psr\Http\Message\ServerRequestInterface as Request;
-use \Psr\Http\Message\ResponseInterface as Response;
-$app = new \Slim\App;
-
+$app = AppFactory::create();
+$app->setBasePath("/api/intrapi.php");
+$app->addErrorMiddleware(true, false, false)->setErrorHandler(HttpNotFoundException::class, function (Request $request, HttpNotFoundException $exception) {
+    $response = new \Slim\Psr7\Response();
+    $response = $response->withStatus(404);
+    $response->getBody()->write("Page not found");
+    return $response;
+});
 /**************CORE ***************/
 
 
@@ -48,7 +65,39 @@ $app->get('/check',function(Request $request,Response $response) {
 	return $response;
 });
 
+$app->get('/login',function(Request $request,Response $response) { 
+	
+	$json = json_decode($request->getBody(),true);
+	$username = $request->getParam('username','');
+	$password = $request->getParam('password','');
+	// ROLES
+	$conn = getInternalDatabase();
+	$sql = "SELECT * FROM USER,ROLE WHERE USER.role_id = ROLE.ID and login = ? and password = ?";
 
+	$params = array($username,$password);	
+	$req = $conn->prepare($sql);
+	$req->execute($params);
+	$user = $req->fetch(PDO::FETCH_ASSOC);
+
+	if($user != false)
+	{
+		$result["result"] = "OK";
+		$result["role"] = $user["role"];		
+		// TOKEN
+		$token = md5(uniqid(mt_rand(), true));			
+		$result["token"] = $token;
+		$result["user"] = $user;
+		$sql = "UPDATE USER SET accessToken = ? where login = ? and password = ?";
+		$params = array($token,$username,$password);	
+		$req = $conn->prepare($sql);
+		$req->execute($params);
+	}
+	else
+		$result["result"] = "KO";
+	
+	$response = $response->withJson($result);
+	return $response;
+});
 /**************LOGIN***************/
 $app->post('/login',function(Request $request,Response $response) { 
 	
@@ -59,7 +108,6 @@ $app->post('/login',function(Request $request,Response $response) {
 	$conn = getInternalDatabase();
 	$sql = "SELECT * FROM USER,ROLE WHERE USER.role_id = ROLE.ID and login = ? and password = ?";
 
-
 	$params = array($username,$password);	
 	$req = $conn->prepare($sql);
 	$req->execute($params);
@@ -68,8 +116,7 @@ $app->post('/login',function(Request $request,Response $response) {
 	if($user != false)
 	{
 		$result["result"] = "OK";
-		$result["role"] = $user["role"];
-		
+		$result["role"] = $user["role"];		
 		// TOKEN
 		$token = md5(uniqid(mt_rand(), true));			
 		$result["token"] = $token;
@@ -582,4 +629,10 @@ $app->get('outofstock',function(Request $request, Response $response) {
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');
 ini_set('post_max_size','1000M');
-$app->run();
+
+
+try{
+	$app->run();
+}catch(Exception $e){
+	die (json_encode(array("status" => "failed", "message" => "This action is not allowed")));
+}

@@ -34,6 +34,7 @@ final class Headers implements \ArrayAccess, \Countable {
      * @param string $offset
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function offsetExists($offset)
     {
         return isset($this->headers[strtolower($offset)]);
@@ -43,6 +44,7 @@ final class Headers implements \ArrayAccess, \Countable {
      * @param string $offset
      * @return mixed
      */
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         if (isset($this->headers[$name = strtolower($offset)])) {
@@ -55,6 +57,7 @@ final class Headers implements \ArrayAccess, \Countable {
      * @param string $value
      * @throws \Exception
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         throw new \Exception("Headers are read-only.");
@@ -64,6 +67,7 @@ final class Headers implements \ArrayAccess, \Countable {
      * @param string $offset
      * @throws \Exception
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         throw new \Exception("Headers are read-only.");
@@ -72,6 +76,7 @@ final class Headers implements \ArrayAccess, \Countable {
     /**
      * @return int
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return count($this->headers);

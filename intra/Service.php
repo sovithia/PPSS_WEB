@@ -43,10 +43,10 @@ class MODELS
 class Service
 {
 	
-	const BaseURL = "http://sites.local/PPSS/api/api.php";	
-	const BaseURL2 = "http://sites.local/PPSS/api/api_dev.php";	
-	const BaseURLIntra = "http://sites.local/PPSS/api/intrapi.php";
-	const BaseURLEcommerce = "http://sites.local/PPSS/api/api_ecommerce.php";	
+	const BaseURL = "http://phnompenhsuperstore.com/api/api.php";	
+	const BaseURL2 = "http://phnompenhsuperstore.com/api/api_dev.php";		
+	const BaseURLIntra = "http://phnompenhsuperstore.com/api/intrapi.php";
+	const BaseURLEcommerce = "http://phnompenhsuperstore.com/api/api_ecommerce.php";	
 
 	// Login
 	const ResourceLogin = Service::BaseURLIntra."/login";
@@ -279,7 +279,10 @@ class Service
 	static function Login($username,$password){			
 		$data["username"] = $username;
 		$data["password"] = $password;	
+		//$response = RestEngine::GET(Service::ResourceLogin. "?username=".$username."&password=".$password);		
 		$response = RestEngine::POST(Service::ResourceLogin,$data);		
+		//var_dump($response);
+		//exit;
 		return $response;
 	}
 

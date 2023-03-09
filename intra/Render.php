@@ -9,7 +9,7 @@ function renderOverlay()
 
 //-- SKELETON --//
 function renderHead($center = false)
-{
+{ 
 	return '
     	<head>
     	  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -67,6 +67,8 @@ function renderLoadAnimation()
 function renderHeader()
 {  
   $averageBasket = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/averagebasket");  
+  $averageBasket = $averageBasket["data"];
+  //$averageBasket = "LA";
   $averageBasket = "Avg Basket ". date('F, Y') .": ".$averageBasket;
 	return ' 
 		  	<header id="header" class="page-topbar">

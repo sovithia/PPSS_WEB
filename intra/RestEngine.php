@@ -11,19 +11,18 @@ class RestEngine
 				->expectsJson()
 				->addHeaders($headers)
 				->send();									
-		$json = json_decode(json_encode($response->body), TRUE);
+		$json = json_decode(json_encode($response->body), TRUE);		
 		return $json;
 	}
 
 	static function POST($uri, $data, $headers = array())
-	{		
-		;
+	{								
 		$response = \Httpful\Request::post($uri)
 				->sendsJson()
 				->body($data)
 				->expectsJson()
 				->addHeaders($headers)
-				->send();								
+				->send();				
 				$json = json_decode(json_encode($response->body), TRUE);				
 		return $json;
 	}
