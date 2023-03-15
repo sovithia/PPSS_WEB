@@ -25,9 +25,6 @@ function go()
             echo "GHOST:".$item["PRODUCTID"]." ".$item["PRODUCTNAME"]." ".$item["ONHAND"]."\n";
         }
     }
-
-    
-
 }
 
 

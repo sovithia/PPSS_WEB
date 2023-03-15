@@ -11,10 +11,16 @@ function calculateRealLastReceivedQuantity($productID)
     $req->execute(array($productID));
     $res = $req->fetch(PDO::FETCH_ASSOC);
 
-    $discount = $res["TRANDISC"];
-	
-    $vendid = $res["VENDID"]; 
-    $lastRcvQty = $res["TRANQTY"];
+	if ($res != false){
+		$discount = $res["TRANDISC"];
+		$vendid = $res["VENDID"]; 
+		$lastRcvQty = $res["TRANQTY"];
+	}else{
+		$discount = 0;
+		$vendid ="N/A";
+		$lastRcvQty = 0;
+	}
+    
 
     if ($discount == 0)
         return $lastRcvQty;

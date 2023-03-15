@@ -392,22 +392,26 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
     $db = getDatabase();
     $today = date("Y-m-d H:i:s");
 
+	error_log("RECEIVE START A");
 	$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($PONumber));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$THELOCATION = $res["LOCID"];
 
+	error_log("RECEIVE START B");
     $sql = "SELECT num3 FROM SYSDATA WHERE sysid = 'PO'";
     $req = $db->prepare($sql);
 	$req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
 
+	error_log("RECEIVE START C");
     $PONUM = intval($res["num3"]);  
     $sql = "UPDATE SYSDATA SET num3=num3+1 WHERE ltrim(rtrim(SYSID))='PO'";
     $req = $db->prepare($sql);
     $req->execute(array());
 	
+	error_log("RECEIVE START D");
     $sql = "SELECT num1 FROM SYSDATA WHERE sysid = 'AP'";
     $req = $db->prepare($sql);
 	$req->execute(array());
@@ -417,20 +421,26 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
     $req = $db->prepare($sql);
     $req->execute(array());
 
+	error_log("RECEIVE START E");
     $sql = "SELECT GLNO FROM GLSYS";
     $req = $db->prepare($sql);
     $req->execute(array());
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $GLNUM = $res["GLNO"];
 
+	error_log("RECEIVE START E.1");
+
     $sql = "UPDATE GLSYS set GLNO = GLNO + 1";
     $req = $db->prepare($sql);
     $req->execute(array());
 
+	error_log("RECEIVE START F");
 	$sql = "SELECT * FROM POHEADER WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($PONumber));
 	$PORef = $req->fetch(PDO::FETCH_ASSOC);
+
+	error_log("RECEIVE START STEP 1");
 
 	if (floatval($PORef["VAT_PERCENT"])  > 0.0)
 		$HAVEVAT = true;
@@ -533,6 +543,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$CURR_ID,$BASECURR_ID,$CURRENCY_AMOUNT,$CURRENCY_VATAMOUNT,$SHIP_REFERENCE,
 	$DATEADD,$USERADD));
 
+	error_log("RECEIVE START STEP 2");
 
 	$line = 0; 
 	$CURRENCY_AMOUNT_SUM = 0;
@@ -646,6 +657,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = null WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($PRODUCTID));
+		error_log("RECEIVE START STEP 3");
 	}
 	
 	

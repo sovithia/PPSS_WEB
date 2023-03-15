@@ -2298,9 +2298,9 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$req-> execute(array($barcode,$productname,$productname1, $comment,$oldprice,
 							 $value,$author,$now,"APPLICATION",$oldprice,$value));		
 
-		$sql = "UPDATE dbo.ICPRODUCT set PRICE = ?, OTHER_PRICE = ?,USEREDIT = ?,DATEEDIT = ? WHERE BARCODE = ?";
+		$sql = "UPDATE dbo.ICPRODUCT set PRICE = ?, OTHER_PRICE = ?,USEREDIT = ?,DATEEDIT = GETDATE() WHERE BARCODE = ?";
 		$req = $db->prepare($sql);
-		$result = $req->execute(array($value,$value,$author,$now,$barcode) ); 										
+		$result = $req->execute(array($value,$value,$author,$barcode) ); 										
 	}
 	$result = array();
 	$result["result"] = "OK";	
@@ -3984,7 +3984,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 	else if ($json["ACTIONTYPE"] == "RCV"){
 				
 		$ponumber  = $json["PONUMBER"];		
-		
 		$sql = "SELECT LOCID FROM POHEADER WHERE PONUMBER = ?";
 		$req = $dbBLUE->prepare($sql);
 		$req->execute(array($ponumber));
@@ -4006,7 +4005,6 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);	
 		$req->execute();								
 		pictureRecord($json["SIGNATURE"],"RCV",$json["IDENTIFIER"]);		
-		error_log("RECEIVE PO DONE");
 		if (isset($json["TAX"]))
 			$TAX = $json["TAX"];
 		else 
@@ -8563,8 +8561,7 @@ $app->delete('/selfpromotionitempool/{id}', function($request,Response $response
 
 // SUPPLIERPROMOTION
 $app->get('/supplierpromotionitems/{status}', function($request,Response $response) {
-	$status =  $request->getParam('status','');	
-
+	$status =  $request->getAttribute('status','');		
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
 	$params = array();	
@@ -8572,7 +8569,8 @@ $app->get('/supplierpromotionitems/{status}', function($request,Response $respon
 	$req = $db->prepare($sql);
 	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
-
+	//error_log(count($items));
+	
 	$newItems = array();
 	foreach($items as $item){								
 		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,LASTCOST, 
@@ -8609,17 +8607,21 @@ $app->post('/supplierpromotionitems', function($request,Response $response) {
 	foreach($items as $item){
 		$sql = "INSERT INTO SUPPLIERPROMOTIONITEM 
 			(PRODUCTID,QUANTITY,LINKTYPE,STARTTIME,ENDTIME,
-			PERCENTPROMO,STATUS,CREATOR) 
+			COST,PRICE,PRODUCTNAME,PERCENTPROMO,STATUS,
+			CREATOR,TYPE) 
 			VALUES (?,?,?,?,?,
-					?,?,?)";
+					?,?,?,?,?,
+					?,?)";
 		$req = $db->prepare($sql);
-		$resp = array($item["PRODUCTID"],$item["QUANTITY"],$item["LINKTYPE"],$item["STARTTIME"],$item["ENDTIME"],
-					$item["PERCENTPROMO"], 'CREATED',$json["AUTHOR"]);
+		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["LINKTYPE"],$item["STARTTIME"],$item["ENDTIME"],
+					$item["COST"],$item["PRICE"],$item["PRODUCTNAME"], $item["PERCENTPROMO"], 'CREATED',
+					$json["AUTHOR"],$item["TYPE"]));
 
-		$sql = "DELETE FROM SUPPLIERPROMOTIONITEM WHERE PRODUCTID = ? AND USERID = ?";
+		$sql = "DELETE FROM SUPPLIERPROMOTIONITEMPOOL WHERE PRODUCTID = ? AND USERID = ?";
 		$req = $db->prepare($sql);
-		$req->execute($item["PRODUCTID"],array($json["USERID"]));					
+		$req->execute(array($item["PRODUCTID"],$json["USERID"]));					
 	}
+	sendPushToUser("SUPPLIERPROMOTION","promo created",1000);
 
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
@@ -8630,12 +8632,30 @@ $app->put('/supplierpromotionitem/{id}', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$json = json_decode($request->getBody(),true);
 	$status = $json["STATUS"];	
-	$id =  $request->getParam('id','');	
+	$id =  $request->getAttribute('id','');	
 
-	$sql = "UPDATE SUPPLIERPROMOTIONITEM SET STATUS = ? WHERE ID = ?";
-	$req = $db->prepare($sql);
-	$req->execute(array($status,$id));
-	
+	if ($status == "VALIDATED" || $status == "DENIED"){
+		$sql = "UPDATE SUPPLIERPROMOTIONITEM SET STATUS = ?,VALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($status,$json["AUTHOR"],$id));
+
+		sendPushToUser("SUPPLIERPROMOTION","promo ". $status,205);
+		sendPushToUser("SUPPLIERPROMOTION","promo ". $status,206);
+	}
+	else if ($status == "PROMOTED"){
+		$sql = "UPDATE SUPPLIERPROMOTIONITEM SET STATUS = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($status,$id));
+
+		$sql = "SELECT * FROM SUPPLIERPROMOTIONITEM WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($id));
+		$item = $req->fetch(PDO::FETCH_ASSOC);
+
+		if ($item["LINKTYPE"] == "SYSTEM")		
+			attachPromotion($item["PRODUCTID"],str_replace('%','',$item["PERCENTPROMO"]),$item["STARTTIME"],$item["ENDTIME"],$json["AUTHOR"]);			
+			
+	}
 	$resp = array();
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);

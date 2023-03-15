@@ -595,7 +595,7 @@ function createCreditNote($items,$author,$locid,$note){
 	{
 		
 		$PRODUCTID = $item["PRODUCTID"];
-		$sql = "UPDATE ICPRODUCT set ONHAND = ONHAND - ?, TOTALUSE = TOTALUSE + ? WHERE PRODUCTID = ?";
+		$sql = "UPDATE ICPRODUCT set ONHAND = ONHAND - ?, TOTALUSE = TOTALUSE + ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($item["QUANTITY"],$item["QUANTITY"],$PRODUCTID));
 				
