@@ -236,6 +236,22 @@ function isLocal()
 	return ($mac != "119.82.252.226");
 }
 
+function getSQLDatabase()
+{
+	$servername = "localhost";
+	$username = "root";
+	$password = "password";
+
+	// Create connection
+	$conn = new mysqli($servername, $username, $password);
+	// Check connection
+	if ($conn->connect_error) {
+  	die("Connection failed: " . $conn->connect_error);
+	} 
+	echo "Connected successfully";
+	return $conn;
+}
+
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
@@ -379,7 +395,7 @@ function truncateDollarPrice($price){
 			return "0".substr($price,0,$pos + 3);
 	}
 	else
-		return number_format(substr($price,0,$pos + 3),2);
+		return round($price,2);
 }
 
 function generateRielPrice($price){

@@ -38,7 +38,7 @@ class StringTable extends WriterPart
         // Loop through cells
         foreach ($pSheet->getCoordinates() as $coordinate) {
             $cell = $pSheet->getCell($coordinate);
-            $cellValue = $cell->getValue();
+            $cellValue = strval($cell->getValue());
             if (!is_object($cellValue) &&
                 ($cellValue !== null) &&
                 $cellValue !== '' &&

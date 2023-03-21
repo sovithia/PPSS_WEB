@@ -11,7 +11,7 @@ function AddAnnualLeave(){
 
 }
 
-// Once Every 2 Hours
+// Once Every Day
 function ScanPack(){
     $db = getDatabase();
     $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
@@ -49,15 +49,27 @@ function ScanPack(){
                     $req = $db->prepare($sql);
                     $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
                 }            
-            }else{ // FULL PRICE                 
-                // We don't apply discount because it is applied automatically after
-                $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
-                if (floatval($pack["SALEPRICE"]) != $calculated){
-                    echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
-                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
-                    $req = $db->prepare($sql);
-                    $req->execute(array($calculated,$pack["PACK_CODE"])); 
-                }
+            }else{ // FULL PRICE      
+                // WE NEED TO CHECK IF THE PRICE WE ARE ABOUT TO CHANGE IS A WEIRD PRICE BECAUSE NOT EQUAL TO SALEFACTOR
+                $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
+
+                $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+                $req = $db->prepare($sql); 
+                $req->execute(array($pack["PACK_CODE"]));
+                $res = $req->fetch(PDO::FETCH_ASSOC);    
+                $currentPrice = $res["SALEPRICE"];
+                if ($currentPrice == $fullPrice){
+                    // We don't apply discount because it is applied automatically after
+                    $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
+                    if (floatval($pack["SALEPRICE"]) != $calculated){
+                        echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
+                        $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
+                        $req = $db->prepare($sql);
+                        $req->execute(array($calculated,$pack["PACK_CODE"])); 
+                    }
+                }                              
+
+                
             } 
         }
                
