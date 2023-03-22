@@ -286,12 +286,26 @@ function getDatabase($name = "MAIN")
 	return $conn;
 }
 
+function isMySQL($db){
+	$sql = "SELECT VERSION()";
+	try{
+		$req = $db->prepare($sql);
+		$req->execute(array());
+		$data = $req->fetch(PDO::FETCH_ASSOC);	
+		if ($$data["VERSION()"] == "8.0.32")
+		return true;
+	}catch(Exception $e){
+		return false;
+	}
+}
 
 function getInternalDatabase($base = "MAIN")
 {
 	try{
-		if ($base == "MAIN")
+		if ($base == "MAIN"){
+			//return getInternalDatabaseNew();
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
+		}
 		else if ($base == "TEST")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreTEST.sqlite');
 		else if ($base == "ECOMMERCE")
@@ -327,7 +341,9 @@ function getInternalDatabaseNew()
     	 $pdo = new \PDO($dsn, $user, $pass, $options);
 	} catch (\PDOException $e) {
      	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
 	}
+	return $pdo;
 }
 
 

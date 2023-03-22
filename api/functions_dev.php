@@ -1,7 +1,7 @@
 <?php 
 
 require_once 'RestEngine.php';
-
+require_once 'exceptionalPromo.php';
 
 function extractIDS($items,$keyname = "PRODUCTID"){
 	if (count($items) == 0)
@@ -59,6 +59,15 @@ function cleanPictures($id,$type)
 	}
 }
 
+function copySignatures($old,$new){
+	if (file_exists("./img/supplyrecords_signatures/PCH_".$old.".png"))
+		copy("./img/supplyrecords_signatures/PCH_".$old.".png","./img/supplyrecords_signatures/PCH_".$new.".png");	
+
+	if (file_exists("./img/supplyrecords_signatures/VAL_".$old.".png"))
+		copy("./img/supplyrecords_signatures/VAL_".$old.".png","./img/supplyrecords_signatures/VAL_".$new.".png");	
+	
+}
+
 function movePicture($depreciationItemId,$poolitemId,$type)
 {
 	if($type == "WASTE")
@@ -104,6 +113,7 @@ function pictureRecord($base64Str,$type,$id){
 				$count++;
 			}			
 		}
+		return $count - 1;
 	}
 	else if ($type == "WASTEPOOLPROOFS")
 	{
@@ -133,6 +143,20 @@ function pictureRecord($base64Str,$type,$id){
 			}			
 		}
 	}
+	else if ($type == "EXTERNALPAYMENT")
+	{
+		$filename = "./img/externalpayment_proofs/";	
+		$proofs = json_decode($base64Str,true);			
+		$count = 1;
+		if ($proofs != null)
+		{
+			foreach($proofs as $proof)
+			{
+				file_put_contents($filename.$id."_".$count.".png", base64_decode($proof));	
+				$count++;
+			}			
+		}
+	}
 	else 
 	{
 		$imageData = base64_decode($base64Str);
@@ -146,7 +170,9 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/supplyrecords_signatures/RCV_".$id.".png";		
 		else if ($type == "ACC")
 			$filename = "./img/supplyrecords_signatures/ACC_".$id.".png";
-		else if ($type == "TR")
+		else if ($type == "CHK")
+			$filename = "./img/supplyrecords_signatures/CHK_".$id.".png";
+		else if ($type == "TR")		
 			$filename = "./img/supplyrecords_signatures/TR_".$id.".png";
 		else if ($type == "TRF")
 			$filename = "./img/supplyrecords_signatures/TRF_".$id.".png";
@@ -156,7 +182,7 @@ function pictureRecord($base64Str,$type,$id){
 			$filename = "./img/depreciation_signatures/VAL_".$id.".png";
 		else if ($type == "DEPRECIATION_WITNESS")
 			$filename = "./img/depreciation_signatures/WIT_".$id.".png";
-		else if ($type == "DEPRECIATION_CLEARER")		
+		else if ($type == "DEPRECIATION_CLEARER")
 			$filename = "./img/depreciation_signatures/CLE_".$id.".png";
 
 		else if ($type == "WASTE_CREATOR")
@@ -166,18 +192,22 @@ function pictureRecord($base64Str,$type,$id){
 		else if ($type == "WASTE_CLEARER")
 			$filename = "./img/waste_signatures/CRE_".$id.".png";
 
-		//VALIDATED,TOTRANSFER,TRANSFERED,CLEARED
+		else if ($type == "EXTPAYMENTPAY")
+			$filename = "./img/externalpayment_signatures/PAY_".$id.".png";
+		
+			//VALIDATED,TOTRANSFER,TRANSFERED,CLEARED
 
 		else if ($type == "RRCRE")	
-				$filename = "./img/returnrecords_signatures/CRE_".$id.".png";
+			$filename = "./img/returnrecords_signatures/CRE_".$id.".png";
 		else if ($type == "RRVAL")	
-				$filename = "./img/returnrecords_signatures/VAL_".$id.".png";
+			$filename = "./img/returnrecords_signatures/VAL_".$id.".png";
 		else if ($type == "RRTTR")	
-				$filename = "./img/returnrecords_signatures/TTR_".$id.".png";			
+			$filename = "./img/returnrecords_signatures/TTR_".$id.".png";			
 		else if ($type == "RRTRA")	
-				$filename = "./img/returnrecords_signatures/TRA_".$id.".png";
+			$filename = "./img/returnrecords_signatures/TRA_".$id.".png";
 		else if ($type == "RRCLR")	
-				$filename = "./img/returnrecords_signatures/CLR_".$id.".png";
+			$filename = "./img/returnrecords_signatures/CLR_".$id.".png";
+
 		else
 			error_log("UNKNOWN TYPE :". $type);
 		
@@ -185,48 +215,20 @@ function pictureRecord($base64Str,$type,$id){
 	}	
 }
 
-
 function blueUser($author){
 	
-	if ($author == "hay_s" || $author == "SERTEST")
-		return "HAY SE";
-	else if ($author ==	"sen_s")
-		return "SOVI";
-	else if ($author == "em_c")
-		return "CHEN";
-	else if ($author == "prum_p")	
-		return "PONLEU";
-	else if ($author == "prom_r")
-		return "RETH";
-	else if ($author == "chea_s" || $author == "meng_s" || $author == "in_v" || $author == "sor_p" || $author == "koem_n")
-		return "SOPHAL";
-	else if ($author == "meng_g")
-		return "GECKMEY";
-	else if ($author == "vireak_n")
-		return "NORIN";
-	else if ($author == "ith_p")
-		return "PUTHEAVY";
-	else if ($author == "ke_k")
-		return "KEARY";
-	else if ($author == "tieng_s")
-		return "SOPHEARITH";
-	else if ($author == "hong_v")
-
-		return "VICHET";
-
-	return $author;
-
-}	
-
-function CVUserByLogin($login)
-{
-	$conn=getInternalDatabase();
+	$db=getInternalDatabase();
 	$sql = "SELECT clearview_identifier from USER where login = ?";
-	$req = $conn->prepare($sql);
-	$req->execute(array($login));
+	$req = $db->prepare($sql);
+	$req->execute(array($author));
 	$result = $req->fetch(PDO::FETCH_ASSOC);	
-	return $result["clearview_identifier"];
-}
+	if ($result == false){
+		//error_log($author." NOT FOUND");
+		return $author;
+	}
+	else	
+		return $result["clearview_identifier"];
+}	
 
 function isLocal()
 {
@@ -234,18 +236,38 @@ function isLocal()
 	return ($mac != "119.82.252.226");
 }
 
-function getDatabase($name = "TRAINING")
+function getSQLDatabase()
+{
+	$servername = "localhost";
+	$username = "root";
+	$password = "password";
+
+	// Create connection
+	$conn = new mysqli($servername, $username, $password);
+	// Check connection
+	if ($conn->connect_error) {
+  	die("Connection failed: " . $conn->connect_error);
+	} 
+	echo "Connected successfully";
+	return $conn;
+}
+
+function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
 	try  
 	{  		
 		if ($name == "MAIN")
-		{
+		{			
 			if (isLocal()){				
 				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
 			}
 			else 
 				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
+		}
+		else if ($name == "CASHIER")
+		{
+			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
 		}
 		else if ($name == "TRAINING")
 		{
@@ -265,15 +287,18 @@ function getDatabase($name = "TRAINING")
 }
 
 
-function getInternalDatabase($base = "TEST")
+function getInternalDatabase($base = "MAIN")
 {
 	try{
 		if ($base == "MAIN")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
+			return getInternalDatabaseNew();
+			//$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
 		else if ($base == "TEST")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreTEST.sqlite');
 		else if ($base == "ECOMMERCE")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
+		else if ($base == "STATS")
+			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreStats.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -283,6 +308,30 @@ function getInternalDatabase($base = "TEST")
 	}
 	return $db;
 }
+
+function getInternalDatabaseNew()
+{
+	$host = '127.0.0.1';
+	$db   = 'test';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+	}
+}
+
+
 
 function findTmpUser($login,$password)
 {
@@ -305,8 +354,6 @@ function findTmpUser($login,$password)
 	else
 		return null;
 }
-
-
 
 function truncatePrice($price)
 {
@@ -349,9 +396,8 @@ function truncateDollarPrice($price){
 			return "0".substr($price,0,$pos + 3);
 	}
 	else
-		return number_format(substr($price,0,$pos + 3),2);
+		return round($price,2);
 }
-
 
 function generateRielPrice($price){
 
@@ -379,26 +425,34 @@ function writePicture($barcode,$b64Image)
     fclose($myfile);
 }
 
-
-
 function getImage($path) {
-switch(mime_content_type($path)) {
-  case 'image/png':
-    $img = imagecreatefrompng($path);
-    break;
-  case 'image/gif':
-    $img = imagecreatefromgif($path);
-    break;
-  case 'image/jpeg':
-    $img = imagecreatefromjpeg($path);
-    break;
-  case 'image/bmp':
-    $img = imagecreatefrombmp($path);
-    break;
-  default:
-     $img = imagecreatefromjpeg($path);
-  }
-  return $img;
+
+	switch(mime_content_type($path)) {
+	case 'image/png':
+		$img = imagecreatefrompng($path);
+		break;
+	case 'image/gif':
+		$img = imagecreatefromgif($path);
+		break;
+	case 'image/jpeg':
+		$img = imagecreatefromjpeg($path);
+		break;
+	case 'image/jpg':
+		$img = imagecreatefromjpeg($path);
+		break;
+	case 'image/bmp':
+		$img = imagecreatefrombmp($path);
+		break;
+	case 'image/x-ms-bmp':
+		$img = imagecreatefrombmp($path);
+		break;
+	default:
+		$img = @imagecreatefromjpeg($path);
+	}
+	
+	if (!$img)
+		$img = imagecreatefrombmp($path);
+	return $img;
 }
 
 function loadPictureByPath($path,$base64 = false)
@@ -406,7 +460,7 @@ function loadPictureByPath($path,$base64 = false)
 	if (!file_exists($path)){		
 		$final = file_get_contents("img/mystery.png");
 	}
-	else {
+	else {		
 		$final = file_get_contents($path);
 
 		file_put_contents("./tmp.jpg",$final);		
@@ -431,16 +485,42 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		$final = file_get_contents($path);
 	}
 	else 
-	{
-		
-		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");
+	{		
+		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");		
+		if ($final == "" || $final == null){
+
+			$path = "img/mystery.png";					
+			$final = file_get_contents($path);
+			if ($base64 == true)
+				return base64_encode($final);
+			return $final;		
+		}
+
 		file_put_contents("./tmp.jpg",$final);		
-		$data = getImage("./tmp.jpg");
-		$data = imagescale($data,$scale);
-		ob_start();
-		imagejpeg($data);
-		$contents = ob_get_contents();
-		ob_end_clean();
+		$gdimage = getImage("./tmp.jpg");	
+		if ($gdimage == false){
+			$path = "img/mystery.png";					
+			$final = file_get_contents($path);
+			if ($base64 == true)
+				return base64_encode($final);
+			return $final;		
+		}
+		else{
+			$data = imagescale($gdimage,$scale);
+			if ($data == false){
+				ob_start();
+				imagejpeg($gdimage);
+				$contents = ob_get_contents();
+				ob_end_clean();
+			}else{
+				ob_start();
+				imagejpeg($data);
+				$contents = ob_get_contents();
+				ob_end_clean();
+			}			
+		}
+		
+		
 		$final = $contents;		
 	}
 		
@@ -611,12 +691,18 @@ function calculateMultiple($barcode){
 		$left = explode('X',$res["PACKINGNOTE"])[0];
 	else 
 		$left = 1;
-	return $left;
+	$left = str_replace(' ','',$left);	
+	if ($left > $res["QTY_ORDER"])
+		return $res["QTY_ORDER"];
+	else
+		return $left;
 }
 
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
+	LG("MULTIPLE:".$multiple);
+	LG("LASTRCVQTY:".$lastrcvqty);
 	if (!is_numeric($multiple))
 		$multiple = 1;	
 	if ($lastrcvqty % $multiple != 0)
@@ -629,11 +715,10 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 	}
 	else
 	{
-		$remains = $increasedQty % $multiple;	
+		$remains = $increasedQty % $multiple;			
 		if ($price < 5)
 		{		
 				$total = $increasedQty + ($multiple - $remains);
-
 				return $total; // +1
 		}
 		else
@@ -644,7 +729,7 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 				else
 					return $increasedQty + ($multiple - $remains);				
 			}						
-			else if ($remains < ($multiple / 2))				
+			else if ($remains <= ($multiple / 2))				
 				return $increasedQty + ($multiple - $remains); // +1
 		}			
 	}
@@ -677,34 +762,48 @@ function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 	}
 }
 
+function externalAlertStats2($barcode){
+
+}
+
 function externalAlertStats($barcode){
     $db=getDatabase();  
-    $sql = "SELECT LASTRECEIVEDATE,
-                    ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'NBTHROWN'
-                    FROM ICPRODUCT WHERE 
-                    PRODUCTID = ?";                                 
-    $req = $db->prepare($sql);
-    $req->execute(array($barcode));                 
-    $res = $req->fetch(PDO::FETCH_ASSOC);
-    $data["NBTHROWN"] = round($res["NBTHROWN"],2);
-    $data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
 
-    $lastrcv = $res["LASTRECEIVEDATE"];
+	$sql = "SELECT LASTRECEIVEDATE FROM ICPRODUCT WHERE PRODUCTID = ?";                                 
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));                 
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$data["LASTRECEIVEDATE"] = $res["LASTRECEIVEDATE"];
+	$lastrcv = $res["LASTRECEIVEDATE"];
+	
+	
+    $sql = "SELECT SUM(TRANQTY) as NBTHROWN
+			FROM ICTRANDETAIL 
+			WHERE DOCNUM LIKE 'IS%' 
+			AND TRANTYPE = 'I' 
+			AND PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));                 
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$data["NBTHROWN"] = round($res["NBTHROWN"],2);
+	$today = date("Y-m-d");
+    /*
     $less30 = date('Y-m-d', strtotime('-30 days'));
-    $today = date("Y-m-d");
+    
     $data["DAYS30BACK"] = $less30;
-    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+    $sql = "SELECT SUM(QTY) as SUM 
+			FROM POSDETAIL 
             WHERE PRODUCTID = ? 
             AND POSDATE >=  ? AND POSDATE <= ?";
     $req = $db->prepare($sql);
     $req->execute(array($barcode,$less30,$today));
-
-
     $res = $req->fetch(PDO::FETCH_ASSOC);   
     $data["QTYLESS30"] = $res["SUM"] ?? 0;
-		$data["QTYLESS30"] = round($data["QTYLESS30"],2);
+	$data["QTYLESS30"] = round($data["QTYLESS30"],2);
+	*/
 
-    $sql = "SELECT SUM(QTY) as SUM FROM POSDETAIL 
+    $sql = "SELECT SUM(QTY) as SUM 
+			FROM POSDETAIL 
             WHERE PRODUCTID = ? 
             AND POSDATE >=  ? AND POSDATE <= ?";
     $req = $db->prepare($sql);
@@ -714,47 +813,65 @@ function externalAlertStats($barcode){
 		$data["QTYLASTRCV"] = round($data["QTYLASTRCV"],2);
 
     $indb = getInternalDatabase();
-    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
-    WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
-    AND PRODUCTID = ? 
-    AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-                 DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-                 DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')";
+	
+    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM SELFPROMOTIONITEM
+    WHERE PRODUCTID =  ?";    
     $req = $indb->prepare($sql);
     $req->execute(array($barcode));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $res = $req->fetch(PDO::FETCH_ASSOC);	
     $data["QTYPROMOTION"] = $res["QTY"] ?? 0;
+
+	$data["QTYPROMOTION"] = 0;
 
     return $data;
 
 }
 
-function orderStatistics($barcode)
-{
+function LG($str){
+	//error_log($str);
+}
+
+
+function orderStatistics($barcode,$lightmode = false)
+{	
 	$inDB = getInternalDatabase();
 	$db = getDatabase();
 
-	$sql = "SELECT TOP(1) TRANDATE, TRANQTY  FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+	$sql = "SELECT TOP(1) RECEIVE_DATE, RECEIVE_QTY,TRANCOST  FROM PODETAIL WHERE PRODUCTID = ? AND POSTATUS = 'C' ORDER BY DATEADD DESC";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));  
-	$res  = $req->fetch(PDO::FETCH_ASSOC);
-
+	$res  = $req->fetch(PDO::FETCH_ASSOC);	
+	
 	if($res == false){
+		$stats["COST"] = 0;
 		$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($barcode));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$stats["FINALQTY"] = 0;
-		$stats["PRICE"] = $res["PRICE"];				
+		$stats["PRICE"] = $res["PRICE"] ?? "0";				
 		if ($res == false)
 			$stats["DECISION"] = "NOT FOUND";			
 		else 
-			$stats["DECISION"] = "NEVER RECEIVED";			
+			$stats["DECISION"] = "NEVER RECEIVED";		
+		$stats["ORDERPOINT"] = "0";
+		$stats["LASTRCVDATE"] = null;
+		$stats["LASTRECEIVEQUANTITY"] = "0";
+		$stats["ONHAND"] = "0";
+		$stats["WASTE"] = "0";
+		$stats["PROMO"] = "0";
+		$stats["SALESINCELASTRECEIVE"] = "0";
+		$stats["SALESPEED"] = "0";
+		$stats["LASTSALEDAY"] = "0";
+		$stats["TOTALORDERTIME"] = "0";
+		$stats["TOTALRECEIVE"] = "0";
+		$stats["TOTALSALE"] = "0";	
 		return $stats;
 	}
 	else
 	{
-		$sql = "SELECT ACTIVE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$stats["COST"] = $res["TRANCOST"];
+		$sql = "SELECT ACTIVE,ONHAND FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($barcode));  
 		$res2  = $req->fetch(PDO::FETCH_ASSOC);
@@ -765,11 +882,23 @@ function orderStatistics($barcode)
 			return $stats;
 		}
 		else{
-			$RCVDATE = $res["TRANDATE"];
-			$RCVQTY = $res["TRANQTY"]; //**		
+			$stats["ONHAND"] = $res2["ONHAND"];
+			$RCVDATE = $res["RECEIVE_DATE"];
+			$RCVQTY = calculateRealLastReceivedQuantity($barcode);
+			//error_log("rcv qty:".$RCVQTY);
+			/*
+			if ($res["RECEIVE_QTY"] == null){
+				$sql = "SELECT TOP(1) QTY_ORDER FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+				$req = $db->prepare($sql);
+				$req->execute(array($barcode));
+				$RCVQTY = $req->fetch(PDO::FETCH_ASSOC)["QTY_ORDER"];
+			}else{
+				$RCVQTY = $res["RECEIVE_QTY"];
+			}
+			*/
+			
 		}	
-	}
-	 
+	}	 
 	$begin = $RCVDATE;
 	$end = date('Y-m-d', time()). " 23:59:59.999";
 
@@ -784,10 +913,12 @@ function orderStatistics($barcode)
 	else 
 		$QTYSALE = 0;
 
-	$RATIOSALE = ($QTYSALE * 100) / $RCVQTY; // **
+	$RATIOSALE = ($QTYSALE * 100) / ($RCVQTY != 0 ? $RCVQTY : 1); // **
 
 
-	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE,LASTSALEDATE,
+			isnull((SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = P.PRODUCTID AND LOCID = 'WH1'),0) as 'ORDERPOINT' 
+			FROM ICPRODUCT P WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));	
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -796,34 +927,30 @@ function orderStatistics($barcode)
 
 	$PRODUCTNAME = $res["PRODUCTNAME"]; //**	
 	$PRICE = $res["PRICE"];
-	
+	$stats["LASTSALEDAY"] = $res["LASTSALEDATE"];
+	$stats["ORDERPOINT"] = $res["ORDERPOINT"];
 	$ONHAND = $res["ONHAND"]; //**	
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
 	
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID
-					AND PRODUCTID = ? 
-					AND  (DEPRECIATION.TYPE = 'CLEARANCEDAMAGEDPROMOTION' OR 
-					 			DEPRECIATION.TYPE = 'CLEARANCELOWSELLPROMOTION' OR 
-					 			DEPRECIATION.TYPE = 'CLEARANCETOOMUCHPROMOTION')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+	$sql = "SELECT (SUM(QUANTITY1) + SUM(QUANTITY2) + SUM(QUANTITY3) + SUM(QUANTITY4))  as 'QTY' 
+					FROM SELFPROMOTIONITEM					
+					WHERE PRODUCTID = ?";
 	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
+	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+	
 	$PROMO = 0;
 	if ($res != false)	
 		$PROMO = $res["QTY"] ?? 0; //**					
 
-	$sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM DEPRECIATION,DEPRECIATIONITEM 
-					WHERE DEPRECIATIONITEM.DEPRECIATION_ID1 =  DEPRECIATION.ID 
-					AND PRODUCTID = ? 
-					AND  (DEPRECIATION.TYPE = 'DAMAGEWASTE' OR 
-					 			DEPRECIATION.TYPE = 'EXPIREWASTE')
-					AND DEPRECIATIONITEM.CREATED BETWEEN ? AND ?";
+	$sql = "SELECT SUM(QUANTITY)as 'QTY' 
+					FROM WASTEITEM 
+					WHERE PRODUCTID = ?";
 	$req = $inDB->prepare($sql);
-	$req->execute(array($barcode,$begin,$end));
+	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
+
 	$WASTE = 0;
 	if ($res != false)
 		$WASTE = $res["QTY"] ?? 0; //**
@@ -838,11 +965,12 @@ function orderStatistics($barcode)
 	$stats["PRODUCTNAME"] = $PRODUCTNAME;
 	$stats["PRODUCTID"] = $barcode;
 	$stats["SALESPEED"] = $SALESPEED . " days";
-	$stats["LASTSALEDAY"] = date('Y-m-d', strtotime($begin. ' + '.$SALESPEED.' days')); 
+	
 	$stats["PROMO"] = $PROMO;	
 	$stats["WASTE"] = $WASTE;
 	$stats["MULTIPLE"] = calculateMultiple($barcode);
-	$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
+	if ($lightmode == false)
+		$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
 	$MARGIN = (int)$RCVQTY * 0.2;
 
 	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		
@@ -850,36 +978,39 @@ function orderStatistics($barcode)
 	
 		if ($RATIOSALE >= 100) // Good Sale so speed matter
 		{
-			if($stats["SALESPEED"] < 30){
-				
+			LG("1)RATIOSALE(A):" . $RATIOSALE);
+			if($stats["SALESPEED"] < 30){		
+				LG("2)SALESPEED (A):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
-
 				$stats["DECISION"] = "INCREASEQTY";
 			}
-			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){
-				
+			else if($stats["SALESPEED"] > 30 && $stats["SALESPEED"] < 60){								
+				LG("2)SALESPEED (B):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,1);
 				$stats["DECISION"] = "INCREASEQTY";
 			}			
-		  else if ($ONHAND < ($RCVQTY * 0.5) )
+		  	else if ($ONHAND < ($RCVQTY * 0.5) )
 			{
-					$multiple = calculateMultiple($barcode);
-					$remains = $RCVQTY % $multiple;
-					if ($remains == 0)
-						$stats["FINALQTY"] = $RCVQTY;
-					else{
-						$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
-					}			
-					$stats["DECISION"] = "SAMEQTY";	
+				LG("2)ONHAND<50%RCVQTY (C)");		
+				$multiple = calculateMultiple($barcode);
+				$remains = $RCVQTY % $multiple;
+				if ($remains == 0)
+					$stats["FINALQTY"] = $RCVQTY;
+				else{
+					$stats["FINALQTY"] = $RCVQTY + ($multiple - $remains);
+				}			
+				$stats["DECISION"] = "SAMEQTY";	
 			}
 			else
 			{
-						$stats["FINALQTY"] = 0;
-						$stats["DECISION"] = "TOOEARLY";	
+				LG("2)ELSE");		
+				$stats["FINALQTY"] = 0;
+				$stats["DECISION"] = "TOOEARLY";	
 			}
 		}
 		else if ($RATIOSALE >= 70 && $RATIOSALE < 100) // Speed not important here
 		{
+			LG("2)RATIOSALE(B):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 				if ($WASTE >= 0.1 * $RCVQTY && $PROMO >= 0.1 * $RCVQTY){
@@ -928,6 +1059,7 @@ function orderStatistics($barcode)
 		}
 		else if ($RATIOSALE >= 50 && $RATIOSALE < 70 ) // Normal Sale
 		{
+			LG("1)RATIOSALE(C):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
@@ -964,6 +1096,7 @@ function orderStatistics($barcode)
 		}
 		else if ($RATIOSALE < 50)
 		{
+			LG("1)RATIOSALE(D):" . $RATIOSALE);
 			if ($PROMO > 0 || $WASTE > 0) // DIFFERENT TREATMENT
 			{
 
@@ -1005,14 +1138,39 @@ function orderStatistics($barcode)
 				$stats["DECISION"] = "TOOEARLY";					
 			}	
 		}
-	
+	if ($lightmode == false){
+		$sql = "SELECT 
+		ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = PR.PRODUCTID)*-1),0) as 'TOTALSALE',
+		ISNULL((SELECT COUNT(*) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = PR.PRODUCTID),0) as 'TOTALORDERTIME',
+		ISNULL((SELECT SUM(RECEIVE_QTY) FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = PR.PRODUCTID),0) as 'TOTALRECEIVE',
+		
+		(SELECT TOP(1) RECEIVE_QTY FROM PODETAIL WHERE PODETAIL.PRODUCTID = PR.PRODUCTID AND POSTATUS ='C' ORDER BY COLID DESC) as 'LASTRECEIVEQUANTITY',
+		(SELECT TOP(1) QTY_ORDER FROM PORECEIVEDETAIL WHERE PORECEIVEDETAIL.PRODUCTID = PR.PRODUCTID ORDER BY COLID DESC) as 'LASTRECEIVEQUANTITY2',
+		(SELECT SUM(QTY) FROM POSDETAIL WHERE PRODUCTID = PR.PRODUCTID AND POSDATE >= (SELECT TOP(1) RECEIVE_DATE FROM PODETAIL WHERE PODETAIL.PRODUCTID = PR.PRODUCTID AND POSTATUS = 'C' ORDER BY COLID DESC) AND POSDATE <=  GETDATE()) as 'SALESINCELASTRECEIVE'
+		FROM PODETAIL as PR
+		WHERE PRODUCTID = ?
+		AND POSTATUS = 'C'";
+		$req = $db->prepare($sql);
+		$req->execute(array($barcode));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		$stats["TOTALSALE"] = $res["TOTALSALE"] ?? "";
+		$stats["TOTALORDERTIME"] = $res["TOTALORDERTIME"] ?? "";
+		$stats["TOTALRECEIVE"] = $res["TOTALRECEIVE"] ?? "" ;
+		$stats["SALESINCELASTRECEIVE"] = $res["SALESINCELASTRECEIVE"] ?? "";
+		if ($res["LASTRECEIVEQUANTITY"] != null)
+			$stats["LASTRECEIVEQUANTITY"] = $res["LASTRECEIVEQUANTITY"];
+		else 
+			$stats["LASTRECEIVEQUANTITY"] = $res["LASTRECEIVEQUANTITY2"];
+	}
+
 	return $stats;	
 }
 
 function wasteStatistics($barcode,$expiration)
 {
 	$indb = getDatabase();
-	$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ? AND PERCENTPROMO1 IS NOT NULL";
+	$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ? AND PERCENTPROMO1 IS NOT NULL";
 
 	$req = $indb->prepare($sql);
 	$req->execute(array($barcode,$expiration)); 
@@ -1089,7 +1247,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 					{							
 							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 							{
-								$sql = "SELECT * FROM DEPRECIATIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+								$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
 								$req = $indb->prepare($sql);
 								$req->execute(array($barcode, $expiration)); 
 								$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -1190,23 +1348,45 @@ function calculatePenalty($barcode, $expiration,$type = null){
 			$data["end"] = $today->format('Y-m-d');
 			$data["duration"] = "30";
 			$data["status"] = "OK";
-			if ($type == "CLEARANCELOWDAMAGEDPROMOTION")			
+			if ($type == "DAMAGE(20)")			
 				$data["percentpromo"] = "20";
-			else if($type == "CLEARANCEMEDIUMDAMAGEDPROMOTION")					
+			else if($type == "DAMAGE(50)")					
 				$data["percentpromo"] = "50";
-			else if($type == "CLEARANCEHIGHDAMAGEDPROMOTION")		
+			else if($type == "DAMAGE(70)")		
 				$data["percentpromo"] = "70";
-			else if ($type == "CLEARANCETOOMUCHPROMOTION")
+			else if ($type == "SLOWSALE(20)")
 				$data["percentpromo"] = "20";
-			else if ($type == "CLEARANCELOWSELLPROMOTION")
+			else if ($type == "SLOWSALE(50)")
 				$data["percentpromo"] = "50";
-			else if ($type == "CLEARANCEDESTOCKPROMOTION")
+			else if ($type == "SLOWSALE(70)")
 				$data["percentpromo"] = "70";	 		
 	 		return $data;
 		}	
 }
 
 // TODO
+function attachAmountPromotion($productid,$discount,$start,$end,$author){
+	$db=getDatabase();
+	$sql = "DELETE FROM ICGROUPPRICE WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+
+	$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	$price = $res["PRICE"];
+	$newprice = $price - $discount;
+
+	$sql = "INSERT INTO ICGROUPPRICE (GROUPID,PRODUCTID,PROSTARTDATE,PROENDDATE,PROMOTIONTYPE,
+						PRODISCOUNT,PROPRICE,USERADD,DATEADD) 
+						values(?,?,?,?,?,
+							   ?,?,?,GETDATE())";
+	$req = $db->prepare($sql);
+	$req->execute(array("CASH",$productid,$start,$end,'PRICE',
+						$discount,$newprice,$author));	
+}
+
 function attachPromotion($productid,$percent,$start,$end,$author){
 
 	$PRODUCTNAME = "";
@@ -1247,11 +1427,12 @@ function attachPromotion($productid,$percent,$start,$end,$author){
 
 function endPromotion($productid){
 	$db=getDatabase();
+	$sql = "DELETE FROM ICGROUPPRICE WHERE PRODUCTID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid));
 	$sql = "UPDATE ICNEWPROMOTION SET REMARKS = DATETO,DATETO = DATEFROM WHERE REMARKS = 'APPLICATION' AND PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($productid));
-
-
 }
 
 
@@ -1390,12 +1571,24 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 			$policy, 'UNIT',1.0,'E','AG',
 			'P',$has_vat,$vat,$plt,'LOCAL',
 			$picturePath,'UNIT',1.0,$price,$pltacc));
-		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,TAXACC)
-							VALUES(?,?,?,?,?,?)";
+		$sql = "INSERT INTO ICLOCATION(LOCID,PRODUCTID,VENDID,DATEADD,USERADD,
+									   TAXACC,MAX_ORDER,MIN_ORDER,SALEDISCOUNTACC,REVENUEACC,
+									   COGSACC,INVENTORYACC,VENDORPARTNUM,USEREDIT,DATEEDIT,
+									   NOTES)
+							VALUES(?,?,?,?,?,
+								   ?,?,?,?,?,
+								   ?,?,?,?,?,
+								   ?)";
 		
 		$req = $db->prepare($sql);
-		$req->execute(array('WH1',$barcode,$vendid,$today,$author,16100));
-		$req->execute(array('WH2',$barcode,$vendid,$today,$author,16100));
+		$req->execute(array('WH1',$barcode,$vendid,$today,$author,
+							16100,0,0,"","",
+							"","",$barcode,$author,$today,
+							""));
+		$req->execute(array('WH2',$barcode,$vendid,$today,$author,
+							16100,0,0,"","",
+							"","",$barcode,$author,$today,
+							""));
 
 		$sql = "INSERT INTO ICVENDOR(PRODUCTID,VENDID,VENDPARTNO,USERADD,DATEADD)
 				VALUES(?,?,?,?,?)";
@@ -1406,6 +1599,506 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 	}
 	else 
 		return false;
+}
+
+function sendPush($title,$body, $fcmtoken) {
+    $url = 'https://fcm.googleapis.com/fcm/send';	
+	$fields = array (
+		'registration_ids' => array($fcmtoken),
+		'notification' => array(
+			'title' => $title,
+			'body' => $body,                
+			'sound' => 'default'
+		)		
+	);    
+    $fields = json_encode ( $fields );
+    $headers = array (
+            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+            'Content-Type: application/json'
+    );
+    $ch = curl_init ();
+    curl_setopt ( $ch, CURLOPT_URL, $url );
+    curl_setopt ( $ch, CURLOPT_POST, true );
+    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+    $result = curl_exec ( $ch );    	
+    curl_close ( $ch );
+	return $result;
+}
+
+function sendPushToUser($title,$body,$userid)
+{	
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE ID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($userid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+	if (!isset($res["fcmtoken"]))
+		return null;
+	$TOKEN = $res["fcmtoken"];
+	$url = 'https://fcm.googleapis.com/fcm/send';	
+	$fields = array (
+		'to' => $TOKEN,
+		'data' => array(
+			'type' => 104,
+			'type_name' => 'post',
+			'title' => $title,
+			'badge' => '1',			
+			'body' => $body,
+			'vibrate' => 1,
+			'sound' => 1			
+		),
+		'notification' => array(
+			'title' => $title,
+			'body' => $body,                
+			'sound' => 'default',
+			'badge' => '1'
+		),
+		'priority' => 'high'		
+	);    
+    $fields = json_encode ( $fields );
+
+    $headers = array (
+            'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+            'Content-Type: application/json'
+    );
+    $ch = curl_init ();
+    curl_setopt ( $ch, CURLOPT_URL, $url );
+    curl_setopt ( $ch, CURLOPT_POST, true );
+    curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+    curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
+	curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+    $result = curl_exec ( $ch );    
+    curl_close ( $ch );
+	$result.= " TOKEN = ".$TOKEN;
+	error_log($result);
+	return $result;
+}
+
+function sendPushToAll($title,$body)
+{
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE fcmtoken is not null";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$res = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	foreach($res as $oneToken){
+		$TOKEN = $oneToken["fcmtoken"];
+		$url = 'https://fcm.googleapis.com/fcm/send';	
+		$fields = array (
+			'to' => $TOKEN,
+			'data' => array(
+				'type' => 104,
+				'type_name' => 'post',
+				'title' => $title,
+				'badge' => '1',			
+				'body' => $body,
+				'vibrate' => 1,
+				'sound' => 1			
+			),
+			'notification' => array(
+				'title' => $title,
+				'body' => $body,                
+				'sound' => 'default',
+				'badge' => '1'
+			),
+			'priority' => 'high'		
+		);    
+		$fields = json_encode ( $fields );
+	
+		$headers = array (
+				'Authorization: key=' . "AAAAHKVcBoQ:APA91bFGRGCtJCKl_R2ApTkD1OxZLGpg9-tRcraPTMofnMrDAJL-58lsqB9SF1iX4twEFk4kUilIgWG0HjA9YwIe5nRQhkpMjY_Oc7lbORWUS11T_ZHdkAvPaqWkz8KLA9dEjF3LGtc-",
+				'Content-Type: application/json'
+		);
+		$ch = curl_init ();
+		curl_setopt ( $ch, CURLOPT_URL, $url );
+		curl_setopt ( $ch, CURLOPT_POST, true );
+		curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYHOST, 0 );
+		curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt ( $ch, CURLOPT_POSTFIELDS, $fields );
+		$result = curl_exec ( $ch );    
+		curl_close ( $ch );
+		$result.= " TOKEN = ".$TOKEN;		
+	}
+	
+}
+
+// Wiki Created
+// Wiki Answered
+
+function getSaleByLocation($start,$end,$location)
+{
+	$db=getDatabase();	
+
+	$sql = "SELECT 
+	POSDETAIL.PRODUCTID
+	,POSDETAIL.PRODUCTNAME
+	,POSDETAIL.PRODUCTNAME1	
+	,POSDETAIL.CATEGORYID	
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
+	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
+	FROM dbo.POSDETAIL WHERE STORBIN LIKE ?
+	AND POSDATE BETWEEN ? AND ?
+	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID
+	";
+	array_push($params,$start);
+	array_push($params,$end);
+
+	$req = $db->prepare($sql);
+	$req->execute($location,$start,$end);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	return $items;
+}
+
+function getSaleByTeam($start,$end,$team)
+{
+	$db=getDatabase();	
+
+	if ($team == "RAT"){
+		$allloc = "G01A|G01B|G02A|G02B|G03A|G03B";
+	}else if ($team == "OX"){
+		$allloc = "G04A|G04B|G05A|G05B|GSOF";
+	}else if ($team == "TIGER"){
+		$allloc = "G06A|G06B|G07A|G07B|GMIL";
+	}
+	else if ($team == "HARE"){
+		$allloc = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
+	}
+	else if ($team == "DRAGON"){
+		$allloc = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
+	}
+	else if ($team == "SNAKE"){
+		$allloc = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B";
+	}
+	else if ($team == "HORSE"){
+		$allloc = "NBAB|GWIN";
+	}
+	else if ($team == "GOAT"){
+		$allloc = "CHIL|FROZ";
+	}
+
+	$sql = "SELECT 
+	POSDETAIL.PRODUCTID
+	,POSDETAIL.PRODUCTNAME
+	,POSDETAIL.PRODUCTNAME1	
+	,POSDETAIL.CATEGORYID	
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH1'
+	,(SELECT LOCONHAND FROM dbo.ICLOCATION  WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.POSDETAIL.PRODUCTID) as  'WH2'	
+	,SUM(dbo.POSDETAIL.QTY) AS 'COUNT'
+	FROM dbo.POSDETAIL WHERE 1=1 ";	
+	$params = array();
+		
+	$locs = explode('|',$allloc);
+	$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
+	
+	foreach($locs as $loc){
+		$sql .= ' STORBIN LIKE ? OR';
+		array_push($params, '%'.$loc.'%' );
+	}
+	$sql = substr($sql,0,-2);
+	$sql .= "))";		
+	
+	$sql .= "
+	AND POSDATE BETWEEN ? AND ?
+	GROUP BY PRODUCTID,PRODUCTNAME,PRODUCTNAME1,CATEGORYID
+	";
+	array_push($params,$start);
+	array_push($params,$end);
+
+	$req = $db->prepare($sql);
+	$req->execute($params);
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	return $items;
+}
+
+
+function getProductOccupancy($barcode){
+	$db = getDatabase();
+	$sql = "select isnull(sum(DATEDIFF(day,LASTRECEIVE,GETDATE())),0) as 'CNT'
+			FROM ICLOCATION
+			WHERE LOCID = 'WH1' 
+			AND LOCONHAND > 0
+			AND DATEDIFF(day,LASTRECEIVE,GETDATE()) > 30
+			AND PRODUCTID  = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($barcode));
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+	if ($data != false)
+		return $data["CNT"];
+	else
+		return 0;
+}
+
+function locationSameTeam($loc1, $loc2){
+	$l1 = explode('|',$loc1)[0];
+	$l2 = explode('|',$loc2)[0];
+	
+	$G1 = array("G01A","G01B","G02A","G02B","G03A","G03B");	
+	$G2 = array("G01A","G01B","G02A","G02B","G03A","G03B");	
+	$G3 = array("G04A","G04B","G05A","G05B","GSOF");
+	$G4 = array("G06A","G06B","G07A","G07B","GMIL");
+	$G5 = array("N08A","N08B","N09A","N09B","N10A","N10B","N11A","N11B","N12A","N12B","NCHA");
+	$G6 = array("N20A","N20B","N21A","N21B","N22A","N22B","N23A","N23B","N24A","N24B");
+	$G7 = array("N14A","N14B","N15A","N15B","N16A","N16B","N17A","N17B","N18A","N18B","N19A","N19B");
+	$G8 = array("N13A","N13B","NBAB","GWIN");
+	$G9 = array("CHIL","FROZ");
+	
+	if (in_array($l1,$G1)){
+		return in_array($l2,$G1);
+	}
+	else if (in_array($l1,$G2)){
+		return in_array($l2,$G2);
+	}
+	else if (in_array($l1,$G3)){
+		return in_array($l2,$G3);
+	}
+	else if (in_array($l1,$G4)){
+		return in_array($l2,$G4);
+	}
+	else if (in_array($l1,$G5)){
+		return in_array($l2,$G5);
+	}
+	else if (in_array($l1,$G6)){
+		return in_array($l2,$G6);
+	}
+	else if (in_array($l1,$G7)){
+		return in_array($l2,$G7);
+	}
+	else if (in_array($l1,$G8)){
+		return in_array($l2,$G8);
+	}
+	else if (in_array($l1,$G9)){
+		return in_array($l2,$G9);
+	}else{
+		return false;		
+	}
+}
+
+
+function getRETHFCM()
+{
+	$db = getInternalDatabase();
+	$sql = "SELECT fcmtoken from USER WHERE login = 'prom_r'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$data = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($data == false)
+		return null;
+	else 
+		return $data["fcmtoken"];
+}
+
+function getStoreWorkingEmployees($date){
+	$db = getInternalDatabase();
+	
+	$dayOfWeek = date('l', strtotime($date));
+	$sql = "SELECT user_id FROM RESTREQUEST 
+	where user_id in ( select ID from USER WHERE role_id in ('401','402','403','404','405'))
+	AND date = ? 
+	AND STATUS = 'APPROVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
+	if ($rested != false){
+		$instr = "(";
+		foreach($rested as $rest){
+			$instr .= substr($rest["user_id"]).",";
+		}
+		$instr = substr($instr,0,-1);
+		$instr .= ")";
+	}else{
+		$instr = "('DECOY')";
+	}
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
+			AND role_id in ('401','402','403','404','405')
+			AND ID not in ".$instr;	
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	return $employees;	
+}
+
+function getOfficeWorkingEmployees($date){
+	$db = getInternalDatabase();
+	
+	$dayOfWeek = date('l', strtotime($date));
+	$sql = "SELECT user_id FROM RESTREQUEST 
+	where user_id in ( select ID from USER WHERE role_id in ('200','201','300','301','302'))
+	AND date = ? 
+	AND STATUS = 'APPROVED'";
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$rested = $req->fetchAll(PDO::FETCH_ASSOC);
+	if ($rested != false){
+		$instr = "(";
+		foreach($rested as $rest){
+			$instr .= substr($rest["user_id"]).",";
+		}
+		$instr = substr($instr,0,-1);
+		$instr .= ")";
+	}else{
+		$instr = "('DECOY')";
+	}
+	$sql = "SELECT ID,firstname,lastname,starttime1,starttime2,endtime1,endtime2,restcredit FROM USER WHERE dayoff != ? 
+			AND role_id in ('200','201','300','301','302')
+			AND ID not in ".$instr;	
+	$req = $db->prepare($sql);
+	$req->execute(array($dayOfWeek));
+	$employees = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	return $employees;	
+}
+
+function extractEmployeeByHour($hour,$employees){
+	$data = array();
+	foreach($employees as $employee){
+		if ( (strtotime($employee["starttime1"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime1"])) ||
+			 (strtotime($employee["starttime2"]) >= strtotime($hour) &&  strtotime($hour) < strtotime($employee["endtime2"])) 
+		   ){
+			array_push($data,$employee);		
+		   }	   
+	}	
+	return $data;
+}
+
+function getPresentWorker($date,$start,$end,$store = true){
+	if ($store == true)
+		$employees = getStoreWorkingEmployees($date);	
+	else
+		$employees = getOfficeWorkingEmployees($date);	
+			
+	$hours = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00",
+			  "12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00",
+			  "17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00"];
+	$startCnt = 0;		
+	foreach($hours as $hour){
+		if ($hour == $start)
+			break;		
+		$startCnt++;
+	}
+	$endCnt = 0;
+	foreach($hours as $hour){
+		if ($hour == $end)
+			break;		
+		$endCnt++;
+	}	
+	$data = array();
+	for($i = $startCnt;$i < $endCnt; $i++){			
+		$tmp = extractEmployeeByHour($hours[$i],$employees);				
+		foreach($tmp as $employee){
+			if (!in_array($employee,$employees))
+				array_push($data,$employee);
+		}
+	}
+	
+	return $employees;
+}
+
+function GetUserId($type){
+    if ($type == "PAYER")
+        return 1001;
+	else if ($type == "PROMOVALIDATOR")
+        return 1001;
+    else if ($type == "VALIDATOR")
+        return 1001;
+	else if ($type == "SOPHIRETH")
+        return 201;
+    else if ($type == "PUTHEAVY")
+        return 205;
+    else if ($type == "GECKMEY")
+        return 206;
+    else if ($type == "PONLEU")
+        return 402;
+    else if ($type == "SOPHAL")
+        return 603;
+    else if ($type == "WAREHOUSE1")
+        return 601;
+    else if ($type == "WAREHOUSE2")
+        return 602;
+    else if ($type == "WAREHOUSE3")
+        return 604;        
+    else if ($type == "WAREHOUSE4")
+        return "605";        
+}
+
+function GenerateItemStats($productid,$ITEMREQUESTID)
+{
+	$db = getInternalDatabase();
+	$dbBlue = getDatabase();	
+
+	// ITEM START	
+	$sql = "SELECT * FROM ITEMREQUEST,ITEMREQUESTSTATS 
+			WHERE ITEMREQUESTSTATS.itemrequest_id = ITEMREQUEST.ID			
+			AND ITEMREQUEST.PRODUCTID = ? 
+			AND ITEMREQUESTSTATS.itemrequest_id = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($productid,$ITEMREQUESTID));
+	$res = $req->fetch(PDO::FETCH_ASSOC);	
+	if ($res != false)			
+		return;
+
+	echo("GENERATING ".$productid."...\n");
+	$sql = "SELECT TOP(1) TRANCOST,TRANDISC,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";			
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT PPSS_NEW_COST FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));
+	$res2 = $req->fetch(PDO::FETCH_ASSOC);
+	if ($res2 == false || $res2["PPSS_NEW_COST"] == null)
+	{
+		if ($res == false)
+			$TRANCOST = 0;
+		else
+			$TRANCOST = $res["TRANCOST"];
+	}				
+	else{
+		if ($res2["TRANCOST"] != "0" || $res2["TRANCOST"] != 0)
+			$TRANCOST = $res2["PPSS_NEW_COST"];
+		else 
+			$TRANCOST = $res["TRANCOST"];
+	}				
+	$stats = orderStatistics($productid);
+	$LASTRECEIVEDATE = 	$stats["LASTRCVDATE"];
+	$LASTRECEIVEQUANTITY = $stats["LASTRECEIVEQUANTITY"];				
+	$TOTALWASTEQUANTITY = $stats["WASTE"];
+	$TOTALPROMOQUANTITY = $stats["PROMO"];
+	$TOTALORDERTIME = $stats["TOTALORDERTIME"];		
+	$TOTALRECEIVE = $stats["TOTALRECEIVE"];	
+	$SALESINCELASTRECEIVE = $stats["SALESINCELASTRECEIVE"];
+	$SALESPEED75 = $stats["SALESPEED"];
+	$LASTSALEDAY = $stats["LASTSALEDAY"];
+	$TOTALSALE = $stats["TOTALSALE"];
+	$MOMENTONHAND = $stats["ONHAND"];	
+	$DECISION = $stats["DECISION"];
+	$CALCULATEDQUANTITY = $stats["FINALQTY"];
+	
+	$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
+				totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
+				momentonhand,calculatedquantity,decision,itemrequest_id)		 
+				VALUES (?,?,?,?,?,
+						?,?,?,?,?,
+						?,?,?,?)";
+	$req = $db->prepare($sql);								
+	$res = $req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
+	$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));		
+	$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($productid));			
+	
 }
 
 ?>

@@ -458,7 +458,7 @@ function GenerateGroupedRestocksByRow()
 		AND STORBIN NOT LIKE '%FFRU%'
 		AND STORBIN NOT LIKE '%FMET%'
 		AND STORBIN NOT LIKE '%FVEG%'
-		AND STORBIN NOT NULL
+		AND STORBIN IS NOT NULL
 		AND STORBIN <> ''
 	";
 	$req = $db->prepare($sql);

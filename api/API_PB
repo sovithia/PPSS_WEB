@@ -1,0 +1,9 @@
+DATETIME('now', '-12 month')
+
+(CURRDATE() - INTERVAL 12 MONTH)
+
+
+(CURRDATE() - INTERVAL 45 DAY)
+
+date('now')
+NOW()

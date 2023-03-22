@@ -111,7 +111,7 @@ function getModules($role)
 
 function getUserSession($login,$password)
 {
-    $db = getInternalDatabase();
+    $db = getInternalDatabase();	
     $stmt = $db->prepare("SELECT USER.ID as 'USERID',ROLE.name as 'ROLENAME', restcredit as 'RESTCREDIT'
 						  FROM USER ,ROLE     			
     				      WHERE USER.role_id = ROLE.ID		 
@@ -2831,29 +2831,49 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	}
 	else if ($status == "ANOMALYUNSOLVED" || $status == "ANOMALYSOLVED" || $status == "NOANOMALY"){
 		markAnomalies();
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";
+		else 
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";
 		$params = array($status);
 	}	
 	else if ($status == "ORDERED")
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
 	else if ($status == "RECEIVEDBOTH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH') AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH') AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";	
+		else 	
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH') AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}
 	else if ($status == "RECEIVEDFORTRANSFERBOTH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH') AND CREATED > (NOW() - INTERVAL 30 DAY)  ORDER BY LAST_UPDATED DESC";	
+		else 
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVEDFORTRANSFER' OR STATUS = 'RECEIVEDFORTRANSFERFRESH') AND CREATED > date('now','-30 day')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}	
 	else if ($status == "DELIVERED"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > (NOW() - INTERVAL 30 DAY)  ORDER BY LAST_UPDATED DESC";	
+		else 
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > date('now','-30 day')  ORDER BY LAST_UPDATED DESC";	
+
 		$params = array();
 	}else if ($status == "DELIVEREDFRESH"){
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVEREDFRESH') AND CREATED > date('now','-45 day')  ORDER BY LAST_UPDATED DESC";	
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVEREDFRESH') AND CREATED > (NOW() - INTERVAL 30 DAY)  ORDER BY LAST_UPDATED DESC";	
+		else 	
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVEREDFRESH') AND CREATED > date('now','-30 day')  ORDER BY LAST_UPDATED DESC";	
 		$params = array();
 	}		
-	else 
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC LIMIT 200";			
-
+	else {
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC LIMIT 200";			
+		else 
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC LIMIT 200";			
+	}
+		
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$POData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2900,8 +2920,14 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' ORDER BY LAST_UPDATED DESC";
 			$params = array();
 	}	
-	else if ($status == "ORDERED")
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-45 day') ORDER BY LAST_UPDATED DESC";	
+	else if ($status == "ORDERED"){
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";	
+		else
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
+		
+	}
+		
 	else if ($status == "RECEIVEDBOTH"){
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
 			$params = array();
@@ -4700,7 +4726,10 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 	{
 		GenerateGroupedRestocks();			
 		if ($type == "vGROUPEDRESTOCK")	{
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > date('now','-2 days') AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			if (isMySQL($db))
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > (NOW() - INTERVAL 2 DAY) AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			else
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > date('now','-2 days') AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 		}				
 		else{
 			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
@@ -4757,8 +4786,7 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		else if ($filter == "SUBMITED")
 			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
 		else if ($filter == "ALL")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE 
-				TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
 
 		$req = $db->prepare($sql);
 		$req->execute(array($type));
@@ -7801,18 +7829,15 @@ $app->get('/info',function(Request $request,Response $response){
 
 $app->get('/info2',function(Request $request,Response $response){
 	
-	$db = getSQLDatabase();
-	
-	
-	$sql = "SELECT  * FROM SUPPLY_RECORD";
+	$db = getInternalDatabase();	
+	$sql = "SELECT VERSION()";
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$data = $req->fetch(PDO::FETCH_ASSOC);
-	var_dump($data);
+	$data = $req->fetch(PDO::FETCH_ASSOC);	
 	
 	$resp = array();
 	$resp["result"] = "OK";
-	$resp["data"] = $data;
+	$resp["data"] = $data["VERSION()"];
 	$response = $response->withJson($resp);
 
 	return $response;	
@@ -8211,7 +8236,10 @@ $app->get('/selfpromotion', function($request,Response $response) {
 		$sql .= " AND type = ?";
 		array_push($params ,$type);
 	}
-	$sql .= " AND CREATED > date('now','-20 day')";
+	if (isMySQL($db))
+		$sql .= " AND CREATED > (NOW() - INTERVAL 20 DAY)";
+	else
+		$sql .= " AND CREATED > date('now','-20 day')";
 
 	if ($userid != null && $userid != "1001" && $userid != "205" && $userid != "206" && $userid != "401"){
 		$sql2 = "SELECT login FROM USER WHERE ID = ?";
@@ -8481,14 +8509,20 @@ $app->put('/selfpromotionitemstep', function($request,Response $response) {
 	$EXPIRE = $res["EXPIRATION"];
 
 	if ($step == "2"){
-		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,
-		STARTTIME2 = date('now'), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
+		if (isMySQL($db))
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,STARTTIME2 = NOW(), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
+		else
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,STARTTIME2 = date('now'), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
 	}else if($step == "3"){
-		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,
-		STARTTIME3 = date('now'),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
+		if (isMySQL($db))
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,STARTTIME3 = NOW(),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
+		else
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,STARTTIME3 = date('now'),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
 	}else if($step == "4"){
-		$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,
-		STARTTIME4 = date('now'),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
+		if (isMySQL($db))
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,STARTTIME4 = NOW(),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
+		else
+			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,STARTTIME4 = date('now'),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
 	}
 	$req = $db->prepare($sql);
 	$req->execute(array($QUANTITY,$LINKTYPE,$PERCENTPROMO,$id)); 
@@ -8613,7 +8647,10 @@ $app->get('/supplierpromotionitems/{status}', function($request,Response $respon
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
 	$params = array();	
-	$sql = "SELECT * FROM SUPPLIERPROMOTIONITEM WHERE STATUS = ? AND CREATED > date('now','-45 day')";
+	if (isMySQL($db))
+		$sql = "SELECT * FROM SUPPLIERPROMOTIONITEM WHERE STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY)";
+	else
+		$sql = "SELECT * FROM SUPPLIERPROMOTIONITEM WHERE STATUS = ? AND CREATED > date('now','-30 day')";
 	$req = $db->prepare($sql);
 	$req->execute(array($status));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
@@ -9356,7 +9393,10 @@ $app->get('/expirealert',function ($request,Response $response){
 		$locations = array();
 
 	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	if (isMySQL)
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
+	else
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9447,7 +9487,10 @@ $app->get('/expirereturnalert/ALL',function ($request,Response $response){
 	$dbBlue = getDatabase();
 
 	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	if (isMySQL($db))
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
+	else 
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9522,7 +9565,10 @@ $app->get('/expirenoreturnalert/ALL',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	if (isMySQL($db))
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
+	else 
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9600,7 +9646,13 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 		$locations = array();
 
 	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+
+
+	if (isMySQL($db))
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
+	else 
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";		
+	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9706,8 +9758,11 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 		$locations = array();
 
 	$data = array();
+	if (isMySQL($db))
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
+	else 
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -11182,12 +11237,11 @@ $app->put('/externalorder',function($request,Response $response){
 		$deliveryqty = $json["DELIVERYQTY"];
 		$deliveryprice = $json["DELIVERYPRICE"];
 		
-		$sql = "UPDATE EXTERNALORDER SET STATUS = ?,
-							DELIVERYVENDORID_ID = ?,
-				  					DELIVERYQTY = ?,
-				  				  DELIVERYPRICE = ?,
-					 DELIVERYDATE = DateTime('now'),
-					WHERE ID = ?";
+		if (isMySQL($db))
+			$sql = "UPDATE EXTERNALORDER SET STATUS = ?,DELIVERYVENDORID_ID = ?,DELIVERYQTY = ?,DELIVERYPRICE = ?,DELIVERYDATE = NOW(),WHERE ID = ?";
+		else
+			$sql = "UPDATE EXTERNALORDER SET STATUS = ?,DELIVERYVENDORID_ID = ?,DELIVERYQTY = ?,DELIVERYPRICE = ?,DELIVERYDATE = DateTime('now'),WHERE ID = ?";
+
 		$req = $db->prepare($sql);
 		$req->execute(array($status,$deliveryvendorid,$deliveryqty,$deliveryprice,$ID));					
 	}
@@ -11973,12 +12027,10 @@ $app->put('/externalfruitorder',function($request,Response $response){
 		$deliveryqty = $json["DELIVERYQTY"];
 		$deliveryprice = $json["DELIVERYPRICE"];
 		
-		$sql = "UPDATE EXTERNALFRUITORDER SET STATUS = ?,
-							DELIVERYVENDORID_ID = ?,
-				  					DELIVERYQTY = ?,
-				  				  DELIVERYPRICE = ?,
-					 DELIVERYDATE = DateTime('now'),
-					WHERE ID = ?";
+		if (isMySQL())
+			$sql = "UPDATE EXTERNALFRUITORDER SET STATUS = ?,DELIVERYVENDORID_ID = ?,DELIVERYQTY = ?,DELIVERYPRICE = ?,DELIVERYDATE = NOW(),WHERE ID = ?";
+		else 
+			$sql = "UPDATE EXTERNALFRUITORDER SET STATUS = ?,DELIVERYVENDORID_ID = ?,DELIVERYQTY = ?,DELIVERYPRICE = ?,DELIVERYDATE = DateTime('now'),WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($status,$deliveryvendorid,$deliveryqty,$deliveryprice,$ID));					
 	}
@@ -12377,7 +12429,11 @@ $app->get('/pricechange',function ($request,Response $response){
 			array_push($created,$item);
 		}
 	}
-	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+	if (isMySQL($db))
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+	else 
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 2 DAY)";
+
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12441,7 +12497,10 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 			array_push($created,$item);
 		}		
 	}	
-	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+	if (isMySQL($db))
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+	else 
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 45 DAY)";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
