@@ -14,11 +14,12 @@ function AddAnnualLeave(){
 // Once Every Day
 function ScanPack(){
     $db = getDatabase();
-    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
+    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = '8992931005242'";
     $req = $db->prepare($sql);
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
-    foreach($packs as $pack){
+    foreach($packs as $pack)
+    {
     
         $sql = "SELECT DISCOUNT_TYPE,DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND GETDATE() < DATETO ";
         $req = $db->prepare($sql);
@@ -32,48 +33,56 @@ function ScanPack(){
             $disctype = "";
             $discvalue = "";
         }
-        
-
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
         $req->execute(array($pack["PRODUCTID"]));
-        $res2 = $req->fetch(PDO::FETCH_ASSOC);        
+        $res2 = $req->fetch(PDO::FETCH_ASSOC);   
+        $UNITPRICE = $res2["PRICE"];
+
+        // CHECK IF PRICE IS IRREGULAR
+        $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
+        $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+        $req = $db->prepare($sql); 
+        $req->execute(array($pack["PACK_CODE"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);    
+        $currentPrice = $res["SALEPRICE"];    
+        if (floatval($currentPrice) != floatval($fullPrice)){// WE LEAVE IRREGULAR PRICE UNTOUCHED
+            echo "Skip for ".$pack["PRODUCTID"];
+            continue;
+        } 
+
         if ($res2 != false)
-        {
-            $UNITPRICE = $res2["PRICE"];            
-            if($res == false){ // IF NO PROMO, 10% DISC ON PRICE                                                
+        {                        
+            if($res == false)
+            { // IF NO PROMO, 10% DISC ON PRICE                                                                    
                 $calculated = round((($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);                
                 if (floatval($pack["SALEPRICE"]) != $calculated){
                     echo "SETTING 10% DISC FOR ".$pack["PACK_CODE"].":".$calculated."\n";
                     $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
                     $req = $db->prepare($sql);
                     $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
-                }            
-            }else{ // FULL PRICE      
+                }                        
+            }
+            else
+            { // FULL PRICE      
                 // WE NEED TO CHECK IF THE PRICE WE ARE ABOUT TO CHANGE IS A WEIRD PRICE BECAUSE NOT EQUAL TO SALEFACTOR
                 $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
-
                 $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
                 $req = $db->prepare($sql); 
                 $req->execute(array($pack["PACK_CODE"]));
                 $res = $req->fetch(PDO::FETCH_ASSOC);    
-                $currentPrice = $res["SALEPRICE"];
-                if ($currentPrice == $fullPrice){
-                    // We don't apply discount because it is applied automatically after
-                    $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
-                    if (floatval($pack["SALEPRICE"]) != $calculated){
-                        echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
-                        $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
-                        $req = $db->prepare($sql);
-                        $req->execute(array($calculated,$pack["PACK_CODE"])); 
-                    }
-                }                              
-
-                
-            } 
-        }
-               
-    }
+                $currentPrice = $res["SALEPRICE"];                                
+                // We don't apply discount because it is applied automatically after
+                $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
+                if (floatval($pack["SALEPRICE"]) != $calculated){
+                    echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
+                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
+                    $req = $db->prepare($sql);
+                    $req->execute(array($calculated,$pack["PACK_CODE"])); 
+                }
+            }
+        }                                  
+    } 
 }
 
 function ResetPack(){
@@ -90,7 +99,10 @@ function ResetPack(){
         $res2 = $req->fetch(PDO::FETCH_ASSOC);
         if ($res2 != false){
             $UNITPRICE = $res2["PRICE"];        
-            $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           
+            $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);  
+        
+            if ($calculated != $pack["SALEPRICE"])// Skip on irregular price.
+                continue;
             //echo "CURR:".floatval($pack["SALEPRICE"])."|EXP:".$calculated."\n";            
             echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
             $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";

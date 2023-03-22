@@ -1117,7 +1117,7 @@ $app->get('/itemwithstats',function(Request $request,Response $response) {
 	$depreciationtype = $request->getParam('depreciationtype','');
 
 	$sql="SELECT PRODUCTID,BARCODE,PRODUCTNAME,PRODUCTNAME1,CATEGORYID,
-	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 4))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY COLID DESC),LASTCOST) as 'COST'
+	isnull((SELECT TOP(1) CAST((TRANCOST - (TRANCOST * (TRANDISC/100))) AS decimal(7, 4))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY DATEADD DESC),LASTCOST) as 'COST'
 	,PRICE,ONHAND,PACKINGNOTE,COLOR,SIZE,VENDID,
 	(SELECT ORDERPOINT FROM ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERPOINT1'
 		  FROM dbo.ICPRODUCT  
@@ -3164,7 +3164,7 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		//}
 		$item["ALGOQTY"] = $stats["FINALQTY"] ?? "";
 
-		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY COLID DESC";
+		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
 		$req = $dbBlue->prepare($sql);			
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -3199,8 +3199,16 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		}
 		$item["DECISION"] = $stats["DECISION"] ?? "";
 
-		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0" && $ignoreSpecial == false)
-			$QUANTITY = $item["SPECIALQTY"];
+		if (isset($item["SPECIALQTY"]) && $item["SPECIALQTY"] != "" &&  $item["SPECIALQTY"] != "0" && $ignoreSpecial == false){
+
+			$QUANTITY = $item["SPECIALQTY"];			                 
+			if ($item["REASON"] != "NEW ITEM" && $item["REASON"] != "WRONG ALGORITHM" && $item["REASON"] != "SPECIAL PROMOTION" &&
+			    $item["REASON"] != "WRONG STOCK" && $item["REASON"] != "NO STOCK ITEM FROM SUPPLIER" && $item["REASON"] != "HARD TO BUY ITEM" &&
+				$item["REASON"] != "DOUBLE ITEM WITH SOPHIE" && $item["REASON"] != "PREPARE FOR WESTERN" && $item["REASON"] != "SPECIAL COST PROMOTION"){
+				$message .= "\n".$item["PRODUCTID"]."with reason >".$item["REASON"] ."< Invalid !";
+				continue;
+			}				
+		}
 		else
 			$QUANTITY = $item["ALGOQTY"];
 		
@@ -4116,15 +4124,26 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 
 		$data["result"] = "OK";	 			
 	}
-	else if ($json["ACTIONTYPE"] == "PCHCANCEL"){
-		$sql = "UPDATE SUPPLY_RECORD 
-					SET PURCHASER_USER = null ,
-					STATUS = 'VALIDATED',
-					CANCELER = :author  
-					WHERE ID = :identifier";
+	else if ($json["ACTIONTYPE"] == "PCHCANCEL"){ // NOW DELETE		
+		if (isset($json["PONUMBER"]) && $json["PONUMBER"] != ""){
+			$sql = "SELECT * FROM POHEADER WHERE PONUMBER = ?";
+			$req = $dbBLUE->prepare($sql);
+			$req->execute(array($json["PONUMBER"]));
+			$res = $req->fetchAll(PDO::FETCH_ASSOC);
+			// Additional security
+			if ($res != false){ 
+				$sql = "DELETE FROM POHEADER WHERE PONUMBER = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($json["PONUMBER"]));
+				$sql = "DELETE FROM PODETAIL WHERE PONUMBER = ?";
+				$req = $dbBLUE->prepare($sql);
+				$req->execute(array($json["PONUMBER"]));
+			}
+
+		}
+		$sql = "DELETE SUPPLY_RECORD WHERE ID = :identifier";
 		$req = $db->prepare($sql);		
 		$req->bindParam(':identifier',$json["IDENTIFIER"],PDO::PARAM_STR);				
-		$req->bindParam(':author',$json["AUTHOR"],PDO::PARAM_STR);
 		$req->execute();
 		if(file_exists("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png"))
 			unlink("./img/supplyrecords_signatures/PCH_".$json["IDENTIFIER"].".png");
@@ -8546,14 +8565,14 @@ $app->post('/selfpromotionitempool', function($request,Response $response){
 		$now = date("Y-m-d");
 		$sql = "INSERT INTO SELFPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
 													TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID,
-													LOCATION) 
+													LOCATION,POLICY) 
 													VALUES (?,?,?,?,?,
 															?,?,?,?,?,
-															?)";	
+															?,?)";	
 		$req = $db->prepare($sql);
 		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,$json["LINKTYPE"],
 		$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"],
-		$storbin));	
+		$storbin,$json["POLICY"]));	
 		$result["result"] = "OK";
 		$lastId = $db->lastInsertId();
 		$db->commit();    
