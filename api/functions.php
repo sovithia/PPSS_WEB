@@ -267,7 +267,7 @@ function getDatabase($name = "MAIN")
 		}
 		else if ($name == "CASHIER")
 		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
+			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,49896;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
 		}
 		else if ($name == "TRAINING")
 		{
@@ -410,8 +410,13 @@ function truncateDollarPrice($price){
 		else
 			return "0".substr($price,0,$pos + 3);
 	}
-	else
-		return round($price,2);
+	else{
+		if (!str_contains($price,"."))
+			return $price.".00";		
+		else
+			return number_format($price,2);
+	}
+
 }
 
 function generateRielPrice($price){

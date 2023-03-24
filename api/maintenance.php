@@ -14,13 +14,12 @@ function AddAnnualLeave(){
 // Once Every Day
 function ScanPack(){
     $db = getDatabase();
-    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = '8992931005242'";
+    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
     $req = $db->prepare($sql);
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
     foreach($packs as $pack)
     {
-    
         $sql = "SELECT DISCOUNT_TYPE,DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND GETDATE() < DATETO ";
         $req = $db->prepare($sql);
         $req->execute(array($pack["PRODUCTID"]));
@@ -37,6 +36,11 @@ function ScanPack(){
         $req = $db->prepare($sql);
         $req->execute(array($pack["PRODUCTID"]));
         $res2 = $req->fetch(PDO::FETCH_ASSOC);   
+        if ($res2 == false){
+            echo "Price not found for ".$pack["PRODUCTID"]."\n";
+            continue;
+        }
+        
         $UNITPRICE = $res2["PRICE"];
 
         // CHECK IF PRICE IS IRREGULAR
@@ -44,44 +48,51 @@ function ScanPack(){
         $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
         $req = $db->prepare($sql); 
         $req->execute(array($pack["PACK_CODE"]));
-        $res = $req->fetch(PDO::FETCH_ASSOC);    
-        $currentPrice = $res["SALEPRICE"];    
-        if (floatval($currentPrice) != floatval($fullPrice)){// WE LEAVE IRREGULAR PRICE UNTOUCHED
+        $res3 = $req->fetch(PDO::FETCH_ASSOC);    
+        $currentPrice = $res3["SALEPRICE"];    
+        $calculatedIrregular = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
+        $calculatedNormalPromo = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.9,4);                
+
+        if (floatval($currentPrice) != floatval($fullPrice) &&
+            floatval($currentPrice) != floatval($calculatedIrregular) && 
+            floatval($currentPrice) != floatval($calculatedNormalPromo)            
+            ){// WE LEAVE IRREGULAR PRICE UNTOUCHED
             echo "Skip for ".$pack["PRODUCTID"];
             continue;
-        } 
+        }
 
-        if ($res2 != false)
-        {                        
-            if($res == false)
-            { // IF NO PROMO, 10% DISC ON PRICE                                                                    
-                $calculated = round((($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);                
-                if (floatval($pack["SALEPRICE"]) != $calculated){
-                    echo "SETTING 10% DISC FOR ".$pack["PACK_CODE"].":".$calculated."\n";
-                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
-                    $req = $db->prepare($sql);
-                    $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
-                }                        
+                              
+        if($res == false)
+        {             
+                // IF NO PROMO, 10% DISC ON PRICE                                                                    
+            $calculated = round((($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);                
+            if (floatval($pack["SALEPRICE"]) != $calculated){
+                echo "SETTING 10% DISC FOR ".$pack["PACK_CODE"].":".$calculated."\n";
+                $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+                $req = $db->prepare($sql);
+                $req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+            }                        
+        }
+        else
+        {                   
+            // FULL PRICE      
+            // WE NEED TO CHECK IF THE PRICE WE ARE ABOUT TO CHANGE IS A WEIRD PRICE BECAUSE NOT EQUAL TO SALEFACTOR
+            $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
+            $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+            $req = $db->prepare($sql); 
+            $req->execute(array($pack["PACK_CODE"]));
+            $res = $req->fetch(PDO::FETCH_ASSOC);    
+            $currentPrice = $res["SALEPRICE"];                                
+            // We don't apply discount because it is applied automatically after
+            $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
+            if (floatval($pack["SALEPRICE"]) != $calculated){
+                echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
+                $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
+                $req = $db->prepare($sql);
+                $req->execute(array($calculated,$pack["PACK_CODE"])); 
             }
-            else
-            { // FULL PRICE      
-                // WE NEED TO CHECK IF THE PRICE WE ARE ABOUT TO CHANGE IS A WEIRD PRICE BECAUSE NOT EQUAL TO SALEFACTOR
-                $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
-                $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
-                $req = $db->prepare($sql); 
-                $req->execute(array($pack["PACK_CODE"]));
-                $res = $req->fetch(PDO::FETCH_ASSOC);    
-                $currentPrice = $res["SALEPRICE"];                                
-                // We don't apply discount because it is applied automatically after
-                $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
-                if (floatval($pack["SALEPRICE"]) != $calculated){
-                    echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
-                    $sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?, DATEADD = GETDATE() WHERE PACK_CODE = ?";
-                    $req = $db->prepare($sql);
-                    $req->execute(array($calculated,$pack["PACK_CODE"])); 
-                }
-            }
-        }                                  
+        }
+        
     } 
 }
 
@@ -224,10 +235,16 @@ function ScanPriceChange(){
 function CashierClean(){
     
     $cashierDB = getDatabase("CASHIER");
+    
+    //$sql = "SELECT PRODUCTID FROM link_main.PhnomPenhsuperstore2019.dbo.icproduct";
+    //$req = $cashierDB->prepare($sql);
+    //$res = $req->execute(array());  
+    //$data =  $req->fetchAll(PDO::FETCH_ASSOC);  
+    //var_dump($data);
+
     $sql = "DELETE FROM ICPRODUCT WHERE PRODUCTID NOT IN (SELECT PRODUCTID FROM link_main.PhnomPenhsuperstore2019.dbo.icproduct)";
     $req = $cashierDB->prepare($sql);
-    $res = $req->execute(array());    
-    var_dump($res);
+    $res = $req->execute(array());        
 }
 
 

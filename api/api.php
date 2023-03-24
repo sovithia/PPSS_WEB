@@ -723,7 +723,7 @@ function itemLookupLabel($barcode,$withImage = false,$forceDiscount = 0)
 		else			
 			$newPrice = $oldPrice * 1; 	
 			
-		$oneItem["dollarPrice"] = truncateDollarPrice($newPrice);										
+		$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
 		$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
 		return $oneItem;
 	}
@@ -769,7 +769,7 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 				$newPrice = $oldPrice * 1; 	
 			}			
 			$oneItem["dollarPrice"] =  truncateDollarPrice($newPrice);										
-			$oneItem["rielPrice"] = generateRielPrice(truncateDollarPrice($newPrice));
+			$oneItem["rielPrice"] = generateRielPrice($oneItem["dollarPrice"]);
 			$oneItem["PRICE"] = $packInfo["SALEPRICE"];								
 			$oneItem["ISPACK"] = "YES";
 			$oneItem["nameEN"] = $packInfo["DESCRIPTION1"]." (".$packInfo["SALEUNIT"].")";
@@ -4644,7 +4644,7 @@ $app->get('/itemrequestactionsearch', function(Request $request,Response $respon
 $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 	$db = getInternalDatabase();
 	$userid = $request->getAttribute('userid');
-	
+	error_log($userid);
 	$sql = "SELECT TEAM.LOCATIONS 
 		FROM USER,TEAM 
 			WHERE USER.team_id = TEAM.ID
@@ -4657,17 +4657,25 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 		$req = $db->prepare($sql);
 		$req->execute();
 		$data = $req->fetchAll(PDO::FETCH_ASSOC);
-	}else{
-		$locations = $res["LOCATIONS"];
-		$locations = explode('|',$locations);
-		$data = array();	
-		foreach($locations as $location){
-			$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ? AND REQUESTEE IS NULL";
-			$req = $db->prepare($sql);
-			$req->execute(array('%'.$location.'%'));
-			$actions = $req->fetchAll(PDO::FETCH_ASSOC);
-			$data = array_merge($data,$actions);
-		}
+	}
+	else
+	{
+		if ($res != false)
+		{
+			$locations = $res["LOCATIONS"];
+			$locations = explode('|',$locations);
+			$data = array();	
+			foreach($locations as $location){
+				$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ? AND REQUESTEE IS NULL";
+				$req = $db->prepare($sql);
+				$req->execute(array('%'.$location.'%'));
+				$actions = $req->fetchAll(PDO::FETCH_ASSOC);
+				$data = array_merge($data,$actions);
+			}
+		}else{
+			$data = array();
+	}
+		
 	}	
 	$resp = array();
 	$resp["result"] = "OK";
@@ -9487,10 +9495,7 @@ $app->get('/expirereturnalert/ALL',function ($request,Response $response){
 	$dbBlue = getDatabase();
 
 	$data = array();
-	if (isMySQL($db))
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
-	else 
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9532,6 +9537,33 @@ $app->get('/expirereturnalert/ALL',function ($request,Response $response){
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
 
+	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SIZE IS NOT NULL 
+					AND SIZE <> ''
+					AND SUBSTRING(SIZE,1,1) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 10 )
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND (
+						(PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+						(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+					";
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);		
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);		
+
+	$allitems = array_merge($allitems,$allitems2);
+
 	$filtered = array();						
 	foreach($allitems as $item){
 		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
@@ -9565,10 +9597,7 @@ $app->get('/expirenoreturnalert/ALL',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
 	$data = array();
-	if (isMySQL($db))
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
-	else 
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9602,6 +9631,34 @@ $app->get('/expirenoreturnalert/ALL',function ($request,Response $response){
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
+
+
+	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SIZE IS NOT NULL 
+					AND SIZE <> ''
+					AND SUBSTRING(SIZE,1,1) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND (
+						(PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+						(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+			";
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems = array_merge($allitems,$allitems2);
+
 	$filtered = array();						
 	foreach($allitems as $item){
 		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
@@ -9646,13 +9703,7 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 		$locations = array();
 
 	$data = array();
-
-
-	if (isMySQL($db))
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
-	else 
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";		
-	
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9705,6 +9756,45 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
 
+
+	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SIZE IS NOT NULL 
+					AND SIZE <> ''
+					AND SUBSTRING(SIZE,1,1) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( SELECT cast(SUBSTRING(SIZE,2,3) as int) + 10)
+				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND (
+						 (PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+						 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+					";
+	if (count($locations) != 0){
+		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?";
+		$count = 0;
+		foreach($locations as $location){								
+			if ($count > 0){
+				$sql .= " OR STORBIN LIKE ?";
+			}
+			array_push($params,'%'.$location.'%');
+			$count++;
+		}
+		$sql .= ")";
+	}
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems = array_merge($allitems,$allitems2);
+	
 	$filtered = array();						
 	foreach($allitems as $item){
 		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
@@ -9758,11 +9848,8 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 		$locations = array();
 
 	$data = array();
-	if (isMySQL($db))
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
-	else 
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 
+	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9795,6 +9882,41 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 							 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
 					AND ONHAND > 0		
 					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
+	error_log($sql);
+    if (count($locations) != 0){
+		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?";
+		$count = 0;
+		foreach($locations as $location){								
+			if ($count > 0){
+				$sql .= " OR STORBIN LIKE ?";
+			}
+			array_push($params,'%'.$location.'%');
+			$count++;
+		}
+		$sql .= ")";
+	}
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$sql = "SELECT  distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SUBSTRING(SIZE,1,2) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
+				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+							 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
 	
     if (count($locations) != 0){
 		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?";
@@ -9808,11 +9930,10 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 		}
 		$sql .= ")";
 	}
-	
-
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
-	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems = array_merge($allitems,$allitems2);
 	
 	$filtered = array();						
 	foreach($allitems as $item){
@@ -9843,7 +9964,6 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	return $response;
 });
 
-
 $app->put('/expire',function($request,Response $response) {
 	$dbBlue = getDatabase();
 	$json = json_decode($request->getBody(),true);
@@ -9868,7 +9988,6 @@ $app->put('/expire',function($request,Response $response) {
 $app->get('/expirereturnalertwh',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-	
 	
 	$params = array();
 	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
@@ -9897,6 +10016,32 @@ $app->get('/expirereturnalertwh',function ($request,Response $response){
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
 	
+    
+	
+	$sql = "SELECT  distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SUBSTRING(SIZE,1,2) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 10)
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+							(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0		
+					AND (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID)  > 0;";
+	
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems = array_merge($allitems,$allitems2);
+
 	$resp["result"] = "OK";
 	$resp["data"] = $allitems;
 	$response = $response->withJson($resp);
@@ -9935,6 +10080,30 @@ $app->get('/expirenoreturnalertwh',function ($request,Response $response){
 	$req->execute($params);
 	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
 	
+	$sql = "SELECT  distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
+					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+					FROM PODETAIL,ICPRODUCT
+					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+					AND SUBSTRING(SIZE,1,2) = ':'
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
+				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+					AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+							 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+					AND ONHAND > 0	
+					AND (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID)  > 0";
+	
+	$req = $dbBlue->prepare($sql);
+	$req->execute($params);
+	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
+	$allitems = array_merge($allitems,$allitems2);
+
 	$resp["result"] = "OK";
 	$resp["data"] = $allitems;
 	$response = $response->withJson($resp);
@@ -9945,7 +10114,7 @@ $app->get('/expirenoreturnalertwh',function ($request,Response $response){
                            ,,,,                   ,,,,,
                            ╙█▓▓▓▓▓▓▓█▄,    ╓▄▓▓▓▓▓▓▓▓▀
                     ,╓▄▄▄▄▄▄▄▄▓▓▓▓╬▓▓▓▓▓█▓▓▓▓▓▀╣▓▓▓▌▄▄▄▄▄▄▄µ,
-                ,▄▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▌▄
+                ,▄▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓╣╣╣╬▓▓▓▀╣╣╣╣▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▌
               ╔▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╬▀▓▌╣╣╣╣╣╣╣╣╣╣▓▀╬╬╣╣╣╣╣╣╣╣╣╬╣▓▓▓▓▓▄
             ╓▓▓▓▓▓▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣▀▓▓▓▓▓▓▓▓▄
              ,▄▓▓▓▓╬╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╣╬▓▓▓▓▄
