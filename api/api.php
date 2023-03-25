@@ -9881,8 +9881,7 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 					AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
 							 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
 					AND ONHAND > 0		
-					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
-	error_log($sql);
+					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";	
     if (count($locations) != 0){
 		$sql .= " AND PODETAIL.PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE STORBIN LIKE ?";
 		$count = 0;
@@ -12599,10 +12598,10 @@ $app->get('/pricechange',function ($request,Response $response){
 		}
 	}
 	if (isMySQL($db))
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 2 DAY)";		
 	else 
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 2 DAY)";
-
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12887,8 +12886,7 @@ $app->get('/pushall/{message}',function(Request $request,Response $response){
 	$tokens = $req->fetchAll(PDO::FETCH_ASSOC);
 	
 	foreach($tokens as $token){
-		$result = sendPush("Title",$message,$token);		
-		error_log($result);
+		$result = sendPush("Title",$message,$token);				
 	}
 	$resp = array();	
 	$resp["result"] = "OK";		
