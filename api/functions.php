@@ -98,6 +98,15 @@ function movePicture($depreciationItemId,$poolitemId,$type)
 	}
 }
 
+function copySelfPromotionItemProof($oldID,$newID)
+{
+	
+	$src = "./img/promo_proofs/".$oldID."_1.png";
+	$dst = "./img/promopool_proofs/".$newID."_1.png";
+	if (file_exists($src))
+		copy($src,$dst);	
+}
+
 function pictureRecord($base64Str,$type,$id){
 	
 	if ($type == "INVOICES")
@@ -292,7 +301,7 @@ function isMySQL($db){
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$data = $req->fetch(PDO::FETCH_ASSOC);	
-		if ($$data["VERSION()"] == "8.0.32")
+		if ($data["VERSION()"] == "8.0.32")
 		return true;
 	}catch(Exception $e){
 		return false;
@@ -303,7 +312,7 @@ function getInternalDatabase($base = "MAIN")
 {
 	try{
 		if ($base == "MAIN"){
-			//return getInternalDatabaseNew();
+			return getInternalDatabaseNew();
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
 		}
 		else if ($base == "TEST")
@@ -325,7 +334,7 @@ function getInternalDatabase($base = "MAIN")
 function getInternalDatabaseNew()
 {
 	$host = '127.0.0.1';
-	$db   = 'test';
+	$db   = 'PPSS';
 	$user = 'root';
 	$pass = 'password';
 	$port = "3306";
@@ -807,20 +816,7 @@ function externalAlertStats($barcode){
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$data["NBTHROWN"] = round($res["NBTHROWN"],2);
 	$today = date("Y-m-d");
-    /*
-    $less30 = date('Y-m-d', strtotime('-30 days'));
-    
-    $data["DAYS30BACK"] = $less30;
-    $sql = "SELECT SUM(QTY) as SUM 
-			FROM POSDETAIL 
-            WHERE PRODUCTID = ? 
-            AND POSDATE >=  ? AND POSDATE <= ?";
-    $req = $db->prepare($sql);
-    $req->execute(array($barcode,$less30,$today));
-    $res = $req->fetch(PDO::FETCH_ASSOC);   
-    $data["QTYLESS30"] = $res["SUM"] ?? 0;
-	$data["QTYLESS30"] = round($data["QTYLESS30"],2);
-	*/
+   
 
     $sql = "SELECT SUM(QTY) as SUM 
 			FROM POSDETAIL 
@@ -834,7 +830,7 @@ function externalAlertStats($barcode){
 
     $indb = getInternalDatabase();
 	
-    $sql = "SELECT (SUM(QUANTITY1)+SUM(QUANTITY2)+SUM(QUANTITY3)+SUM(QUANTITY4)) as 'QTY' FROM SELFPROMOTIONITEM
+    $sql = "SELECT (SUM(QUANTITY)) as 'QTY' FROM SELFPROMOTIONITEM
     WHERE PRODUCTID =  ?";    
     $req = $indb->prepare($sql);
     $req->execute(array($barcode));
@@ -953,7 +949,7 @@ function orderStatistics($barcode,$lightmode = false)
 
 	$SALESPEED = calculateSaleSpeed($barcode,$begin,$end,$RCVQTY); //**
 	
-	$sql = "SELECT (SUM(QUANTITY1) + SUM(QUANTITY2) + SUM(QUANTITY3) + SUM(QUANTITY4))  as 'QTY' 
+	$sql = "SELECT SUM(QUANTITY) as 'QTY' 
 					FROM SELFPROMOTIONITEM					
 					WHERE PRODUCTID = ?";
 	$req = $inDB->prepare($sql);
@@ -1278,14 +1274,8 @@ function calculatePenalty($barcode, $expiration,$type = null){
 								else 
 								{
 									$occurence = 0;
-									if($res["QUANTITY1"] != "" && $res["QUANTITY1"] != null)
-										$occurence++;
-									if($res["QUANTITY2"] != "" && $res["QUANTITY2"] != null)
-										$occurence++;
-									if($res["QUANTITY3"] != "" && $res["QUANTITY3"] != null)
-										$occurence++;
-									if($res["QUANTITY4"] != "" && $res["QUANTITY4"] != null)
-										$occurence++;
+									if($res["QUANTITY"] != "" && $res["QUANTITY"] != null)
+										$occurence++;									
 								}
 
 								if($occurence == 0){
@@ -2105,19 +2095,27 @@ function GenerateItemStats($productid,$ITEMREQUESTID)
 	$MOMENTONHAND = $stats["ONHAND"];	
 	$DECISION = $stats["DECISION"];
 	$CALCULATEDQUANTITY = $stats["FINALQTY"];
-	
-	$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
+
+
+	if (inval($CALCULATEDQUANTITY) == 0){
+		$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
 				totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
 				momentonhand,calculatedquantity,decision,itemrequest_id)		 
 				VALUES (?,?,?,?,?,
 						?,?,?,?,?,
 						?,?,?,?)";
-	$req = $db->prepare($sql);								
-	$res = $req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
-	$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));		
-	$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
-	$req = $dbBlue->prepare($sql);
-	$req->execute(array($productid));			
+		$req = $db->prepare($sql);								
+		$res = $req->execute(array($LASTRECEIVEDATE,$LASTRECEIVEQUANTITY,$TOTALWASTEQUANTITY,$TOTALPROMOQUANTITY,$TOTALORDERTIME,
+		$TOTALRECEIVE,$SALESINCELASTRECEIVE,$SALESPEED75,$LASTSALEDAY,$TOTALSALE,$MOMENTONHAND,$CALCULATEDQUANTITY,$DECISION, $ITEMREQUESTID));		
+		$sql = "UPDATE ICPRODUCT SET PPSS_IS_ORDERED = 'Y' WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($productid));
+	}else{
+		$sql = "DELETE FROM ITEMREQUEST WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($ITEMREQUESTID));
+
+	}
 	
 }
 

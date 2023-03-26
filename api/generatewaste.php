@@ -28,7 +28,7 @@ foreach($depreciations as $depreciation){
     foreach($items as $item){
         $sql = "INSERT INTO WASTEITEM (PRODUCTID,EXPIRATION,QUANTITY,WASTE_ID,CREATED,TYPE) VALUES (?,?,?,?,?,?)";
         $req = $db->prepare($sql);
-        $req->execute(array($item["PRODUCTID"],$item["EXPIRATION"],$item["QUANTITY1"],$lastID,$item["CREATED"],$item["TYPE"]));        
+        $req->execute(array($item["PRODUCTID"],$item["EXPIRATION"],$item["QUANTITY"],$lastID,$item["CREATED"],$item["TYPE"]));        
     }
 
 }

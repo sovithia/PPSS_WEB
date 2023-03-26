@@ -2837,8 +2837,12 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE ANOMALY_STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";
 		$params = array($status);
 	}	
-	else if ($status == "ORDERED")
-		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
+	else if ($status == "ORDERED"){
+		if (isMySQL($db))
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";	
+		else
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
+	}
 	else if ($status == "RECEIVEDBOTH"){
 		if (isMySQL($db))
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH') AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";	
@@ -2858,9 +2862,9 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > (NOW() - INTERVAL 30 DAY)  ORDER BY LAST_UPDATED DESC";	
 		else 
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVERED') AND CREATED > date('now','-30 day')  ORDER BY LAST_UPDATED DESC";	
-
 		$params = array();
-	}else if ($status == "DELIVEREDFRESH"){
+	}
+	else if ($status == "DELIVEREDFRESH"){
 		if (isMySQL($db))
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND (STATUS = 'DELIVEREDFRESH') AND CREATED > (NOW() - INTERVAL 30 DAY)  ORDER BY LAST_UPDATED DESC";	
 		else 	
@@ -2873,7 +2877,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 		else 
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'PO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC LIMIT 200";			
 	}
-		
+	
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$POData = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -2889,8 +2893,7 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 
 	// ADD VENDNAME	& COUNT INVOICES
 	$newPOData = array();
-	foreach($POData as $onePOData)
-	{
+	foreach($POData as $onePOData){
 		if(isset($INDEX[$onePOData["PONUMBER"]]))			
 			$onePOData["VENDNAME"] = $INDEX[$onePOData["PONUMBER"]]["VENDNAME"];
 		
@@ -2917,29 +2920,27 @@ $app->get('/supplyrecord/{status}', function(Request $request,Response $response
 	// ******************//
 
 	if ($status == "ALL"){
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' ORDER BY LAST_UPDATED DESC";
-			$params = array();
+		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' ORDER BY LAST_UPDATED DESC";
+		$params = array();
 	}	
-	else if ($status == "ORDERED"){
+	else if ($status == "ORDERED"){		
 		if (isMySQL($db))
 			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > (NOW() - INTERVAL 30 DAY) ORDER BY LAST_UPDATED DESC";	
 		else
-			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";	
-		
+			$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? AND CREATED > date('now','-30 day') ORDER BY LAST_UPDATED DESC";			
 	}
-		
 	else if ($status == "RECEIVEDBOTH"){
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND (STATUS = 'RECEIVED' OR STATUS = 'RECEIVEDFRESH')  ORDER BY LAST_UPDATED DESC";	
-			$params = array();
+		$params = array();
 	}			
-	else 
+	else {
 		$sql = "SELECT * FROM SUPPLY_RECORD WHERE TYPE = 'NOPO' AND STATUS = ? ORDER BY LAST_UPDATED DESC";			
+		$params = array($status);
+	}
 	
-
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$NOPOData = $req->fetchAll(PDO::FETCH_ASSOC);
-
 	$IDS2 = extractIDS($NOPOData,"LINKEDPO");
 
 	$sql = "SELECT VENDNAME,PONUMBER FROM POHEADER WHERE PONUMBER in ".$IDS2;
@@ -4705,6 +4706,7 @@ $app->get('/lastid', function(Request $request,Response $response) {
 $app->get('/itemrequestaction/{type}', function(Request $request,Response $response) {
 	$db = getInternalDatabase();
 	$type = $request->getAttribute('type');
+	error_log($type);
 	if ($type == "GROUPEDPURCHASE")
 	{	
 		GenerateGroupedPurchases();
@@ -4735,13 +4737,14 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 		GenerateGroupedRestocks();			
 		if ($type == "vGROUPEDRESTOCK")	{
 			if (isMySQL($db))
-				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > (NOW() - INTERVAL 2 DAY) AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NOT NULL AND REQUEST_TIME > (NOW() - INTERVAL 2 DAY) AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 			else
-				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND REQUEST_TIME > date('now','-2 days') AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+				$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NOT NULL AND REQUEST_TIME > date('now','-2 days') AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
 		}				
 		else{
 			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND (TYPE = 'GROUPEDRESTOCK' OR TYPE = 'AUTOMATICRESTOCK' OR TYPE = 'AUTOMATICRESTOCKWH') AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
-		} 
+		}
+		error_log($sql); 
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
@@ -4788,14 +4791,14 @@ $app->get('/itemrequestaction/{type}', function(Request $request,Response $respo
 
 
 		if ($filter == "UNVALIDATED")	
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC";								
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_TIME DESC LIMIT 500";								
 		else if ($filter == "VALIDATED")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NOT NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC LIMIT 500";
 		else if ($filter == "SUBMITED")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC";
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE REQUESTEE IS NULL AND TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST)  ORDER BY REQUEST_UPDATED DESC LIMIT 500";
 		else if ($filter == "ALL")
-			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC";		
-
+			$sql = "SELECT 	ID,TYPE,REQUESTER,REQUESTEE,REQUEST_TIME,REQUEST_UPDATED,ARG1,replace(ARG2,char(39),'') as 'ARG2' FROM ITEMREQUESTACTION WHERE TYPE = ? AND ID IN (SELECT ITEMREQUESTACTION_ID FROM ITEMREQUEST) ORDER BY REQUEST_UPDATED DESC LIMIT 500";		
+		error_log($sql);
 		$req = $db->prepare($sql);
 		$req->execute(array($type));
 		$actions = $req->fetchAll(PDO::FETCH_ASSOC);		
@@ -7963,14 +7966,12 @@ $app->get('/penalty',function($request,Response $response) {
 $app->get('/selfpromotionalert', function($request,Response $response) {
 	$db = getInternalDatabase();	
 	$blueDB = getDatabase();
-
 	$userid = $request->getParam('USERID',null);		
-
-	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE STATUS = 'STEP1' OR STATUS = 'STEP2' OR STATUS = 'STEP3' OR STATUS = 'STEP4'
-			AND DATE() < EXPIRATION ";
-
+	$sql = "SELECT * 
+			FROM SELFPROMOTIONITEM 
+			WHERE (STATUS = 'STEP1' OR STATUS = 'STEP2' OR STATUS = 'STEP3' OR STATUS = 'STEP4')
+			AND NOW() < EXPIRATION ";
 	if ($userid != null){
-		
 		$sql2 = "SELECT TEAM.LOCATIONS from USER,TEAM 
 				 WHERE USER.team_id = TEAM.ID
 				 AND USER.ID = ?";
@@ -7978,7 +7979,7 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 		$req->execute(array($userid));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$params = array();
-		if ($res["LOCATIONS"] != 'ALL'){
+		if ($res["LOCATIONS"] != 'ALL' && $res["LOCATIONS"] != null){
 			$locations = explode("|",$res["LOCATIONS"]);
 			$count = 0;			
 			foreach($locations as $location){
@@ -7992,17 +7993,16 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 				$count++;
 			}
 			$sql .= ")";			
-		}	
+		}					
 		$req = $db->prepare($sql);
 		$req->execute($params);
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	}else{
+	}else{		
 		$req = $db->prepare($sql);
 		$req->execute(array());
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	}		
+	}	
 	
-
 	$newItems = array();
 	foreach($items as $item){		
 		$imgfolder = "./img/promo_proofs/";					
@@ -8013,7 +8013,7 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 			$count++;        	    
 		}
 		$item["NBPROOFS"] = $nbproofs;
-		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,LASTCOST, 
+		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,LASTCOST,SIZE, 
 				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'	
 				FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -8027,13 +8027,14 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 			$item["COST"] = $res["LASTCOST"];
 			$item["WH1"] = $res["WH1"];		
 			$item["WH2"] = $res["WH2"];
-		}		
-	
-		$now = date("Y-m-d");	
+			$item["POLICY"] = $res["SIZE"];
 
+		}		
+		/*
+		$now = date("Y-m-d");	
 		$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ";
 		$req = $blueDB->prepare($sql);
-		if($item["STARTTIME2"] != null){
+		if($item["STARTTIME1"] != null){
 			$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$item["STARTTIME2"]));							
 		}else{
 			$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$now));							
@@ -8086,11 +8087,13 @@ $app->get('/selfpromotionalert', function($request,Response $response) {
 		}else{
 			$item["SOLDINPERIOD4"] = "N/A";
 		}
+		*/
 		array_push($newItems,$item);
 	}
-
+	
 	$resp = array();
 	$resp["result"] = "OK";
+	//$resp["data"] = $items;
 	$resp["data"] = $newItems;
 	$response = $response->withJson($resp);
 	return $response;
@@ -8229,10 +8232,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	$params = array();	
 	$sql = "";
 
-	$sql = "SELECT *,(JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME1)) as 'DELAYTOEXPIRE1',  
-					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME2)) as 'DELAYTOEXPIRE2',  
-					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME3)) as 'DELAYTOEXPIRE3',  
-					 (JULIANDAY(EXPIRATION) - JULIANDAY(STARTTIME4)) as 'DELAYTOEXPIRE4'
+	$sql = "SELECT *,DATEDIFF(EXPIRATION, STARTTIME) as 'DELAYTOEXPIRE'  					 
 					 FROM SELFPROMOTIONITEM
 					 WHERE 1 = 1 ";  					 
 		
@@ -8260,34 +8260,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 		$req = $db->prepare($sql);
 		$req->execute($params);
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-		/*
-		$sql2 = "SELECT TEAM.LOCATIONS 
-				 from USER,TEAM 
-				 WHERE USER.team_id = TEAM.ID
-				AND USER.ID = ?";
-		$req = $db->prepare($sql2);
-		$req->execute(array($userid));
-		$res = $req->fetch(PDO::FETCH_ASSOC);				
-		if ($res["LOCATIONS"] != 'ALL' && $userid != "66" && $userid != "10")
-		{
-			$locations = explode("|",$res["LOCATIONS"]);
-			$count = 0;			
-			foreach($locations as $location){
-				if ($count == 0){
-					$sql .= " AND (LOCATION LIKE ? ";	
-					array_push($params,'%'.$location.'%');
-				}else{
-					$sql .= " OR LOCATION LIKE ? ";	
-					array_push($params,'%'.$location.'%');
-				}
-				$count++;
-			}
-			$sql .= ")";			
-		}
-		$req = $db->prepare($sql);
-		$req->execute($params);
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-		*/
+		
 	}
 	else
 	{
@@ -8322,48 +8295,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 			$item["WH2"] = $res["WH2"];
 			$item["POLICY"] = $res["SIZE"];
 		}		
-	
-		if($item["DELAYTOEXPIRE1"] != null){
-			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
-			$req = $blueDB->prepare($sql);
-			if ($item["STARTTIME2"] != $item["EXPIRATION"])
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$item["STARTTIME2"]));
-			else 
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME1"],$item["EXPIRATION"]));
-				
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$item["SOLDINPERIOD1"] = $res["QTY"];
-		}
-
-		if($item["DELAYTOEXPIRE2"] != null){
-			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
-			$req = $blueDB->prepare($sql);
-			if ($item["STARTTIME2"] != $item["EXPIRATION"])
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME2"],$item["STARTTIME3"]));
-			else 
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME2"],$item["EXPIRATION"]));				
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$item["SOLDINPERIOD2"] = $res["QTY"];
-		}
-
-		if($item["DELAYTOEXPIRE3"] != null){
-			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
-			$req = $blueDB->prepare($sql);
-			if ($item["STARTTIME3"] != $item["EXPIRATION"])
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME3"],$item["STARTTIME4"]));
-			else 
-				$req->execute(array($item["PRODUCTID"],$item["STARTTIME3"],$item["EXPIRATION"]));				
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$item["SOLDINPERIOD3"] = $res["QTY"];
-		}
-
-		if($item["DELAYTOEXPIRE4"] != null){
-			$sql = "SELECT SUM(QTY) as QTY FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
-			$req = $blueDB->prepare($sql);
-			$req->execute(array($item["PRODUCTID"],$item["STARTTIME4"],$item["EXPIRATION"]));			
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			$item["SOLDINPERIOD4"] = $res["QTY"];
-		}
+		
 		$item["OCCUPANCY"] = getProductOccupancy($item["PRODUCTID"]);
 		array_push($newItems,$item);
 	}
@@ -8390,7 +8322,7 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 	
 		$db->beginTransaction();    
 		
-		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY1,EXPIRATION,STARTTIME1,LINKTYPE1,
+		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE1,
 		PERCENTPENALTY,PERCENTPROMO1,TYPE,CREATOR,STATUS,
 		LOCATION) 
 		VALUES (?,?,?,?,?,
@@ -8453,7 +8385,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 		}
 	}
 	else if ($status == "VALIDATEDWITHUPDATE"){
-		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ?,PERCENTPROMO1 = ?  WHERE ID = ?";
+		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'VALIDATED',VALIDATOR = ?,PERCENTPROMO = ?  WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$json["NEWPERCENT"],$id));
 
@@ -8477,7 +8409,7 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 		$in30days = strtotime('+30 days');
 		$in30days = date("Y-m-d",$in30days);
 		if ($item["LINKTYPE1"] == "SYSTEM")
-			attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO1"],$today,$in30days,$author);	
+			attachPromotion($item["PRODUCTID"],$item["PERCENTPROMO"],$today,$in30days,$author);	
 	}else if ($status == "FINISHED"){
 		$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'FINISHED' WHERE ID = ?";
 		$req = $db->prepare($sql);
@@ -8492,54 +8424,38 @@ $app->put('/selfpromotionstatus', function($request,Response $response) {
 
 
 // Declare next step 
-$app->put('/selfpromotionitemstep', function($request,Response $response) {
-	
-	$json = json_decode($request->getBody(),true);
+$app->put('/selfpromotionitemstep',function($request,Response $response) {
 	$db = getInternalDatabase();
-
-	$id = $json["ID"];
-	$author = $json["AUTHOR"];	
-	$step = $json["STEP"];
-
-	$today = date("Y-m-d");
-	$in30days = strtotime('+30 days');
-	$in30days = date("Y-m-d",$in30days);
-
-	$QUANTITY = $json["QUANTITY"];
-	$LINKTYPE = $json["LINKTYPE"];
-	$PRODUCTID = $json["PRODUCTID"];	
-	$PERCENTPROMO = $json["PERCENTPROMO"];
-
-	$sql = "SELECT EXPIRATION FROM SELFPROMOTIONITEM WHERE ID = ?";
+	$blueDB = getDatabase();
+	$json = json_decode($request->getBody(),true);
+	$sql = "SELECT * FROM SELFPROMOTIONITEM WHERE PRODUCTID = ? AND EXPIRATION = ? ";
 	$req = $db->prepare($sql);
-	$req->execute(array($id));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	$EXPIRE = $res["EXPIRATION"];
+	$req->execute(array($json["PRODUCTID"], $json["EXPIRATION"]));
+	$olddata = $req->fetch(PDO::FETCH_ASSOC);
 
-	if ($step == "2"){
-		if (isMySQL($db))
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,STARTTIME2 = NOW(), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
-		else
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY2 = ?,LINKTYPE2 = ?,STARTTIME2 = date('now'), PERCENTPROMO2 = ?,STATUS = 'STEP2' WHERE ID = ?";		
-	}else if($step == "3"){
-		if (isMySQL($db))
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,STARTTIME3 = NOW(),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
-		else
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY3 = ?,LINKTYPE3 = ?,STARTTIME3 = date('now'),  PERCENTPROMO3 = ?,STATUS = 'STEP3' WHERE ID = ?";		
-	}else if($step == "4"){
-		if (isMySQL($db))
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,STARTTIME4 = NOW(),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
-		else
-			$sql = "UPDATE SELFPROMOTIONITEM SET QUANTITY4 = ?,LINKTYPE4 = ?,STARTTIME4 = date('now'),  PERCENTPROMO4 = ?,STATUS = 'STEP4' WHERE ID = ?";		
-	}
+	$sql = "UPDATE SELFPROMOTIONITEM SET STATUS = 'STEPPED' WHERE ID = ?";
 	$req = $db->prepare($sql);
-	$req->execute(array($QUANTITY,$LINKTYPE,$PERCENTPROMO,$id)); 
-	if ($LINKTYPE == "SYSTEM"){
-		attachPromotion($PRODUCTID,$PERCENTPROMO,$today,$EXPIRE,$author);	
-	}
-	$resp["result"] = "OK";
+	$req->execute(array($olddata["ID"]));
+
+	$db->beginTransaction();    
+	$now = date("Y-m-d");
+	$sql = "INSERT INTO SELFPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
+												TYPE,PERCENTPROMO,USERID,POLICY) 
+												VALUES (?,?,?,?,?,
+														?,?,?,?)";	
+	$req = $db->prepare($sql);
+	$req->execute(array(
+	$json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,$json["LINKTYPE"],
+	$json["TYPE"],$json["PERCENTPROMO"],$json["USERID"],$json["POLICY"]));
+
+	$result["result"] = "OK";
+	$lastId = $db->lastInsertId();
+	$db->commit();    	
+	copySelfPromotionItemProof($olddata["ID"],$lastId);
+	$resp = array();
+	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
-	return $response;																			 
+	return $response;	
 });
 
 $app->get('/selfpromotionitempool/{userid}', function($request,Response $response){
@@ -9287,25 +9203,13 @@ $app->get('/expiresearch',function($request,Response $response) {
 		$req->execute(array($item["PRODUCTID"]));
 		$promo = $req->fetch(PDO::FETCH_ASSOC);
 		if ($promo != false)
-		{
-			if ($promo["QUANTITY4"] != null){
-				$item["LASTPROMOQTY"] = $promo["QUANTITY4"];		
-				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO4"];			
-			}
-			else if ($promo["QUANTITY3"] != null){
-				$item["LASTPROMOQTY"] = $promo["QUANTITY3"];		
-				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO3"];			
-			}
-			else if ($promo["QUANTITY2"] != null){
-				$item["LASTPROMOQTY"] = $promo["QUANTITY2"];		
-				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO2"];			
-			}
-			else if ($promo["QUANTITY1"] != null){
-				$item["LASTPROMOQTY"] = $promo["QUANTITY1"];		
-				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO1"];			
+		{			
+			if ($promo["QUANTITY"] != null){
+				$item["LASTPROMOQTY"] = $promo["QUANTITY"];		
+				$item["LASTPROMOPERCENT"] = $promo["PERCENTPROMO"];			
 			}
 			$item["LASTPROMOEXPIRATION"] = $promo["EXPIRATION"];
-			$item["LASTPROMODATE"] = $promo["STARTTIME1"];
+			$item["LASTPROMODATE"] = $promo["STARTTIME"];
 
 			if ($item["LASTPROMODATE"] != "" && $item["LASTPROMODATE"] != null)
 			{
@@ -9471,7 +9375,6 @@ $app->get('/expirealert',function ($request,Response $response){
 		}
 	}
 	$data["ALERT"] = $filtered;
-
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
 	$response = $response->withJson($resp);
@@ -9490,195 +9393,6 @@ $app->delete('/expirepromoted/{id}', function ($request,Response $response){
 	return $response;
 });
 
-$app->get('/expirereturnalert/ALL',function ($request,Response $response){
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-
-	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$data["PROMOTED"] = $items;
-
-	$excludeIDs = "('XXX',";
-	foreach($items as $item){
-		$excludeIDs .= "'".$item["EXPIREDATE"].$item["PRODUCTID"]."',";
-	}
-	if ($excludeIDs != "(")
-		$excludeIDs = substr($excludeIDs,0,-1);
-	$excludeIDs .= ")";
-	
-	
-	$params = array();
-	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
-					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
-					FROM PODETAIL,ICPRODUCT
-					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
-					AND SIZE IS NOT NULL 
-					AND SIZE <> ''
-					AND SUBSTRING(SIZE,1,1) = 'R'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(REPLACE(REPLACE(SIZE,'NR',''),'R','') as int) + 10)
-				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
-					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
-					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
-					AND (
-						 (PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-						 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
-					AND ONHAND > 0		
-					";
-	$req = $dbBlue->prepare($sql);
-	$req->execute($params);
-	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
-					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
-					FROM PODETAIL,ICPRODUCT
-					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
-					AND SIZE IS NOT NULL 
-					AND SIZE <> ''
-					AND SUBSTRING(SIZE,1,1) = ':'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 10 )
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
-					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
-					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
-					AND (
-						(PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-						(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
-					AND ONHAND > 0		
-					";
-	$req = $dbBlue->prepare($sql);
-	$req->execute($params);		
-	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);		
-
-	$allitems = array_merge($allitems,$allitems2);
-
-	$filtered = array();						
-	foreach($allitems as $item){
-		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
-		$req = $db->prepare($sql);				
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if($res == false){
-			array_push($filtered,$item);
-		}
-		else{
-			
-			$tmp = explode(' ',$res["EXPIREDATE"])[0];
-			$tmp2 = explode('/',$tmp);
-			if (count($tmp2) > 1){
-				$expireTT = $tmp[2].$tmp2[0].$tmp[1];
-				if($item["EXPIRETT"] != $expireTT)
-					array_push($filtered,$item);
-			}
-		
-		}
-	}
-	$data["ALERT"] = $filtered;
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-	return $response;
-});
-
-$app->get('/expirenoreturnalert/ALL',function ($request,Response $response){
-	
-	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
-	$req = $db->prepare($sql);
-	$req->execute(array());
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	$data["PROMOTED"] = $items;
-	$excludeIDs = "('XXX',";
-	foreach($items as $item){
-		$excludeIDs .= "'".$item["EXPIREDATE"].$item["PRODUCTID"]."',";
-	}
-	if ($excludeIDs != "(")
-		$excludeIDs = substr($excludeIDs,0,-1);
-	$excludeIDs .= ")";
-
-	$params = array();
-	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
-					FROM PODETAIL,ICPRODUCT
-					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
-					AND SUBSTRING(SIZE,1,2) = 'NR'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(REPLACE(REPLACE(SIZE,'NR',''),'R','') as int) + 10)
-				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
-					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
-					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
-					AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-							 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
-					AND ONHAND > 0		
-					AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
-	$req = $dbBlue->prepare($sql);
-	$req->execute($params);
-	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-
-	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
-					convert(varchar(10),year(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),month(PPSS_DELIVERED_EXPIRE)) + convert(varchar(10),day(PPSS_DELIVERED_EXPIRE)) as 'EXPIRETT',
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
-					(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
-					FROM PODETAIL,ICPRODUCT
-					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
-					AND SIZE IS NOT NULL 
-					AND SIZE <> ''
-					AND SUBSTRING(SIZE,1,1) = ':'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
-					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
-					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
-					AND (
-						(PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-						(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
-					AND ONHAND > 0		
-			";
-	$req = $dbBlue->prepare($sql);
-	$req->execute($params);
-	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
-	$allitems = array_merge($allitems,$allitems2);
-
-	$filtered = array();						
-	foreach($allitems as $item){
-		$sql = "SELECT EXPIREDATE FROM EXPIREPROMOTED WHERE PRODUCTID = ? ORDER BY EXPIREDATE DESC";
-		$req = $db->prepare($sql);				
-		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
-		if($res == false){
-			array_push($filtered,$item);
-		}
-		else{
-			if($item["PPSS_DELIVERED_EXPIRE"] > $res["EXPIREDATE"])
-			array_push($filtered,$item);
-		}
-	}
-	$data["ALERT"] = $filtered;	
-	$resp["result"] = "OK";
-	$resp["data"] = $data;
-	$response = $response->withJson($resp);
-	return $response;
-});
 
 $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $response){
 	$db = getInternalDatabase();
@@ -9690,20 +9404,27 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 			AND USER.ID = ?";
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
-	$res = $req->fetch(PDO::FETCH_ASSOC);
-	if ($res != false){
-		if ($res["LOCATIONS"] == "ALL"){
+	$res = $req->fetch(PDO::FETCH_ASSOC);	
+	if ($res != false){		
+		if ($res["LOCATIONS"] == "ALL"){			
 			$locations = array();
-		}else{
+		}else{			
 			$locations = $res["LOCATIONS"];		
 			$locations = explode('|',$locations);
 		}	
 	}
-	else
+	else{		
 		$locations = array();
+	}
+		
 
 	$data = array();
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	if (isMySQL($db))
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH) ";
+	else 
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month') ";
+
+
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -9848,8 +9569,11 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 		$locations = array();
 
 	$data = array();
-
-	$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	if (isMySQL($db))																														
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
+	else
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month') ";
+	
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -14295,6 +14019,190 @@ $app->get('/history/{barcode}', function(Request $request,Response $response) {
 	$response = $response->withJson($resp);
 	return $response;
 }); 
+
+$app->get('/penalties',function(Request $request,Response $response) {
+	$dbBlue = getDatabase();
+	$db = getInternalDatabase();
+
+
+
+	// LATE RETURN
+	$sql = "SELECT *
+			FROM EXPIREPROMOTED
+			WHERE TYPE = 'RETURN' 
+			ORDER BY CREATED DESC"; 
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	$rItems = array();
+	foreach($items as $item){
+		$expiredate = new DateTime($item["EXPIREDATE"]);
+		$created = new DateTime($item["CREATED"]);
+		$diff  = $expiredate->diff($created);
+		$item["DIFF"] =  $diff->d;
+
+		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+
+		$policy = $res["SIZE"]; 
+		$item["POLICY"] = $policy;
+		$days = 0;
+		
+		if (substr($policy,0,1) == "NR"){
+			$item["MSG"] = "Wrong Action";
+			$item["LATE"] = "N/A";
+		}else if (substr($policy,0,1) == "R"){
+			$item["MSG"] = "";
+			$days = intval(substr($policy,1));		
+			$late = $days - intval($item["DIFF"]);	
+			$item["LATE"] = $late;
+		}else if (substr($policy,0,1) == ":"){
+			$item["MSG"] = "";				
+			$days = intval(substr($policy,1,3));					
+			$late = $days - intval($item["DIFF"]);	
+			$item["LATE"] = $late;
+		}
+		else {
+			$item["MSG"] = "Error";
+			$item["LATE"] = "N/A";
+		}		
+		array_push($rItems,$item);				
+		
+	}		
+	// LATE No Return
+	
+	$sql = "SELECT *
+			FROM EXPIREPROMOTED
+			WHERE TYPE = 'NORETURN' 
+			ORDER BY CREATED DESC"; 
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+	$nrItems = array();
+	foreach($items as $item){
+
+		$expiredate = new DateTime($item["EXPIREDATE"]);
+		$created = new DateTime($item["CREATED"]);
+		$diff  = $expiredate->diff($created);
+		$item["DIFF"] =  $diff->d;
+		
+		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		
+		$policy = $res["SIZE"]; 
+		$item["POLICY"] = $policy;
+		$days = 0;
+		
+		if (substr($policy,0,1) == "R"){
+			$item["MSG"] = "Wrong Action";
+			$item["LATE"] = "N/A";
+		}	
+		else if (substr($policy,0,2) == "NR"){
+			$days = intval(substr($policy,2));			
+			$late = $days - intval($item["DIFF"]);	
+			$item["LATE"] = $late;
+		}		
+		else if (substr($policy,0,1) == ":"){
+			$item["MSG"] = "";	
+			$days = intval(substr($policy,5,3));				
+			$late = $days - intval($item["DIFF"]);	
+			$item["LATE"] = $late;
+		}	
+		array_push($nrItems,$item);	
+	}
+	
+	
+	// SELF PROMOTION 
+	$sql = "SELECT *
+			FROM SELFPROMOTIONITEM 
+			ORDER BY CREATED DESC";
+
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$spItems = array();
+	
+	foreach($items as $item){		
+		if ($item["TYPE"] != "LATERETURNPROMOTION" && 
+			$item["TYPE"] != "EXPIREPROMOTION")
+			continue;
+		
+		$splitted =explode('-',$item["EXPIRATION"]);
+		$month = $splitted[0];
+		$day = $splitted[1];
+		$year = $splitted[2];
+		$expire = $year."-".sprintf("%02d", $month)."-".sprintf("%02d", $day)." 00:00:00";
+		
+		$expiredate = new DateTime($expire);
+		$created = new DateTime($item["CREATED"]);
+		$diff  = $expiredate->diff($created);
+		$item["DIFF"] =  $diff->d;
+		
+		#echo $item["PRODUCTID"]."\n";
+		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false)
+			continue;
+		$policy = $res["SIZE"]; 
+		$item["POLICY"] = $policy;
+		$days = 0;
+		
+		$item["MSG"] = "";
+		if (substr($policy,0,1) == ":")
+		{
+			if ($item["TYPE"] == "EXPIREPROMOTION")
+				$days = intval(substr($policy,1,3));		
+			else if ($item["TYPE"] == "LATERETURNPROMOTION")
+				$days = intval(substr($policy,5,3));		
+		}
+		else if (substr($policy,0,1) == "R")
+		{
+			if ($item["TYPE"] == "EXPIREPROMOTION"){
+				$item["MSG"] = "Wrong Action";				
+			}				
+			else if ($item["TYPE"] == "LATERETURNPROMOTION")
+				$days = intval(substr($policy,1));		
+		}
+		else if (substr($policy,0,2) == "NR")
+		{
+			if ($item["TYPE"] == "EXPIREPROMOTION")
+				$days = intval(substr($policy,2));		
+			else if ($item["TYPE"] == "LATERETURNPROMOTION")
+				$item["MSG"] = "Wrong Action";				
+			
+		}
+
+		if ($item["MSG"] == ""){
+			$late = $days - intval($item["DIFF"]);	
+			$item["LATE"] = $late;
+		}else {
+			$item["LATE"] = "N/A";
+		}						
+		array_push($spItems,$item);		
+	}	
+	
+	$resp = array();
+
+	$data["RETURN"] = $rItems;
+	$data["NORETURN"] = $nrItems;
+	$data["SELFPROMOTION"] = $spItems;
+
+	$resp["data"] = $data;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+
+});
+
 
 ini_set('max_execution_time', 0);
 ini_set('memory_limit', '-1');

@@ -343,6 +343,7 @@ function GenerateMissingStats()
 		$req->execute(array($action["ID"]));
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
 		foreach($items as $item){
+			
 			GenerateItemStats($item["PRODUCTID"],$item["ID"]);
 		}
 	}

@@ -501,7 +501,7 @@ function getProductsStats($productids, $begin,$end){
     $wasteItems = $req->fetchAll(PDO::FETCH_ASSOC);
                             
     // Self Promotion Quantity
-    $sql = "SELECT sum(QUANTITY1) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
+    $sql = "SELECT sum(QUANTITY) as 'CNT' FROM SELFPROMOTIONITEM WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
     $res = $req->fetch(PDO::FETCH_ASSOC);
@@ -514,7 +514,7 @@ function getProductsStats($productids, $begin,$end){
     $selfpromoNbItems = $res["CNT"];
     // Self Promotion Items
     $sql = "SELECT distinct(PRODUCTID),PERCENTPROMO1,                
-            (select sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            (select sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
             FROM SELFPROMOTIONITEM as 'SPI'
             WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
@@ -734,7 +734,7 @@ function getGeneralStats($begin,$end){
 	$selfpromoNbItems = $res["CNT"];
     // Self Promotion items
     $sql = "SELECT distinct(PRODUCTID),                
-            (select sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
+            (select sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
             FROM SELFPROMOTIONITEM as 'SPI'
             WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
@@ -843,7 +843,7 @@ function getGeneralStats($begin,$end){
     $promoLossQuantity = 0;
 
     $sql = "SELECT DISTINCT(PRODUCTID),
-            (SELECT sum(QUANTITY1) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'QUANTITY',
+            (SELECT sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'QUANTITY',
             (SELECT sum(PERCENTPROMO1 + PERCENTPROMO2 + PERCENTPROMO3 + PERCENTPROMO4) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'PERCENTPROMO'
              FROM SELFPROMOTIONITEM as 'SPI'
              WHERE CREATED BETWEEN ? AND ?";
