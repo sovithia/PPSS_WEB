@@ -8521,16 +8521,24 @@ $app->post('/selfpromotionitempool', function($request,Response $response){
 
 		$db->beginTransaction();    
 		$now = date("Y-m-d");
+		error_log($json["EXPIRATION"]);
+		$splitted = explode('-',$json["EXPIRATION"]);
+		$first = $splitted[0];
+		if (strlen($splitted[0]) < 4){
+			$EXPIRATION = $splitted[2]."-".sprintf("%02d",$splitted[0])."-".$splitted[1];
+		}else
+			$EXPIRATION = $json["EXPIRATION"];
+
 		$sql = "INSERT INTO SELFPROMOTIONITEMPOOL (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
-													TYPE,PERCENTPROMO,PERCENTPENALTY,STATUS,USERID,
-													LOCATION,POLICY) 
+													TYPE,PERCENTPROMO,PERCENTPENALTY,USERID,LOCATION,
+													POLICY) 
 													VALUES (?,?,?,?,?,
 															?,?,?,?,?,
-															?,?)";	
+															?)";	
 		$req = $db->prepare($sql);
-		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$json["EXPIRATION"],$now,$json["LINKTYPE"],
-		$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["STATUS"],$json["USERID"],
-		$storbin,$json["POLICY"]));	
+		$req->execute(array($json["PRODUCTID"],$json["QUANTITY"],$EXPIRATION,$now,$json["LINKTYPE"],
+		$json["TYPE"],$json["PERCENTPROMO"],$json["PERCENTPENALTY"],$json["USERID"],$storbin,
+		$json["POLICY"]));	
 		$result["result"] = "OK";
 		$lastId = $db->lastInsertId();
 		$db->commit();    
