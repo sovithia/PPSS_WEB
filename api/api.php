@@ -3156,10 +3156,13 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$items = json_decode($json["ITEMS"],true);	
 	}
 	$message = "";
+	$count = 1;
 	foreach($items as $item)
 	{		
+		error_log("item ".$count);
+		$count++;
 		updateCost($item["PRODUCTID"]);
-
+		
 		if (!isset($item["TAX"]))
 			$item["TAX"] = 0;
 
@@ -3182,13 +3185,9 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 		$decision = $stats["DECISION"] ?? "";
 		$specialqty = $item["SPECIALQTY"] ?? "";
 		
+		
 		$stats = orderStatistics($item["PRODUCTID"],true);		
 		
-		//if ( $decision == "NEVER RECEIVED" || ($decision == "TOOEARLY"  && $specialqty == "" || $specialqty == null) )
-		//{
-		//	$message .= "\n".$item["PRODUCTID"]." Not Added:".$decision;
-		//	continue;
-		//}
 		$item["ALGOQTY"] = $stats["FINALQTY"] ?? "";
 
 		$sql = "SELECT TOP(1) TRANCOST,VAT_PERCENT FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
@@ -3694,10 +3693,12 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 			$vendid = $vendres["VENDID"];
 			$vendname = $vendres["VENDNAME"];
 
-			$isSplitCompany = true;
-			//error_log("PONUMBER: ".$json["PONUMBER"]."|VENDID:".$vendid."|VENDNAME:".$vendname);
-
-			$isSplitCompany = true;
+			if ($vendid = "100-015" || $vendid = "100-003" || $vendid = "100-009" || $vendid = "100-010" || 
+				$vendid = "100-050"	|| $vendid = "100-108" || $vendid = "100-328" || $vendid = "100-150")
+				$isSplitCompany = true;
+			else 
+				$isSplitCompany = false;
+			
 			$absentitems = array();
 			$HaveAnomaly = false;
 
@@ -8322,8 +8323,8 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 	
 		$db->beginTransaction();    
 		
-		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE1,
-		PERCENTPENALTY,PERCENTPROMO1,TYPE,CREATOR,STATUS,
+		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
+		PERCENTPENALTY,PERCENTPROMO,TYPE,CREATOR,STATUS,
 		LOCATION) 
 		VALUES (?,?,?,?,?,
 				?,?,?,?,?,
@@ -9273,10 +9274,13 @@ $app->post('/expirepromoted',function ($request,Response $response){
 	}	
 
 	$db = getInternalDatabase();
-	
-	$sql = "INSERT INTO EXPIREPROMOTED (PRODUCTID,EXPIREDATE,TYPE,PRODUCTNAME,AUTHOR) values (?,?,?,?,?)";
+	if (isset($json["QUANTITY"]))
+		$QUANTITY = $json["QUANTITY"];
+	else 
+		$QUANTITY = 0;
+	$sql = "INSERT INTO EXPIREPROMOTED (PRODUCTID,EXPIREDATE,TYPE,PRODUCTNAME,AUTHOR,QUANTITY) values (?,?,?,?,?)";
 	$req = $db->prepare($sql);
-	$req->execute(array($json["PRODUCTID"],$EXPIREDATE,$json["TYPE"],$json["PRODUCTNAME"],$json["AUTHOR"]));
+	$req->execute(array($json["PRODUCTID"],$EXPIREDATE,$json["TYPE"],$json["PRODUCTNAME"],$json["AUTHOR"],$QUANTITY));
 	$resp = array();
 	$resp["result"] = "OK";		
 	$response = $response->withJson($resp);
@@ -12398,9 +12402,9 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 		}		
 	}	
 	if (isMySQL($db))
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-2 days')";
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 10 DAY)";		
 	else 
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 45 DAY)";
+		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-10 days')";
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -14032,17 +14036,22 @@ $app->get('/penalties',function(Request $request,Response $response) {
 	$dbBlue = getDatabase();
 	$db = getInternalDatabase();
 
+	$year  = $request->getParam('year',date("Y"));
+	$month  = $request->getParam('month',date("m"));
 
+	$daysInMonth = cal_days_in_month(CAL_GREGORIAN,$month,$year);
+	$start = $year."-".$month."-01";
+	$end = $year."-".$month."-".$daysInMonth;	
 
 	// LATE RETURN
 	$sql = "SELECT *
 			FROM EXPIREPROMOTED
 			WHERE TYPE = 'RETURN' 
+			AND CREATED BETWEEN ? AND ?
 			ORDER BY CREATED DESC"; 
 	$req = $db->prepare($sql);
-	$req->execute(array());
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	
+	$req->execute(array($start,$end));
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$rItems = array();
 	foreach($items as $item){
 		$expiredate = new DateTime($item["EXPIREDATE"]);
@@ -14050,7 +14059,7 @@ $app->get('/penalties',function(Request $request,Response $response) {
 		$diff  = $expiredate->diff($created);
 		$item["DIFF"] =  $diff->d;
 
-		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT SIZE,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -14077,6 +14086,7 @@ $app->get('/penalties',function(Request $request,Response $response) {
 			$item["MSG"] = "Error";
 			$item["LATE"] = "N/A";
 		}		
+		$item["COST"] = $res["LASTCOST"]; 
 		array_push($rItems,$item);				
 		
 	}		
@@ -14085,9 +14095,10 @@ $app->get('/penalties',function(Request $request,Response $response) {
 	$sql = "SELECT *
 			FROM EXPIREPROMOTED
 			WHERE TYPE = 'NORETURN' 
+			AND CREATED BETWEEN ? AND ?
 			ORDER BY CREATED DESC"; 
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($start,$end));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
 	$nrItems = array();
@@ -14098,7 +14109,7 @@ $app->get('/penalties',function(Request $request,Response $response) {
 		$diff  = $expiredate->diff($created);
 		$item["DIFF"] =  $diff->d;
 		
-		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT SIZE,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -14122,17 +14133,16 @@ $app->get('/penalties',function(Request $request,Response $response) {
 			$late = $days - intval($item["DIFF"]);	
 			$item["LATE"] = $late;
 		}	
+		$item["COST"] = $res["LASTCOST"];
 		array_push($nrItems,$item);	
 	}
-	
-	
 	// SELF PROMOTION 
 	$sql = "SELECT *
 			FROM SELFPROMOTIONITEM 
+			WHERE CREATED BETWEEN ? AND ?
 			ORDER BY CREATED DESC";
-
 	$req = $db->prepare($sql);
-	$req->execute(array());
+	$req->execute(array($start,$end));
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$spItems = array();
@@ -14143,18 +14153,18 @@ $app->get('/penalties',function(Request $request,Response $response) {
 			continue;
 		
 		$splitted =explode('-',$item["EXPIRATION"]);
-		$month = $splitted[0];
-		$day = $splitted[1];
-		$year = $splitted[2];
-		$expire = $year."-".sprintf("%02d", $month)."-".sprintf("%02d", $day)." 00:00:00";
-		
+		$year = $splitted[0];
+		$month = $splitted[1];
+		$day = $splitted[2];		
+		$day = explode(' ',$day)[0];		
+		$expire = $year."-".$month."-".$day;		
 		$expiredate = new DateTime($expire);
 		$created = new DateTime($item["CREATED"]);
 		$diff  = $expiredate->diff($created);
 		$item["DIFF"] =  $diff->d;
 		
 		#echo $item["PRODUCTID"]."\n";
-		$sql = "SELECT SIZE FROM ICPRODUCT WHERE PRODUCTID = ?";
+		$sql = "SELECT SIZE,PRODUCTNAME,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -14194,21 +14204,50 @@ $app->get('/penalties',function(Request $request,Response $response) {
 			$item["LATE"] = $late;
 		}else {
 			$item["LATE"] = "N/A";
-		}						
+		}		
+		$item["COST"] = $res["LASTCOST"];
+		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		array_push($spItems,$item);		
-	}	
-	
+	}		
 	$resp = array();
-
 	$data["RETURN"] = $rItems;
 	$data["NORETURN"] = $nrItems;
 	$data["SELFPROMOTION"] = $spItems;
-
 	$resp["data"] = $data;
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
 
+});
+
+
+$app->post('/logaction', function(Request $request,Response $response) {
+	
+	$db = getInternalDatabase();
+	$json = json_decode($request->getBody(),true);	
+	$sql = "INSERT INTO ACTIONLOG (URL,ACTION,METHOD,USERID) VALUES (?,?,?,?)";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["URL"],$json["ACTION"],$json["METHOD"],$json["USERID"]));
+	
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
+});
+
+$app->get('/logaction', function(Request $request,Response $response) {
+	
+	$db = getInternalDatabase();
+	$start  = $request->getParam('start',date("Y-m-d", strtotime("-1 days")));
+	$end  = $request->getParam('end',date("Y-m-d"));
+
+	$sql = "SELECT * FROM ACTIONLOG WHERE CREATED BETWEEN ? AND ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($start,$end));
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+	$resp["data"] = $data;
+	$resp["result"] = "OK";	
+	$response = $response->withJson($resp);
+	return $response;
 });
 
 

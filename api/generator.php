@@ -393,7 +393,7 @@ function GenerateGroupedRestocksByRow()
 
 		$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($unrowedID));
+		$req->execute(array($item["PRODUCTID"],$unrowedID));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if($res == false){
