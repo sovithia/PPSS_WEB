@@ -2097,7 +2097,7 @@ function GenerateItemStats($productid,$ITEMREQUESTID)
 	$CALCULATEDQUANTITY = $stats["FINALQTY"];
 
 
-	if (inval($CALCULATEDQUANTITY) == 0){
+	if (intval($CALCULATEDQUANTITY) == 0){
 		$sql = "INSERT INTO ITEMREQUESTSTATS (lastreceivedate,lastreceivequantity,totalwastequantity,totalpromotionquantity,totalordertime,
 				totalreceive, salesincelastreceive, salespeed75,lastsaleday,totalsale,
 				momentonhand,calculatedquantity,decision,itemrequest_id)		 

@@ -45,7 +45,7 @@ function renderPenalties($month,$year)
                       <td>".$return["CREATED"]."</td>
                       <td align='center'>".$return["POLICY"]."</td>
                       <td bgcolor='".$color."'>".$late." days</td> 
-                      <td>".format_number($return["COST"],2)."</td>
+                      <td>".number_format($return["COST"],2)."</td>
                       <td>".$return["QUANTITY"]."</td>                     
                       <td>".$return["MSG"]."</td>
                   </tr>";                                            
@@ -82,7 +82,7 @@ function renderPenalties($month,$year)
                       <td>".$noreturn["CREATED"]."</td>
                       <td align='center'>".$noreturn["POLICY"]."</td>                      
                       <td bgcolor='".$color."'>".$late." days</td>
-                      <td>".format_number($return["COST"],2)."</td>
+                      <td>".number_format($return["COST"],2)."</td>
                       <td>".$noreturn["QUANTITY"]."</td>
 
                       <td>".($noreturn["MSG"] ?? "")."</td>
@@ -118,8 +118,8 @@ function renderPenalties($month,$year)
                     <td>".$selfpromotion["CREATED"]."</td>
                     <td align='center'>".$selfpromotion["POLICY"]."</td>                    
                     <td bgcolor='".$color."'>".$selfpromotion["LATE"]." days</td>
-                    <td>".format_number($return["COST"],2)."</td>
-                    <td>".$noreturn["QUANTITY"]."</td>
+                    <td>".number_format($return["COST"],2)."</td>
+                    <td>".$selfpromotion["QUANTITY"]."</td>
                     <td>".($selfpromotion["MSG"] ?? "")."</td>
                   </tr>";                                            
     }

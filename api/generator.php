@@ -176,12 +176,13 @@ function GenerateGroupedRestocksByVendor()
 			foreach($items as $item)
 			{
 				//itemIsInGroupedRestock
-				$sql = "SELECT ITEMREQUESTACTION_ID,count(*) as 'CNT' FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID IN 
-				 (SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND REQUESTEE IS NULL)"; 
+				$sql = "SELECT ITEMREQUESTACTION_ID,count(*) as 'CNT' FROM ITEMREQUEST WHERE PRODUCTID = ? 
+						AND ITEMREQUESTACTION_ID IN (SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'GROUPEDRESTOCK' AND REQUESTEE IS NULL)
+						GROUP BY ITEMREQUESTACTION_ID"; 
 				$req = $db->prepare($sql);
 				$req->execute(array($item["PRODUCTID"]));
 				$res = $req->fetch(PDO::FETCH_ASSOC);
-				if ($res['CNT'] == 0)
+				if ($res != false && $res['CNT'] == 0)
 					$irID =  false;
 				else	
 					$irID = $res["ITEMREQUESTACTION_ID"];	
@@ -478,7 +479,7 @@ function GenerateGroupedRestocksByRow()
 
 		$sql = "SELECT * FROM ITEMREQUEST WHERE PRODUCTID = ? AND ITEMREQUESTACTION_ID = ?";
 		$req = $db->prepare($sql);
-		$req->execute(array($unrowedID));
+		$req->execute(array($item["PRODUCTID"],$unrowedID));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 
 		if($res == false){
