@@ -173,7 +173,7 @@ function renderOneProduct($product)
 						</div>
 					</div>
 					<div class='A5_box2'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+						<img class='product whitecontour' height='180px' src='data:image/jpeg;base64, $image'>
 					</div>
 					<div class='A5_box3'>
 						<div class='A5_box4'>
@@ -253,7 +253,7 @@ function renderOneProduct($product)
 						</div>
 					</div>
 					<div class='A5_box2'>
-						<img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+						<img class='product whitecontour' height='180px' src='data:image/jpeg;base64, $image'>
 					</div>
 					<div class='A5_box3'>
 						<div class='A5_box4'>

@@ -17,10 +17,26 @@ function getDatabase($name = "MAIN")
 
 function getInternalDatabase($base = "MAIN")
 {	
-	$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
-	$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-	$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-	return $db;
+	$host = '127.0.0.1';
+	$db   = 'PPSS';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
+	}
+	return $pdo;
 }
 
 
@@ -100,12 +116,16 @@ function getInternalDatabase($base = "MAIN")
          $items = $req->fetchAll(PDO::FETCH_ASSOC);
          if (count($items) > 0){
 
-            $sql = "SELECT ID FROM ITEMREQUESTACTION WHERE TYPE = 'AUTOMATICRESTOCKWH' AND ARG1 = ? AND REQUESTEE IS NULL";
+            $sql = "SELECT ID FROM ITEMREQUESTACTION 
+                                WHERE TYPE = 'AUTOMATICRESTOCKWH' 
+                                AND ARG1 = ? 
+                                AND REQUESTEE IS NULL";
             $req = $db->prepare($sql);
             $req->execute(array($storebin));            
-            $res = $req->fetch(PDO::FETCH_ASSOC);
+            $res = $req->fetch(PDO::FETCH_ASSOC);     
 
             if ($res == false){
+                echo "inserting\n";
                 $db->beginTransaction();    
                 $sql = "INSERT INTO ITEMREQUESTACTION (TYPE, REQUESTER,ARG1) VALUES('AUTOMATICRESTOCKWH','AUTO',?)";	
                 $req = $db->prepare($sql);	
@@ -113,11 +133,10 @@ function getInternalDatabase($base = "MAIN")
                 $lastID = $db->lastInsertId();
                 $db->commit();    
             }else{
+                echo "get existant\n";
                 $lastID = $res["ID"];
             }            
-
-             echo "ItemRequestAction with ID: ".$lastID." for StoreBin: ".$storebin."\n";
-             
+             echo "ItemRequestAction with ID: ".$lastID." for StoreBin: ".$storebin."\n";             
              foreach($items as $item)
              {	
                 
@@ -143,8 +162,14 @@ function getInternalDatabase($base = "MAIN")
      }
   } 
 
-if ($argc > 1 && $argv[1] == "CROCODILE")
-  GenerateGroupedRestocksByRowAndWarehouseStocks();
+function LogAction($str){
+    system("echo '".$str."' >> /var/log/daemon.log");
+} 
+
+if ($argc > 1 && $argv[1] == "CROCODILE"){
+    LogAction(date("Y-m-d H:i:s").":RestockWarehouse");    
+    GenerateGroupedRestocksByRowAndWarehouseStocks();   
+}
 else
   echo "GenerateRestock Attempt";
   

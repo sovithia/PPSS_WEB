@@ -35,19 +35,26 @@ function getDatabase($name = "MAIN")
 
 function getInternalDatabase($base = "MAIN")
 {
-	try{
-		if ($base == "MAIN")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStore.sqlite');
-		else if ($base == "ECOMMERCE")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
-		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	$host = '127.0.0.1';
+	$db   = 'PPSS';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
 	}
-	catch(Exception $ex)
-	{
-		die("Cannot open database".$ex->getMessage());
-	}
-	return $db;
+	return $pdo;
 }
 
 

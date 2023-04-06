@@ -319,11 +319,11 @@ function _renderFreeProduct($product)
         </div>
         <div class='A6_box2'>
         <div class='box-img' style='margin-top: -65px; width: 110px; margin-left: 10px;'>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+            <img class='product whitecontour' height='120px' src='data:image/jpeg;base64, $image'>
           </div>
           <center><p style='font-size: 30px; margin-top: -35px; font-weight: bold; color: #1B9382;'>+</p></center>
           <div class='box-img' style=' margin-top: -15px; width: 110px; margin-left: 10px;'>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+            <img class='product whitecontour' height='120px' src='data:image/jpeg;base64, $image'>
           </div>
         </div>
         <div class='A6_box3'>
@@ -459,7 +459,7 @@ function _renderPromoProduct($product)
                   </div>
               </div>
             </div>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+            <img class='product whitecontour' height='120px' src='data:image/jpeg;base64, $image'>
           </div>
         </div>
         <div class='A6_box3'>
@@ -586,7 +586,7 @@ function _renderPromoSpecialProduct($product)
         <div class='A6_box2'>
           <div class='box-img'>
             
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+            <img class='product whitecontour' 'height='120px' src='data:image/jpeg;base64, $image'>
           </div>
         </div>
         <div class='A6_box3'>
@@ -695,7 +695,7 @@ function _renderProduct($product)
         </div>
         <div class='A6_box2'>
           <div class='box-img'>
-            <img class='product whitecontour' src='data:image/jpeg;base64, $image'>
+            <img class='product whitecontour' height='120px' src='data:image/jpeg;base64, $image'>
           </div>
         </div>
         <div class='A6_box3'>

@@ -90,7 +90,7 @@ function createPO($items,$author,$fromPO = null,$notes = null,$vendid = null)
 	else 
 		$LOCID = "WH2";
 
-	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s" || $author == "PONLEU" )
+	if ($author == "VANNA1" || $author == "SOPHY" || $author == "prem_v" || $author == "soeurng_s" || $author == "PONLEU" || $author == "ly_n" || $author == "HEAK")
 		$LOCID = "WH1";
 		
 	if ($LOCID != "WH1" && $LOCID != "WH2")

@@ -219,7 +219,7 @@ function renderOneProduct($product)
 			</div>
 			<div class='box2'>
 				<div class='box_img'>
-					<img class='product whitecontour' src='data:image/jpeg;base64, $image' >
+					<img class='product whitecontour' height='250px' src='data:image/jpeg;base64, $image' >
 				</div>
 			</div>
 			<div class='box3'>
@@ -303,7 +303,7 @@ function renderOneProduct($product)
 			</div>
 			<div class='box2'>
 				<div class='box_img' style='margin-top: 1px;'>
-					<img class='product whitecontour' src='data:image/jpeg;base64, $image' >
+					<img class='product whitecontour' height='250px' src='data:image/jpeg;base64, $image' >
 					<center><p style='font-size: 90px; margin-top: -37px; font-weight: bold; color: #1B9382;'>+</p></center>
 				</div>
 
@@ -568,19 +568,11 @@ function _renderTwoProductPromoLeft($product)
   $packing = $product['packing'];
 
   $ispack = $product['ISPACK'];
-  if ($ispack == 'NO') {
-     ?>
-              <?php
-                  $factor = "<p>1 $unit</p>";
-                ?>
-        <?php
-    }else{
-        ?>
-              <?php
-                  $factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
-                ?>
-        <?php
-        }
+  if ($ispack == 'NO')
+	$factor = "<p>1 $unit</p>";     
+  else
+	$factor = "<p style='background-color: red; color: white; float: right; border-radius: 2px;'>$packing</p>";
+
   if ($percent != "0" && $percent != ".")
   {
     if (strpos($percent,".") === false)
@@ -588,14 +580,17 @@ function _renderTwoProductPromoLeft($product)
     else 
       $percentSize = "45";
 
-    if ($percent == -1) {
+    if ($percent == -1) 
+	{
     	?>
     		<?php
     			$sale_off = "<p style='font-size: 70px; margin-right:-300px; margin-top: 8px'>SALE OFF</p>";
     			$sell_disc = 		""; 
     		?>
     	<?php
-    }else{
+    }
+	else
+	{
     	?>
     	<?php
     			$sale_off = "<p style='font-size: 50px; margin-right:-300px; margin-top: 20px'>PROMOTION</p>";
@@ -687,11 +682,13 @@ function _renderTwoProductPromoLeft($product)
 							</div>
 						</div>
 					</div>
-				</div>
-        ";
-      }
-      else{        
-        return "
+				</div>";
+
+
+
+  }else{    
+	$sale_off = "";
+    return "
         	<div class='box-sale'>
 					<img src='bg/bg-sale.png'>
 					<div class='tag-wrap'>
@@ -984,13 +981,9 @@ function renderTwoProduct($product1,$product2)
 				<div class='tag-wrap'></div>
 			</div>
 		<div class='box'>
-			<div class='renderTwoProduct'>
-			
-				 <td width='50%' >"._renderTwoProductPromoLeft($product1)."
-         </td>
-			 <td  width='50%'>".
-             _renderTwoProductPromoRight($product2)."
-            </td>
+			<div class='renderTwoProduct'>			
+				<td width='50%' >"._renderTwoProductPromoLeft($product1)."</td>
+			 	<td  width='50%'>"._renderTwoProductPromoRight($product2)."</td>
 		</div>
 	</div>
 </div>

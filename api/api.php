@@ -374,7 +374,8 @@ function packLookup($barcode)
 			$item["DISC"] = round($item["DISC"],4);
 		else
 			$item["DISC"] = "0";
-		$item["PICTURE"]= loadPicture($barcode,true);		
+			error_log("Pack Barcode ".$barcode );
+		$item["PICTURE"]= loadPicture($barcode,150,false);		
 		return $item;
 	}
 	else					
@@ -757,9 +758,11 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 			$packcode = $barcode;
 			$barcode = $packInfo["PRODUCTID"];				
 			if (isset($percentages[$count]))
-				$oneItem = itemLookupLabel($barcode,true,$percentages[$count]);
+				$oneItem = itemLookupLabel($barcode,false,$percentages[$count]);
 			else
-				$oneItem = itemLookupLabel($barcode,true);										
+				$oneItem = itemLookupLabel($barcode,false);			
+			error_log("Picture:".$packInfo["PICTURE"]); 	
+
 			$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
 			$oneItem["unit"] = $packInfo["SALEUNIT"];
 			$oneItem["packing"] =  $packInfo["SALEUNIT"];
@@ -2720,7 +2723,8 @@ function markAnomalies()
 		$status = "NOANOMALY";
 		foreach($items as $item)
 		{
-			if ( floatval($item["PPSS_DELIVERED_PRICE"]) != floatval($item["PPSS_WAITING_PRICE"]))
+			$diffPrice = floatval($item["PPSS_DELIVERED_PRICE"]) != floatval($item["PPSS_WAITING_PRICE"]);
+			if ( abs($diffPrice) > 0.0001)
 			{
 				$status = "ANOMALYUNSOLVED";				
 				break;
@@ -9283,7 +9287,6 @@ $app->post('/expirepromoted',function ($request,Response $response){
 	}else{
 		$EXPIREDATE = $json["EXPIREDATE"];
 	}	
-
 	$db = getInternalDatabase();
 	if (isset($json["QUANTITY"]))
 		$QUANTITY = $json["QUANTITY"];
@@ -9419,8 +9422,7 @@ $app->delete('/expirepromoted/{id}', function ($request,Response $response){
 $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $response){
 	$db = getInternalDatabase();
 	$dbBlue = getDatabase();
-
-	error_log("1rst:".date('d-m-y h:i:s'));
+	
 
 	$userid = $request->getAttribute('userid');
 	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
@@ -9457,13 +9459,15 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data["PROMOTED"] = $items;
 
-	error_log("2nd:".date('d-m-y h:i:s'));
 
 	$hashPromoted = array();
 	foreach($data["PROMOTED"] as $promoted)
-		$hashPromoted[$promoted["PRODUCTID"]] = $promoted;
+	{
+		if (!isset($hashPromoted[$promoted["PRODUCTID"]]))
+			$hashPromoted[$promoted["PRODUCTID"]] = array();
+		array_push($hashPromoted[$promoted["PRODUCTID"]],$promoted);
+	}		
 	$hashKeys = array_keys($hashPromoted);
-
 
 	$excludeIDs = "('XXX',";
 	foreach($items as $item){
@@ -9508,8 +9512,7 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	}
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
-	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-	error_log("A:".date('d-m-y h:i:s') );
+	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
 					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
 					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',					
@@ -9521,6 +9524,7 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 					AND SIZE IS NOT NULL 
 					AND SIZE <> ''
 					AND SUBSTRING(SIZE,1,1) = ':'
+					AND SUBSTRING(SIZE,1,4) <> ':0NE'
 					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( SELECT cast(SUBSTRING(SIZE,2,3) as int) + 10)
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
@@ -9545,21 +9549,27 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
 	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
-	$allitems = array_merge($allitems,$allitems2);
-	error_log("B:".date('d-m-y h:i:s') );
+	$allitems = array_merge($allitems,$allitems2);	
 	$filtered = array();						
 	foreach($allitems as $item){
 		if (!in_array($item["PRODUCTID"],$hashKeys))
 			array_push($filtered,$item);
-		else{
-			$promoted = $hashPromoted[$item["PRODUCTID"]];
-			$exp1 = strtotime($promoted["EXPIREDATE"]);
-			$exp2 = strtotime($item["PPSS_DELIVERED_EXPIRE"]);
-			if ($exp1 != $exp2)
+		else
+		{
+			$found = false;
+			foreach($hashPromoted[$item["PRODUCTID"]] as $promoted)
+			{
+				$exp1 = strtotime($promoted["EXPIREDATE"]);
+				$exp2 = strtotime($item["PPSS_DELIVERED_EXPIRE"]);
+				if ($exp1 == $exp2){
+					$found = true;
+					break;
+				}				
+			}
+			if ($found == false)
 				array_push($filtered,$item);			
 		}		
-	}
-	error_log("C:".date('d-m-y h:i:s') );
+	}	
 	$data["ALERT"] = $filtered;
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
@@ -9570,8 +9580,7 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $response){
 	
 	$db = getInternalDatabase();
-	$dbBlue = getDatabase();
-	error_log("N1:".date('d-m-y h:i:s'));
+	$dbBlue = getDatabase();	
 	$userid = $request->getAttribute('userid');
 	$sql = "SELECT  TEAM.LOCATIONS FROM USER,TEAM 
 			WHERE USER.team_id = TEAM.ID
@@ -9605,12 +9614,15 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 	$data["PROMOTED"] = $items;
-
-	error_log("N2:".date('d-m-y h:i:s'));
+	
 
 	$hashPromoted = array();
 	foreach($data["PROMOTED"] as $promoted)
-		$hashPromoted[$promoted["PRODUCTID"]] = $promoted;
+	{
+		if (!isset($hashPromoted[$promoted["PRODUCTID"]]))
+			$hashPromoted[$promoted["PRODUCTID"]] = array();
+		array_push($hashPromoted[$promoted["PRODUCTID"]],$promoted);
+	}		
 	$hashKeys = array_keys($hashPromoted);
 
 	$excludeIDs = "('XXX',";
@@ -9653,9 +9665,7 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	}
 	$req = $dbBlue->prepare($sql);
 	$req->execute($params);
-	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);
-
-	error_log("N3:".date('d-m-y h:i:s'));
+	$allitems = $req->fetchAll(PDO::FETCH_ASSOC);	
 	
 	$sql = "SELECT  distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
 					(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
@@ -9666,6 +9676,7 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
 					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
 					AND SUBSTRING(SIZE,1,2) = ':'
+					AND SUBSTRING(SIZE,6,3) <> '0NE'
 					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
@@ -9690,26 +9701,31 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 	$req->execute($params);
 	$allitems2 = $req->fetchAll(PDO::FETCH_ASSOC);
 	$allitems = array_merge($allitems,$allitems2);
-	
-	error_log("N4:".date('d-m-y h:i:s'));
+		
 
 	$filtered = array();	
 	foreach($allitems as $item){
 	
 		if (!in_array($item["PRODUCTID"],$hashKeys)){						
 		}			
-		else{									
-			$promoted = $hashPromoted[$item["PRODUCTID"]];
-			$exp1 = strtotime($promoted["EXPIREDATE"]);
-			$exp2 = strtotime($item["PPSS_DELIVERED_EXPIRE"]);
-			if ($exp1 != $exp2){
-				array_push($filtered,$item);							
-			}			
+		else
+		{									
+			$found = false;
+			foreach($hashPromoted[$item["PRODUCTID"]] as $promoted)
+			{
+				$exp1 = strtotime($promoted["EXPIREDATE"]);
+				$exp2 = strtotime($item["PPSS_DELIVERED_EXPIRE"]);
+				if ($exp1 == $exp2){
+					$found = true;
+					break;
+				}				
+			}
+			if ($found == false)
+				array_push($filtered,$item);												
 		}		
 	}	
 	$data["ALERT"] = $filtered;	
-	
-	error_log("N5:".date('d-m-y h:i:s'));
+		
 	$resp["result"] = "OK";
 	$resp["data"] = $data;
 	$response = $response->withJson($resp);
@@ -9781,6 +9797,7 @@ $app->get('/expirereturnalertwh',function ($request,Response $response){
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
 					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
 					AND SUBSTRING(SIZE,1,2) = ':'
+					AND SUBSTRING(SIZE,2,3) <> '0NE'
 					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,2,3) as int) + 10)
 					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
@@ -9843,7 +9860,7 @@ $app->get('/expirenoreturnalertwh',function ($request,Response $response){
 					WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
 					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
 					AND SUBSTRING(SIZE,1,2) = ':'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,6,3) as int) + 10)
+					AND SUBSTRING(SIZE,6,3) <> '0NE'
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
 					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
