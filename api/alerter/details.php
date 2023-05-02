@@ -27,16 +27,26 @@ function getDatabase($name = "MAIN")
 function getInternalDatabase()
 {
     
-	try{
-        $db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');
-		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	$host = '119.82.252.226';
+	$db   = 'PPSS';
+	$user = 'sovi';
+	$pass = 'pied2porc';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
 	}
-	catch(Exception $ex)
-	{
-		die("Cannot open database".$ex->getMessage());
-	}
-	return $db;
+	return $pdo;
 }
 
 function renderItems($items,$type,$message = ""){
@@ -435,8 +445,7 @@ function renderOccupancy($team) // TOP 100
 
 function renderTransfer($team,$day)
 {        
-    $db = getDatabase();
-    exit;
+    $db = getDatabase();    
     $indb = getInternalDatabase();
 
     if ($team != "ALL"){
@@ -539,7 +548,7 @@ function renderSale($team,$day)
 	$req = $db->prepare($sql);
 	$req->execute($params);
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
-    renderItems($items,"1","SALE<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $teams[$team]."<br>");
+    renderItems($items,"1","SALE<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $allloc."<br>");
 }
 	
 function renderWaste($day)
@@ -547,17 +556,18 @@ function renderWaste($day)
     $db = getDatabase();
     $indb = getInternalDatabase();
 
-    $start = $day." 00:00:00.000";
-	$end = $day." 23:59:59.999";	
-
-    $sql = "SELECT PRODUCTID,QUANTITY,EXPIRATION,TYPE FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";
-		$req = $indb->prepare($sql);
-		$req->execute(array($start,$end));
-		$wasteditems = $req->fetchAll(PDO::FETCH_ASSOC);
-		$items = array();		    
-		$totalQty = 0;
-		$totalSum = 0;
-		foreach($wasteditems as $wasteditem){
+    $start = $day." 00:00:00";
+	$end = $day." 23:59:59";	
+    error_log($start."|".$end);
+    $sql = "SELECT PRODUCTID,QUANTITY,EXPIRATION,TYPE FROM WASTEITEM WHERE  CREATED BETWEEN ? AND ?";    
+	$req = $indb->prepare($sql);
+	$req->execute(array($start,$end));    
+	$wasteditems = $req->fetchAll(PDO::FETCH_ASSOC);
+    error_log("WasteCnt:".count($wasteditems));
+	$items = array();		    
+	$totalQty = 0;
+	$totalSum = 0;
+	foreach($wasteditems as $wasteditem){
 			$sql = "SELECT PRODUCTNAME,COST FROM ICPRODUCT WHERE PRODUCTID = ?";
 			$req = $db->prepare($sql);
 			$req->execute(array($wasteditem["PRODUCTID"]));
