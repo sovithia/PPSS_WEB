@@ -7,27 +7,13 @@ function isLocal()
 }
 
 
+
 function getDatabase($name = "MAIN")
 { 	
 	$conn = null;      
 	try  
 	{  		
-		if ($name == "MAIN")
-		{
-			if (isLocal()){				
-				$conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-			}
-			else 
-				$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TRAINING")
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.252\\SQL2008r2,55008;Database=TRAININGDATA;ConnectionPooling=0', 'sa', 'blue');
-		}
-		else if ($name == "TMP" )
-		{
-			$conn = new PDO('sqlsrv:Server=192.168.72.249\\SQL2008r2,55008;Database=ppss_tempdata;ConnectionPooling=0', 'sa', 'blue');
-		}  		
+        $conn = new PDO('sqlsrv:Server=119.82.252.226\\SQL2008r2,55008;Database=PhnomPenhSuperStore2019;ConnectionPooling=0', 'sa', 'blue');		
 		$conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );  
 	}  
 	catch(Exception $e)  
@@ -448,8 +434,9 @@ function renderOccupancy($team) // TOP 100
 }
 
 function renderTransfer($team,$day)
-{    
+{        
     $db = getDatabase();
+    exit;
     $indb = getInternalDatabase();
 
     if ($team != "ALL"){

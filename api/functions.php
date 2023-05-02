@@ -334,10 +334,10 @@ function getInternalDatabase($base = "MAIN")
 
 function getInternalDatabaseStatsNew()
 {
-	$host = '127.0.0.1';
+	$host = '119.82.252.226';
 	$db   = 'PPSS_STATS';
-	$user = 'root';
-	$pass = 'password';
+	$user = 'sovi';
+	$pass = 'pied2porc';
 	$port = "3306";
 	$charset = 'utf8mb4';
 
@@ -358,10 +358,10 @@ function getInternalDatabaseStatsNew()
 
 function getInternalDatabaseNew()
 {
-	$host = '127.0.0.1';
+	$host = '119.82.252.226';
 	$db   = 'PPSS';
-	$user = 'root';
-	$pass = 'password';
+	$user = 'sovi';
+	$pass = 'pied2porc';
 	$port = "3306";
 	$charset = 'utf8mb4';
 

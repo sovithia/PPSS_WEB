@@ -1688,7 +1688,72 @@ $app->get('/KPICategories',function(Request $request,Response $response) {
 	return $response;	
 });
 function clientToExclude(){
-	return "'1111','200-100','200-101','200-103','2222','6666','L0026'";
+	return "'1111','200-100','200-101','200-103','2222','6666','L0026',	
+			'L03-20',
+			'400-038R',
+			'70183236',
+			'C.X.H TRADING',
+			'100-338AR2',
+			'2021-10',
+			'L0029',
+			'10-09-20',
+			'1112-2020',
+			'201904',
+			'100-050',
+			'202205',
+			'201908',
+			'400-224AR1',
+			'400-089',
+			'L012',
+			'400-200',
+			'07-2020 CBL',
+			'28-12-21',
+			'8888',
+			'L0017',
+			'Z PLUS',
+			'200-106',
+			'07-2020',
+			'L0016',
+			'200-105',
+			'L0037',
+			'100-140 ROHTO',
+			'2020-01',
+			'SPWS SUPPY',
+			'9999',
+			'002',
+			'VATHANAGUL',
+			'201903',
+			'L008',
+			'L007',
+			'L010',
+			'202206',
+			'L0027',
+			'L0012',
+			'L002',
+			'FMC',
+			'200-104',
+			'L0028',
+			'U-PAY',
+			'PAY GO',
+			'100-022',
+			'400-051',
+			'L011',
+			'201901',
+			'L009',
+			'CLA',
+			'L006',
+			'29-12-21',
+			'L0025',
+			'39123444',
+			'3333',
+			'201909',
+			'L013',
+			'1012-2020',
+			'COMPASS',
+			'CASH',
+			'L0020',
+			'L0033',
+			'100-280'";
 }
 
 $app->get('/KPISales',function(Request $request,Response $response) {   
@@ -7206,8 +7271,7 @@ $app->get('/sale/{date}',function(Request $request,Response $response) {
 			FROM POSDETAIL 			
 			WHERE POSDATE >= '".$date." 00:00:00.000' 
 			AND POSDATE <= '".$date." 23:59:59.999'
-			AND CUSTID NOT IN (".clientToExclude().");
-			";	
+			AND CUSTID NOT IN (".clientToExclude().")";	
 
 	$req = $conn->prepare($sql);
 	$req->execute(array());
