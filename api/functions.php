@@ -320,7 +320,8 @@ function getInternalDatabase($base = "MAIN")
 		else if ($base == "ECOMMERCE")
 			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/ecommerce.sqlite');
 		else if ($base == "STATS")
-			$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreStats.sqlite');
+			return getInternalDatabaseStatsNew();
+			//$db = new PDO('sqlite:'.dirname(__FILE__).'/../db/SuperStoreStats.sqlite');
 		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 	}
@@ -329,6 +330,30 @@ function getInternalDatabase($base = "MAIN")
 		die("Cannot open database".$ex->getMessage());
 	}
 	return $db;
+}
+
+function getInternalDatabaseStatsNew()
+{
+	$host = '127.0.0.1';
+	$db   = 'PPSS_STATS';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
+	}
+	return $pdo;
 }
 
 function getInternalDatabaseNew()
@@ -1242,59 +1267,65 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$data["status"] = "MISMATCH";
 				return $data;
 			}
-				if ($res["SIZE"] == "NR") // TMP FIX
-					$res["SIZE"] = "NR60";
+			if ($res["SIZE"] == "NR") // TMP FIX
+				$res["SIZE"] = "NR60";
 
-				if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" &&  $diffDays > 35) ||
-						($res["SIZE"] == "NR14" && $diffDays > 17) || ($res["SIZE"] == "NR7" && $diffDays > 10))
-				{
-						$data["status"] = "EARLY";
-						return $data;
-				}		
-				else 
-				{										
-					$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
-					$req = $indb->prepare($sql);	
-					$req->execute(array($res["SIZE"]));
-					$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+			if (substr($res["SIZE"],0,1) == ":"){
+				$noreturn = intval(substr($res["SIZE"],5,3));
+				$res["SIZE"] = "NR".$noreturn;
+			}
 
-					foreach($rules as $rule)
-					{							
-							if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
-							{
-								$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
-								$req = $indb->prepare($sql);
-								$req->execute(array($barcode, $expiration)); 
-								$res = $req->fetch(PDO::FETCH_ASSOC);
-								
-								if ($res == false){
-									$occurence = 0;
-								}
-								else 
-								{
-									$occurence = 0;
-									if($res["QUANTITY"] != "" && $res["QUANTITY"] != null)
-										$occurence++;									
-								}
 
-								if($occurence == 0){
-									$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
-									$data["percentpromo"] = $rule["PERCENTPROMOTION"];	
-								}else{
-									$data["percentpromo"] = $rule["PERCENTPROMOTION"];
-									$data["percentpenalty"] = "0";
-								}
-								
-								if ($data["percentpenalty"] == "0")
-									$data["status"] = "OK";	
-								else
-									$data["status"] = "PENALTY";
-															
-								$data["start"] = $today->format('Y-m-d');
-								$today->add(new DateInterval('P30D'));
-								$data["end"] = $today->format('Y-m-d');								
-								break;			
+			if (($res["SIZE"] == "NR90" && $diffDays > 95) || ($res["SIZE"] == "NR60" && $diffDays > 65) || ($res["SIZE"] == "NR30" &&  $diffDays > 35) ||
+				($res["SIZE"] == "NR14" && $diffDays > 17) || ($res["SIZE"] == "NR7" && $diffDays > 10))
+			{
+				$data["status"] = "EARLY";
+				return $data;
+			}		
+			else 
+			{										
+				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
+				$req = $indb->prepare($sql);	
+				$req->execute(array($res["SIZE"]));
+				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
+
+				foreach($rules as $rule)
+				{							
+					if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
+						{
+							$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
+							$req = $indb->prepare($sql);
+							$req->execute(array($barcode, $expiration)); 
+							$res = $req->fetch(PDO::FETCH_ASSOC);
+							
+							if ($res == false){
+								$occurence = 0;
 							}
+							else 
+							{
+								$occurence = 0;
+								if($res["QUANTITY"] != "" && $res["QUANTITY"] != null)
+									$occurence++;									
+							}
+
+							if($occurence == 0){
+								$data["percentpenalty"] = $rule["PERCENTPENALTY"];									
+								$data["percentpromo"] = $rule["PERCENTPROMOTION"];	
+							}else{
+								$data["percentpromo"] = $rule["PERCENTPROMOTION"];
+								$data["percentpenalty"] = "0";
+							}
+							
+							if ($data["percentpenalty"] == "0")
+								$data["status"] = "OK";	
+							else
+								$data["status"] = "PENALTY";
+														
+							$data["start"] = $today->format('Y-m-d');
+							$today->add(new DateInterval('P30D'));
+							$data["end"] = $today->format('Y-m-d');								
+							break;			
+						}
 					}	
 					return $data;	
 				}															

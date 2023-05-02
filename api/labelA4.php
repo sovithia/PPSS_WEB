@@ -96,7 +96,7 @@ error_reporting(E_ALL);
     $b4 = str_replace(" ","%20",$_GET['barcode4']);
 
     $p1 = str_replace(" ","%20",$_GET['percent1']); 
-		$p2 = str_replace(" ","%20",$_GET['percent2']);
+	$p2 = str_replace(" ","%20",$_GET['percent2']);
 		$p3 = str_replace(" ","%20",$_GET['percent3']);
 		$p4 = str_replace(" ","%20",$_GET['percent4']);
 
@@ -106,9 +106,14 @@ error_reporting(E_ALL);
 		else
 			$percentages = "";
 
-    $barcodes = implode("|",array($b1,$b2,$b3,$b4));
-    error_log("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);
+    $barcodes = implode("|",array($b1,$b2,$b3,$b4));    
+	
     $itemList = RestEngine::GET("http://phnompenhsuperstore.com/api/api.php/label/" . $barcodes. $percentages);      
+	if ($itemList == null){
+		echo "Product not found";
+		exit;
+	}
+
     if ($itemList != null && count($itemList) == 1)        
         renderOneProduct($itemList[0]);      
     else if (count($itemList) == 2)    
@@ -496,7 +501,7 @@ else{
 								<p>OFF</p>
 							</div>
 						</div>
-						<div class='till'>
+						<div class='till' style='margin-top:-15px' >
 							<p>Promotion Till: $till</p>
 						</div>
 					</div>

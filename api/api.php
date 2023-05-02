@@ -362,9 +362,8 @@ $app->get('/supplierpurchaseorders/{id}',function(Request $request,Response $res
 
 function packLookup($barcode)
 {
-
 	$conn=getDatabase();
-	$params = array($barcode);	
+	$params = array($barcode);		
 	$sql = "SELECT PRODUCTID,SALEPRICE,DESCRIPTION1,DESCRIPTION2,SALEUNIT,DISC,EXPIRED_DATE,SALEFACTOR,GETDATE() as 'NOW' FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?"; 		
 	$req = $conn->prepare($sql);
 	$req->execute($params);
@@ -374,7 +373,23 @@ function packLookup($barcode)
 			$item["DISC"] = round($item["DISC"],4);
 		else
 			$item["DISC"] = "0";
-			error_log("Pack Barcode ".$barcode );
+		if ($item["DISC"] == "0"){
+			$begin = "";			
+			$begin = date("m-d-y");
+			$sql = "SELECT TOP(1) DISCOUNT_VALUE 
+					FROM ICNEWPROMOTION 
+					WHERE PRODUCTID = ? AND DATEFROM <= '$begin 00:00:00.000' 
+					AND DATETO >= '$begin 23:59:59.999' 
+					ORDER BY DATEFROM DESC";
+			
+			$req = $conn->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));	
+			$res = $req->fetch(PDO::FETCH_ASSOC);			
+			if ($res != false){
+				$item["DISC"] = intval($res["DISCOUNT_VALUE"]);
+			}				
+		}	
+		
 		$item["PICTURE"]= loadPicture($barcode,150,false);		
 		return $item;
 	}
@@ -8269,7 +8284,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 	else
 		$sql .= " AND CREATED > date('now','-20 day')";
 
-	if ($userid != null && $userid != "1001" && $userid != "205" && $userid != "206" && $userid != "401"){
+	if ($userid != null && $userid != "1001" && $userid != "205" && $userid != "206" && $userid != "401" && $userid != "402"){
 		$sql2 = "SELECT login FROM USER WHERE ID = ?";
 		$req = $db->prepare($sql2);
 		$req->execute(array($userid));

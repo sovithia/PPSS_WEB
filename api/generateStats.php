@@ -4,19 +4,18 @@ require_once("functions.php");
 
 
 
-function OccupancyByTeamCount($db,$team)
-{
-	echo "OCCUPANCY BY TEAM: ".$team."\n";	
-	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";	
-	$teams["ALL"] = "ALL";
-	$allloc = $teams[$team]; 
+function OccupancyByTeamCount($db,$indb,$team)
+{	
+	if ($team != "ALL"){
+        $sql = "SELECT LOCATIONS from TEAM 
+        WHERE NAME = ?";    
+        $req = $indb->prepare($sql);
+        $req->execute(array($team));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $allloc = $res["LOCATIONS"];
+    }
+    else
+        $allloc = "ALL";
 
 	$sqlCount = "select sum(DATEDIFF(day,LASTRECEIVE,GETDATE())) as 'CNT'
 	FROM ICLOCATION
@@ -49,25 +48,26 @@ function OccupancyByTeamCount($db,$team)
 function TransferByTeam($indb,$team,$day)
 {
 	$start = $day." 00:00:00.000";
-	$end = $day. "23:59:59.999";
+	$end = $day. " 23:59:59.999";
+	
 	echo "TRANFER BY TEAM: ".$team."\n";
 	
-	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";
-	$teams["ALL"] = "ALL";	
-	$allloc = $teams[$team]; 
+	if ($team != "ALL")
+	{
+		$sql = "SELECT LOCATIONS FROM TEAM WHERE NAME = ?";
+		$req = $indb->prepare($sql);
+		$req->execute(array($team));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$allloc = $res["LOCATIONS"];
+	}
 
+	
 	$params = array();
 	$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER'";
 	if ($team != "ALL")
 	{
 		$sql .= " AND (";
+		echo "TEAM| ".$team."| ALL LOC:".$allloc."\n";
 		$locs = explode('|',$allloc);		
 		foreach($locs as $loc){
 			$sql .= " ARG1 = ? OR";		
@@ -92,32 +92,33 @@ function TransferByTeam($indb,$team,$day)
 		$data = $req->fetch(PDO::FETCH_ASSOC);
 		$nbItems += $data["CNT"];
 		$qtyItems += $data["SUM"];
-	}	
+	}		
 	$data = array();
 	$data["NBITEM"] = $nbItems;
 	$data["QUANTITY"] = $qtyItems;
 	return $data;
 }
 
-function getSaleByTeamCount($start,$end,$team)
+function getSaleByTeamCount($indb,$db,$start,$end,$team)
 {
-	$db=getDatabase();	
 
-	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";
-	$teams["ALL"] = "ALL";	
-	$allloc = $teams[$team]; 
+
+	if ($team != "ALL")
+	{		
+		$sql = "SELECT LOCATIONS FROM TEAM WHERE NAME = ?";
+		$req = $indb->prepare($sql);
+		$req->execute(array($team));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$allloc = $res["LOCATIONS"];
+	}
+	else 
+		$allloc = "ALL";
+
 
 	$sql = "SELECT count(POSDETAIL.PRODUCTID) as 'CNT'	
 			FROM dbo.POSDETAIL WHERE 1=1 ";	
 	$params = array();
-		
+	echo "TEAM| ".$team."| ALL LOC:".$allloc."\n";
 	$locs = explode('|',$allloc);
 	$sql .= "AND PRODUCTID IN (SELECT PRODUCTID FROM ICLOCATION WHERE (";
 	
@@ -292,54 +293,52 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 		updateStats($statsdb,$today,"TRF_SNAKE_TOD",TransferByTeam($indb,"SNAKE",date('Y-m-d')));
 	if (fieldIsNull($statsdb,"TRF_HORSE_TOD",$today) || $forceRefresh == true)
 		updateStats($statsdb,$today,"TRF_HORSE_TOD",TransferByTeam($indb,"HORSE",date('Y-m-d')));
-	if (fieldIsNull($statsdb,"TRF_GOAT_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"TRF_GOAT_TOD",TransferByTeam($indb,"GOAT",date('Y-m-d')));
+	//if (fieldIsNull($statsdb,"TRF_GOAT_TOD",$today) || $forceRefresh == true)
+	//	updateStats($statsdb,$today,"TRF_GOAT_TOD",TransferByTeam($indb,"GOAT",date('Y-m-d')));
 
 	/*******************************************/
 	/**** TOTAL OCCUPANCY ITEMS NOW ******/
 	/*******************************************/
 	echo "OCCUPANCY TODAY.\n";
 	if (fieldIsNull($statsdb,"OCC_ALL_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_ALL_TOD",OccupancyByTeamCount($db,"ALL"));
-	if 	(fieldIsNull($statsdb,"OCC_RAT_TOD",$today) || $forceRefresh == true){
-		echo "RAT ".OccupancyByTeamCount($db,"RAT");
-		updateStats($statsdb,$today,"OCC_RAT_TOD",OccupancyByTeamCount($db,"RAT"));
-	}
+		updateStats($statsdb,$today,"OCC_ALL_TOD",OccupancyByTeamCount($db,$indb,"ALL"));
+	if 	(fieldIsNull($statsdb,"OCC_RAT_TOD",$today) || $forceRefresh == true)
+		updateStats($statsdb,$today,"OCC_RAT_TOD",OccupancyByTeamCount($db,$indb,"RAT"));	
 	if (fieldIsNull($statsdb,"OCC_OX_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"OCC_OX_TOD",OccupancyByTeamCount($db,"OX"));
+		updateStats($statsdb,$today,"OCC_OX_TOD",OccupancyByTeamCount($db,$indb,"OX"));
 	if (fieldIsNull($statsdb,"OCC_TIGER_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"OCC_TIGER_TOD",OccupancyByTeamCount($db,"TIGER"));
+		updateStats($statsdb,$today,"OCC_TIGER_TOD",OccupancyByTeamCount($db,$indb,"TIGER"));
 	if (fieldIsNull($statsdb,"OCC_HARE_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_HARE_TOD",OccupancyByTeamCount($db,"HARE"));
+		updateStats($statsdb,$today,"OCC_HARE_TOD",OccupancyByTeamCount($db,$indb,"HARE"));
 	if (fieldIsNull($statsdb,"OCC_DRAGON_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_DRAGON_TOD",OccupancyByTeamCount($db,"DRAGON"));
+		updateStats($statsdb,$today,"OCC_DRAGON_TOD",OccupancyByTeamCount($db,$indb,"DRAGON"));
 	if (fieldIsNull($statsdb,"OCC_SNAKE_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_SNAKE_TOD",OccupancyByTeamCount($db,"SNAKE"));
+		updateStats($statsdb,$today,"OCC_SNAKE_TOD",OccupancyByTeamCount($db,$indb,"SNAKE"));
 	if (fieldIsNull($statsdb,"OCC_HORSE_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_HORSE_TOD",OccupancyByTeamCount($db,"HORSE"));
-	if (fieldIsNull($statsdb,"OCC_GOAT_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"OCC_GOAT_TOD",OccupancyByTeamCount($db,"GOAT"));
+		updateStats($statsdb,$today,"OCC_HORSE_TOD",OccupancyByTeamCount($db,$indb,"HORSE"));
+	//if (fieldIsNull($statsdb,"OCC_GOAT_TOD",$today) || $forceRefresh == true)
+	//	updateStats($statsdb,$today,"OCC_GOAT_TOD",OccupancyByTeamCount($db,"GOAT"));
 
 	/***********************/
 	/**** SALE TODAY    ****/
 	/***********************/
 	echo "SALE TODAY.\n";
 	if (fieldIsNull($statsdb,"SALE_RAT_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"SALE_RAT_TOD",getSaleByTeamCount($startToday,$endToday,"RAT"));
+		updateStats($statsdb,$today,"SALE_RAT_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"RAT"));
 	if (fieldIsNull($statsdb,"SALE_OX_TOD",$today) || $forceRefresh == true)
-		updateStats($statsdb,$today,"SALE_OX_TOD",getSaleByTeamCount($startToday,$endToday,"OX"));
+		updateStats($statsdb,$today,"SALE_OX_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"OX"));
 	if (fieldIsNull($statsdb,"SALE_TIGER_TOD",$today) || $forceRefresh == true)			
-		updateStats($statsdb,$today,"SALE_TIGER_TOD",getSaleByTeamCount($startToday,$endToday,"TIGER"));
+		updateStats($statsdb,$today,"SALE_TIGER_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"TIGER"));
 	if (fieldIsNull($statsdb,"SALE_HARE_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"SALE_HARE_TOD",getSaleByTeamCount($startToday,$endToday,"HARE"));
+		updateStats($statsdb,$today,"SALE_HARE_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"HARE"));
 	if (fieldIsNull($statsdb,"SALE_DRAGON_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"SALE_DRAGON_TOD",getSaleByTeamCount($startToday,$endToday,"DRAGON"));
+		updateStats($statsdb,$today,"SALE_DRAGON_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"DRAGON"));
 	if (fieldIsNull($statsdb,"SALE_SNAKE_TOD",$today) || $forceRefresh == true)		
-		updateStats($statsdb,$today,"SALE_SNAKE_TOD",getSaleByTeamCount($startToday,$endToday,"SNAKE"));
+		updateStats($statsdb,$today,"SALE_SNAKE_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"SNAKE"));
 	if (fieldIsNull($statsdb,"SALE_HORSE_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"SALE_HORSE_TOD",getSaleByTeamCount($startToday,$endToday,"HORSE"));
-	if (fieldIsNull($statsdb,"SALE_GOAT_TOD",$today) || $forceRefresh == true)	
-		updateStats($statsdb,$today,"SALE_GOAT_TOD",getSaleByTeamCount($startToday,$endToday,"GOAT"));
+		updateStats($statsdb,$today,"SALE_HORSE_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"HORSE"));
+	//if (fieldIsNull($statsdb,"SALE_GOAT_TOD",$today) || $forceRefresh == true)	
+	//	updateStats($statsdb,$today,"SALE_GOAT_TOD",getSaleByTeamCount($indb,$db,$startToday,$endToday,"GOAT"));
 
 	/*******************************************/
 	//***   TRAFIC & AVG BASKET TODAY		****/
@@ -363,7 +362,8 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 	/****************************/
 	echo "EXPIRE NORETURNS COUNT.\n";
 	if (fieldIsNull($statsdb,"EXPIRE_RET_CNT_TOD",$today) || $forceRefresh == true) {	
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > DATETIME('now', '-12 month')";
+																												   
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'NORETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
 		$req = $indb->prepare($sql);
 		$req->execute(array());
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -385,6 +385,7 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 		AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 		AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
 		AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+		AND SIZE <> 'NRNF'
 		AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
 				(PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
 		AND ONHAND > 0			
@@ -400,7 +401,7 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 	/*****************************/
 	echo "EXPIRE RETURNS COUNT.\n";
 	if (fieldIsNull($statsdb,"EXPIRE_NR_CNT_TOD",$today) || $forceRefresh == true) { 	
-		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > DATETIME('now', '-12 month')";
+		$sql = "SELECT ID,PRODUCTID,PRODUCTNAME,EXPIREDATE,CREATED FROM EXPIREPROMOTED WHERE TYPE = 'RETURN' AND CREATED > (NOW() - INTERVAL 12 MONTH)";
 		$req = $indb->prepare($sql);
 		$req->execute(array());
 		$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -689,16 +690,12 @@ function GenerateToday($db,$indb,$statsdb,$forceRefresh)
 	//*******************************************//
     //**** NO PICTURE  					  *******//
     //*******************************************//	
-	if (fieldIsNull($statsdb,"NOPICTURE_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {
-		$sql = "SELECT PRODUCTID FROM ICPRODUCT";
-		$req = $db->prepare($sql);
-		$req->execute(array());
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);
-		$count = 0;
-		foreach($items as $item){
-			if (!file_exists("/Volumes/Image/".$item["PRODUCTID"].".jpg"))
-				$count++;
-		}
+	if (fieldIsNull($statsdb,"NOPICTURE_ITEMS_CNT_TOD",$today) || $forceRefresh == true) {		
+    	$sql = "SELECT PRODUCTID,PRODUCTNAME FROM ICPRODUCT WHERE PICTURE_PATH = ''";
+    	$req = $db->prepare($sql);
+    	$req->execute(array());
+    	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		$count = count($items);
 
 		$sql = "SELECT PACK_CODE FROM ICPRODUCT_SALEUNIT";
 		$req = $db->prepare($sql);

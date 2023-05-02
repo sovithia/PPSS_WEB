@@ -408,16 +408,16 @@ function renderOccupancy($team) // TOP 100
     $db = getDatabase();
     $indb = getInternalDatabase();
 
-	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";	
-	$teams["ALL"] = "ALL";
-	$allloc = $teams[$team]; 
+	if ($team != "ALL"){
+        $sql = "SELECT LOCATIONS from TEAM 
+        WHERE NAME = ?";    
+        $req = $indb->prepare($sql);
+        $req->execute(array($team));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $allloc = $res["LOCATIONS"];
+    }
+    else
+        $allloc = "ALL";
 
 	$sqlItems = "select TOP(20) ICLOCATION.PRODUCTID,PRODUCTNAME,LOCONHAND as 'QUANTITY',LASTRECEIVE,DATEDIFF(day,LASTRECEIVE,GETDATE()) as DIFF 
 	FROM ICLOCATION,ICPRODUCT 
@@ -452,16 +452,16 @@ function renderTransfer($team,$day)
     $db = getDatabase();
     $indb = getInternalDatabase();
 
-    $teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";
-	$teams["ALL"] = "ALL";	
-	$allloc = $teams[$team]; 
+    if ($team != "ALL"){
+        $sql = "SELECT LOCATIONS from TEAM 
+        WHERE NAME = ?";    
+        $req = $indb->prepare($sql);
+        $req->execute(array($team));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $allloc = $res["LOCATIONS"];
+    }
+    else
+        $allloc = "ALL";
 
 	$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER'";
 	if ($team != "ALL")
@@ -470,22 +470,25 @@ function renderTransfer($team,$day)
 		$locs = explode('|',$allloc);
 		$params = array();
 		foreach($locs as $loc){
+            error_log($loc);
 			$sql .= " ARG1 = ? OR";		
 			array_push($params, $loc);
 		}
 		$sql = substr($sql,0,-2);
 		$sql .= ")";
 	}
-    $start = $day." 00:00:00.000";
-	$end = $day." 23:59:59.999";	
+    $start = $day." 00:00:00";
+	$end = $day." 23:59:59";	
 
 	$sqlToday = $sql. " AND REQUEST_UPDATED BETWEEN ? AND ?";	
+    error_log("Start: ".$start." End: ".$end);
+    error_log($sqlToday);
 
     $req1 = $indb->prepare($sqlToday);
     array_push($params,$start,$end);    
 	$req1->execute($params);	
 	$items = $req1->fetchAll(PDO::FETCH_ASSOC);
-    
+    error_log("CNT:".count($items));
     $fullitems = array();
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTID,REQUEST_QUANTITY as 'QUANTITY' FROM ITEMREQUEST WHERE ITEMREQUESTACTION_ID = ?";
@@ -500,7 +503,7 @@ function renderTransfer($team,$day)
         $data["PRODUCTNAME"] = $oneData["PRODUCTNAME"];
 		array_push($fullitems,$data);
 	}		
-    renderItems($fullitems,"1","Transfer<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $teams[$team]."<br>");    
+    renderItems($fullitems,"1","Transfer<br>Date". " ".$day."<br>Team ".$team."<br>Locations: ". $allloc."<br>");    
 }
 
 function renderSale($team,$day)
@@ -508,16 +511,16 @@ function renderSale($team,$day)
     $db = getDatabase();
     $indb = getInternalDatabase();
 
-	$teams["RAT"] = "G01A|G01B|G02A|G02B|G03A|G03B";
-	$teams["OX"] = "G04A|G04B|G05A|G05B|GSOF";
-	$teams["TIGER"] = "G06A|G06B|G07A|G07B|GMIL";
-	$teams["HARE"] = "N08A|N08B|N09A|N09B|N10A|N10B|N11A|N11B|N12A|N12B|NCHA";
-	$teams["DRAGON"] = "N13A|N13B|N14A|N14B|N15A|N15B|N16A|N16B|N17A|N17B|NRAC";
-	$teams["SNAKE"] = "N18A|N18B|N19A|N19B|N20A|N20B|N21A|N21B|N22A|N22B"; 
-	$teams["HORSE"] = "NBAB|GWIN";
-	$teams["GOAT"] = "CHIL|FROZ";	
-	$teams["ALL"] = "ALL";
-	$allloc = $teams[$team]; 
+	if ($team != "ALL"){
+        $sql = "SELECT LOCATIONS from TEAM 
+        WHERE NAME = ?";    
+        $req = $indb->prepare($sql);
+        $req->execute(array($team));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        $allloc = $res["LOCATIONS"];
+    }
+    else
+        $allloc = "ALL";
 
 	$sql = "SELECT 
 	POSDETAIL.PRODUCTID
@@ -617,32 +620,28 @@ function renderExpireReturn()
     if ($excludeIDs != "(")
         $excludeIDs = substr($excludeIDs,0,-1);
     $excludeIDs .= ")";
-    $sql = "SELECT distinct PPSS_DELIVERED_EXPIRE,
-                    ICPRODUCT.PRODUCTID,
-                    ICPRODUCT.PRODUCTNAME,
-                    PODETAIL.VENDNAME,
-                    ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
-                    (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
-                    (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',
-                    (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
-                    (SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
-                    FROM PODETAIL,ICPRODUCT
-                    WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
-                    AND PPSS_DELIVERED_EXPIRE IS NOT NULL
-                    AND SUBSTRING(SIZE,1,2) = 'R'
-                    AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(REPLACE(REPLACE(SIZE,'NR',''),'R','') as int) + 10)
-                    AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
-                    AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
-                    AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
-                    AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
-                            (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
-                    AND ONHAND > 0		
-                    AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
+    $sql = "SELECT distinct(PPSS_DELIVERED_EXPIRE),ICPRODUCT.PRODUCTID,ICPRODUCT.PRODUCTNAME,PODETAIL.VENDNAME,ONHAND,SIZE,datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) as 'DIFF',
+            (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
+            (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2',					
+            (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN1',	
+            (SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBIN2'	
+            FROM PODETAIL,ICPRODUCT
+            WHERE PODETAIL.PRODUCTID = ICPRODUCT.PRODUCTID
+            AND PPSS_DELIVERED_EXPIRE IS NOT NULL
+            AND SIZE IS NOT NULL 
+            AND SIZE <> ''
+            AND SUBSTRING(SIZE,1,1) = 'R'
+            AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+            AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
+            AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
+            AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
+            AND ((PPSS_DELIVERED_EXPIRE = (SELECT MAX(PPSS_DELIVERED_EXPIRE) FROM PODETAIL WHERE PRODUCTID = ICPRODUCT.PRODUCTID)) OR 
+                 (PPSS_DELIVERED_EXPIRE = (SELECT PPSS_DELIVERED_EXPIRE FROM (SELECT PPSS_DELIVERED_EXPIRE, ROW_NUMBER() OVER (ORDER BY PPSS_DELIVERED_EXPIRE DESC) AS Seq FROM  PODETAIL WHERE PRODUCTID =  ICPRODUCT.PRODUCTID)t WHERE Seq BETWEEN 2 AND 2)))
+            AND ONHAND > 0		
+            AND (convert(varchar,PPSS_DELIVERED_EXPIRE) + ICPRODUCT.PRODUCTID) not in $excludeIDs";
     $req = $db->prepare($sql);
     $req->execute();
-    $items = $req->fetchAll(PDO::FETCH_ASSOC);				
-    var_dump($items);
-    exit;
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);				    
     renderItems($items,"3","Expire returns");
 }
 

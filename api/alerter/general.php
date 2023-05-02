@@ -6,30 +6,51 @@ header("refresh: 30;");
 
 function getInternalDatabase()
 {
-	try{		
-		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStoreStats.sqlite');		
-		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+    $host = '127.0.0.1';
+	$db   = 'PPSS_STATS';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
 	}
-	catch(Exception $ex)
-	{
-		die("Cannot open database".$ex->getMessage());
-	}
-	return $db;
+	return $pdo;
 }
+
 
 function getInternalDatabase2()
 {
-	try{		
-		$db = new PDO('sqlite:'.dirname(__FILE__).'/../../db/SuperStore.sqlite');		
-		$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+	$host = '127.0.0.1';
+	$db   = 'PPSS';
+	$user = 'root';
+	$pass = 'password';
+	$port = "3306";
+	$charset = 'utf8mb4';
+
+	$options = [
+    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    \PDO::ATTR_EMULATE_PREPARES   => false,
+	];
+	$dsn = "mysql:host=$host;dbname=$db;charset=$charset;port=$port";
+	try {
+    	 $pdo = new \PDO($dsn, $user, $pass, $options);
+	} catch (\PDOException $e) {
+     	throw new \PDOException($e->getMessage(), (int)$e->getCode());
+		return null;
 	}
-	catch(Exception $ex)
-	{
-		die("Cannot open database".$ex->getMessage());
-	}
-	return $db;
+	return $pdo;
 }
 
 function getDatabase($name = "MAIN")
@@ -163,18 +184,18 @@ function renderSign($sign)
     }else if ($sign == "HARE"){
         $teamid = "4";
         $render = "<img height='50' src='img/signHare.png'><br>";
-    }else if ($sign == "SNAKE"){
-        $teamid = "5";
-        $render = "<img height='50' src='img/signSnake.png'><br>";
     }else if ($sign == "DRAGON"){
-        $teamid = "6";
+        $teamid = "5";
         $render = "<img height='50' src='img/signDragon.png'><br>";
-    }else if ($sign == "GOAT"){
-        $teamid = "7";
-        $render = "<img height='50' src='img/signGoat.png'><br>";
+    }else if ($sign == "SNAKE"){
+        $teamid = "6";
+        $render = "<img height='50' src='img/signSnake.png'><br>";
     }else if ($sign == "HORSE"){
-        $teamid = "8";
+        $teamid = "7";
         $render = "<img height='50' src='img/signHorse.png'><br>";
+    }else if ($sign == "GOAT"){
+        $teamid = "8";
+        $render = "<img height='50' src='img/signGoat.png'><br>";
     }
     $sql = "SELECT ID FROM USER where team_id = ?";
     $req = $db->prepare($sql);
@@ -182,7 +203,7 @@ function renderSign($sign)
     $pictures = $req->fetchAll();
     $render .= "<hr>";
     foreach($pictures as $picture){
-        $render .= "<img height='50px'   src='http://phnompenhsuperstore.com/api/profilepicture.php?id=".$picture["ID"]."'>";
+        $render .= "<img height='50px'   src='http://phnompenhsuperstore.com/api/img/employee/".$picture["ID"].".jpg'>";
     }
     return $render;
 }
@@ -205,7 +226,7 @@ function renderStats()
     $d["TRF_HARE_YES"] = json_decode($d["TRF_HARE_YES"] ,true);
     $d["TRF_SNAKE_YES"] = json_decode($d["TRF_SNAKE_YES"] ,true);
     $d["TRF_DRAGON_YES"] = json_decode($d["TRF_DRAGON_YES"] ,true);
-    $d["TRF_GOAT_YES"] = json_decode($d["TRF_GOAT_YES"] ,true);
+    //$d["TRF_GOAT_YES"] = json_decode($d["TRF_GOAT_YES"] ,true);
     $d["TRF_HORSE_YES"] = json_decode($d["TRF_HORSE_YES"] ,true);
 
     $d["TRF_ALL_TOD"] = json_decode($d["TRF_ALL_TOD"] ,true);
@@ -215,7 +236,7 @@ function renderStats()
     $d["TRF_HARE_TOD"] = json_decode($d["TRF_HARE_TOD"] ,true);
     $d["TRF_SNAKE_TOD"] = json_decode($d["TRF_SNAKE_TOD"] ,true);
     $d["TRF_DRAGON_TOD"] = json_decode($d["TRF_DRAGON_TOD"] ,true);
-    $d["TRF_GOAT_TOD"] = json_decode($d["TRF_GOAT_TOD"] ,true);
+    //$d["TRF_GOAT_TOD"] = json_decode($d["TRF_GOAT_TOD"] ,true);
     $d["TRF_HORSE_TOD"] = json_decode($d["TRF_HORSE_TOD"] ,true);
 
 
@@ -234,7 +255,7 @@ function renderStats()
                         <td colspan='6' style='font-size:20pt'>GENERAL</td>                        
                     </tr>    
                     <tr>
-                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td><center>EV</center></td>
+                        <td></td><td colspan='2' ><center>Yesterday</center></td><td colspan='2'><center>Today</center></td><td><center>EV</center></td>
                     </tr>    
                     <tr>
                         <td>Traffic</td>
@@ -305,7 +326,7 @@ function renderStats()
                     </tr>
                     
                     <tr>
-                        <td></td><td colspan='2' ><center>←</center></td><td colspan='2'><center>↓</center></td><td><center>EV</center></td>
+                        <td></td><td colspan='2' ><center>Yesterday</center></td><td colspan='2'><center>Today</center></td><td><center>EV</center></td>
                     </tr>            
                     
                     <tr>
@@ -365,7 +386,7 @@ function renderStats()
                             <td colspan='6' style='font-size:20pt' align='center'>PURCHASING</td>
                         </tr>
                         <tr>
-                            <td></td><td colspan='2'><center>←</center></td><td colspan='2'><center>↓</center></td><td>EVOL</td>
+                            <td></td><td colspan='2'><center>Yesterday</center></td><td colspan='2'><center>Today</center></td><td>EVOL</td>
                         </tr>
 
                         <tr>
@@ -412,7 +433,7 @@ function renderStats()
                         <td colspan='4' style='font-size:20pt' align='center'>RECEIVE</td>
                     </tr>
                     <tr>
-                        <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
+                        <td></td><td><center>Yesterday</center></td><td><center>Today</center></td><td>EVOL</td>
                     </tr>
 
                     <tr>
@@ -456,10 +477,10 @@ function renderStats()
                     </tr>
                     <tr>
                             <td width='4%'></td>  
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%'  colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                            <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>                
+                            <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%'  colspan='2'><center>Today</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>
+                            <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>                
                     <tr>
                     <tr align='center'>
                         <td>Transfer NB items</td>            
@@ -498,40 +519,34 @@ function renderStats()
                     <tr align='center'>
                             <td></td>                            
                             <td colspan='5'>".renderSign("SNAKE")."</td>            
-                            <td colspan='5'>".renderSign("DRAGON")."</td>                
-                            <td colspan='5'>".renderSign("GOAT")."</td>                
+                            <td colspan='5'>".renderSign("DRAGON")."</td>                                       
                             <td colspan='5'>".renderSign("HORSE")."</td>                
                     </tr>
                     <tr>
                          <td width='4%'></td>                      
-                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
-                         <td width='5%' colspan='2'><center>←</center></td><td width='5%' colspan='2'><center>↓</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>
+                         <td width='5%' colspan='2'><center>Yesterday</center></td><td width='5%' colspan='2'><center>Today</center></td><td width='2%'>EV</td>
                     <tr>
                     <tr align='center'>
                         <td>Transfer NB items</td>                            
                         <td width='4%'>".($d["TRF_SNAKE_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td width='4%'>".($d["TRF_SNAKE_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["NBITEM"] ?? 0,$d["TRF_SNAKE_TOD"]["NBITEM"] ?? 0)."</td>
-                        <td width='4%'>".($d["TRF_DRAGON_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".($d["TRF_DRAGON_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"] ?? 0,$d["TRF_DRAGON_TOD"]["NBITEM"] ?? 0)."</td>
-                        <td width='4%'>".($d["TRF_GOAT_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_GOAT_ITEMS_YES")."</td><td width='4%'>".($d["TRF_GOAT_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["NBITEM"] ?? 0,$d["TRF_GOAT_TOD"]["NBITEM"] ?? 0)."</td>
+                        <td width='4%'>".($d["TRF_DRAGON_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td width='4%'>".($d["TRF_DRAGON_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["NBITEM"] ?? 0,$d["TRF_DRAGON_TOD"]["NBITEM"] ?? 0)."</td>                        
                         <td width='4%'>".($d["TRF_HORSE_YES"]["NBITEM"] ?? "N/A")."</td><td width='1%'>".DLX("TRF_HORSE_ITEMS_YES")."</td><td width='4%'>".($d["TRF_HORSE_TOD"]["NBITEM"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["NBITEM"] ?? 0,$d["TRF_HORSE_TOD"]["NBITEM"] ?? 0)."</td>            
                     </tr>
                 
                     <tr align='center'>
                         <td>Transfer Qty items</td>                            
                         <td>".($d["TRF_SNAKE_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_YES")."</td><td>".($d["TRF_SNAKE_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_SNAKE_ITEMS_TOD")."</td><td>".EV($d["TRF_SNAKE_YES"]["QUANTITY"] ?? 0,$d["TRF_SNAKE_TOD"]["QUANTITY"] ?? 0)."</td>
-                        <td>".($d["TRF_DRAGON_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".($d["TRF_DRAGON_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"] ?? 0,$d["TRF_DRAGON_TOD"]["QUANTITY"] ?? 0)."</td>
-                        <td>".($d["TRF_GOAT_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_YES")."</td><td>".($d["TRF_GOAT_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_GOAT_ITEMS_TOD")."</td><td>".EV($d["TRF_GOAT_YES"]["QUANTITY"] ?? 0,$d["TRF_GOAT_TOD"]["QUANTITY"] ?? 0)."</td>
+                        <td>".($d["TRF_DRAGON_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_YES")."</td><td>".($d["TRF_DRAGON_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_DRAGON_ITEMS_TOD")."</td><td>".EV($d["TRF_DRAGON_YES"]["QUANTITY"] ?? 0,$d["TRF_DRAGON_TOD"]["QUANTITY"] ?? 0)."</td>                        
                         <td>".($d["TRF_HORSE_YES"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_YES")."</td><td>".($d["TRF_HORSE_TOD"]["QUANTITY"] ?? "N/A")."</td><td>".DLX("TRF_HORSE_ITEMS_TOD")."</td><td>".EV($d["TRF_HORSE_YES"]["QUANTITY"] ?? 0,$d["TRF_HORSE_TOD"]["QUANTITY"] ?? 0)."</td>
                     </tr>
                     
                 
-                    
                     <tr align='center'>
                         <td>Sale Nb Items</td>                            
                         <td>".$d["SALE_SNAKE_YES"]."</td><td>".DLX("SALE_SNAKE_ITEMS_YES")."</td></td><td>".$d["SALE_SNAKE_TOD"]."</td><td>".DLX("SALE_SNAKE_ITEMS_TOD")."</td><td>".EV($d["SALE_SNAKE_YES"],$d["SALE_SNAKE_TOD"])."</td>
                         <td>".$d["SALE_DRAGON_YES"]."</td><td>".DLX("SALE_DRAGON_ITEMS_YES")."</td></td><td>".$d["SALE_DRAGON_TOD"]."</td><td>".DLX("SALE_DRAGON_ITEMS_TOD")."</td><td>".EV($d["SALE_DRAGON_YES"],$d["SALE_DRAGON_TOD"])."</td>
-                        <td>".$d["SALE_GOAT_YES"]."</td><td>".DLX("SALE_GOAT_ITEMS_YES")."</td></td><td>".$d["SALE_GOAT_TOD"]."</td><td>".DLX("SALE_GOAT_ITEMS_TOD")."</td><td>".EV($d["SALE_GOAT_YES"],$d["SALE_GOAT_TOD"])."</td>
                         <td>".$d["SALE_HORSE_YES"]."</td><td>".DLX("SALE_HORSE_ITEMS_YES")."</td></td><td>".$d["SALE_HORSE_TOD"]."</td><td>".DLX("SALE_HORSE_ITEMS_TOD")."</td><td>".EV($d["SALE_HORSE_YES"],$d["SALE_HORSE_TOD"])."</td>
                     </tr>
                 
@@ -539,8 +554,7 @@ function renderStats()
                     <tr align='center'>
                         <td>Occupancy</td>                            
                         <td>".$d["OCC_SNAKE_YES"]."</td><td>N/A</td><td>".$d["OCC_SNAKE_TOD"]."</td><td>".DLX("OCC_SNAKE_ITEMS_TOD")."</td><td>".EV($d["OCC_SNAKE_YES"],$d["OCC_SNAKE_TOD"],true)."</td>
-                        <td>".$d["OCC_DRAGON_YES"]."</td><td>N/A</td><td>".$d["OCC_DRAGON_TOD"]."</td><td>".DLX("OCC_DRAGON_ITEMS_TOD")."</td><td>".EV($d["OCC_DRAGON_YES"],$d["OCC_DRAGON_TOD"],true)."</td>
-                        <td>".$d["OCC_GOAT_YES"]."</td><td>N/A</td><td>".$d["OCC_GOAT_TOD"]."</td><td>".DLX("OCC_GOAT_ITEMS_TOD")."</td><td>".EV($d["OCC_GOAT_YES"],$d["OCC_GOAT_TOD"],true)."</td>
+                        <td>".$d["OCC_DRAGON_YES"]."</td><td>N/A</td><td>".$d["OCC_DRAGON_TOD"]."</td><td>".DLX("OCC_DRAGON_ITEMS_TOD")."</td><td>".EV($d["OCC_DRAGON_YES"],$d["OCC_DRAGON_TOD"],true)."</td>                        
                         <td>".$d["OCC_HORSE_YES"]."</td><td>N/A</td><td>".$d["OCC_HORSE_TOD"]."</td><td>".DLX("OCC_HORSE_ITEMS_TOD")."</td><td>".EV($d["OCC_HORSE_YES"],$d["OCC_HORSE_TOD"],true)."</td>
                     </tr>       
                 </table>
@@ -551,7 +565,7 @@ function renderStats()
                         <td colspan='4' style='font-size:20pt' align='center'>RETURN</td>
                     </tr>
                     <tr>
-                        <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
+                        <td></td><td><center>Yesterday</center></td><td><center>Today</center></td><td>EVOL</td>
                     </tr>
                     <tr>	
                         <td width='25%'>NB items</td> 				
@@ -586,7 +600,7 @@ function renderStats()
                         <td width='100%' colspan='4' style='font-size:20pt' align='center'>WASTE</td>
                     </tr>              
                     <tr>
-                        <td></td><td><center>←</center></td><td><center>↓</center></td><td>EVOL</td>
+                        <td></td><td><center>Yesterday</center></td><td><center>Today</center></td><td>EVOL</td>
                     </tr>
                     <tr>		
                         <tr>
