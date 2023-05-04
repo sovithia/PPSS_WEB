@@ -121,14 +121,17 @@ function issueStocks($items,$author,$note,$locid)
         $TRANFACTOR = 1;
         $STKUNIT = $itemDetail["STKUM"];;
         $STKFACTOR = 1; 
-        $TRANDISC = $itemDetailLastReceive["TRANDISC"];
+        $TRANDISC = $itemDetailLastReceive["TRANDISC"] ?? 0;
         $TRANTAX = 0;
-        $TRANCOST = $itemDetailLastReceive["TRANCOST"];
+        $TRANCOST = $itemDetailLastReceive["TRANCOST"] ?? 0;
         $TRANPRICE = $itemDetail["PRICE"];
         $PRICE_ORI = $itemDetail["PRICE"];
         
         $EXTPRICE = ($itemDetail["PRICE"] * $THEQUANTITY) * -1;
-        $EXTCOST = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
+        if (isset($itemDetailLastReceive["TRANCOST"]))
+            $EXTCOST =  ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
+        else
+            $EXTCOST = 0;
         $CURRENTONHAND = $itemDetail["ONHAND"];    
         $CURRID = "USD";
         $CURR_RATE = 1;
@@ -138,8 +141,8 @@ function issueStocks($items,$author,$note,$locid)
         $WEIGHT = 1;
         $OLDWEIGHT = 1;
         $APPLID = "IC";
-        $CURRENTCOST = $itemDetailLastReceive["TRANCOST"];
-        $LASTCOST = $itemDetailLastReceive["TRANCOST"];
+        $CURRENTCOST = $itemDetailLastReceive["TRANCOST"] ?? 0;
+        $LASTCOST = $itemDetailLastReceive["TRANCOST"] ?? 0;
         $COST_ADD = 0;
         $COST_RIEL = 0;
         $LINK_LINE = $line - 1;
@@ -154,8 +157,11 @@ function issueStocks($items,$author,$note,$locid)
         $IS_PROCCESS = "";
         $EXPIRED_DATE = date('Y-m-d', 0);
         $TRANQTY_NEW = $item["QUANTITY"] * -1; 
-        $TRANCOST_NEW = $itemDetailLastReceive["TRANCOST"];
-        $TRANEXTCOST_NEW = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1 ;
+        $TRANCOST_NEW = $itemDetailLastReceive["TRANCOST"] ?? 0;
+        if($itemDetailLastReceive["TRANCOST"])
+            $TRANEXTCOST_NEW = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1 ;
+        else
+            $TRANEXTCOST_NEW = "0";
         $LINE_DISCAMT = 0; // ??
         $COST_CENTER = "";
         $LINE_NOTE = "";
@@ -185,8 +191,11 @@ function issueStocks($items,$author,$note,$locid)
         $REWARD_UNIT = "";
         $COST_METHOD = "AG";
         $BASECURR_ID = "USD";
-        $CURRENCY_AMOUNT = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
-        $CURRENCY_COST = $itemDetailLastReceive["TRANCOST"];
+        if (isset($itemDetailLastReceive["TRANCOST"]))
+            $CURRENCY_AMOUNT = ($itemDetailLastReceive["TRANCOST"] * $THEQUANTITY) * -1;
+        else 
+            $CURRENCY_AMOUNT = 0;
+        $CURRENCY_COST = $itemDetailLastReceive["TRANCOST"] ?? "0";
         $CURRENCY_COST_ADD = 0;
         $CURRENCY_EXTPRICE = ($itemDetail["PRICE"] * $THEQUANTITY) * -1;
         $CURRENCY_PRICE = $itemDetail["PRICE"];

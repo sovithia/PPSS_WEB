@@ -2350,9 +2350,9 @@ $app->put('/item/{barcode}',function(Request $request,Response $response) {
 		$res = $req->fetch(PDO::FETCH_ASSOC);
 		$oldSIZE = $res["SIZE"];
 
-		$sql = "INSERT INTO POLICYCHANGE (OLDPOLICY,NEWPOLICY,PRODUCTID,AUTHOR) VALUES (?,?,?,?)";
-		$req = $db->prepare($sql);
-		$req->execute(array($oldSIZE,$value,$barcode,$author));
+		//$sql = "INSERT INTO POLICYCHANGE (OLDPOLICY,NEWPOLICY,PRODUCTID,AUTHOR) VALUES (?,?,?,?)";
+		//$req = $db->prepare($sql);
+		//$req->execute(array($oldSIZE,$value,$barcode,$author));
 	}
 	else if ($field == "DESCRIPTION1" || $field == "DESCRIPTION2"){
 		$sql = "UPDATE dbo.ICPRODUCT_SALEUNIT set ".$field." = ?, WHERE PACK_CODE = ?";
@@ -4787,7 +4787,10 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 		if ($res != false)
 		{
 			$locations = $res["LOCATIONS"];
-			$locations = explode('|',$locations);
+			if ($locations != null)
+				$locations = explode('|',$locations);
+			else 
+				$locations = array();
 			$data = array();	
 			foreach($locations as $location){
 				$sql = "SELECT * FROM ITEMREQUESTACTION WHERE TYPE = 'TRANSFER' AND ARG1 LIKE ? AND REQUESTEE IS NULL";
@@ -10082,12 +10085,13 @@ $app->put('/returnrecord',function($request,Response $response) {
 	$resp = array();
 	$data = array();
 	//VALIDATED,TOTRANSFER,TRANSFERED,CLEARED
-	if ($STATUS == "VALIDATED")
+	if ($STATUS == "VALIDATED") // PATCH TO REMOVE ONE STEP
 	{
-		$sql = "UPDATE RETURNRECORD SET STATUS = 'VALIDATED',VALIDATOR = ? WHERE ID = ?";
+		$sql = "UPDATE RETURNRECORD SET STATUS = 'TOTRANSFER',VALIDATOR = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));		
 		pictureRecord($json["SIGNATURE"],"RRVAL",$author,$id);		
+		pictureRecord($json["SIGNATURE"],"RRTTR",$author,$id);
 		$data["DULL"] = "1";
 
 		foreach($items as $item){
@@ -10095,14 +10099,14 @@ $app->put('/returnrecord',function($request,Response $response) {
 			$req = $db->prepare($sql);
 			$req->execute(array($item["QUANTITY"],$item["COST"],$item["VAT"],$item["DISCOUNT"],$item["PRODUCTID"],$id));
 		}		
-
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("SOPHAL"));
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE1"));
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE2"));
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE3"));
-		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE4"));		
+		//sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("SOPHAL"));
+		//sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE1"));
+		//sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE2"));
+		//sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE3"));
+		//sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." was validated",GetUserId("WAREHOUSE4"));		
+		sendPushToUser("RETURNRECORD","RETURNRECORD with ID ".$id." ready to transfer",603);		
 	}
-	else if ($STATUS == "TOTRANSFER"){
+	else if ($STATUS == "TOTRANSFER"){ // NO LONGER USED BECAUSE STORE DON'T DO IT ANYMORE
 		$sql = "UPDATE RETURNRECORD SET STATUS = 'TOTRANSFER',TRANSFERER = ? WHERE ID = ?";
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
@@ -12445,7 +12449,17 @@ $app->get('/pricechange',function ($request,Response $response){
 		if($res != false){
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 			array_push($created,$item);
+		}else{
+			$sql = "SELECT DESCRIPTION1 FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);
+			if($res2 != false){
+				$item["PRODUCTNAME"] = $res2["DESCRIPTION1"];
+				array_push($created,$item);
+			}
 		}
+
 	}
 	if (isMySQL($db))
 		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 2 DAY)";		
@@ -12492,7 +12506,10 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 			$ALL = true;
 		}else{
 			$locations = $res["LOCATIONS"];		
-			$locations = explode('|',$locations);
+			if ($locations != null)
+				$locations = explode('|',$locations);
+			else 
+				$locations = array();
 			$ALL = false;
 		}
 	}
