@@ -12478,10 +12478,10 @@ $app->get('/pricechange',function ($request,Response $response){
 		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
 		array_push($validated,$item);
 	}
-	$items["CREATED"] = $created;
-	$items["VALIDATED"] = $validated;
+	$finalData["CREATED"] = $created;
+	$finalData["VALIDATED"] = $validated;
 	$resp = array();
-	$resp["data"] = $items;
+	$resp["data"] = $finalData;
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
@@ -12498,9 +12498,8 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	$req = $db->prepare($sql); 	
 	$req->execute(array($userid));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-
 	if ($res != false)
-	{		
+	{				
 		if ($res["LOCATIONS"] == "ALL"){
 			$locations = array();
 			$ALL = true;
@@ -12513,29 +12512,37 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 			$ALL = false;
 		}
 	}
-	else
+	else{
 		$locations = array();
-
+		$ALL = true;
+	}
 	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'CREATED'";
 	$req = $db->prepare($sql);
 	$req->execute(array());
-	$items = $req->fetchAll(PDO::FETCH_ASSOC);
-	
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);	
 	$created = array();
 	foreach($items as $item){
 		$sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
-		$res = $req->fetch(PDO::FETCH_ASSOC);
+		$res = $req->fetch(PDO::FETCH_ASSOC);			
 		if ($res != false){
 			$item["PRODUCTNAME"] = $res["PRODUCTNAME"] ?? "";
 			array_push($created,$item);
+		}else{
+			$sql = "SELECT DESCRIPTION1 FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);
+			if($res2 != false){
+				$item["PRODUCTNAME"] = $res2["DESCRIPTION1"];
+				array_push($created,$item);
+			}
 		}		
-	}	
-	if (isMySQL($db))
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 10 DAY)";		
-	else 
-		$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > date('now','-10 days')";
+	}
+	$finalData["CREATED"] = $created;
+
+	$sql = "SELECT * FROM PRICECHANGE WHERE STATUS = 'VALIDATED' AND CREATED > (NOW() - INTERVAL 10 DAY)";			
 	$req = $db->prepare($sql);
 	$req->execute(array());
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -12545,11 +12552,21 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
-		$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
-		array_push($validated,$item);
+		if ($res != false){
+			$item["PRODUCTNAME"] = $res["PRODUCTNAME"];
+			array_push($validated,$item);
+		}else{
+			$sql = "SELECT DESCRIPTION1 FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($item["PRODUCTID"]));
+			$res2 = $req->fetch(PDO::FETCH_ASSOC);
+			if($res2 != false){
+				$item["PRODUCTNAME"] = $res2["DESCRIPTION1"];
+				array_push($validated,$item);
+			}
+		}	
 	}
-	$items["CREATED"] = $created;
-	$items["VALIDATED"] = $validated;
+	$finalData["VALIDATED"] = $validated;
 
 	if ($ALL == false){
 		$tmpCreated = array();
@@ -12566,27 +12583,30 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 				}			
 			}				
 		}
-		$items["CREATED"] = $tmpCreated;
+		$finalData["CREATED"] = $tmpCreated;
+	
+	
+		$tmpValidated = array();
+		foreach($items["VALIDATED"] as $oneitem)
+		{
+			foreach($locations as $location){
+				$sql = "SELECT PRODUCTID,STORBIN FROM ICLOCATION WHERE STORBIN LIKE ? AND PRODUCTID = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array('%'.$location.'%',$oneitem["PRODUCTID"]));
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				if ($res != false){
+					$oneitem["STORBIN"] = $res["STORBIN"];
+					array_push($tmpValidated,$oneitem);
+				}				
+			}				
+		}
+		$finalData["VALIDATED"] = $tmpValidated;
+	
 	}
 	
-	$tmpValidated = array();
-	foreach($items["VALIDATED"] as $oneitem)
-	{
-		foreach($locations as $location){
-			$sql = "SELECT PRODUCTID,STORBIN FROM ICLOCATION WHERE STORBIN LIKE ? AND PRODUCTID = ?";
-			$req = $dbBlue->prepare($sql);
-			$req->execute(array('%'.$location.'%',$oneitem["PRODUCTID"]));
-			$res = $req->fetch(PDO::FETCH_ASSOC);
-			if ($res != false){
-				$oneitem["STORBIN"] = $res["STORBIN"];
-				array_push($tmpValidated,$oneitem);
-			}				
-		}				
-	}
-	$items["VALIDATED"] = $tmpValidated;
-
+	
 	$resp = array();
-	$resp["data"] = $items;
+	$resp["data"] = $finalData;
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
 	return $response;
@@ -13322,6 +13342,24 @@ $app->get('/promotion/{productid}', function(Request $request,Response $response
 	return $response;			
 });
 
+$app->get('/restreport', function(Request $request,Response $response){
+	$indb = getInternalDatabase();
+	$start = $request->getParam('start');
+	$end = $request->getParam('end');
+
+	// YYYY-MM-DD
+	$start .= " 00:00:00";
+	$end .= " 23:59:59";
+	$sql = "SELECT * FROM RESTREQUEST WHERE date between ? AND ? AND STATUS = 'APPROVED'";	
+	$req = $indb->prepare($sql);
+ 	$req->execute(array($start,$end));
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$resp["result"] = "OK";	
+	$resp["data"] = $data;
+	$response = $response->withJson($resp);
+	return $response;			
+});
 
 // CREATED, APPROVED, DENIED
 $app->get('/restrequest/{status}', function(Request $request,Response $response){
