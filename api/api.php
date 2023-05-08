@@ -6113,8 +6113,6 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 		$req = $db->prepare($sql);
 		$req->execute(array());
 	}
-	
-	
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
 	$IDS = extractIDS($items);
@@ -6128,6 +6126,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$req = $dbBlue->prepare($sql);
 	$req->execute(array());		
 	$itemsWithDetails = $req->fetchAll(PDO::FETCH_ASSOC);	
+	
 	$INDEX = array();
 	foreach($itemsWithDetails as $item2)
 		$INDEX[$item2["BARCODE"]] = $item2;
@@ -6135,12 +6134,31 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$itemsNEW = array();
 	foreach($items as $newItem){
 			if (!isset($INDEX[$newItem["PRODUCTID"]]))
-				continue;
+			{
+				$sql = "SELECT PRODUCTID FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($newItem["PRODUCTID"]));		
+				$res = $req->fetch(PDO::FETCH_ASSOC);
+				if ($res == false){
+					error_log("Transfer: ".$newItem["PRODUCTID"]."Not found")
+					continue;
+				}					
+				$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
+				(SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN1',
+				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
+				FROM ICPRODUCT,APVENDOR 
+				WHERE ICPRODUCT.VENDID = APVENDOR.VENDID
+				AND BARCODE = ?";
+				$req = $dbBlue->prepare($sql);
+				$req->execute(array($res["PRODUCTID"]));		
+				$newItem = $req->fetch(PDO::FETCH_ASSOC);			
+			}
 			$newItem["PACKINGNOTE"] = $INDEX[$newItem["PRODUCTID"]]["PACKINGNOTE"];
 			$newItem["VENDNAME"] = $INDEX[$newItem["PRODUCTID"]]["VENDNAME"];
 			$newItem["PRODUCTNAME"] = $INDEX[$newItem["PRODUCTID"]]["PRODUCTNAME"];		
 			$newItem["STOREBIN1"] = $INDEX[$newItem["PRODUCTID"]]["STOREBIN1"];
 			array_push($itemsNEW,$newItem);
+			
 	}	
 	$resp = array();
 	$resp["result"] = "OK";
