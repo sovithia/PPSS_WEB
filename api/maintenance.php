@@ -20,18 +20,7 @@ function ScanPack(){
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
     foreach($packs as $pack)
     {
-        $sql = "SELECT DISCOUNT_TYPE,DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND GETDATE() < DATETO ";
-        $req = $db->prepare($sql);
-        $req->execute(array($pack["PRODUCTID"]));
-        $res = $req->fetch(PDO::FETCH_ASSOC);
-        
-        if ($res != false){            
-            $disctype = $res["DISCOUNT_TYPE"];
-            $discvalue = $res["DISCOUNT_VALUE"];
-        }else{            
-            $disctype = "";
-            $discvalue = "";
-        }
+        // CHECK IF PRICE IS IRREGULAR
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
         $req->execute(array($pack["PRODUCTID"]));
@@ -40,16 +29,15 @@ function ScanPack(){
             echo "Price not found for ".$pack["PRODUCTID"]."\n";
             continue;
         }
-        
-        $UNITPRICE = $res2["PRICE"];
-
-        // CHECK IF PRICE IS IRREGULAR
+        $UNITPRICE = $res2["PRICE"];        
         $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
+
         $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
         $req = $db->prepare($sql); 
         $req->execute(array($pack["PACK_CODE"]));
-        $res3 = $req->fetch(PDO::FETCH_ASSOC);    
+        $res3 = $req->fetch(PDO::FETCH_ASSOC); 
         $currentPrice = $res3["SALEPRICE"];    
+
         $calculatedIrregular = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
         $calculatedNormalPromo = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.9,4);                
 
@@ -61,8 +49,11 @@ function ScanPack(){
             continue;
         }
 
-                              
-        if($res == false)
+        $sql = "SELECT DISCOUNT_TYPE,DISCOUNT_VALUE FROM ICNEWPROMOTION WHERE PRODUCTID = ? AND GETDATE() < DATETO ";
+        $req = $db->prepare($sql);
+        $req->execute(array($pack["PRODUCTID"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);                      
+        if($res == false) // Check if there is a promotion
         {             
                 // IF NO PROMO, 10% DISC ON PRICE                                                                    
             $calculated = round((($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);                
@@ -76,14 +67,14 @@ function ScanPack(){
         else
         {                   
             // FULL PRICE      
-            // WE NEED TO CHECK IF THE PRICE WE ARE ABOUT TO CHANGE IS A WEIRD PRICE BECAUSE NOT EQUAL TO SALEFACTOR
+        
             $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
             $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
             $req = $db->prepare($sql); 
             $req->execute(array($pack["PACK_CODE"]));
             $res = $req->fetch(PDO::FETCH_ASSOC);    
             $currentPrice = $res["SALEPRICE"];                                
-            // We don't apply discount because it is applied automatically after
+            // We don't apply only 3% discount
             $calculated = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
             if (floatval($pack["SALEPRICE"]) != $calculated){
                 echo "SETTING FULL PRICE FOR ".$pack["PACK_CODE"].":".$calculated."\n";
@@ -123,6 +114,7 @@ function ResetPack(){  // ON TUESDAY 23:59
                
     }
 }
+
 
 // Once Every 5 minutes
 function ScanPriceChange(){
@@ -201,7 +193,6 @@ function ScanPriceChange(){
             $req->execute(array($item["PRODUCTID"]));
             $res = $req->fetch(PDO::FETCH_ASSOC);
             if ($res == false){
-                echo "insert\n";
                 $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER,OLDCOST,NEWCOST) values(?,?,?,?,?,?,?)";	
                 $req = $indb->prepare($sql);
                 $req->execute(array($item["PRODUCTID"], $oldPrice, $newPrice,'CREATED',"AUTO",$item["OLDCOST"],$item["NEWCOST"]));	
@@ -212,7 +203,45 @@ function ScanPriceChange(){
 	            $res = $req->fetch(PDO::FETCH_ASSOC);
 	            $STORBIN = $res["STORBIN"] ?? "";
 	            $STORBIN = explode('-',$STORBIN)[0];
-    
+
+                // Detect if packs are irregular price 
+                $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+                $req = $db->prepare($sql);
+                $req->execute(array($item["PRODUCTID"]));
+                $packs = $req->fetchAll(PDO::FETCH_ASSOC);
+                foreach($packs as $pack)
+                {
+                    // CHECK IF PRICE IS IRREGULAR
+                    $sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
+                    $req = $db->prepare($sql);
+                    $req->execute(array($pack["PRODUCTID"]));
+                    $res2 = $req->fetch(PDO::FETCH_ASSOC);   
+                    if ($res2 != false){
+                        $UNITPRICE = $res2["PRICE"];        
+                        $fullPrice = round(($UNITPRICE * $pack["SALEFACTOR"])  ,4);        
+            
+                        $sql = "SELECT SALEPRICE FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+                        $req = $db->prepare($sql); 
+                        $req->execute(array($pack["PACK_CODE"]));
+                        $res3 = $req->fetch(PDO::FETCH_ASSOC); 
+                        $currentPrice = $res3["SALEPRICE"];    
+            
+                        $calculatedIrregular = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.97,4);                
+                        $calculatedNormalPromo = round(($UNITPRICE * $pack["SALEFACTOR"]) * 0.9,4);                
+            
+                        if (floatval($currentPrice) != floatval($fullPrice) &&
+                            floatval($currentPrice) != floatval($calculatedIrregular) && 
+                            floatval($currentPrice) != floatval($calculatedNormalPromo)            
+                        )
+                        {// IT IS IRREGULAR
+                            $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER,OLDCOST,NEWCOST) values(?,?,?,?,?,?,?)";	
+                            $req = $indb->prepare($sql);
+                            $newPrice = $currentPrice + ($diff * $pack["SALEFACTOR"]);
+                            $req->execute(array($pack["PACK_CODE"], $currentPrice, $newPrice,'CREATED',"AUTO",$item["OLDCOST"],$item["NEWCOST"]));	                            
+                        }
+                    }
+                    }                  
+                }
                 $sql = "SELECT * 
                         FROM USER,TEAM 
                         WHERE USER.team_id = TEAM.ID                         
