@@ -151,6 +151,8 @@ function ScanPriceChange(){
     echo "Items count: ". count($items)."\n";
     $i = 0;
     foreach($items as $item){
+        if (floatval($item["NEWCOST"]) == floatval($item["OLDCOST"]))
+            continue;
         $i++;
         echo $i."\n";
         $sql = "SELECT CATEGORYID FROM ICPRODUCT WHERE PRODUCTID = ?";
@@ -160,9 +162,7 @@ function ScanPriceChange(){
         if ($category == false){
             echo "category false\n";
             continue;        
-        }
-        
-            
+        }            
         if (in_array($category["CATEGORYID"],$excludeCategories)){
             echo "exclude category\n";
             continue;
@@ -171,6 +171,16 @@ function ScanPriceChange(){
 
         if (floatval($item["NEWCOST"]) > floatval($item["OLDCOST"]) &&  ((floatval($item["NEWCOST"]) - floatval($item["OLDCOST"])) > 0.02) )
         {
+            $sql = "SELECT TOP 1 TRANCOST FROM PODETAIL WHERE PRODUCTID = ? ORDER BY RECEIVEDATE DESC";
+            $req = $db->prepare($sql);
+            $req->execute(array($item["PRODUCTID"]));
+            $tmpdata = $req->fetch(PDO::FETCH_ASSOC);
+            if ($tmpdata == false)
+                continue;
+            $lastCost = $res["TRANCOST"];
+            if ($item["NEWCOST"] == $res["TRANCOST"])
+                continue;
+
 
             $diff = floatval($item["NEWCOST"]) - floatval($item["OLDCOST"]);
 
