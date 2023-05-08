@@ -539,8 +539,7 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 		$final = file_get_contents($path);
 	}
 	else 
-	{	
-		error_log("--Barcode:". $barcode);
+	{			
 		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");		
 		if ($final == "" || $final == null){
 

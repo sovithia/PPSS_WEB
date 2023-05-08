@@ -157,10 +157,10 @@ function generateExcel($items,$fields,$setQuantity = false,$skipNullProduct = tr
         $alphacount++;     
     }
  
-    $count = 2;    
+    $count = 2;        
     foreach($items as $item)    
     {  
-        
+        error_log("CNT:".$count);
         if($skipNullProduct == true)
         {
             if (!isset($item["PRODUCTID"]))
@@ -374,7 +374,8 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
         $items = extractItems($_POST);
 
     //var_dump($items);
-    //exit; 
+    error_log("cnt:".count($items));    
+    
       
     if (isset($_POST["fields"]))
         $fields = json_decode($_POST["fields"],true);
@@ -383,10 +384,11 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
     
     if ($type == "aplist" || $type == "discountsumlist")
         generateExcel($items,$fields,false,false);
-    else {       
+    else {    
+        error_log("GO EXCEL");   
         generateExcel($items,$fields,false,true);        
     }
-    downloadFile("data.xlsx");
+    //downloadFile("data.xlsx");
 } 
 
 die();

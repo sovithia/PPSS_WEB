@@ -776,7 +776,6 @@ $app->get('/label/{barcodes}',function($request,Response $response) {
 				$oneItem = itemLookupLabel($barcode,false,$percentages[$count]);
 			else
 				$oneItem = itemLookupLabel($barcode,false);			
-			error_log("Picture:".$packInfo["PICTURE"]); 	
 
 			$oneItem["productImg"] = base64_encode($packInfo["PICTURE"]);			
 			$oneItem["unit"] = $packInfo["SALEUNIT"];
@@ -2100,7 +2099,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 	$vendor =  $request->getParam('vendor',''); 
 	$storebin = $request->getParam('storebin','');
 	$vendid = $request->getParam('vendid','');
-	$count = $request->getParam('count',"300");
+	$count = $request->getParam('count',"100000");
 
 	$storebin1 = $request->getParam('storebin1','');
 	$storebin2 = $request->getParam('storebin2','');
@@ -2132,11 +2131,7 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 			(SELECT ORDERQTY   FROM dbo.ICLOCATION WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND LOCID = 'WH1') as 'ORDERQTY1',
 			replace(replace(replace(PACKINGNOTE,char(10),''),char(13),''),'\"','') as 'PACKINGNOTE'
 			,COST,PRICE,VENDNAME,			
-			(SELECT( sum(TRANCOST * TRANQTY) / sum(TRANQTY)) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID )  as 'AVGCOST', 
-
 			isnull((SELECT TOP(1) CAST(TRANCOST AS decimal(7, 2))   FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC),LASTCOST) as 'LASTCOST',
-			
-
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',
 			ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019'),0) as 'TOTALRECEIVE',
 			ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND TRANDATE > '11-1-2019') * -1),0) as 'TOTALSALE',				
@@ -2194,9 +2189,6 @@ $app->get('/itemsearch',function(Request $request,Response $response) {
 		$sql .= " AND dbo.ICPRODUCT.VENDID = ?";
 		array_push($params,$vendid);
 	}
-	
-
-
 	$sql .= " ORDER BY PRODUCTNAME ASC";	
 	$req = $conn->prepare($sql);	
 	$req->execute($params);
@@ -3280,6 +3272,12 @@ $app->post('/supplyrecordpool', function(Request $request,Response $response) {
 	}
 	$message = "";
 	$count = 1;
+	if ($items == null){
+		$data["result"] = "KO";				
+		$data["message"] = "Items is null";
+		$response = $response->withJson($data);		
+		return $response;	
+	}
 	foreach($items as $item)
 	{				
 		updateCost($item["PRODUCTID"]);
@@ -4994,7 +4992,6 @@ $app->post('/itemrequestaction', function(Request $request,Response $response) {
 	}		
 	$lastID = $db->lastInsertId();
 	$db->commit();  
-	error_log($lastID);
 
 	if ($json["TYPE"] == "TRANSFER"){ // NEED TO DO IT HERE FOR LAST INSERT ID
 		$sql = "SELECT ID,fcmtoken FROM USER WHERE team_id = ifnull((SELECT ID FROM TEAM WHERE LOCATIONS LIKE ? OR LOCATIONS = 'ALL' LIMIT 1),0)"; 
@@ -6271,7 +6268,65 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 	$req = $db->prepare($sql);	
 	$req->execute(array($json["PRODUCTID"]));
-	$res = $req->fetch(PDO::FETCH_ASSOC);	
+	
+	// Get Existing storbin
+	$sql = "SELECT PRODUCTID FROM ".$tableName. " WHERE USERID = ?";
+	$req = $db->prepare($sql);
+	$req->execute(array($json["USERID"]));
+	$res = $req->fetch(PDO::FETCH_ASSOC);
+
+	if ($res != null)// If thats's the first, no need to test
+	{ 
+		$sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($res["PRODUCTID"])); 
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == null)
+			$tStoreBin = "N/A";
+		else {
+			$tStoreBin = $res["STORBIN"]; // STORBIN OF EXISTING ITEM
+			$tStoreBin = substr($tStoreBin,0,4);
+		}
+		error_log("Existing:".$tStoreBin);
+
+				
+		// Get Current storbin
+		$sql = "SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ?";
+		$req = $dbBlue->prepare($sql);
+		$req->execute(array($json["PRODUCTID"])); 
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false || $res["STORBIN"] == null){
+			$cStoreBin = "N/A";			
+		}			
+		else
+		{			
+			$cStoreBin = $res["STORBIN"]; // STORBIN OF INSERTED ITEM
+			$cStoreBin = substr($cStoreBin,0,4);		
+		}			
+		// Get All Storebin of items
+		
+		
+		$sql = "SELECT LOCATIONS FROM TEAM WHERE LOCATIONS LIKE ?";
+		$req = $db->prepare($sql);
+		$req->execute(array('%'.$tStoreBin.'%'));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		if ($res == false)
+			$allStoreBin = "N/A";
+		else 
+			$allStoreBin = $res["LOCATIONS"];
+
+		error_log("HAYSTACK:".$allStoreBin."|NEEDLE:".$cStoreBin);
+		if (str_contains($allStoreBin,$cStoreBin) == false)
+		{
+			error_log("ON SORT");
+			$data["result"] = "KO";
+			$data["message"] = "Cannot mix items from different team in Transfer, item must be in (".$allStoreBin."), current item [" . $cStoreBin ."]";
+			$response = $response->withJson($data);
+			return $response;
+		}else{
+			error_log("else");
+		}	
+	}
 
 	if ($suffix == ""){
 		if(isset($json["USERID"]))
@@ -12570,7 +12625,7 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 
 	if ($ALL == false){
 		$tmpCreated = array();
-		foreach($items["CREATED"] as $oneitem)
+		foreach($finalData["CREATED"] as $oneitem)
 		{				
 			foreach($locations as $location){			
 				$sql = "SELECT PRODUCTID,STORBIN FROM ICLOCATION WHERE STORBIN LIKE ? AND PRODUCTID = ?";
@@ -12587,7 +12642,7 @@ $app->get('/pricechangefiltered/{userid}',function ($request,Response $response)
 	
 	
 		$tmpValidated = array();
-		foreach($items["VALIDATED"] as $oneitem)
+		foreach($finalData["VALIDATED"] as $oneitem)
 		{
 			foreach($locations as $location){
 				$sql = "SELECT PRODUCTID,STORBIN FROM ICLOCATION WHERE STORBIN LIKE ? AND PRODUCTID = ?";

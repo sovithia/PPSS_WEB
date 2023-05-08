@@ -11,7 +11,7 @@ function AddAnnualLeave(){
 
 }
 
-// Once Every Day
+// Once Every Day Except Tuesday
 function ScanPack(){
     $db = getDatabase();
     $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
@@ -96,7 +96,7 @@ function ScanPack(){
     } 
 }
 
-function ResetPack(){
+function ResetPack(){  // ON TUESDAY 23:59
     $db = getDatabase();
     $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
     $req = $db->prepare($sql);

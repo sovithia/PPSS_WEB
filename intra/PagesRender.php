@@ -1767,7 +1767,10 @@ function renderItemSearch($items)
         $item["PRICE"] = truncatePrice($item["PRICE"]);
 
         $item["TOTALTHROWN"] = truncatePrice($item["TOTALTHROWN"]);
-        $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
+        if (isset($item["AVGCOST"]))
+          $item["AVGCOST"] = truncatePrice($item["AVGCOST"]);
+        else 
+          $item["AVGCOST"] = "N/A";
         $item["LASTCOST"] = truncatePrice($item["LASTCOST"]);
         if (floatval($item["TOTALRECEIVE"]) > 0.0){
           $item["PERCENTSALE"] = (floatval($item["TOTALSALE"]) * 100) / ( floatval($item["TOTALRECEIVE"]) );  

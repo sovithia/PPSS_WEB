@@ -4,6 +4,8 @@
 
 function truncatePrice($price)
 {
+  if ($price == null)
+    return "";
   if (strpos($price, 'E') !== false)
   {
     return floatval($price);
