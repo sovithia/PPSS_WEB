@@ -241,16 +241,14 @@ function ScanPriceChange(){
             
                         if (floatval($currentPrice) != floatval($fullPrice) &&
                             floatval($currentPrice) != floatval($calculatedIrregular) && 
-                            floatval($currentPrice) != floatval($calculatedNormalPromo)            
-                        )
-                        {// IT IS IRREGULAR
+                            floatval($currentPrice) != floatval($calculatedNormalPromo)            )
+                        {// IF IT IS IRREGULAR
                             $sql = "INSERT INTO PRICECHANGE (PRODUCTID,OLDPRICE,NEWPRICE,STATUS,REQUESTER,OLDCOST,NEWCOST) values(?,?,?,?,?,?,?)";	
                             $req = $indb->prepare($sql);
                             $newPrice = $currentPrice + ($diff * $pack["SALEFACTOR"]);
                             $req->execute(array($pack["PACK_CODE"], $currentPrice, $newPrice,'CREATED',"AUTO",$item["OLDCOST"],$item["NEWCOST"]));	                            
                         }
-                    }
-                    }                  
+                    }                                      
                 }
                 $sql = "SELECT * 
                         FROM USER,TEAM 
