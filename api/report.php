@@ -51,12 +51,14 @@ function calculateLastDay($year,$month)
 
 function loadStats($month,$year)
 {
+    
     $db = getDatabase();
     $indb = getInternalDatabase();
     $sql = "SELECT * FROM REPORT WHERE MONTH = ? AND YEAR = ?";
     $req = $indb->prepare($sql);
     $req->execute(array($month,$year));
     $res = $req->fetch(PDO::FETCH_ASSOC);
+
     if ($res == false)
     {
         $sql = "INSERT INTO REPORT (MONTH,YEAR,ROWDATA,TEAMDATA,SECTIONDATA,DEPARTMENTDATA,CATEGORYDATA,GENERALDATA) values (?,?,?,?,?,?,?,?)";    
@@ -73,16 +75,16 @@ function loadStats($month,$year)
 		$prevmonth = sprintf("%02d",intval($month) -1);		
 
 	$month = sprintf("%02d",intval($month));	
-	$startLast = $prevyear."-".$prevmonth."-01". " 00:00:00.000";
-	$endLast = $prevyear."-".$prevmonth."-".calculateLastDay($year,$prevmonth)." 23:59:59.999";
-	$startCurrent = $year."-".$month."-01"." 00:00:00.000";
-    $endCurrent = $year."-".$month."-".calculateLastDay($year,$month)." 23:59:59.999";
+	$startLast = $prevyear."-".$prevmonth."-01". " 00:00:00";
+	$endLast = $prevyear."-".$prevmonth."-".calculateLastDay($year,$prevmonth)." 23:59:59";
+	$startCurrent = $year."-".$month."-01"." 00:00:00";
+    $endCurrent = $year."-".$month."-".calculateLastDay($year,$month)." 23:59:59";
     
     // General 
     $sql = "SELECT GENERALDATA from REPORT WHERE MONTH = ? AND YEAR = ?";
-    $req = $indb->prepare($sql);
+    $req = $indb->prepare($sql);    
     $req->execute(array($month,$year));
-    $res = $req->fetch(PDO::FETCH_ASSOC);
+    $res = $req->fetch(PDO::FETCH_ASSOC);    
     if ($res["GENERALDATA"] == 'N/A')
     {
         echo "Generating General data...\n";
@@ -127,6 +129,7 @@ function loadStats($month,$year)
             }
             $str = substr($str,0,-1);
             $str .= ")";
+            echo "IDS:".$str."\n";
             $oneData = array();
             $oneData["NAME"] = $rowname;
             $oneData["ITEMCOUNT"] = count($items);
@@ -314,7 +317,8 @@ function loadStats($month,$year)
     {
         echo "Generating Category data...\n";
         $categoryData = array();    
-        $sql = "SELECT CATEGORYNAME,SECTIONNAME,DEPARTMENTNAME FROM CATEGORY GROUP BY SECTIONNAME,DEPARTMENTNAME";
+        $sql = "SELECT CATEGORYNAME,SECTIONNAME,DEPARTMENTNAME 
+                FROM CATEGORY";
         $req = $indb->prepare($sql);
         $req->execute(array());
         $categories = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -406,7 +410,7 @@ function getCategoriesStats($name, $begin,$end)
         $productids = substr($productids,0,-1);
         $productids .= ")";
     }
-
+    
     $stats = getProductsStats($productids, $begin,$end);
     return $stats;
 }
@@ -513,9 +517,9 @@ function getProductsStats($productids, $begin,$end){
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $selfpromoNbItems = $res["CNT"];
     // Self Promotion Items
-    $sql = "SELECT distinct(PRODUCTID),PERCENTPROMO1,                
+    $sql = "SELECT distinct(PRODUCTID),PERCENTPROMO,                
             (select sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
-            FROM SELFPROMOTIONITEM as 'SPI'
+            FROM SELFPROMOTIONITEM as SPI
             WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end,$begin,$end));
@@ -536,7 +540,7 @@ function getProductsStats($productids, $begin,$end){
     // Return Items
     $sql = "SELECT distinct(PRODUCTID),
             (select sum(QUANTITY) FROM RETURNRECORDITEM WHERE RETURNRECORDITEM.PRODUCTID = RRI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
-            FROM RETURNRECORDITEM as 'RRI'
+            FROM RETURNRECORDITEM as RRI
             WHERE PRODUCTID in ".$productids." AND CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end,$begin,$end));
@@ -727,7 +731,7 @@ function getGeneralStats($begin,$end){
     $res = $req->fetch(PDO::FETCH_ASSOC);
     $selfpromoQuantity = $res["CNT"];
     // Self Promotion Quantity
-	$sql = "SELECT sum(QUANTITY1) as 'CNT' FROM SELFPROMOTIONITEM WHERE  CREATED BETWEEN ? AND ?";
+	$sql = "SELECT sum(QUANTITY) as 'CNT' FROM SELFPROMOTIONITEM WHERE  CREATED BETWEEN ? AND ?";
 	$req = $indb->prepare($sql);
 	$req->execute(array($begin,$end));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -735,7 +739,7 @@ function getGeneralStats($begin,$end){
     // Self Promotion items
     $sql = "SELECT distinct(PRODUCTID),                
             (select sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
-            FROM SELFPROMOTIONITEM as 'SPI'
+            FROM SELFPROMOTIONITEM as SPI
             WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end,$begin,$end));
@@ -756,7 +760,7 @@ function getGeneralStats($begin,$end){
 
     $sql = "SELECT distinct(PRODUCTID),
             (select sum(QUANTITY) FROM RETURNRECORDITEM WHERE RETURNRECORDITEM.PRODUCTID = RRI.PRODUCTID AND CREATED BETWEEN ? AND ?) as 'QUANTITY'
-            FROM RETURNRECORDITEM as 'RRI'
+            FROM RETURNRECORDITEM as RRI
             WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end,$begin,$end));
@@ -843,9 +847,8 @@ function getGeneralStats($begin,$end){
     $promoLossQuantity = 0;
 
     $sql = "SELECT DISTINCT(PRODUCTID),
-            (SELECT sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'QUANTITY',
-            (SELECT sum(PERCENTPROMO1 + PERCENTPROMO2 + PERCENTPROMO3 + PERCENTPROMO4) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'PERCENTPROMO'
-             FROM SELFPROMOTIONITEM as 'SPI'
+            (SELECT sum(QUANTITY) FROM SELFPROMOTIONITEM WHERE SELFPROMOTIONITEM.PRODUCTID = SPI.PRODUCTID) as 'QUANTITY',PERCENTPROMO            
+             FROM SELFPROMOTIONITEM as SPI
              WHERE CREATED BETWEEN ? AND ?";
     $req = $indb->prepare($sql);
     $req->execute(array($begin,$end));
@@ -859,9 +862,12 @@ function getGeneralStats($begin,$end){
         $res = $req->fetch(PDO::FETCH_ASSOC);
 
         $price = $res != false ? $res["PRICE"] : 0;
-        $promo = $item != false ? $item["PERCENTPROMO"] : 0;
-        $lastcost = $res != false ? $res["LASTCOST"] : 0;
-        $finalPrice = $price - ($price * ($promo / 100));
+        $promo = $item != false ? $item["PERCENTPROMO"] : 0;    
+        $lastcost = $res != false ? $res["LASTCOST"] : 0;        
+        if ($promo == "N/A")
+            $finalPrice = $price;
+        else
+            $finalPrice = $price - ($price * ($promo / 100));
         if ($finalPrice < $lastcost){
             $promoLossNbItems++;
             $promoLossQuantity += $item["QUANTITY"];
@@ -909,5 +915,5 @@ function getGeneralStats($begin,$end){
 	return $data;
 }
 
-loadStats("10","2022");
+loadStats("04","2023");
 ?>

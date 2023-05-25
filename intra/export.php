@@ -388,7 +388,7 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
         error_log("GO EXCEL");   
         generateExcel($items,$fields,false,true);        
     }
-    //downloadFile("data.xlsx");
+    downloadFile("data.xlsx");
 } 
 
 die();

@@ -791,7 +791,7 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 function decreaseQty($barcode,$lastrcvqty,$price,$unit = 1)
 {
 	$multiple = calculateMultiple($barcode);
-	if ($lastrcvqty % $multiple != 0)
+	if (round($lastrcvqty) % $multiple != 0)
 		$lastrcvqty = $multiple;
 
 	$decreasedQty = round($lastrcvqty * (1 - (0.1 * $unit)));
@@ -1164,6 +1164,8 @@ function orderStatistics($barcode,$lightmode = false)
 			else if ($ONHAND < ($RCVQTY * 0.2) )
 				{
 						$multiple = calculateMultiple($barcode);
+						error_log(">>".$RCVQTY);
+						error_log(">>".$multiple);
 						$remains = $RCVQTY % $multiple;
 						if ($remains == 0)
 							$stats["FINALQTY"] = $RCVQTY;
@@ -1287,9 +1289,11 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
 				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
-
+				error_log("Cnt:".count($rules));
+				error_log("Diff:".$diffDays);
 				foreach($rules as $rule)
-				{							
+				{				
+					error_log("MIN:".$rule["MINDAY"]."|MAX:".$rule["MAXDAY"]);
 					if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 						{
 							$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";

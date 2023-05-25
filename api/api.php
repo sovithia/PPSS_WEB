@@ -6115,8 +6115,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	}
 	$items = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	$IDS = extractIDS($items);
-
+	$IDS = extractIDS($items);	
 	$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
 				(SELECT STORBIN FROM ICLOCATION WHERE LOCID = 'WH1' AND PRODUCTID = ICPRODUCT.PRODUCTID) as 'STOREBIN1',
 				replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as 'PRODUCTNAME' 
@@ -6140,7 +6139,8 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 				$req->execute(array($newItem["PRODUCTID"]));		
 				$res = $req->fetch(PDO::FETCH_ASSOC);
 				if ($res == false){
-					error_log("Transfer: ".$newItem["PRODUCTID"]."Not found")
+					error_log("Transfer: ".$newItem["PRODUCTID"]." Not found");
+
 					continue;
 				}					
 				$sql = "SELECT PACKINGNOTE,VENDNAME,BARCODE,
@@ -6151,12 +6151,18 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 				AND BARCODE = ?";
 				$req = $dbBlue->prepare($sql);
 				$req->execute(array($res["PRODUCTID"]));		
-				$newItem = $req->fetch(PDO::FETCH_ASSOC);			
+				$details = $req->fetch(PDO::FETCH_ASSOC);			
+				$newItem["PACKINGNOTE"] = $details["PACKINGNOTE"];
+				$newItem["VENDNAME"] = $details["VENDNAME"];
+				$newItem["PRODUCTNAME"] = $details["PRODUCTNAME"];		
+				$newItem["STOREBIN1"] = $details["STOREBIN1"];
+			}else{
+				$newItem["PACKINGNOTE"] = $INDEX[$newItem["PRODUCTID"]]["PACKINGNOTE"];
+				$newItem["VENDNAME"] = $INDEX[$newItem["PRODUCTID"]]["VENDNAME"];
+				$newItem["PRODUCTNAME"] = $INDEX[$newItem["PRODUCTID"]]["PRODUCTNAME"];		
+				$newItem["STOREBIN1"] = $INDEX[$newItem["PRODUCTID"]]["STOREBIN1"];
 			}
-			$newItem["PACKINGNOTE"] = $INDEX[$newItem["PRODUCTID"]]["PACKINGNOTE"];
-			$newItem["VENDNAME"] = $INDEX[$newItem["PRODUCTID"]]["VENDNAME"];
-			$newItem["PRODUCTNAME"] = $INDEX[$newItem["PRODUCTID"]]["PRODUCTNAME"];		
-			$newItem["STOREBIN1"] = $INDEX[$newItem["PRODUCTID"]]["STOREBIN1"];
+			
 			array_push($itemsNEW,$newItem);
 			
 	}	
@@ -6282,6 +6288,19 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		$tableName = "ITEMREQUESTDEMANDPOOL";
 		$suffix = " AND USERID = ".$userid;
 	}
+
+	// EXISTENCE TEST 
+	$sql = "SELECT * FROM ICPRODUCT WHERE PRODUCTID = ?";
+	$req = $dbBlue->prepare($sql);
+	$req->execute(array($json["PRODUCTID"]));
+	$check = $req->fetch(PDO::FETCH_ASSOC);
+	if($check == false){
+		$data["result"] = "KO";
+		$data["message"] = "invalid product";
+		$response = $response->withJson($data);
+		return $response;
+	}
+
 
 	$sql = "DELETE FROM ".$tableName." WHERE PRODUCTID = ?".$suffix;
 	$req = $db->prepare($sql);	
@@ -8456,8 +8475,11 @@ $app->get('/selfpromotion', function($request,Response $response) {
 		$item["NBPROOFS"] = $nbproofs;
 		$sql = "SELECT PRODUCTNAME,STKUM,PRICE,LASTCOST,SIZE, 
 				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
-				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2'	
-				FROM ICPRODUCT WHERE PRODUCTID = ?";
+				(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',
+				VENDNAME	
+				FROM ICPRODUCT,APVENDOR 
+				WHERE PRODUCTID = ?
+				AND APVENDOR.VENDID = ICPRODUCT.VENDID";
 		$req = $blueDB->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
 		$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -8469,6 +8491,7 @@ $app->get('/selfpromotion', function($request,Response $response) {
 			$item["WH1"] = $res["WH1"];		
 			$item["WH2"] = $res["WH2"];
 			$item["POLICY"] = $res["SIZE"];
+			$item["VENDNAME"] = $res["VENDNAME"];
 		}		
 		
 		$item["OCCUPANCY"] = getProductOccupancy($item["PRODUCTID"]);
@@ -9644,7 +9667,7 @@ $app->get('/expirereturnalertfiltered/{userid}',function ($request,Response $res
 					AND SIZE IS NOT NULL 
 					AND SIZE <> ''
 					AND SUBSTRING(SIZE,1,1) = 'R'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 10)
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
 					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
@@ -9799,7 +9822,7 @@ $app->get('/expirenoreturnalertfiltered/{userid}',function ($request,Response $r
 					AND PPSS_DELIVERED_EXPIRE IS NOT NULL
 					AND SIZE <> 'NRNF'
 					AND SUBSTRING(SIZE,1,2) = 'NR'
-					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 5)
+					AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) <= ( cast(SUBSTRING(SIZE,3,3) as int) + 10)
 				  	AND datediff(day,getdate(), PPSS_DELIVERED_EXPIRE) > 0
 					AND PPSS_DELIVERED_EXPIRE <> '1900-01-01'
 					AND PPSS_DELIVERED_EXPIRE <> '2001-01-01'
