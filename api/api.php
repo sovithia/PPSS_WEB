@@ -2624,7 +2624,6 @@ $app->get('/calculatePrice',function(Request $request,Response $response) {
 		$rmin = substr($splitted[0],1);
 		$rmax = substr($splitted[1],1);
 
-		//echo $rmin."|".$rmax."<br>";
 		if($cost >= $rmin && $cost <= $rmax){
 			$selectedPriceClass = $priceclass;			
 		}		
@@ -4811,8 +4810,6 @@ $app->get('/transfer/{userid}',  function(Request $request,Response $response){
 });
 
 
-
-
 $app->get('/lastid', function(Request $request,Response $response) {
 	$db = getDatabase();	
 	$db->beginTransaction();    
@@ -5308,7 +5305,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		//$REFERENCE = $json["NOTE"];
 		$REFERENCE = "";
 		$TRANQTY = $THEQUANTITY;
-		$TRANUNIT = $itemDetails["SALEFACTOR"];
+		$TRANUNIT = "UNIT";
 		$TRANFACTOR = $itemDetails["BIG_UNIT_FACTOR"];
 		$STKFACTOR = $itemDetails["STKFACTOR"];
  		$TRANCOST = $itemDetails["COST"];
@@ -5345,14 +5342,14 @@ function transferItems($items, $author,$type = "TRANSFER"){
 
 		$sql = "INSERT INTO ICTRANDETAIL(
 		DOCNUM,PRODUCTID,LOCID,CATEGORYID,CLASSID,
-		TRANDATE,TRANTYPE,LINENUM,PRODUCTNAME,PRODUCTNAME1,
+		TRANDATE,TRANTYPE,LINENUM,PRODUCTNAME,PRODUCTNAME1,		
 		REFERENCE,TRANQTY,TRANUNIT,TRANFACTOR,STKFACTOR,
 		TRANCOST,TRANPRICE,PRICE_ORI,EXTPRICE,EXTCOST,
 		CURRENTONHAND,WEIGHT,USERADD,DATEADD,OLDWEIGHT,
 		CURRENTCOST,LASTCOST,APPLID,LINK_LINE,ICCLEARING_ACC,
 		INVENTORY_ACC,DIMENSION,TRANQTY_NEW,TRANCOST_NEW,TRANEXTCOST_NEW,
 		COST_METHOD,CURRENCY_COST,CURRENCY_AMOUNT,CURRENCY_EXTPRICE,CURRENCY_PRICE,
-		MAIN_PRODUCTID,BATCHNO,EXPIRED_DATE) VALUES (
+		MAIN_PRODUCTID,BATCHNO,EXPIRED_DATE,STKUNIT) VALUES (
 		?,?,?,?,?,
 		?,?,?,?,?,
 		?,?,?,?,?,
@@ -5361,7 +5358,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		?,?,?,?,?,
 		?,?,?,?,?,
 		?,?,?,?,?,
-		?,?,?) 
+		?,?,?,?) 
 		";		
 		$req = $db->prepare($sql);
 
@@ -5375,7 +5372,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 		$CURRENTCOST,$LASTCOST,$APPLID,$LINK_LINE,$ICCLEARING_ACC,
 		$INVENTORY_ACC,$DIMENSION,$TRANQTY_NEW,$TRANCOST_NEW,$TRANEXTCOST_NEW,
 		$COST_METHOD,$CURRENCY_COST,$CURRENCY_AMOUNT,$CURRENCY_EXTPRICE,$CURRENCY_PRICE,
-		$MAIN_PRODUCTID,$BATCHNO1,$EXPIRED_DATE1));
+		$MAIN_PRODUCTID,$BATCHNO1,$EXPIRED_DATE1,'UNIT'));
 
 
 		$locsql = "UPDATE dbo.ICLOCATION set LOCONHAND = (LOCONHAND + ?) WHERE LOCID = ? AND PRODUCTID = ?";
@@ -6324,7 +6321,6 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 			$tStoreBin = $res["STORBIN"]; // STORBIN OF EXISTING ITEM
 			$tStoreBin = substr($tStoreBin,0,4);
 		}
-		error_log("Existing:".$tStoreBin);
 
 				
 		// Get Current storbin
@@ -6352,10 +6348,9 @@ $app->post('/itemrequestitemspool/{type}', function(Request $request,Response $r
 		else 
 			$allStoreBin = $res["LOCATIONS"];
 
-		error_log("HAYSTACK:".$allStoreBin."|NEEDLE:".$cStoreBin);
+		//error_log("HAYSTACK:".$allStoreBin."|NEEDLE:".$cStoreBin);
 		if (str_contains($allStoreBin,$cStoreBin) == false)
-		{
-			error_log("ON SORT");
+		{			
 			$data["result"] = "KO";
 			$data["message"] = "Cannot mix items from different team in Transfer, item must be in (".$allStoreBin."), current item [" . $cStoreBin ."]";
 			$response = $response->withJson($data);
@@ -9103,7 +9098,6 @@ $app->put('/waste', function($request,Response $response) {
 	$resp = array();
 	$data = array();
 
-
 	if(isset($json["LOCID"]))
 		$locid = $json["LOCID"];
 	else
@@ -9124,22 +9118,19 @@ $app->put('/waste', function($request,Response $response) {
 			pictureRecord($json["SIGNATURE"],"WASTE_CLEARER",$id);
 		$req = $db->prepare($sql);
 		$req->execute(array($author,$id));
-
-		$sql = "SELECT * FROM WASTEITEM WHERE WASTE_ID = ?";
-		$req = $db->prepare($sql);
-		$req->execute(array($id));
-		$items = $req->fetchAll(PDO::FETCH_ASSOC);		
-		$docnum = issueStocks($items,$author,$notes,$locid);
-		$data["ISSUEID"] = $docnum;		
+		
 
 		if (isset($json["ITEMS"])){
+			
 			$items = $json["ITEMS"];
-			foreach($items as $item){
+			foreach($items as $item){				
 				$sql = "UPDATE WASTEITEM SET STATUS = 'CLEARED', QUANTITY = ? WHERE PRODUCTID = ? AND WASTE_ID = ?";
 				$req = $db->prepare($sql);
 				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$id));
 			}
 		}
+		$docnum = issueStocks($items,$author,$notes,$locid);
+		$data["ISSUEID"] = $docnum;			
 
 	}		
 	$resp["data"] = $data;
@@ -14015,8 +14006,6 @@ $app->get('/score',function(Request $request,Response $response){
 	$req->execute(array($startCurrent,$endCurrent));
 	$currentmonthData = $req->fetchAll(PDO::FETCH_ASSOC);
 
-	//echo "STARTLAST:".$startLast."| ENDLAST:".$endLast."<br>";
-	//echo "STARTCURRENT:".$startCurrent."| ENDCURRENT:".$endCurrent."<br>";
 	
 
 	$OCCUPANCY_ALL_LAST = 0;
@@ -14537,7 +14526,6 @@ $app->get('/penalties',function(Request $request,Response $response) {
 		$diff  = $expiredate->diff($created);
 		$item["DIFF"] =  $diff->d;
 		
-		#echo $item["PRODUCTID"]."\n";
 		$sql = "SELECT SIZE,PRODUCTNAME,LASTCOST FROM ICPRODUCT WHERE PRODUCTID = ?";
 		$req = $dbBlue->prepare($sql);
 		$req->execute(array($item["PRODUCTID"]));
