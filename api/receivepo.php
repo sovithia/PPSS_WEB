@@ -439,6 +439,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 
 
 	$theVENDID = $PORef["VENDID"];
+
 	$theVENDNAME = $PORef["VENDNAME"];
 	$theVENDNAME1 = $PORef["VENDNAME1"];
 
@@ -544,7 +545,7 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 	$res = $req->fetch(PDO::FETCH_ASSOC);
 	$PO_COLID = $res["COLID"];
 	foreach($items as $item)
-    {
+    {		
 		$PO_COLID++;
 		if (!isset($item["ORDER_QTY"])) // TO CLEAN 
 			$item["ORDER_QTY"] = $item["ORDERQTY"];
@@ -604,6 +605,10 @@ function receivePO($PONumber,$author,$notes,$TAX = 0,$DISCOUNT = 0)
 		$DATEADD =  $today; 
 		$USERADD =  blueUser($author);
 
+		# Update Vendid in item Master
+		$sql = "UPDATE ICPRODUCT SET VENDID = ? WHERE PRODUCTID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($VENDID,$PRODUCTID));
 
 		$sql = "INSERT INTO PORECEIVEDETAIL(
 		VENDID,RECEIVENO,VENDNAME,VENDNAME1,PONUMBER,   

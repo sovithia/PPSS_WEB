@@ -7,8 +7,15 @@ function extractIDS($items,$keyname = "PRODUCTID"){
 	if (count($items) == 0)
 		return "('')";
 	$IDS = "(";
-	foreach($items as $item){$IDS .= "'".$item[$keyname] . "',";}
-	$IDS = substr($IDS,0,strlen($IDS) - 1) . ")";	
+	foreach($items as $item){
+		if(isset($item[$keyname]))
+			$IDS .= "'".str_replace(' ','',$item[$keyname]) . "',";
+	}
+	if (substr($IDS, -1) == ",")
+		$IDS = substr($IDS,0,strlen($IDS) - 1);
+	$IDS .= ")";		
+	if ($IDS == "()")
+		$IDS = "('IMPOSSIBLE')";
 	return $IDS;
 }
 
@@ -467,16 +474,26 @@ function flagByCountry($flag){
   return $flag = 'img/flags/'.strtolower($flag).'.png';
 }
 
-function writePicture($barcode,$b64Image)
+function writePicture($barcode,$b64Image,$path = null)
 {
 	//$state = smbclient_state_new();
 	// Initialize the state with workgroup, username and password:
 	//smbclient_state_init($state, null, 'A-DAdmin', '$uper$tore@2017!123');
 	//$file = smbclient_creat($state,'smb://192.168.72.252/d$/Image/'.$barcode.'.jpg');
 	//smbclient_write($state,$file,base64_decode($b64Image));
-	$myfile = fopen("/Volumes/Image/".$barcode.".jpg", "wb") or die("Unable to open file!");    
-    fwrite($myfile, base64_decode($b64Image));    
-    fclose($myfile);
+	if ($path == null)
+	{
+		$myfile = fopen("/Volumes/Image/".$barcode.".jpg", "wb") or die("Unable to open file!");    
+		fwrite($myfile, base64_decode($b64Image));    
+		fclose($myfile);
+	}
+	else
+	{
+		$myfile = fopen($path, "wb") or die("Unable to open file!");    
+		fwrite($myfile, base64_decode($b64Image));    
+		fclose($myfile);
+	} 
+	
 }
 
 function getImage($path) {
@@ -533,14 +550,22 @@ function loadPictureByPath($path,$base64 = false)
 
 function loadPicture($barcode,$scale = 150,$base64 = false)
 {
-	if (!file_exists("/Volumes/Image/".$barcode.".jpg"))
+	if (!file_exists("/Volumes/Image/".$barcode.".jpg") && !file_exists("/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg"))
 	{
 		$path = "img/mystery.png";		
 		$final = file_get_contents($path);
+		if ($base64 == true)
+				return base64_encode($final);
+		return $final;
 	}
 	else 
-	{			
-		$final = file_get_contents("/Volumes/Image/".$barcode.".jpg");		
+	{		
+		if (file_exists("/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg"))
+			$targetFile = "/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg";
+		else
+			$targetFile = "/Volumes/Image/".$barcode.".jpg";
+
+		$final = file_get_contents($targetFile);		
 		if ($final == "" || $final == null){
 
 			$path = "img/mystery.png";					
@@ -549,7 +574,6 @@ function loadPicture($barcode,$scale = 150,$base64 = false)
 				return base64_encode($final);
 			return $final;		
 		}
-
 		file_put_contents("./tmp.jpg",$final);		
 		$gdimage = getImage("./tmp.jpg");	
 		if ($gdimage == false){
@@ -1019,7 +1043,7 @@ function orderStatistics($barcode,$lightmode = false)
 		{
 			LG("1)RATIOSALE(A):" . $RATIOSALE);
 			if($stats["SALESPEED"] < 30){		
-				LG("2)SALESPEED (A):".$stats["SALESPEED"]);		
+				//LG("2)SALESPEED (A):".$stats["SALESPEED"]);		
 				$stats["FINALQTY"] = increaseQty($barcode,$RCVQTY,$PRICE,3);
 				$stats["DECISION"] = "INCREASEQTY";
 			}
@@ -1030,9 +1054,10 @@ function orderStatistics($barcode,$lightmode = false)
 			}			
 		  	else if ($ONHAND < ($RCVQTY * 0.5) )
 			{
-				LG("2)ONHAND<50%RCVQTY (C)");		
+				//LG("2)ONHAND<50%RCVQTY (C)");		
 				$multiple = calculateMultiple($barcode);
-				$remains = $RCVQTY % $multiple;
+
+				$remains = intval($RCVQTY) % intval($multiple);
 				if ($remains == 0)
 					$stats["FINALQTY"] = $RCVQTY;
 				else{
@@ -1164,8 +1189,8 @@ function orderStatistics($barcode,$lightmode = false)
 			else if ($ONHAND < ($RCVQTY * 0.2) )
 				{
 						$multiple = calculateMultiple($barcode);
-						error_log(">>".$RCVQTY);
-						error_log(">>".$multiple);
+						//error_log(">>".$RCVQTY);
+						//error_log(">>".$multiple);
 						$remains = $RCVQTY % $multiple;
 						if ($remains == 0)
 							$stats["FINALQTY"] = $RCVQTY;
@@ -1252,6 +1277,9 @@ function calculatePenalty($barcode, $expiration,$type = null){
 
 
 		$data["policy"] = $res["SIZE"];
+
+		
+
 		$data["cost"] = $res["COST"];
 		$diffDays = (new DateTime($expiration))->diff(new DateTime('NOW'))->days + 1; // HACK		
 		$today = new DateTime('NOW');
@@ -1259,6 +1287,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 		if ($type == null || $type == "EXPIREPROMOTION")
 		{												
 			if (new DateTime($expiration) <= new DateTime('NOW')){
+						error_log("LAL");
 						$data["status"] = "PENALTY";
 						$data["percentpenalty"] = "100";
 						return $data;	
@@ -1289,11 +1318,11 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
 				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
-				error_log("Cnt:".count($rules));
-				error_log("Diff:".$diffDays);
+				//error_log("Cnt:".count($rules));
+				//error_log("Diff:".$diffDays);
 				foreach($rules as $rule)
 				{				
-					error_log("MIN:".$rule["MINDAY"]."|MAX:".$rule["MAXDAY"]);
+					//error_log("MIN:".$rule["MINDAY"]."|MAX:".$rule["MAXDAY"]);
 					if ($rule["MAXDAY"] >= $diffDays &&  $diffDays >=  $rule["MINDAY"])
 						{
 							$sql = "SELECT * FROM WASTEITEM WHERE PRODUCTID = ? AND EXPIRATION = ?";
@@ -1566,9 +1595,10 @@ function createProduct($barcode,$nameen,$namekh,$category,$price,$cost,$author,$
 	$author = blueUser($author);
 	$db = getDatabase();
 
-	if ($picture != null)
+	if ($picture != null){
+		writePicture($barcode,$picture,$json["PICTURE"],"/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg");
 		writePicture($barcode,$picture);
-
+	}				
 	$sql = "SELECT PRODUCTID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
@@ -1719,7 +1749,7 @@ function sendPushToUser($title,$body,$userid)
     $result = curl_exec ( $ch );    
     curl_close ( $ch );
 	$result.= " TOKEN = ".$TOKEN;
-	error_log($result);
+	//error_log($result);
 	return $result;
 }
 

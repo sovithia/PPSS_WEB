@@ -36,6 +36,9 @@ function foodpandaUpdatePrice($sku,$price)
 	$data["sku"] = $sku;
 	$data["price"] = $price;
 
+	print("SKU:" .$sku."\n");
+	print("PRICE:" .$price);
+
 	curl_setopt_array($curl, array(
 	CURLOPT_URL => 'https://partners-ap.deliveryhero.io/api/assortment/v1/vendors/eyn4/product',
 	CURLOPT_RETURNTRANSFER => true,
@@ -53,6 +56,9 @@ function foodpandaUpdatePrice($sku,$price)
   	),
 	));
 	$response = curl_exec($curl);
+	$httpcode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+	echo "\nHttpCode ".$httpcode;
+	echo $response."\n";
 	curl_close($curl);	
 }
 
@@ -123,17 +129,18 @@ function go()
 	LogAction(date("Y-m-d H:i:s")." FOODPANDA REFRESHED");
 }
 
-function initializePrice()
+function initializePrice($force = true)
 {
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
-    $sql = "SELECT * FROM ITEM";
+    #$sql = "SELECT * FROM ITEM WHERE BARCODE = '8801069182445'";
+	$sql = "SELECT * FROM ITEM";
     $req = $db->prepare($sql);
 	$req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
 	
     foreach($items as $item){
-		//echo $item["BARCODE"]. " ";
+		echo $item["BARCODE"]. " ";
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE BARCODE = ?";
         $req = $blueDB->prepare($sql);
         $req->execute(array($item["BARCODE"]));
@@ -145,8 +152,8 @@ function initializePrice()
 			
 		$FPrice = floatval(str_replace(",",".",substr($item["PRICE"],1)));
 		$SPrice = floatval($itemdetail["PRICE"]);		
-		if ($FPrice != $SPrice){
-			echo "Foodpanda price : ".$FPrice." | PPSS price:".$SPrice."\n"; 
+		if ($FPrice != $SPrice || $force == true){
+			echo $item["BARCODE"]." Foodpanda price : ".$FPrice." | PPSS price:".$SPrice."\n"; 
 			echo " changing\n";
 			foodpandaUpdatePrice($item["SKU"],$SPrice);
 			$newPrice = "$".str_replace(".",",",$itemdetail["PRICE"]);
@@ -162,7 +169,8 @@ function initialize()
 {
     $db = getInternalDatabase();
 	$blueDB = getDatabase();
-    $sql = "SELECT * FROM ITEM";
+    $sql = "SELECT * FROM ITEM WHERE";
+
     $req = $db->prepare($sql);
 	$req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
