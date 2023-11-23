@@ -2,6 +2,9 @@
 
 require_once("functions.php");
 
+ini_set('max_execution_time', 0);
+ini_set('memory_limit', '-1');
+
 // Once Per Month 
 function AddAnnualLeave(){
     $db = getInternalDatabase();
@@ -491,6 +494,192 @@ function updateAllLastCost()
     }
 }
 
+function updateItemStats()
+{
+	$db = getDatabase();
+	$sql = "SELECT PRODUCTID,
+	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE DOCNUM LIKE 'IS%' AND TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID),0) as 'TOTALTHROWN',	
+	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID AND APPLID = 'PO'),0) as 'TOTALRECEIVE',
+	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID) * -1),0) as 'TOTALSALE'						
+	FROM dbo.ICPRODUCT";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	$indb = getInternalDatabase();
+	foreach($items as $item)
+	{		        
+		$req = $indb->prepare("SELECT BARCODE FROM ITEMSTATS WHERE BARCODE = ?");		
+		$req->execute(array($item["PRODUCTID"]));
+		$res = $req->fetch(PDO::FETCH_ASSOC);
+		
+        if ($item["TOTALRECEIVE"] == 0){
+            $PERCENTTHROWN = 0; 
+            $PERCENTSOLD = 0;
+        }            
+        else {
+            $PERCENTTHROWN = ($item["TOTALTHROWN"] * -1) * 100 / $item["TOTALRECEIVE"];
+            $PERCENTSOLD = $item["TOTALSALE"] * 100 / $item["TOTALRECEIVE"];
+        }
+		$score = $PERCENTSOLD - ($PERCENTTHROWN * 2);		
+		if ($res == false){
+            echo $item["PRODUCTID"]."\n";
+			$sql = " INSERT INTO ITEMSTATS (BARCODE,TOTALRECEIVE,TOTALSALE,TOTALTHROWN,SCORE) 
+					VALUES (?,?,?,?,?)";
+					$req = $indb->prepare($sql);
+					$req->execute(array($item["PRODUCTID"],$item["TOTALRECEIVE"],$item["TOTALSALE"],$item["TOTALTHROWN"],$score));
+		}else{
+			$sql = "UPDATE ITEMSTATS SET TOTALRECEIVE = ?,TOTALSALE = ?,TOTALTHROWN = ?,SCORE = ? WHERE BARCODE = ?";
+					$req = $indb->prepare($sql);
+					$req->execute(array($item["TOTALRECEIVE"],$item["TOTALSALE"],$item["TOTALTHROWN"],$score,$item["PRODUCTID"]));					
+		}	        
+	}
+}
+
+function initializeBlackList()
+{
+	$db = getDatabase();
+    $indb = getInternalDatabase();
+	$sql = "SELECT * FROM ICPRODUCT WHERE PPSS_IS_BLACKLIST = 'Y'";
+	$req = $db->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+
+	foreach($items as $item){
+		$sql = "SELECT * FROM BLACKLIST WHERE BARCODE = ?";
+		$req = $indb->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$items = $req->fetchAll(PDO::FETCH_ASSOC);
+		if (count($items) == 0){
+			$sql = "INSERT INTO BLACKLIST (BARCODE,PRODUCTNAME,STATUS,USERADDED) VALUES (?,?,'ON','AUTO')";
+			$req = $indb->prepare($sql);
+			$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"]));
+		}
+	}	
+}
+
+function updateBlacklistReceived()
+{
+	$db = getDatabase();
+	$indb = getInternalDatabase();
+	$sql = "SELECT * FROM BLACKLIST WHERE STATUS = 'ON'";
+	$req = $indb->prepare($sql);
+	$req->execute(array());
+	$items = $req->fetchAll(PDO::FETCH_ASSOC);
+	$needSendPush = false;	
+	foreach($items as $item)
+	{		
+		$sql = "SELECT PRODUCTID,TRANQTY FROM PORECEIVEDETAIL WHERE PRODUCTID = ? AND TRANDATE > '2023-10-23 00:00:00.000'";
+		$req = $db->prepare($sql);
+		$req->execute(array($item["BARCODE"]));
+		$res = $req->fetchAll(PDO::FETCH_ASSOC);
+		if(count($res) > 0){
+            $sql = "SELECT BLACKLISTRECEIVED WHERE PRODUCTID = ?";
+            $req = $indb->prepare($sql);
+            $req->execute(array($item["BARCODE"]));
+            $data = $req->fetchAll(PDO::FETCH_ASSOC);
+            if (count($data) > 0){
+                $needSendPush = true;
+                $sql = "INSERT INTO BLACKLISTRECEIVED (PRODUCTID,QUANTITY) VALUES(?,?)";
+                $req = $db->prepare($sql);	
+            }
+		}
+	}
+	if($needSendPush == true){
+		//sendPushToUser("BLACK LIST ITEM WAS RECEIVED",1001);
+		//sendPushToUser("BLACK LIST ITEM WAS RECEIVED",603);
+        //sendPushToUser("BLACK LIST ITEM WAS RECEIVED",401);	
+		//sendPushToUser("BLACK LIST ITEM WAS RECEIVED",402);	
+	}
+	
+}
+
+function eraseAlreadyPromoted(){
+    
+    $indb = getInternalDatabase();
+    $sql = "SELECT * FROM EXPIREPROMOTED";
+    $req = $indb->prepare($sql);
+    $req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($items as $item){
+
+        $sql = "DELETE FROM ITEMEXPIRATION WHERE PRODUCTID = ? AND EXPIRATION = ?";
+        $req = $indb->prepare($sql);
+        $req->execute(array($item["PRODUCTID"],$item["EXPIRATION"]));
+    }
+}
+
+
+function transferExpiration(){
+    $db = getDatabase();
+    $indb = getInternalDatabase();
+
+    $sql = "SELECT PPSS_DELIVERED_EXPIRE,PRODUCTID,VENDID,PRODUCTNAME,VENDNAME,VENDID,PONUMBER,ORDER_QTY FROM PODETAIL WHERE PPSS_DELIVERED_EXPIRE > GETDATE()";
+    $req = $db->prepare($sql);
+    $req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+    foreach($items as $item){
+
+        $sql = "SELECT * FROM ITEMEXPIRATION WHERE PRODUCTID = ? AND EXPIRATION = ?";
+        $req = $indb->prepare($sql);
+        $req->execute(array($item["PRODUCTID"],$item["PPSS_DELIVERED_EXPIRE"]));
+        $res = $req->fetch(PDO::FETCH_ASSOC);
+        if ($res != false){            
+            continue;
+        }            
+        else
+            echo "Go ".$item["PRODUCTID"]."\n";
+        $sql = "SELECT SIZE,
+                (SELECT replace(replace(STORBIN,char(10),''),char(13),'') FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBINSTR',	
+				(SELECT replace(replace(STORBIN,char(10),''),char(13),'')  FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'STOREBINWH',	 
+				(SELECT VENDNAME FROM APVENDOR WHERE VENDID = ?) as 'VENDNAME'
+        FROM ICPRODUCT WHERE PRODUCTID = ?";
+        $req = $db->prepare($sql);
+        $req->execute(array($item["VENDID"],$item["PRODUCTID"]));
+        $data = $req->fetch(PDO::FETCH_ASSOC);
+
+        if($item["VENDID"] == "400-463" || $item["VENDID"] == "400-106" || $item["VENDID"] == "400-697" || 
+           $item["VENDID"] == "400-698" || $item["VENDID"] == "400-699")
+        {
+            $type = "NORETURN";
+        }else
+            $type = "RETURN";
+        //echo "SIZE:".$data["SIZE"]."\n";
+        //echo "TYPE:".$type."\n";
+        if (substr($data["SIZE"],0,1) == ':')
+        {
+			if ($type == "RETURN"){
+				$policy = substr($data["SIZE"],1,3);
+				if($policy == "0NE")
+					$policy = "NOEXPIRE";
+				else 
+					$policy = intval($policy);									
+			}
+			else if($type == "NORETURN"){
+				$policy = substr($data["SIZE"],5,3);
+				if($policy == "0NE")
+					$policy = "NOEXPIRE";
+				else 
+					$policy = intval($policy);		        
+			}			           
+		}
+        else
+        {
+			if ($type == "RETURN" && substr($data["SIZE"],0,1) == "R")						
+				$policy = substr($data["SIZE"],1);
+			else 
+				$policy = substr($data["SIZE"],2);									
+		}
+        
+        $sql = "INSERT INTO ITEMEXPIRATION (PRODUCTID,PRODUCTNAME,VENDNAME,VENDID,EXPIRATION,
+                            POLICY,PONUMBER,QUANTITY,TYPE,STATUS,STOREBINWH,STOREBINSTR) 
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        $req = $indb->prepare($sql);
+        $req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$item["VENDNAME"],$item["VENDID"],$item["PPSS_DELIVERED_EXPIRE"],
+                            $policy,$item["PONUMBER"],$item["ORDER_QTY"],$type,"ACTIVE",$data["STOREBINWH"],$data["STOREBINSTR"]));
+    }
+    eraseAlreadyPromoted();
+}
 
 if ($argc > 1 && $argv[1] == "SCANPACK"){
     ScanPack();
@@ -511,9 +700,17 @@ else if ($argc > 1 && $argv[1] == "PRICECHANGE"){
     LogAction(date("Y-m-d H:i:s").":CASHIERCLEAN");
 }else if ($argc > 1 && $argv[1] == "UPDATELASTCOST"){
     updateAllLastCost();
+}else if ($argc > 1 && $argv[1] == "UPDATEITEMSTATS"){
+    updateItemStats();
+}else if ($argc > 1 && $argv[1] == "INITIALIZEBLACKLIST"){
+    initializeBlackList();
+}else if ($argc > 1 && $argv[1] == "UPDATEBLR"){
+    updateBlacklistReceived();
+}    
+else if ($argc > 1 && $argv[1] == "TRANSFEREXPIRATION"){
+    transferExpiration();
 }
 else
 	error_log("WARNING !!! maintenance attempt");
-
 
 ?>

@@ -781,6 +781,8 @@ function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always 
 	LG("LASTRCVQTY:".$lastrcvqty);
 	if (!is_numeric($multiple))
 		$multiple = 1;	
+	if ($multiple == 0)
+		$multiple = 1;
 	if ($lastrcvqty % $multiple != 0)
 		$lastrcvqty = $multiple;
 
@@ -1188,9 +1190,7 @@ function orderStatistics($barcode,$lightmode = false)
 			}		
 			else if ($ONHAND < ($RCVQTY * 0.2) )
 				{
-						$multiple = calculateMultiple($barcode);
-						//error_log(">>".$RCVQTY);
-						//error_log(">>".$multiple);
+						$multiple = calculateMultiple($barcode);					
 						$remains = $RCVQTY % $multiple;
 						if ($remains == 0)
 							$stats["FINALQTY"] = $RCVQTY;
@@ -1317,9 +1317,7 @@ function calculatePenalty($barcode, $expiration,$type = null){
 				$sql = "SELECT * FROM NORETURNRULES WHERE POLICYNAME = ?";
 				$req = $indb->prepare($sql);	
 				$req->execute(array($res["SIZE"]));
-				$rules = $req->fetchAll(PDO::FETCH_ASSOC);			
-				//error_log("Cnt:".count($rules));
-				//error_log("Diff:".$diffDays);
+				$rules = $req->fetchAll(PDO::FETCH_ASSOC);							
 				foreach($rules as $rule)
 				{				
 					//error_log("MIN:".$rule["MINDAY"]."|MAX:".$rule["MAXDAY"]);
