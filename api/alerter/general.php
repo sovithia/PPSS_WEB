@@ -208,6 +208,12 @@ function renderSign($sign)
     return $render;
 }
 
+function assign($arr,$key){
+    if(isset($arr[$key]))
+        return json_decode($arr[$key] ,true);
+    else
+        return "";
+}
 
 function renderStats()
 {
@@ -219,25 +225,23 @@ function renderStats()
 	$d = $req->fetch(PDO::FETCH_ASSOC);
     
 
-    $d["TRF_ALL_YES"] = json_decode($d["TRF_ALL_YES"] ,true);
-    $d["TRF_RAT_YES"] = json_decode($d["TRF_RAT_YES"] ,true);    
-    $d["TRF_OX_YES"] = json_decode($d["TRF_OX_YES"] ,true);
-    $d["TRF_TIGER_YES"] = json_decode($d["TRF_TIGER_YES"] ,true);
-    $d["TRF_HARE_YES"] = json_decode($d["TRF_HARE_YES"] ,true);
-    $d["TRF_SNAKE_YES"] = json_decode($d["TRF_SNAKE_YES"] ,true);
-    $d["TRF_DRAGON_YES"] = json_decode($d["TRF_DRAGON_YES"] ,true);
-    //$d["TRF_GOAT_YES"] = json_decode($d["TRF_GOAT_YES"] ,true);
-    $d["TRF_HORSE_YES"] = json_decode($d["TRF_HORSE_YES"] ,true);
+    $d["TRF_ALL_YES"] = assign($d,"TRF_ALL_YES");
+    $d["TRF_RAT_YES"] = assign($d,"TRF_RAT_YES");
+    $d["TRF_OX_YES"] = assign($d,"TRF_OX_YES");
+    $d["TRF_TIGER_YES"] = assign($d,"TRF_TIGER_YES");
+    $d["TRF_HARE_YES"] = assign($d,"TRF_HARE_YES");
+    $d["TRF_SNAKE_YES"] = assign($d,"TRF_SNAKE_YES");
+    $d["TRF_DRAGON_YES"] = assign($d,"TRF_DRAGON_YES");
+    $d["TRF_HORSE_YES"] = assign($d,"TRF_HORSE_YES");
 
-    $d["TRF_ALL_TOD"] = json_decode($d["TRF_ALL_TOD"] ,true);
-    $d["TRF_RAT_TOD"] = json_decode($d["TRF_RAT_TOD"] ,true);
-    $d["TRF_OX_TOD"] = json_decode($d["TRF_OX_TOD"] ,true);
-    $d["TRF_TIGER_TOD"] = json_decode($d["TRF_TIGER_TOD"] ,true);
-    $d["TRF_HARE_TOD"] = json_decode($d["TRF_HARE_TOD"] ,true);
-    $d["TRF_SNAKE_TOD"] = json_decode($d["TRF_SNAKE_TOD"] ,true);
-    $d["TRF_DRAGON_TOD"] = json_decode($d["TRF_DRAGON_TOD"] ,true);
-    //$d["TRF_GOAT_TOD"] = json_decode($d["TRF_GOAT_TOD"] ,true);
-    $d["TRF_HORSE_TOD"] = json_decode($d["TRF_HORSE_TOD"] ,true);
+    $d["TRF_ALL_TOD"] = assign($d,"TRF_ALL_TOD");
+    $d["TRF_RAT_TOD"] = assign($d,"TRF_RAT_TOD");
+    $d["TRF_OX_TOD"] = assign($d,"TRF_OX_TOD");
+    $d["TRF_TIGER_TOD"] = assign($d,"TRF_TIGER_TOD");
+    $d["TRF_HARE_TOD"] = assign($d,"TRF_HARE_TOD");
+    $d["TRF_SNAKE_TOD"] = assign($d,"TRF_SNAKE_TOD");
+    $d["TRF_DRAGON_TOD"] = assign($d,"TRF_DRAGON_TOD");    
+    $d["TRF_HORSE_TOD"] = assign($d,"TRF_HORSE_TOD");
 
 
 	$display = "

@@ -9,9 +9,7 @@ require_once("RestEngine.php");
 
 if (isset($_POST["items"]))
 {
-    $items = json_decode($_POST["items"],true);
-    //var_dump(count($items));
-    //exit;
+    $items = json_decode($_POST["items"],true);        
     $text = $_POST["display"];
 
     $productids = array();

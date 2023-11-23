@@ -465,8 +465,7 @@ function renderTransfer($team,$day)
 		$sql .= " AND (";
 		$locs = explode('|',$allloc);
 		$params = array();
-		foreach($locs as $loc){
-            error_log($loc);
+		foreach($locs as $loc){            
 			$sql .= " ARG1 = ? OR";		
 			array_push($params, $loc);
 		}

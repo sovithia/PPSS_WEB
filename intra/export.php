@@ -17,7 +17,7 @@ function fieldsPresets($type)
     if ($type == "EXPORT")
         return ["IMAGE","PRODUCTID","PRODUCTNAME","PRODUCTNAME1","PACKINGNOTE",
                 "PRICE","COST","VENDNAME","TOTALRECEIVE","TOTALSALE",
-                "CNT","WH1","WH2","CATEGORYID","COLOR"];   
+                "CNT","WH1","WH2","CATEGORYID","COLOR","PERCENTSALE","LASTRECEIVEDATE","LASTSALEDATE"];   
     else if ($type == "EXPORT2")
         return ["IMAGE","BARCODE","PRODUCTNAME","PRODUCTNAME1","PACKINGNOTE","SALEINPERIOD",
                 "VENDNAME","TOTALRECEIVE","TOTALSALE","TOTALTHROWN","ONHAND",
@@ -375,8 +375,7 @@ else// itemsearch, fresh sales, low profit, cost zero, selection adjusteditems
 
     //var_dump($items);
     error_log("cnt:".count($items));    
-    
-      
+     
     if (isset($_POST["fields"]))
         $fields = json_decode($_POST["fields"],true);
     else 

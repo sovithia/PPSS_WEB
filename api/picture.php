@@ -22,7 +22,7 @@ switch(mime_content_type($path)) {
 
 function loadPicture($barcode,$scale = 150)
 {
-	if (!file_exists("/Volumes/Image/".$barcode.".jpg"))
+	if (!file_exists("/Volumes/Image/".$barcode.".jpg") && !file_exists("/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg"))
 	{
 		$path = "img/mystery.png";		
 		$final = file_get_contents($path);
@@ -30,10 +30,17 @@ function loadPicture($barcode,$scale = 150)
 	}
 	else 
 	{
+		if (file_exists("/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg")){
+			$targetFile = "/Users/ppss/Sites/PPSS/productImages/".$barcode.".jpg";
+		}			
+		else
+			$targetFile = "/Volumes/Image/".$barcode.".jpg";
+		//error_log($targetFile);
 		$tmpHandle = tmpfile();
 		$metaDatas = stream_get_meta_data($tmpHandle);
 		$path = $metaDatas['uri'];
-		fwrite($tmpHandle, file_get_contents("/Volumes/Image/".$barcode.".jpg"));
+		fwrite($tmpHandle, file_get_contents($targetFile));
+
 		//fclose($tmpHandle);
 		$data = getImage($path);
 		if ($data != false){
@@ -58,8 +65,6 @@ if (!isset($_GET["scale"]))
 else 
 	$scale = $_GET["scale"];
 $name = './tmp.png';
-
-//var_dump($barcode);
 
 $data = loadPicture($barcode,$scale);
 file_put_contents($name,$data);
