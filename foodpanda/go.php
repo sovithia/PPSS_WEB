@@ -131,6 +131,7 @@ function go()
 
 function initializePrice($force = true)
 {
+	error_log("FOODPANDA MAINTENANCE PRICE!!!!!");
 	$db = getInternalDatabase();
 	$blueDB = getDatabase();
     #$sql = "SELECT * FROM ITEM WHERE BARCODE = '8801069182445'";
@@ -174,7 +175,7 @@ function initialize()
     $req = $db->prepare($sql);
 	$req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-	
+	error_log("FOODPANDA MAINTENANCE STOCK!!!!!");
     foreach($items as $item){
 		
         $sql = "SELECT ONHAND FROM ICPRODUCT WHERE BARCODE = ?";

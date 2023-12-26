@@ -347,17 +347,15 @@ function updatePO($ponumber,$items,$notes = "")
         $expire3 = isset($item["PPSS_DELIVERED_EXPIRE3"]) ? $item["PPSS_DELIVERED_EXPIRE3"] : null;
         $expire4 = isset($item["PPSS_DELIVERED_EXPIRE4"]) ? $item["PPSS_DELIVERED_EXPIRE4"] : null;
 
+		if ($item["PPSS_DELIVERED_EXPIRE"] == "NO EXPIRE")
+			$item["PPSS_DELIVERED_EXPIRE"] = null;
 		if($expire2 == "NO" || $expire2 == "NO EXPIRE")
 			$expire2 = null;
 		if($expire3 == "NO" || $expire3 == "NO EXPIRE")
 			$expire3 = null;
 		if($expire4 == "NO" || $expire4 == "NO EXPIRE")
 			$expire4 = null;
-
-		error_log("1>".$item["PPSS_DELIVERED_EXPIRE"]);
-		error_log("2>".$expire2);
-		error_log("3>".$expire3);
-		error_log("4>".$expire4);
+				
 
 		$sql = "UPDATE PODETAIL SET PPSS_DELIVERED_QUANTITY = ?,PPSS_DELIVERED_QUANTITY2 = ?,PPSS_DELIVERED_QUANTITY3 = ?,PPSS_DELIVERED_QUANTITY4 = ?,
                                      PPSS_DELIVERED_PRICE = ?, PPSS_DELIVERED_DISCOUNT = ?, PPSS_DELIVERED_VAT = ?, 
@@ -368,15 +366,15 @@ function updatePO($ponumber,$items,$notes = "")
                             $item["PPSS_DELIVERED_PRICE"],$item["PPSS_DELIVERED_DISCOUNT"], $item["PPSS_DELIVERED_VAT"],
 							$item["PPSS_DELIVERED_EXPIRE"],$expire2,$expire3,$expire4,
 						    $item["PRODUCTID"],$ponumber));		
-	}	
+	}		
 	$sql = "UPDATE PODETAIL SET 
 	RECEIVE_QTY = PPSS_DELIVERED_QUANTITY,
 	ORDER_QTY = (PPSS_DELIVERED_QUANTITY + PPSS_DELIVERED_QUANTITY2 + PPSS_DELIVERED_QUANTITY3 + PPSS_DELIVERED_QUANTITY4),
 	TRANDISC = PPSS_DELIVERED_DISCOUNT,
 	TRANCOST = PPSS_DELIVERED_PRICE, 
 	VAT_PERCENT = PPSS_DELIVERED_VAT,
-	EXTCOST = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY),
-	CURRENCY_AMOUNT = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * PPSS_DELIVERED_QUANTITY)
+	EXTCOST = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * (PPSS_DELIVERED_QUANTITY + PPSS_DELIVERED_QUANTITY2 + PPSS_DELIVERED_QUANTITY3 + PPSS_DELIVERED_QUANTITY4)),
+	CURRENCY_AMOUNT = ((PPSS_DELIVERED_PRICE - (PPSS_DELIVERED_PRICE * (PPSS_DELIVERED_DISCOUNT /100))) * (PPSS_DELIVERED_QUANTITY + PPSS_DELIVERED_QUANTITY2 + PPSS_DELIVERED_QUANTITY3 + PPSS_DELIVERED_QUANTITY4))
 	WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);
 	$req->execute(array($ponumber));
@@ -1577,29 +1575,25 @@ function recordExpire($ponumber,$items,$vendorid,$type)
 			$policy = $data["SIZE"];
 		}
 		if (isset($item["PPSS_DELIVERED_EXPIRE"]) && isset($item["PPSS_DELIVERED_QUANTITY"])){	
-			
-			error_log("1>".$item["PPSS_DELIVERED_EXPIRE"]);	
+						
 			$sql = "INSERT INTO ITEMEXPIRATION (PRODUCTID,PRODUCTNAME,VENDID,VENDNAME,EXPIRATION,POLICY,PONUMBER,QUANTITY,TYPE,STATUS,STOREBINSTR,STOREBINWH)VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 			$req = $indb->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$vendorid,$vendname,$item["PPSS_DELIVERED_EXPIRE"],$data["SIZE"],
 								$ponumber,$item["PPSS_DELIVERED_QUANTITY"],$type,"ACTIVE",$data["STOREBINSTR"],$data["STOREBINWH"]));
 		}
-		if (isset($item["PPSS_DELIVERED_EXPIRE2"]) && isset($item["PPSS_DELIVERED_QUANTITY2"])){		
-			error_log("2>".$item["PPSS_DELIVERED_EXPIRE2"]);
+		if (isset($item["PPSS_DELIVERED_EXPIRE2"]) && isset($item["PPSS_DELIVERED_QUANTITY2"])){					
 			$sql = "INSERT INTO ITEMEXPIRATION (PRODUCTID,PRODUCTNAME,VENDID,VENDNAME,EXPIRATION,POLICY,PONUMBER,QUANTITY,TYPE,STATUS,STOREBINSTR,STOREBINWH)VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 			$req = $indb->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$vendorid,$vendname,$item["PPSS_DELIVERED_EXPIRE2"],$data["SIZE"],
 								$ponumber,$item["PPSS_DELIVERED_QUANTITY2"],$type,"ACTIVE",$data["STOREBINSTR"],$data["STOREBINWH"]));
 		}
-		if (isset($item["PPSS_DELIVERED_EXPIRE3"]) && isset($item["PPSS_DELIVERED_QUANTITY3"])){		
-			error_log("3>".$item["PPSS_DELIVERED_EXPIRE3"]);
+		if (isset($item["PPSS_DELIVERED_EXPIRE3"]) && isset($item["PPSS_DELIVERED_QUANTITY3"])){					
 			$sql = "INSERT INTO ITEMEXPIRATION (PRODUCTID,PRODUCTNAME,VENDID,VENDNAME,EXPIRATION,POLICY,PONUMBER,QUANTITY,TYPE,STATUS,STOREBINSTR,STOREBINWH)VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 			$req = $indb->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$vendorid,$vendname,$item["PPSS_DELIVERED_EXPIRE3"],$data["SIZE"],
 								$ponumber,$item["PPSS_DELIVERED_QUANTITY3"],$type,"ACTIVE",$data["STOREBINSTR"],$data["STOREBINWH"]));
 		}
-		if (isset($item["PPSS_DELIVERED_EXPIRE4"]) && isset($item["PPSS_DELIVERED_QUANTITY4"])){		
-			error_log("4>".$item["PPSS_DELIVERED_EXPIRE4"]);
+		if (isset($item["PPSS_DELIVERED_EXPIRE4"]) && isset($item["PPSS_DELIVERED_QUANTITY4"])){					
 			$sql = "INSERT INTO ITEMEXPIRATION (PRODUCTID,PRODUCTNAME,VENDID,VENDNAME,EXPIRATION,POLICY,PONUMBER,QUANTITY,TYPE,STATUS,STOREBINSTR,STOREBINWH)VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
 			$req = $indb->prepare($sql);
 			$req->execute(array($item["PRODUCTID"],$item["PRODUCTNAME"],$vendorid,$vendname,$item["PPSS_DELIVERED_EXPIRE4"],$data["SIZE"],
@@ -1704,11 +1698,8 @@ function updateQtyForCreateAndReceivePO($items,$ponumber)
 	$req->execute(array($ponumber));
 	$res2 = $req->fetch(PDO::FETCH_ASSOC);
 	
-	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];
-	error_log("SUM:" . $res["SUM"]);
-	error_log("SUMVAT:" . $res2["SUMVAT"]);		
-	$AMT_WITH_VAT = round($AMT_WITH_VAT,4);
-	error_log("AMT_WITH_VAT:" . $AMT_WITH_VAT);
+	$AMT_WITH_VAT = $res["SUM"] + $res2["SUMVAT"];	
+	$AMT_WITH_VAT = round($AMT_WITH_VAT,4);	
 
 	$sql = "UPDATE POHEADER SET CURRENCY_AMOUNT = ?,  CURRENCY_RECEIVEAMOUNT = ?,CURRENCY_VATAMOUNT = ?,PURCHASE_AMT = ?, RECEIVE_AMT = ?  WHERE PONUMBER = ?";
 	$req = $db->prepare($sql);

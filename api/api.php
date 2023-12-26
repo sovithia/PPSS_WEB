@@ -4181,7 +4181,7 @@ $app->put('/supplyrecord', function(Request $request,Response $response) {
 					error_log("Error with productid ".$item["PRODUCTID"]. " not found in ICLOCATION with WH1");
 				}
 			}
-			
+
 			// OLD METHOD 
 			/*
 			if(isset($json["USERID"]))
@@ -5446,8 +5446,7 @@ function transferItems($items, $author,$type = "TRANSFER"){
 
 	$TOTAL_AMT = 0;
 	foreach($items as $item){
-
-		//error_log("Transfering item: " . $item["PRODUCTID"] . " with quantity" . $item["REQUEST_QUANTITY"]);
+		
 
 		if(isset($item["REQUEST_QUANTITY"]))
 			$THEQUANTITY = $item["REQUEST_QUANTITY"];
@@ -6594,9 +6593,7 @@ $app->delete('/itemrequestitemspool/{type}', function(Request $request,Response 
 	if (isset($json["USERID"]))
 		$userid = $json["USERID"];
 	else
-		$userid = null;
-	error_log($json["PRODUCTID"]."|"); 
-	error_log($type);
+		$userid = null;	
 	$suffix = "";
 	if ($type == "RESTOCK")
 		$tableName = "ITEMREQUESTRESTOCKPOOL";
@@ -14672,8 +14669,7 @@ $app->get('/itemexpiration',function ($request,Response $response){
         	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH1',
             (SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID) as 'WH2'					
             FROM ICPRODUCT 
-            WHERE PRODUCTID IN ".$allIds;	
-	error_log($sql);
+            WHERE PRODUCTID IN ".$allIds;		
     $req = $dbBlue->prepare($sql);
     $req->execute(array());        
     $blueData = $req->fetchAll(PDO::FETCH_ASSOC);        

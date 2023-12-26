@@ -104,9 +104,12 @@ function _nham24UpdateItemActive($ID,$status)
 	$req = $db->prepare($sql);
 	$req->execute(array($ID));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-	
-	$data["status"] = $status;
-	
+
+	if ($status == true)
+		$data["status"] = 'active';
+	else
+		$data["status"] = 'inactive';
+		
 	echo "updating item...\n";
 	$baseURL = "https://partner.nham24.com/";
 	$token = getAccessToken();
@@ -128,6 +131,7 @@ function _nham24UpdateItemActive($ID,$status)
 		)
 	);
 	$response = curl_exec($curl);
+	var_dump($response);
 	curl_close($curl);	
 }
 
@@ -162,6 +166,7 @@ function _nham24UpdatePrice($identifier)
 	$data["desc_km"] = "";
 	$data["desc_zh"] = "";
 	$data["barcode"] = $data["BARCODE"];
+	$data["status"] = "active";
 	$data["image"] = imageBaseURL() . $data["BARCODE"] . ".jpg"; 
 	$data["recommended"] = false;	
 	$option_prices = array(["ref_id" => $data["IDENTIFIER"]."_1", 
@@ -207,6 +212,7 @@ function _nham24UpdatePrice($identifier)
 		)
 	);
 	$response = curl_exec($curl);
+	var_dump($response);
 	curl_close($curl);	
 
 	$sql = "UPDATE ITEM SET PRICE = ? WHERE IDENTIFIER = ?";
@@ -214,17 +220,16 @@ function _nham24UpdatePrice($identifier)
 	$req->execute(array($itemdetail["PRICE"],$identifier));
 }
 
-function maintenancePrice()
-{	
+function initPrice()
+{
 	$indb = getNham24Database();
 	$blueDB = getDatabase();
-    $sql = "SELECT * FROM ITEM";
+    $sql = "SELECT * FROM  ITEM";
     $req = $indb->prepare($sql);
 	$req->execute(array());
     $items = $req->fetchAll(PDO::FETCH_ASSOC);
-	
-    foreach($items as $item){
-		//echo $item["BARCODE"]. " ";
+	echo "la";
+    foreach($items as $item){		
         $sql = "SELECT PRICE FROM ICPRODUCT WHERE BARCODE = ?";
         $req = $blueDB->prepare($sql);
         $req->execute(array($item["BARCODE"]));
@@ -235,7 +240,37 @@ function maintenancePrice()
 		}			
 		$NPrice = floatval($item["PRICE"]);
 		$SPrice = floatval($itemdetail["PRICE"]);		
+		//echo "NhamPrice: ".$NPrice." SPrice: ".$SPrice;
+		//if ($NPrice != $SPrice){
+		echo "Nham24 price : ".$NPrice." | PPSS price:".$SPrice." changing...\n"; 			
+		_nham24UpdatePrice($item["IDENTIFIER"]);			
+		//}	
+		sleep(1);		
+    }
+}
 
+function maintenancePrice()
+{	
+	error_log("NHAM24 MAINTENANCE PRICE!!!!!");
+	$indb = getNham24Database();
+	$blueDB = getDatabase();
+    $sql = "SELECT * FROM ITEM";
+    $req = $indb->prepare($sql);
+	$req->execute(array());
+    $items = $req->fetchAll(PDO::FETCH_ASSOC);
+	
+    foreach($items as $item){		
+        $sql = "SELECT PRICE FROM ICPRODUCT WHERE BARCODE = ?";
+        $req = $blueDB->prepare($sql);
+        $req->execute(array($item["BARCODE"]));
+        $itemdetail = $req->fetch(PDO::FETCH_ASSOC);				
+		if ($itemdetail == false){
+			echo $item["BARCODE"]."NOT FOUND\n";
+			continue;
+		}			
+		$NPrice = floatval($item["PRICE"]);
+		$SPrice = floatval($itemdetail["PRICE"]);		
+		echo "NhamPrice: ".$NPrice." SPrice: ".$SPrice;
 		if ($NPrice != $SPrice){
 			echo "Nham24 price : ".$NPrice." | PPSS price:".$SPrice." changing...\n"; 			
 			_nham24UpdatePrice($item["IDENTIFIER"]);			
@@ -246,6 +281,7 @@ function maintenancePrice()
 
 function maintenanceStock()
 {
+	error_log("NHAM24 MAINTENANCE STOCK!!!!!");
 	$db = getNham24Database();
 	$blueDB = getDatabase();
     $sql = "SELECT * FROM ITEM";
@@ -274,6 +310,8 @@ function maintenanceStock()
 
 if ($argc > 1 && $argv[1] == "INITIALIZE")
 	maintenanceStock();
+else if ($argc > 1 && $argv[1] == "INITIALIZEPRICE2")
+	initPrice();
 else if ($argc > 1 && $argv[1] == "INITIALIZEPRICE")
 	maintenancePrice();
 
