@@ -47,7 +47,10 @@ function calculateRealLastReceivedQuantity($productID)
                 $req = $db->prepare($sql);
                 $req->execute(array($productID,$productDisc));
                 $res = $req->fetch(PDO::FETCH_ASSOC);
-                return $res["TRANQTY"];
+				if ($res != false)
+                	return $res["TRANQTY"];
+				else
+					return "";
             }else // {
                 return $lastRcvQty;
             }                   

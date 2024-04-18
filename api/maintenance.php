@@ -17,7 +17,7 @@ function AddAnnualLeave(){
 // Once Every Day Except Tuesday
 function ScanPack(){
     $db = getDatabase();
-    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
+    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE STATUS <> 'LOCK'";
     $req = $db->prepare($sql);
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);
@@ -92,7 +92,7 @@ function ScanPack(){
 
 function ResetPack(){  // ON TUESDAY 23:59
     $db = getDatabase();
-    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT";
+    $sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE STATUS <> 'LOCK'";
     $req = $db->prepare($sql);
     $req->execute(array());
     $packs = $req->fetchAll(PDO::FETCH_ASSOC);

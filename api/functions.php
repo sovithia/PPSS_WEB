@@ -20,12 +20,11 @@ function extractIDS($items,$keyname = "PRODUCTID"){
 }
 
 function isset2($variable)
-{
+{	
 	if ($variable == null)
 		return false;
 	if ($variable == "")
 		return false;
-
 	return true;
 }
 
@@ -717,6 +716,8 @@ function statisticsByItem($barcode, $start = '',$end = '')
 // > 30 < 60 // Medium
 // > 60 Slow
 function calculateSaleSpeed($barcode,$begin,$end,$qty){
+	if(!is_numeric($qty))
+		return -1;
 	$db = getDatabase();
 	$sql = "SELECT QTY,POSDATE FROM POSDETAIL WHERE PRODUCTID = ? AND POSDATE >=  ? AND POSDATE <= ? ORDER BY POSDATE ASC";
 	$req = $db->prepare($sql);
@@ -752,7 +753,6 @@ function calculateMultiple($barcode){
 					WHERE PORECEIVEDETAIL.PRODUCTID = ICPRODUCT.PRODUCTID 
 					AND  PORECEIVEDETAIL.PRODUCTID =?
 					ORDER BY TRANDATE DESC";
-
 	$req = $db->prepare($sql);
 	$req->execute(array($barcode));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
@@ -777,12 +777,15 @@ function calculateMultiple($barcode){
 function increaseQty($barcode,$lastrcvqty,$price,$unit = 1) // Unit will always be 1 for increase
 {
 	$multiple = calculateMultiple($barcode);
-	LG("MULTIPLE:".$multiple);
-	LG("LASTRCVQTY:".$lastrcvqty);
+
 	if (!is_numeric($multiple))
 		$multiple = 1;	
 	if ($multiple == 0)
 		$multiple = 1;
+
+	if (!is_numeric($lastrcvqty))
+		$lastrcvqty = 0;		
+
 	if ($lastrcvqty % $multiple != 0)
 		$lastrcvqty = $multiple;
 
@@ -977,8 +980,12 @@ function orderStatistics($barcode,$lightmode = false)
 		$QTYSALE = $res["COUNT"]; // **
 	else 
 		$QTYSALE = 0;
-
-	$RATIOSALE = ($QTYSALE * 100) / ($RCVQTY != 0 ? $RCVQTY : 1); // **
+	//error_log(">".$RCVQTY);
+	if (is_numeric($RCVQTY) && $RCVQTY != 0)
+		$divider = $RCVQTY;
+	else 
+		$divider = 1;
+	$RATIOSALE = ($QTYSALE * 100) / $divider ;// **
 
 
 	$sql = "SELECT VENDID,ONHAND,PRODUCTNAME,PRICE,LASTSALEDATE,
@@ -1037,6 +1044,11 @@ function orderStatistics($barcode,$lightmode = false)
 	if ($lightmode == false)
 		$stats["DISCOUNT"] = 	autoPromoForVendor($vendorid);
 	$MARGIN = (int)$RCVQTY * 0.2;
+
+	if (!is_numeric($stats["RCVQTY"]))
+		$stats["RCVQTY"] = 0;
+	if (!is_numeric($stats["QTYSALE"]))
+		$stats["QTYSALE"] = 0;	
 
 	if (($ONHAND + $MARGIN)< ($stats["RCVQTY"] - $stats["QTYSALE"])) 		
 		$stats["SUSPICIOUS"] = "YES";		

@@ -34,5 +34,5 @@ function updateAllLastCost()
 
 }
 
-updateAllLastCost();
+//updateAllLastCost();
 ?>

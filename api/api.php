@@ -414,21 +414,26 @@ function weightedItemLookup($barcode){
 	return $item;
 }
 
-function itemLookup($barcode){
+function itemLookup($barcode){	
 	$conn=getDatabase();
 	
+
 	$sql = "SELECT PRODUCTID FROM dbo.ICPRODUCT WHERE BARCODE = ?";	
 	$req=$conn->prepare($sql);
-	$fourDigit = substr($barcode,0,4);	
-	$req->execute(array($fourDigit)); 
-	$items=$req->fetchAll(PDO::FETCH_ASSOC);
-	if (count($items) > 0)
-		$barcode = $fourDigit;
-	$req=$conn->prepare($sql);
-	$sixDigit = substr($barcode,0,6);
-	$items=$req->fetchAll(PDO::FETCH_ASSOC);
-	if (count($items) > 0)
-		$barcode = $sixDigit;
+	$req->execute(array($barcode)); 
+	$item=$req->fetch(PDO::FETCH_ASSOC);
+	if ($item == false){
+		$fourDigit = substr($barcode,0,4);	
+		$req->execute(array($fourDigit)); 
+		$items=$req->fetchAll(PDO::FETCH_ASSOC);
+		if (count($items) > 0)
+			$barcode = $fourDigit;
+		$req=$conn->prepare($sql);
+		$sixDigit = substr($barcode,0,6);
+		$items=$req->fetchAll(PDO::FETCH_ASSOC);
+		if (count($items) > 0)
+			$barcode = $sixDigit;
+	}
 
 	$params = array($barcode,$barcode);
 	$begin = date("Y-m-d");
@@ -442,7 +447,7 @@ function itemLookup($barcode){
 
 	CATEGORYID,CATEGORYNEWID,BARCODE,PRODUCTNAME,PRODUCTNAME1,
 	(select TOP(1) TRANCOST from ICTRANDETAIL WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND TRANTYPE = 'R' ORDER BY TRANDATE DESC) as 'COST'
-	,STORE,SIZE,COLOR,PRICE,VENDNAME,
+	,STORE,SIZE,COLOR,PRICE,VENDNAME,LASTCOST,
 	
 	ISNULL((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'R' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID ),0) as 'TOTALRECEIVE',
 	ISNULL(((SELECT SUM(TRANQTY) FROM ICTRANDETAIL WHERE TRANTYPE = 'I' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID ) * -1),0) as 'TOTALSALE',
@@ -456,7 +461,7 @@ function itemLookup($barcode){
 	
 	if (count($items) > 0)
 	{
-		$finalItem = $items[0];
+		$finalItem = $items[0];		
 		$sql="
 		SELECT LOCONHAND 
 		FROM dbo.ICLOCATION  
@@ -957,13 +962,11 @@ $app->get('/analysis/{barcode}',function(Request $request,Response $response) {
 	$sql="SELECT PRODUCTID,PRODUCTNAME,PRODUCTNAME1,
 	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH1' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH1',
 	(SELECT LOCONHAND FROM dbo.ICLOCATION WHERE LOCID = 'WH2' AND dbo.ICLOCATION.PRODUCTID = dbo.ICPRODUCT.PRODUCTID) as 'WH2',			
-	PRICE,
-	(SELECT TOP(1) (TRANCOST - (TRANCOST * (TRANDISC/100)) ) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',
-	
+	PRICE,SIZE,
+	(SELECT TOP(1) (TRANCOST - (TRANCOST * (TRANDISC/100)) ) FROM PORECEIVEDETAIL WHERE PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY TRANDATE DESC) as 'LASTCOST',	
 	(SELECT TOP(1) DISCOUNT_VALUE FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCPERCENT', 
 	(SELECT TOP(1) DATEFROM FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCFROM',
 	(SELECT TOP(1) DATETO FROM [PhnomPenhSuperStore2019].[dbo].ICNEWPROMOTION WHERE PRODUCTID = [ICPRODUCT].PRODUCTID  AND DATEFROM <= '$begin 00:00:00.000' AND DATETO >= '$begin 23:59:59.999' ORDER BY DATEFROM DESC) as 'DISCTO',
-
 	
 	ISNULL((SELECT TOP(1) PPSS_DELIVERED_EXPIRE FROM PODETAIL WHERE POSTATUS = 'C' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY PURCHASE_DATE DESC),0) as 'LASTEXPIRE',	
 	ISNULL((SELECT TOP(1) POHEADER.USERADD FROM PODETAIL,POHEADER WHERE PODETAIL.PONUMBER = POHEADER.PONUMBER AND PODETAIL.POSTATUS = 'C' AND PRODUCTID = dbo.ICPRODUCT.PRODUCTID ORDER BY PURCHASE_DATE DESC),0) as 'LASTPURCHASER',	
@@ -1002,9 +1005,10 @@ $app->get('/analysis/{barcode}',function(Request $request,Response $response) {
 		$item["SCORE"] = $score = $PERCENTSOLD - ($PERCENTTHROWN * 2);		
 	}
 	
-
+	
 
 	if($item != false){
+		$thePRODUCTID = $barcode;
 		$sql  = "select VENDNAME FROM ICVENDOR,APVENDOR WHERE 
 			PRODUCTID = ?
 			AND APVENDOR.VENDID = ICVENDOR.VENDID";
@@ -1029,12 +1033,16 @@ $app->get('/analysis/{barcode}',function(Request $request,Response $response) {
 			$item["STORBINWH"] = "N/A";
 		$item["TYPE"] = "UNIT";
 
+
+		
+
 	}else{
 		$packInfo = packLookup($barcode);		
 		if ($packInfo != null) // IS  A PACK
 		{
 			$packcode = $barcode;		
 			$productid = $packInfo["PRODUCTID"];
+			$thePRODUCTID = $productid;
 			$item = array();
 			// PICTURE PACK
 			$item["TYPE"] = "PACK";
@@ -1103,6 +1111,36 @@ $app->get('/analysis/{barcode}',function(Request $request,Response $response) {
 			return $response;		
 		}	
 	}
+
+	$sql = "SELECT TOP(3) TRANQTY,TRANDATE FROM PORECEIVEDETAIL WHERE PRODUCTID = ? ORDER BY TRANDATE DESC";
+	$req = $db->prepare($sql);
+	$req->execute(array($thePRODUCTID));
+	$data = $req->fetchAll(PDO::FETCH_ASSOC);
+	if ( isset($data[0])){
+		$item["LASTRECEIVEQUANTITY3"] = $data[0]["TRANQTY"];
+		$item["LASTRECEIVEDATE3"] = $data[0]["TRANDATE"];	
+	}else{
+		$item["LASTRECEIVEQUANTITY3"] = "N/A";
+		$item["LASTRECEIVEDATE3"] = "N/A";
+	}
+
+	if ( isset($data[1])){
+		$item["LASTRECEIVEQUANTITY2"] = $data[1]["TRANQTY"];
+		$item["LASTRECEIVEDATE2"] = $data[1]["TRANDATE"];			
+	}else{
+		$item["LASTRECEIVEQUANTITY2"] = "N/A";
+		$item["LASTRECEIVEDATE2"] = "N/A";
+	}
+		
+	if ( isset($data[2])){
+		$item["LASTRECEIVEQUANTITY1"] = $data[2]["TRANQTY"];
+		$item["LASTRECEIVEDATE1"] = $data[2]["TRANDATE"];	
+	}else{
+		$item["LASTRECEIVEQUANTITY1"] = "N/A";
+		$item["LASTRECEIVEDATE1"] = "N/A";
+	}
+
+	
 	$resp["result"] = "OK";
 	$resp["data"] = $item;
 	$response = $response->withJson($resp);
@@ -1138,6 +1176,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 	$req=$conn->prepare($sql);
 	$req->execute(array($barcode,$barcode));
 	$item =$req->fetch(PDO::FETCH_ASSOC);
+	/*
 	if ($item == false){
 		$resp = array();
 		$resp["message"] = "Product not found";
@@ -1145,17 +1184,18 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		$response = $response->withJson($resp);
 		return $response;
 	}	
-	if ($item != false && isset($item["LASTCOST"]))
-		$item["LASTCOST"] = round($item["LASTCOST"],4);
-	else
-		$item["LASTCOST"] = "0";
-	if (isset($item["COST"]))
-		$item["COST"] = round($item["COST"],4);
-	else 
-		$item["COST"] = "0";
+	*/
 	$resp = array();
-	if (isset($item["PRODUCTID"]))
-	{		
+	if ($item != false && isset($item["PRODUCTID"]))
+	{
+		if ($item != false && isset($item["LASTCOST"]))
+			$item["LASTCOST"] = round($item["LASTCOST"],4);
+		else
+			$item["LASTCOST"] = "0";
+		if (isset($item["COST"]))
+			$item["COST"] = round($item["COST"],4);
+		else 
+			$item["COST"] = "0";		
 		$sql="
 		SELECT LOCONHAND,STORBIN,ORDERQTY 
 		FROM dbo.ICLOCATION  
@@ -1235,7 +1275,7 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 		if ($packInfo != null) // IS  A PACK
 		{
 			$packcode = $barcode;		
-			$result = itemLookup($packInfo["PRODUCTID"]);
+			$result = itemLookup($packInfo["PRODUCTID"]);			
 			$result["BARCODE"] = $packcode;
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];
 			$result["EXPIRED_DATE"] = $packInfo["EXPIRED_DATE"];
@@ -1245,9 +1285,10 @@ $app->get('/item/{barcode}',function(Request $request,Response $response) {
 			$result["PRICE"] = $packInfo["SALEPRICE"];	
 			$result["SALEFACTOR"] = $packInfo["SALEFACTOR"];	
 			// PICTURE PACK
-			$result["ISPACK"] = "PACK";
+			$result["ISPACK"] = "PACK";			
+			$result["LASTCOST"] = $result["SALEFACTOR"] * $result["LASTCOST"];
+			
 			$item = $result; 
-
 			$resp["result"] = "OK";
 			$resp["data"] = $item;
 		}
@@ -2897,7 +2938,13 @@ function GenerateCategoryNumberByName($category, $occurence = 100){
 		$req = $db->prepare($sql);
 		$req->execute(array($final));
 		$result = $req->fetch(PDO::FETCH_ASSOC);
-		if ($result == null)
+
+		$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+		$req2 = $db->prepare($sql);
+		$req2->execute(array($final));
+		$result2 = $req2->fetch(PDO::FETCH_ASSOC);
+
+		if ($result == null && $result2 == null)
 		{
 			if ($occurence == 1)
 				$barcodes = $final;
@@ -3655,7 +3702,8 @@ $app->post('/linkproducttovendor',function(Request $request,Response $response) 
 	//Rare Condition 
 	$sql = "SELECT VENDID FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $db->prepare($sql);
-	$res = $req->execute(array($json["PRODUCTID"]));			
+	$req->execute(array($json["PRODUCTID"]));			
+	$res = $req->fetch(PDO::FETCH_ASSOC);	
 	if ($res["VENDID"] == "" || $res["VENDID"] == null){
 		$sql = "UPDATE ICPRODUCT SET VENDID = ? WHERE PRODUCTID = ?";
 		$req = $db->prepare($sql);
@@ -7673,7 +7721,6 @@ $app->get('/salereport',function(Request $request,Response $response) {
 	return $response;	
 });
 
-
 $app->get('/adjusteditems', function(Request $request,Response $response) {
 
 	$date = $request->getParam('date','');
@@ -7716,7 +7763,6 @@ $app->get('/adjusteditems', function(Request $request,Response $response) {
 	$db = null;
 	return $response;	
 });  
-
 
 $app->post('/item/{barcode}',function(Request $request,Response $response) {   
 
@@ -8714,15 +8760,12 @@ $app->post('/selfpromotionitems', function($request,Response $response) {
 		$db->beginTransaction();    
 		
 		$sql = "INSERT INTO SELFPROMOTIONITEM (PRODUCTID,QUANTITY,EXPIRATION,STARTTIME,LINKTYPE,
-		PERCENTPENALTY,PERCENTPROMO,TYPE,CREATOR,STATUS,
-		LOCATION) 
+							PERCENTPROMO,TYPE,CREATOR,STATUS,LOCATION) 
 		VALUES (?,?,?,?,?,
-				?,?,?,?,?,
-				?)";
+				?,?,?,?,?)";
 		$req = $db->prepare($sql);
-		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$now,$item["LINKTYPE"],
-		$item["PERCENTPENALTY"],$item["PERCENTPROMO"],$item["TYPE"],$author,'CREATED',
-		($item["LOCATION"]??"") ));
+		$req->execute(array($item["PRODUCTID"],$item["QUANTITY"],$item["EXPIRATION"],$now,
+							$item["LINKTYPE"],$item["PERCENTPROMO"],$item["TYPE"],$author,'CREATED',($item["LOCATION"]??"") ));
 
 		$lastId = $db->lastInsertId();
 		$db->commit();    
@@ -9308,7 +9351,32 @@ $app->put('/waste', function($request,Response $response) {
 			pictureRecord($json["SIGNATURE"],"WASTE_VALIDATOR",$id);
 		$data["DULL"] = "1";	
 		sendPushToUser("WASTE","Waste ready to clear",GetUserId("SOPHIRETH"));
+		if (isset($json["ITEMS"])){
+			$items = $json["ITEMS"];
+			foreach($items as $item){
+				$sql = "UPDATE WASTEITEM SET QUANTITY = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$item["EXPIRATION"]));
+			}
+		}				
 	}
+	else if ($status == "PREVALIDATED")
+	{
+		$sql = "UPDATE WASTE SET STATUS = 'PREVALIDATED',PREVALIDATOR = ? WHERE ID = ?";
+		$req = $db->prepare($sql);
+		$req->execute(array($author,$id));		
+		$data["DULL"] = "1";		
+
+		if (isset($json["ITEMS"])){
+			$items = $json["ITEMS"];
+			foreach($items as $item){
+				$sql = "UPDATE WASTEITEM SET QUANTITY = ? WHERE PRODUCTID = ? AND EXPIRATION = ?";
+				$req = $db->prepare($sql);
+				$req->execute(array($item["QUANTITY"],$item["PRODUCTID"],$item["EXPIRATION"]));
+			}
+		}				
+	}
+
 	else if ($status == "CLEARED"){
 		
 		$sql = "UPDATE WASTE SET STATUS = 'CLEARED', CLEARER = ? WHERE ID = ?";
@@ -12136,52 +12204,65 @@ $app->put('/pricechange',function ($request,Response $response){
 	$req = $db->prepare($sql);
 	$req->execute(array($json["ID"]));
 	$res = $req->fetch(PDO::FETCH_ASSOC);
-
+	$NEWPRICE = $res["NEWPRICE"];
 	$dbBlue = getDatabase();
 
 	$sql = "SELECT PRICE FROM ICPRODUCT WHERE PRODUCTID = ?";
 	$req = $blueDB->prepare($sql);
 	$req->execute(array($res["PRODUCTID"]));
 	$price = $req->fetch(PDO::FETCH_ASSOC);
-	$price = $price["PRICE"];
-	if (round($price,4) != round($res["NEWPRICE"],4))
+
+	if ($price == false)
 	{
-		$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
-		$req = $dbBlue->prepare($sql);
-		$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+		$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PACK_CODE = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($res["PRODUCTID"]));
+		$pack = $req->fetch(PDO::FETCH_ASSOC);		
+		if ($pack != false) // IF HAVE PACK
+		{ 				
+			$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ?,STATUS = 'LOCK', DATEADD = GETDATE() WHERE PACK_CODE = ?";
+			$req = $blueDB->prepare($sql);
+			$req->execute(array($NEWPRICE,$pack["PACK_CODE"])); 
+		}  
 	}
-
-	$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
-	$req = $blueDB->prepare($sql);
-	$req->execute(array($res["PRODUCTID"]));
-	$pack = $req->fetch(PDO::FETCH_ASSOC);
-	if ($pack != false) // IF HAVE PACK
+	else
 	{
-		$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
-        $req = $dbBlue->prepare($sql);
-        $req->execute(array($pack["PRODUCTID"]));
-        $promo = $req->fetch(PDO::FETCH_ASSOC);
+		$price = $price["PRICE"];
+		if (round($price,4) != round($res["NEWPRICE"],4))
+		{
+			$sql = "UPDATE ICPRODUCT SET PRICE = ?,OTHER_PRICE = ?, DATEEDIT = GETDATE() WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($res["NEWPRICE"],$res["NEWPRICE"],$res["PRODUCTID"]));
+		}
+		$sql = "SELECT * FROM ICPRODUCT_SALEUNIT WHERE PRODUCTID = ?";
+		$req = $blueDB->prepare($sql);
+		$req->execute(array($res["PRODUCTID"]));
+		$pack = $req->fetch(PDO::FETCH_ASSOC);
+		if ($pack != false) // IF HAVE PACK
+		{
+			$sql = "SELECT * FROM ICNEWPROMOTION WHERE PRODUCTID = ?";
+			$req = $dbBlue->prepare($sql);
+			$req->execute(array($pack["PRODUCTID"]));
+			$promo = $req->fetch(PDO::FETCH_ASSOC);
 
-		$UNITPRICE = $res["NEWPRICE"];
-		if($promo == false){ // IF NO PROMO 10% DISC ON PRICE                                                
-				$calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);			
-				if (floatval($pack["SALEPRICE"]) != $calculated){				
-					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
-					$req = $blueDB->prepare($sql);
-					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
-				}            
-		}else{ // FULL PRICE     
-				$calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           			
-				if (floatval($pack["SALEPRICE"]) != $calculated){				
-					$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
-					$req = $blueDB->prepare($sql);
-					$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
-				}
-		} 
+			$UNITPRICE = $res["NEWPRICE"];
+			if($promo == false){ // IF NO PROMO 10% DISC ON PRICE                                                
+					$calculated = round( (($UNITPRICE * $pack["SALEFACTOR"]) * 0.9),4);			
+					if (floatval($pack["SALEPRICE"]) != $calculated){				
+						$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR) * 0.9), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+						$req = $blueDB->prepare($sql);
+						$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+					}            
+			}else{ // FULL PRICE     
+					$calculated = round(($UNITPRICE * $pack["SALEFACTOR"]),4);                           			
+					if (floatval($pack["SALEPRICE"]) != $calculated){				
+						$sql = "UPDATE ICPRODUCT_SALEUNIT SET SALEPRICE = ((? * SALEFACTOR)), DATEADD = GETDATE() WHERE PACK_CODE = ?";
+						$req = $blueDB->prepare($sql);
+						$req->execute(array($UNITPRICE,$pack["PACK_CODE"])); 
+					}
+			} 
+		}
 	}
-	
-	
-
 	$resp = array();
 	$resp["result"] = "OK";	
 	$response = $response->withJson($resp);
@@ -14674,11 +14755,9 @@ $app->get('/itemexpiration',function ($request,Response $response){
     $req->execute(array());        
     $blueData = $req->fetchAll(PDO::FETCH_ASSOC);        
 
-	foreach($blueData as $oneitem){
-		//var_dump($oneitem);
-		//exit;
-		if (intval($oneitem[$location]) != 0){
-			$halfdata = $hashData[$item["PRODUCTID"]];
+	foreach($blueData as $oneitem){		
+		if (isset($oneitem[$location]) && intval($oneitem[$location]) != 0){
+			$halfdata = $hashData[$oneitem["PRODUCTID"]];
 			$oneitem["PRODUCTNAME"] = $halfdata["PRODUCTNAME"];
 			$oneitem["VENDNAME"] = $halfdata["VENDNAME"];
 			$oneitem["VENDID"] = $halfdata["VENDID"];

@@ -276,6 +276,7 @@ function renderNegativeWH1()
     $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME,LOCONHAND as 'QUANTITY'
     FROM ICLOCATION,ICPRODUCT 
     WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
+    AND ACTIVE = 1
     AND LOCID = 'WH1'
     AND PPSS_IS_FRESH IS NULL
     AND LOCONHAND < 0"; 
@@ -293,6 +294,7 @@ function renderNegativeWH2()
     $sql = "SELECT ICLOCATION.PRODUCTID,LOCONHAND,PRODUCTNAME, LOCONHAND as 'QUANTITY'
     FROM ICLOCATION,ICPRODUCT 
     WHERE ICLOCATION.PRODUCTID = ICPRODUCT.PRODUCTID 
+    AND ACTIVE = 1
     AND LOCID = 'WH2' AND LOCONHAND < 0"; 
     $req = $db->prepare($sql);
     $req->execute(array());
@@ -493,7 +495,7 @@ function renderTransfer($team,$day)
         
         $sql = "SELECT PRODUCTNAME FROM ICPRODUCT WHERE PRODUCTID = ?";
         $req = $db->prepare($sql);
-        $req->execute(array($data["PRODUCTID"]));
+        $req->execute(array($item["PRODUCTID"]));
         $oneData = $req->fetch(PDO::FETCH_ASSOC);
         $data["PRODUCTNAME"] = $oneData["PRODUCTNAME"];
 		array_push($fullitems,$data);
