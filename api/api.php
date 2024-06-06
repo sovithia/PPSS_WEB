@@ -4592,7 +4592,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 
 	$rr["items"] = null;
 	
-
 	if ($hidenoreceive == 'YES')
 	{
 		$sql = "SELECT PRODUCTID,replace(replace(replace(PRODUCTNAME,char(10),''),char(13),''),'\"','') as PRODUCTNAME,
@@ -4685,8 +4684,6 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 		$req->execute(array($item["PRODUCTID"]));
 		$data = $req->fetch(PDO::FETCH_ASSOC);
 		
-
-
 		if ($data == false){			
 			$item["TOTALTHROWN"] = 'N/A';
 			$item["TOTALSALE"] = 'N/A';
@@ -4698,7 +4695,22 @@ $app->get('/supplyrecorddetails/{id}', function(Request $request,Response $respo
 			$item["TOTALSALE"] = $data["TOTALSALE"];
 			$item["TOTALRECEIVE"] = $data["TOTALRECEIVE"];
 			$item["SCORE"] = round($data["SCORE"],2);
-		}		
+		}	
+		
+		$sql = "select TOP(2)TRANCOST from PODETAIL WHERE PRODUCTID = ? ORDER BY DATEADD DESC";
+		$req = $db2->prepare($sql);
+		$req->execute(array($item["PRODUCTID"]));
+		$comparedata = $req->fetchAll(PDO::FETCH_ASSOC);
+		if ($comparedata == false)
+			$item["PRICECHANGED"] = false;
+		else if(count($comparedata) < 2)
+			$item["PRICECHANGED"] = false;
+		else{
+			if ($comparedata[0]["TRANCOST"] != $comparedata[1]["TRANCOST"])
+				$item["PRICECHANGED"] = true;
+			else
+				$item["PRICECHANGED"] = false;
+		}
 		
 		array_push($tmpItems, $item); 	
 	}
@@ -6379,7 +6391,7 @@ $app->get('/itemrequestitemspool/{type}', function(Request $request,Response $re
 	$itemsNEW = array();
 	foreach($items as $newItem){
 			$newItem["PRODUCTID"] = str_replace(' ','',$newItem["PRODUCTID"]);			
-			$debug2 = var_export($INDEX[$newItem["PRODUCTID"]], true);
+			//$debug2 = var_export($INDEX[$newItem["PRODUCTID"]], true);
 
 			if (!isset($INDEX[$newItem["PRODUCTID"]]))			
 			{
